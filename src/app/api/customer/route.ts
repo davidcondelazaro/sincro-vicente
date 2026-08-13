@@ -80,13 +80,26 @@ async function shopifyRequest<T>(query: string, variables: Record<string, unknow
   return body;
 }
 
+type ShopifyCustomer = { id: string; firstName: string | null; lastName: string | null; defaultEmailAddress: { emailAddress: string } | null; numberOfOrders: number; createdAt: string };
+
+function publicShopifyCustomer(customer: ShopifyCustomer | null) {
+  return customer ? { found: true as const, id: customer.id, firstName: customer.firstName, lastName: customer.lastName, email: customer.defaultEmailAddress?.emailAddress ?? null, orderCount: customer.numberOfOrders, createdAt: customer.createdAt } : { found: false as const };
+}
+
 async function findInShopify(email: string) {
-  const body = await shopifyRequest<{ data: { customers: { nodes: Array<{ id: string; firstName: string | null; lastName: string | null; defaultEmailAddress: { emailAddress: string } | null; numberOfOrders: number; createdAt: string }> } } }>(
+  const body = await shopifyRequest<{ data: { customers: { nodes: ShopifyCustomer[] } } }>(
     `query CustomerByEmail($query: String!) { customers(first: 1, query: $query) { nodes { id firstName lastName defaultEmailAddress { emailAddress } numberOfOrders createdAt } } }`,
     { query: `email:${JSON.stringify(email)}` },
   );
-  const customer = body.data.customers.nodes[0];
-  return customer ? { found: true, id: customer.id, firstName: customer.firstName, lastName: customer.lastName, email: customer.defaultEmailAddress?.emailAddress ?? null, orderCount: customer.numberOfOrders, createdAt: customer.createdAt } : { found: false };
+  return publicShopifyCustomer(body.data.customers.nodes[0] ?? null);
+}
+
+async function findInShopifyById(id: string) {
+  const body = await shopifyRequest<{ data: { customer: ShopifyCustomer | null } }>(
+    `query CustomerById($id: ID!) { customer(id: $id) { id firstName lastName defaultEmailAddress { emailAddress } numberOfOrders createdAt } }`,
+    { id },
+  );
+  return publicShopifyCustomer(body.data.customer);
 }
 
 function normalizePhone(phone: string | null) {
@@ -194,8 +207,12 @@ export async function POST(request: Request) {
       `mutation MetafieldsSet($metafields: [MetafieldsSetInput!]!) { metafieldsSet(metafields: $metafields) { userErrors { message } } }`, { metafields },
     );
     const metafieldErrors = metafieldResult.data.metafieldsSet.userErrors.map((item) => item.message);
-    const verifiedCustomer = await findInShopify(loaded.customer.email);
-    const verified = verifiedCustomer.found && verifiedCustomer.id === result.customer.id && verifiedCustomer.email?.toLowerCase() === loaded.customer.email.toLowerCase();
+    const verifiedCustomer = await findInShopifyById(result.customer.id);
+    const verified = verifiedCustomer.found
+      && verifiedCustomer.id === result.customer.id
+      && verifiedCustomer.email?.toLowerCase() === loaded.customer.email.toLowerCase()
+      && verifiedCustomer.firstName === loaded.customer.firstname
+      && verifiedCustomer.lastName === loaded.customer.lastname;
     return Response.json({ customer: result.customer, addressesCreated: addresses.length, metafieldsCreated: metafields.length, warnings: metafieldErrors, verification: { verified, customer: verifiedCustomer } });
   } catch (error) {
     console.error(JSON.stringify({ level: "error", message: "Customer create failed", error: error instanceof Error ? error.message : String(error) }));
