@@ -30,5 +30,5 @@ npm install
 npm run dev
 ```
 
-Abre `http://localhost:3000` e inicia sesión con tu cuenta de siempre. Después podrás consultar o crear clientes igual que en producción, sin publicar cada cambio.
+Abre `http://localhost:3100` e inicia sesión con tu cuenta de siempre. Después podrás consultar o crear clientes igual que en producción, sin publicar cada cambio.
 La creación individual requiere una sesión autenticada. Nunca incluyas claves de Shopify o MySQL en Git.
