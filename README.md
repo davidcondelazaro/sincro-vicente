@@ -12,6 +12,8 @@ La Edge Function se invoca inmediatamente al iniciar o reanudar, y Supabase Cron
 
 Cada ejecución conserva sus parámetros, contadores, duración, estado final y todos sus eventos. Durante la ejecución se muestra el tiempo transcurrido, una estimación del tiempo restante y el promedio reciente por cliente. Desde **Ejecuciones** se puede abrir cualquier proceso histórico, revisar su registro completo y volver al listado. El registro en directo puede plegarse. **Pausar** mantiene la cola y su cursor para reanudar; **Detener** archiva el mensaje pendiente y finaliza esa ejecución.
 
+Las fechas y horas de la aplicación se muestran en formato español y con zona horaria `Europe/Madrid`. El criterio **Desde una fecha** comienza a las 00:00 de la fecha seleccionada en Madrid y termina en el momento actual de Madrid, incluso cuando la aplicación se ejecuta en Vercel.
+
 ## Variables de entorno
 
 Copiar `.env.example` a `.env.local` y completar las variables. No incluyas `.env.local` ni credenciales en Git.

@@ -5,11 +5,17 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type Mode = "id" | "from_date" | "latest";
+const madridTimeZone = "Europe/Madrid";
 
 function required(name: string) {
   const value = process.env[name];
   if (!value) throw new Error(`Falta la variable de entorno ${name}.`);
   return value;
+}
+
+function madridMysqlDateTime(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: madridTimeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).formatToParts(date).reduce<Record<string, string>>((result, part) => ({ ...result, [part.type]: part.value }), {});
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
 }
 
 async function countCustomers(mode: Mode, parameters: Record<string, unknown>) {
@@ -52,7 +58,7 @@ function validInput(input: Record<string, unknown>) {
   if (mode === "from_date") {
     const fromDate = String(input.fromDate ?? "");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(fromDate)) throw new Error("Indica una fecha de inicio válida.");
-    return { mode, parameters: { fromDate: `${fromDate} 00:00:00`, until: new Date().toISOString().slice(0, 19).replace("T", " ") } } as const;
+    return { mode, parameters: { fromDate: `${fromDate} 00:00:00`, until: madridMysqlDateTime() } } as const;
   }
   if (mode === "latest") {
     const latest = Number(input.latest);
