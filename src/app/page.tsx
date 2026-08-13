@@ -32,6 +32,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [creationMessage, setCreationMessage] = useState<string | null>(null);
+  const [createdCustomerUrl, setCreatedCustomerUrl] = useState<string | null>(null);
   const [showWriteDecision, setShowWriteDecision] = useState(false);
   const [health, setHealth] = useState<{ mysql: boolean; shopify: boolean } | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -55,6 +56,7 @@ export default function Home() {
     setError(null);
     setResult(null);
     setCreationMessage(null);
+    setCreatedCustomerUrl(null);
     setShowWriteDecision(false);
 
     try {
@@ -82,6 +84,7 @@ export default function Home() {
       setResult({ prestashop: result.prestashop, shopify: { found: true, ...body.customer } });
       setShowWriteDecision(false);
       setCreationMessage(`Cliente creado en Shopify. ID: ${body.customer.id}. Direcciones: ${body.addressesCreated}. Metafields: ${body.metafieldsCreated}.${body.warnings?.length ? ` Avisos: ${body.warnings.join(" ")}` : ""}`);
+      setCreatedCustomerUrl(body.customerAdminUrl);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Error inesperado.");
     } finally {
@@ -113,7 +116,7 @@ export default function Home() {
       </form>
 
       {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">{error}</p>}
-      {creationMessage && <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">{creationMessage}</p>}
+      {creationMessage && <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-900"><p>{creationMessage}</p>{createdCustomerUrl && <a href={createdCustomerUrl} target="_blank" rel="noreferrer" className="mt-2 inline-block font-medium underline underline-offset-2 hover:text-emerald-950">Abrir cliente en Shopify</a>}</div>}
 
       {result && <section className="grid gap-5 md:grid-cols-2">
         <CustomerCard title="PrestaShop" entries={[

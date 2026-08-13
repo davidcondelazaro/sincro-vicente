@@ -69,6 +69,12 @@ function shopifyUrl() {
   return `https://${required("SHOPIFY_STORE_URL").replace(/^https?:\/\//, "").replace(/\/$/, "")}/admin/api/2026-07/graphql.json`;
 }
 
+function shopifyCustomerAdminUrl(id: string) {
+  const store = required("SHOPIFY_STORE_URL").replace(/^https?:\/\//, "").replace(/\/$/, "").replace(/\.myshopify\.com$/, "");
+  const customerId = id.split("/").pop();
+  return `https://admin.shopify.com/store/${store}/customers/${customerId}`;
+}
+
 async function shopifyRequest<T>(query: string, variables: Record<string, unknown>) {
   const response = await fetch(shopifyUrl(), {
     method: "POST",
@@ -199,7 +205,7 @@ export async function POST(request: Request) {
       `mutation MetafieldsSet($metafields: [MetafieldsSetInput!]!) { metafieldsSet(metafields: $metafields) { userErrors { message } } }`, { metafields },
     );
     const metafieldErrors = metafieldResult.data.metafieldsSet.userErrors.map((item) => item.message);
-    return Response.json({ customer: result.customer, addressesCreated: addresses.length, metafieldsCreated: metafields.length, warnings: metafieldErrors });
+    return Response.json({ customer: result.customer, customerAdminUrl: shopifyCustomerAdminUrl(result.customer.id), addressesCreated: addresses.length, metafieldsCreated: metafields.length, warnings: metafieldErrors });
   } catch (error) {
     console.error(JSON.stringify({ level: "error", message: "Customer create failed", error: error instanceof Error ? error.message : String(error) }));
     return Response.json({ error: "No se pudo crear el cliente. Revisa los permisos de Shopify y la configuración." }, { status: 500 });
