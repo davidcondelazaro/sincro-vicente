@@ -74,7 +74,7 @@ export default function Home() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-8 px-6 py-16 sm:px-10">
       <header className="space-y-3">
-        <p className="text-sm font-semibold tracking-[0.18em] text-emerald-700 uppercase">POC de migración</p>
+        <div className="flex items-start justify-between gap-4"><p className="text-sm font-semibold tracking-[0.18em] text-emerald-700 uppercase">POC de migración</p><form action="/auth/logout" method="post"><button className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50">Cerrar sesión</button></form></div>
         <h1 className="text-4xl font-semibold tracking-tight text-zinc-950">PrestaShop → Shopify</h1>
         <p className="max-w-2xl text-zinc-600">Consulta de un cliente de PrestaShop y su coincidencia en Shopify. La escritura está limitada a una prueba autorizada.</p>
       </header>
