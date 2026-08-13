@@ -13,12 +13,22 @@ Copiar `.env.example` a `.env.local` y completar las variables. No incluyas `.en
 
 En Vercel, configura las mismas variables como variables de entorno cifradas. El navegador nunca recibe los secretos.
 
-## Desarrollo
+## Desarrollo local
+
+El modo habitual de trabajo es local. La app de tu Mac usa el mismo proyecto de Supabase que la versión publicada, por lo que la sesión y el usuario son los mismos. Shopify y MySQL siguen siendo los servicios remotos reales.
+
+Una única vez (y también cuando cambie una clave en Vercel), descarga las variables privadas al equipo:
+
+```bash
+npx vercel env pull .env.local --environment production
+```
+
+`.env.local` queda excluido de Git y contiene las claves de MySQL, Shopify y Supabase. Vercel conserva otra copia para la aplicación publicada.
 
 ```bash
 npm install
 npm run dev
 ```
 
-Abre `http://localhost:3000` e introduce un ID de cliente de PrestaShop.
+Abre `http://localhost:3000` e inicia sesión con tu cuenta de siempre. Después podrás consultar o crear clientes igual que en producción, sin publicar cada cambio.
 La creación individual requiere una sesión autenticada. Nunca incluyas claves de Shopify o MySQL en Git.
