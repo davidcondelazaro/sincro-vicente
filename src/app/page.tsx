@@ -29,12 +29,16 @@ export default function Home() {
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [writeSecret, setWriteSecret] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [creationMessage, setCreationMessage] = useState<string | null>(null);
 
   async function inspectCustomer(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setError(null);
     setResult(null);
+    setCreationMessage(null);
 
     try {
       const response = await fetch(`/api/customer?id=${encodeURIComponent(customerId)}`);
@@ -48,12 +52,31 @@ export default function Home() {
     }
   }
 
+  async function createCustomer() {
+    if (!result || !confirm(`Vas a crear en Shopify a ${result.prestashop.email}. Esta operación no se puede deshacer desde esta pantalla. ¿Continuar?`)) return;
+    setCreating(true);
+    setError(null);
+    setCreationMessage(null);
+    try {
+      const response = await fetch("/api/customer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: String(result.prestashop.id), secret: writeSecret }) });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "No se pudo crear el cliente.");
+      setCreationMessage(`Cliente creado en Shopify (${body.customer.id}). Direcciones: ${body.addressesCreated}. Metafields: ${body.metafieldsCreated}.${body.warnings?.length ? ` Avisos: ${body.warnings.join(" ")}` : ""}`);
+      setWriteSecret("");
+      await inspectCustomer({ preventDefault() {} } as FormEvent<HTMLFormElement>);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Error inesperado.");
+    } finally {
+      setCreating(false);
+    }
+  }
+
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-8 px-6 py-16 sm:px-10">
       <header className="space-y-3">
         <p className="text-sm font-semibold tracking-[0.18em] text-emerald-700 uppercase">POC de migración</p>
         <h1 className="text-4xl font-semibold tracking-tight text-zinc-950">PrestaShop → Shopify</h1>
-        <p className="max-w-2xl text-zinc-600">Consulta segura y de sólo lectura de un cliente de PrestaShop y su coincidencia en Shopify.</p>
+        <p className="max-w-2xl text-zinc-600">Consulta de un cliente de PrestaShop y su coincidencia en Shopify. La escritura está limitada a una prueba autorizada.</p>
       </header>
 
       <form onSubmit={inspectCustomer} className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:flex-row">
@@ -67,6 +90,7 @@ export default function Home() {
       </form>
 
       {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">{error}</p>}
+      {creationMessage && <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">{creationMessage}</p>}
 
       {result && <section className="grid gap-5 md:grid-cols-2">
         <CustomerCard title="PrestaShop" entries={[
@@ -75,6 +99,15 @@ export default function Home() {
         <CustomerCard title="Shopify (Admin GraphQL 2026-07)" entries={result.shopify.found ? [
           ["Estado", "Cliente encontrado"], ["ID", result.shopify.id!], ["Nombre", `${result.shopify.firstName ?? ""} ${result.shopify.lastName ?? ""}`.trim()], ["Email", result.shopify.email ?? "—"], ["Pedidos", String(result.shopify.orderCount ?? 0)],
         ] : [["Estado", "No existe un cliente con ese email"]]} />
+      </section>}
+
+      {result && !result.shopify.found && <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+        <h2 className="text-lg font-semibold text-amber-950">Crear este único cliente en Shopify</h2>
+        <p className="mt-1 text-sm text-amber-900">Aplicará las reglas del importador Python. Esta prueba solo permite el ID autorizado y comprueba Shopify de nuevo antes de escribir.</p>
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+          <input type="password" value={writeSecret} onChange={(event) => setWriteSecret(event.target.value)} placeholder="Clave de escritura" className="h-11 flex-1 rounded-lg border border-amber-300 bg-white px-3 outline-none ring-amber-600 focus:ring-2" />
+          <button type="button" disabled={creating || !writeSecret} onClick={createCustomer} className="h-11 rounded-lg bg-amber-700 px-5 font-medium text-white transition hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-60">{creating ? "Creando…" : "Crear en Shopify"}</button>
+        </div>
       </section>}
     </main>
   );
