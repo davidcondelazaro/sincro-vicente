@@ -2,7 +2,7 @@
 
 Aplicación privada para consultar e importar clientes de PrestaShop a Shopify.
 
-La importación individual recibe un ID de cliente de PrestaShop, consulta la misma base MySQL que el sincronizador Python existente y busca al cliente por email en Shopify Admin GraphQL API `2026-07`. La importación masiva sólo toma clientes activos con, al menos, un pedido válido.
+La importación individual recibe un ID de cliente de PrestaShop, consulta la misma base MySQL que el sincronizador Python existente y busca al cliente por email en Shopify Admin GraphQL API `2026-07`. La importación masiva sólo toma clientes activos con, al menos, un pedido válido. Puede abarcar un ID puntual, desde una fecha, los últimos N o todos los clientes.
 
 ## Importaciones masivas
 

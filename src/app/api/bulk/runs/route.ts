@@ -4,7 +4,7 @@ import { createClient as createSupabaseClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type Mode = "id" | "from_date" | "latest";
+type Mode = "id" | "from_date" | "latest" | "all";
 const madridTimeZone = "Europe/Madrid";
 
 function required(name: string) {
@@ -65,6 +65,7 @@ function validInput(input: Record<string, unknown>) {
     if (!Number.isInteger(latest) || latest < 1 || latest > 100_000) throw new Error("Indica entre 1 y 100.000 clientes.");
     return { mode, parameters: { latest } } as const;
   }
+  if (mode === "all") return { mode, parameters: {} } as const;
   throw new Error("Elige el alcance de la importación.");
 }
 

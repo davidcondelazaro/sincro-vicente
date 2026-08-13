@@ -4,11 +4,11 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 type Run = {
-  id: string; mode: "id" | "from_date" | "latest"; parameters: Record<string, unknown>; status: "queued" | "running" | "paused" | "stopped" | "completed" | "failed";
+  id: string; mode: "id" | "from_date" | "latest" | "all"; parameters: Record<string, unknown>; status: "queued" | "running" | "paused" | "stopped" | "completed" | "failed";
   total_count: number; processed_count: number; created_count: number; existing_count: number; error_count: number; created_at: string; started_at: string | null; finished_at: string | null;
 };
 type ImportEvent = { id: number; run_id: string; level: "info" | "success" | "warning" | "error"; outcome: "created" | "existing" | "error" | "status"; prestashop_customer_id: number | null; customer_email: string | null; shopify_customer_id: string | null; message: string; created_at: string };
-type Mode = "id" | "from_date" | "latest";
+type Mode = "id" | "from_date" | "latest" | "all";
 
 const storeSlug = "electronica-vicente";
 
@@ -102,14 +102,16 @@ export default function BulkImportsPage() {
       <header><p className="text-sm font-semibold tracking-[0.18em] text-emerald-700 uppercase">Clientes</p><h1 className="mt-3 text-4xl font-semibold tracking-tight text-zinc-950">Importaciones masivas</h1><p className="mt-3 max-w-3xl text-zinc-600">Lanza una importación persistente. Puedes cerrar esta pantalla: la cola seguirá procesando y podrás volver a ver su avance. Los alcances masivos incluyen únicamente clientes activos con al menos un pedido válido.</p></header>
       {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">{error}</p>}
       <form onSubmit={start} className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-        <fieldset disabled={Boolean(active) || starting} className="space-y-4 disabled:opacity-60"><legend className="text-lg font-semibold">Alcance de la importación</legend><div className="grid gap-3 md:grid-cols-3">
+        <fieldset disabled={Boolean(active) || starting} className="space-y-4 disabled:opacity-60"><legend className="text-lg font-semibold">Alcance de la importación</legend><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <label className={`cursor-pointer rounded-xl border p-4 ${mode === "id" ? "border-emerald-600 bg-emerald-50" : "border-zinc-200"}`}><input className="mr-2" type="radio" checked={mode === "id"} onChange={() => setMode("id")} />Un ID puntual</label>
           <label className={`cursor-pointer rounded-xl border p-4 ${mode === "from_date" ? "border-emerald-600 bg-emerald-50" : "border-zinc-200"}`}><input className="mr-2" type="radio" checked={mode === "from_date"} onChange={() => setMode("from_date")} />Desde una fecha</label>
           <label className={`cursor-pointer rounded-xl border p-4 ${mode === "latest" ? "border-emerald-600 bg-emerald-50" : "border-zinc-200"}`}><input className="mr-2" type="radio" checked={mode === "latest"} onChange={() => setMode("latest")} />N clientes</label>
+          <label className={`cursor-pointer rounded-xl border p-4 ${mode === "all" ? "border-emerald-600 bg-emerald-50" : "border-zinc-200"}`}><input className="mr-2" type="radio" checked={mode === "all"} onChange={() => setMode("all")} />Todos los clientes</label>
         </div>
         {mode === "id" && <label className="block text-sm font-medium">ID de cliente en PrestaShop<input required value={customerId} onChange={(event) => setCustomerId(event.target.value)} inputMode="numeric" className="mt-1 block h-11 w-full rounded-lg border border-zinc-300 px-3" placeholder="Ej. 53902" /></label>}
         {mode === "from_date" && <label className="block text-sm font-medium">Desde la fecha<input required value={fromDate} onChange={(event) => setFromDate(event.target.value)} type="date" className="mt-1 block h-11 w-full rounded-lg border border-zinc-300 px-3" /><span className="mt-1 block font-normal text-zinc-500">Desde las 00:00, hora de Madrid.</span></label>}
         {mode === "latest" && <label className="block text-sm font-medium">Número de últimos clientes<input required value={latest} onChange={(event) => setLatest(event.target.value)} type="number" min="1" max="100000" className="mt-1 block h-11 w-full rounded-lg border border-zinc-300 px-3" /></label>}
+        {mode === "all" && <p className="text-sm text-zinc-600">Se incluirán todos los clientes activos que tengan al menos un pedido válido.</p>}
         <button className="h-11 rounded-lg bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800 disabled:opacity-60">{starting ? "Preparando cola…" : "Iniciar el proceso"}</button></fieldset>
       </form>
       {loading ? <p className="text-zinc-500">Cargando ejecuciones…</p> : run ? (
@@ -137,7 +139,7 @@ export default function BulkImportsPage() {
   </div>;
 }
 
-function scopeLabel(run: Run) { if (run.mode === "id") return `Cliente #${run.parameters.customerId}`; if (run.mode === "from_date") return `Desde ${formatSpanishDate(String(run.parameters.fromDate))}`; return `Últimos ${run.parameters.latest} clientes`; }
+function scopeLabel(run: Run) { if (run.mode === "id") return `Cliente #${run.parameters.customerId}`; if (run.mode === "from_date") return `Desde ${formatSpanishDate(String(run.parameters.fromDate))}`; if (run.mode === "all") return "Todos los clientes"; return `Últimos ${run.parameters.latest} clientes`; }
 function formatSpanishDate(value: string) { const [year, month, day] = value.slice(0, 10).split("-"); return year && month && day ? `${day}/${month}/${year}` : value; }
 function formatMadridDateTime(value: string) { return new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", dateStyle: "short", timeStyle: "short" }).format(new Date(value)); }
 function formatMadridTime(value: string) { return new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", timeStyle: "medium" }).format(new Date(value)); }
