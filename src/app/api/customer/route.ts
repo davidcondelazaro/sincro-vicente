@@ -196,7 +196,9 @@ export async function POST(request: Request) {
       `mutation MetafieldsSet($metafields: [MetafieldsSetInput!]!) { metafieldsSet(metafields: $metafields) { userErrors { message } } }`, { metafields },
     );
     const metafieldErrors = metafieldResult.data.metafieldsSet.userErrors.map((item) => item.message);
-    return Response.json({ customer: result.customer, addressesCreated: addresses.length, metafieldsCreated: metafields.length, warnings: metafieldErrors });
+    const verifiedCustomer = await findInShopify(loaded.customer.email);
+    const verified = verifiedCustomer.found && verifiedCustomer.id === result.customer.id && verifiedCustomer.email?.toLowerCase() === loaded.customer.email.toLowerCase();
+    return Response.json({ customer: result.customer, addressesCreated: addresses.length, metafieldsCreated: metafields.length, warnings: metafieldErrors, verification: { verified, customer: verifiedCustomer } });
   } catch (error) {
     console.error(JSON.stringify({ level: "error", message: "Customer create failed", error: error instanceof Error ? error.message : String(error) }));
     return Response.json({ error: "No se pudo crear el cliente. Revisa los permisos de Shopify y la configuración." }, { status: 500 });

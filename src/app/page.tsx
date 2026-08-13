@@ -31,6 +31,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [creationMessage, setCreationMessage] = useState<string | null>(null);
+  const [showWriteDecision, setShowWriteDecision] = useState(false);
 
   async function inspectCustomer(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -38,12 +39,14 @@ export default function Home() {
     setError(null);
     setResult(null);
     setCreationMessage(null);
+    setShowWriteDecision(false);
 
     try {
       const response = await fetch(`/api/customer?id=${encodeURIComponent(customerId)}`);
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "No se pudo consultar el cliente.");
       setResult(body);
+      setShowWriteDecision(!body.shopify.found);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Error inesperado.");
     } finally {
@@ -52,7 +55,7 @@ export default function Home() {
   }
 
   async function createCustomer() {
-    if (!result || !confirm(`Vas a crear en Shopify a ${result.prestashop.email}. Esta operación no se puede deshacer desde esta pantalla. ¿Continuar?`)) return;
+    if (!result) return;
     setCreating(true);
     setError(null);
     setCreationMessage(null);
@@ -60,8 +63,10 @@ export default function Home() {
       const response = await fetch("/api/customer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: String(result.prestashop.id) }) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "No se pudo crear el cliente.");
-      setCreationMessage(`Cliente creado en Shopify (${body.customer.id}). Direcciones: ${body.addressesCreated}. Metafields: ${body.metafieldsCreated}.${body.warnings?.length ? ` Avisos: ${body.warnings.join(" ")}` : ""}`);
-      await inspectCustomer({ preventDefault() {} } as FormEvent<HTMLFormElement>);
+      if (!body.verification?.verified) throw new Error("Shopify confirmó la creación, pero la comprobación posterior no coincidió. Revísalo antes de reintentar.");
+      setResult({ prestashop: result.prestashop, shopify: body.verification.customer });
+      setShowWriteDecision(false);
+      setCreationMessage(`Creación verificada en Shopify. Coinciden ID, email y nombre. Direcciones: ${body.addressesCreated}. Metafields: ${body.metafieldsCreated}.${body.warnings?.length ? ` Avisos: ${body.warnings.join(" ")}` : ""}`);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Error inesperado.");
     } finally {
@@ -70,11 +75,16 @@ export default function Home() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-8 px-6 py-16 sm:px-10">
+    <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
+      <aside className="border-b border-zinc-200 bg-white px-5 py-5 lg:min-h-screen lg:border-r lg:border-b-0">
+        <div className="flex items-center justify-between gap-3 lg:block"><div><p className="text-sm font-semibold tracking-[0.18em] text-emerald-700 uppercase">Sincro Vicente</p><p className="mt-1 text-sm text-zinc-500">PrestaShop → Shopify</p></div><form action="/auth/logout" method="post"><button className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 lg:mt-8 lg:w-full">Cerrar sesión</button></form></div>
+        <nav className="mt-6 flex gap-2 overflow-x-auto lg:flex-col" aria-label="Módulos de la aplicación"><a href="/" className="shrink-0 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-900">Importar un cliente</a><span className="shrink-0 rounded-lg px-3 py-2 text-sm text-zinc-400">Importaciones masivas <span className="ml-1 text-xs">Próximamente</span></span><span className="shrink-0 rounded-lg px-3 py-2 text-sm text-zinc-400">Ejecuciones <span className="ml-1 text-xs">Próximamente</span></span><span className="shrink-0 rounded-lg px-3 py-2 text-sm text-zinc-400">Configuración <span className="ml-1 text-xs">Próximamente</span></span></nav>
+      </aside>
+    <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-6 py-10 sm:px-10 lg:mx-0 lg:py-16">
       <header className="space-y-3">
-        <div className="flex items-start justify-between gap-4"><p className="text-sm font-semibold tracking-[0.18em] text-emerald-700 uppercase">POC de migración</p><form action="/auth/logout" method="post"><button className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50">Cerrar sesión</button></form></div>
-        <h1 className="text-4xl font-semibold tracking-tight text-zinc-950">PrestaShop → Shopify</h1>
-        <p className="max-w-2xl text-zinc-600">Consulta de un cliente de PrestaShop y su coincidencia en Shopify. La escritura está limitada a una prueba autorizada.</p>
+        <p className="text-sm font-semibold tracking-[0.18em] text-emerald-700 uppercase">Clientes</p>
+        <h1 className="text-4xl font-semibold tracking-tight text-zinc-950">Importar un cliente</h1>
+        <p className="max-w-2xl text-zinc-600">Consulta un cliente de PrestaShop, comprueba su estado en Shopify y decide si deseas grabarlo.</p>
       </header>
 
       <form onSubmit={inspectCustomer} className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:flex-row">
@@ -99,12 +109,12 @@ export default function Home() {
         ] : [["Estado", "No existe un cliente con ese email"]]} />
       </section>}
 
-      {result && !result.shopify.found && <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
-        <h2 className="text-lg font-semibold text-amber-950">Crear este único cliente en Shopify</h2>
+      {result && !result.shopify.found && showWriteDecision && <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+        <h2 className="text-lg font-semibold text-amber-950">¿Quieres grabar este cliente en Shopify?</h2>
         <p className="mt-1 text-sm text-amber-900">Aplicará las reglas del importador Python. Solo usuarios con sesión pueden ejecutar esta prueba; además permite únicamente el ID autorizado y comprueba Shopify de nuevo antes de escribir.</p>
-        <button type="button" disabled={creating} onClick={createCustomer} className="mt-4 h-11 rounded-lg bg-amber-700 px-5 font-medium text-white transition hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-60">{creating ? "Creando…" : "Crear en Shopify"}</button>
+        <div className="mt-4 flex gap-3"><button type="button" disabled={creating} onClick={() => setShowWriteDecision(false)} className="h-11 rounded-lg border border-amber-300 bg-white px-5 font-medium text-amber-950 hover:bg-amber-100">Ahora no</button><button type="button" disabled={creating} onClick={createCustomer} className="h-11 rounded-lg bg-amber-700 px-5 font-medium text-white transition hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-60">{creating ? "Grabando…" : "Sí, grabar en Shopify"}</button></div>
       </section>}
-    </main>
+    </main></div>
   );
 }
 
