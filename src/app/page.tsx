@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 type Result = {
   prestashop: {
@@ -33,6 +34,7 @@ export default function Home() {
   const [creationMessage, setCreationMessage] = useState<string | null>(null);
   const [showWriteDecision, setShowWriteDecision] = useState(false);
   const [health, setHealth] = useState<{ mysql: boolean; shopify: boolean } | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/health", { cache: "no-store" })
@@ -41,6 +43,10 @@ export default function Home() {
         setHealth({ mysql: Boolean(body.mysql), shopify: Boolean(body.shopify) });
       })
       .catch(() => setHealth({ mysql: false, shopify: false }));
+  }, []);
+
+  useEffect(() => {
+    createClient().auth.getUser().then(({ data }) => setUserEmail(data.user?.email ?? null));
   }, []);
 
   async function inspectCustomer(event: FormEvent<HTMLFormElement>) {
@@ -130,6 +136,7 @@ export default function Home() {
         <span className="font-medium text-zinc-900">Estado de conexiones</span>
         <ConnectionStatus label="MySQL / PrestaShop" ok={health?.mysql} />
         <ConnectionStatus label="Shopify" ok={health?.shopify} />
+        <span className="text-zinc-500">Sesión: <span className="font-medium text-zinc-800">{userEmail ?? "comprobando…"}</span></span>
       </div>
     </footer>
   </div>

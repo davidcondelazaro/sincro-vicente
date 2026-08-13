@@ -17,11 +17,13 @@ En Vercel, configura las mismas variables como variables de entorno cifradas. El
 
 El modo habitual de trabajo es local. La app de tu Mac usa el mismo proyecto de Supabase que la versión publicada, por lo que la sesión y el usuario son los mismos. Shopify y MySQL siguen siendo los servicios remotos reales.
 
-Una única vez (y también cuando cambie una clave en Vercel), descarga las variables privadas al equipo:
+Para obtener el esqueleto de configuración y los valores no secretos de Vercel:
 
 ```bash
 npx vercel env pull .env.local --environment production
 ```
+
+Vercel protege las claves marcadas como sensibles y las escribe como `[SENSITIVE]` al descargarlas. En la primera configuración local, reemplaza los valores `MYSQL_*` y `SHOPIFY_*` por los del `.env` del sincronizador original, conservados sólo en tu Mac. La URL y clave pública de Supabase se pueden obtener del proyecto de Supabase. Después, conserva `.env.local`: no vuelvas a descargarlo completo salvo que vayas a restaurar esas claves sensibles.
 
 `.env.local` queda excluido de Git y contiene las claves de MySQL, Shopify y Supabase. Vercel conserva otra copia para la aplicación publicada.
 
