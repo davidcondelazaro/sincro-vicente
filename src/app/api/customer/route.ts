@@ -1,5 +1,5 @@
-import { timingSafeEqual } from "node:crypto";
 import mysql from "mysql2/promise";
+import { createClient as createSupabaseClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -147,13 +147,6 @@ function publicCustomer(customer: PrestaShopRow) {
   return { id: customer.id_customer, firstName: customer.firstname, lastName: customer.lastname, email: customer.email, newsletter: Boolean(customer.newsletter), createdAt: customer.fecha_alta, orderCount: Number(customer.total_pedidos), totalSpent: Number(customer.importe_total ?? 0) };
 }
 
-function authorized(secret: unknown) {
-  if (typeof secret !== "string") return false;
-  const expected = Buffer.from(required("SYNC_WRITE_SECRET"));
-  const received = Buffer.from(secret);
-  return expected.length === received.length && timingSafeEqual(expected, received);
-}
-
 export async function GET(request: Request) {
   const id = new URL(request.url).searchParams.get("id");
   if (!id || !/^\d+$/.test(id)) return Response.json({ error: "Indica un ID numérico de cliente." }, { status: 400 });
@@ -169,9 +162,12 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { id, secret } = await request.json() as { id?: string; secret?: string };
+    const supabase = await createSupabaseClient();
+    const { data: claims } = await supabase.auth.getClaims();
+    if (!claims?.claims.sub) return Response.json({ error: "Necesitas iniciar sesión." }, { status: 401 });
+
+    const { id } = await request.json() as { id?: string };
     if (!id || !/^\d+$/.test(id)) return Response.json({ error: "Indica un ID numérico de cliente." }, { status: 400 });
-    if (!authorized(secret)) return Response.json({ error: "Clave de escritura incorrecta." }, { status: 401 });
     if (id !== required("SYNC_ALLOWED_CUSTOMER_ID")) return Response.json({ error: "La escritura está limitada al cliente autorizado para esta prueba." }, { status: 403 });
 
     const loaded = await loadCustomer(id);

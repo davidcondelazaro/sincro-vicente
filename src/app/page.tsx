@@ -29,7 +29,6 @@ export default function Home() {
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [writeSecret, setWriteSecret] = useState("");
   const [creating, setCreating] = useState(false);
   const [creationMessage, setCreationMessage] = useState<string | null>(null);
 
@@ -58,11 +57,10 @@ export default function Home() {
     setError(null);
     setCreationMessage(null);
     try {
-      const response = await fetch("/api/customer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: String(result.prestashop.id), secret: writeSecret }) });
+      const response = await fetch("/api/customer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: String(result.prestashop.id) }) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "No se pudo crear el cliente.");
       setCreationMessage(`Cliente creado en Shopify (${body.customer.id}). Direcciones: ${body.addressesCreated}. Metafields: ${body.metafieldsCreated}.${body.warnings?.length ? ` Avisos: ${body.warnings.join(" ")}` : ""}`);
-      setWriteSecret("");
       await inspectCustomer({ preventDefault() {} } as FormEvent<HTMLFormElement>);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Error inesperado.");
@@ -103,11 +101,8 @@ export default function Home() {
 
       {result && !result.shopify.found && <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
         <h2 className="text-lg font-semibold text-amber-950">Crear este único cliente en Shopify</h2>
-        <p className="mt-1 text-sm text-amber-900">Aplicará las reglas del importador Python. Esta prueba solo permite el ID autorizado y comprueba Shopify de nuevo antes de escribir.</p>
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-          <input type="password" value={writeSecret} onChange={(event) => setWriteSecret(event.target.value)} placeholder="Clave de escritura" className="h-11 flex-1 rounded-lg border border-amber-300 bg-white px-3 outline-none ring-amber-600 focus:ring-2" />
-          <button type="button" disabled={creating || !writeSecret} onClick={createCustomer} className="h-11 rounded-lg bg-amber-700 px-5 font-medium text-white transition hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-60">{creating ? "Creando…" : "Crear en Shopify"}</button>
-        </div>
+        <p className="mt-1 text-sm text-amber-900">Aplicará las reglas del importador Python. Solo usuarios con sesión pueden ejecutar esta prueba; además permite únicamente el ID autorizado y comprueba Shopify de nuevo antes de escribir.</p>
+        <button type="button" disabled={creating} onClick={createCustomer} className="mt-4 h-11 rounded-lg bg-amber-700 px-5 font-medium text-white transition hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-60">{creating ? "Creando…" : "Crear en Shopify"}</button>
       </section>}
     </main>
   );
