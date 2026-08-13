@@ -90,7 +90,8 @@ export default function BulkImportsPage() {
   const active = run?.status === "queued" || run?.status === "running" || run?.status === "paused";
   const progress = run && run.total_count ? Math.round((run.processed_count / run.total_count) * 100) : 0;
   const estimate = run ? remainingEstimate(run, events) : null;
-  const etaText = estimate && run ? `Tiempo estimado restante: ${formatDuration(estimate)} · promedio: ${formatDuration(Math.round(estimate / Math.max(1, run.total_count - run.processed_count)))} por cliente` : "Calculando el tiempo estimado…";
+  const elapsed = run?.started_at ? Math.max(0, (run.finished_at ? new Date(run.finished_at).getTime() : Date.now()) - new Date(run.started_at).getTime()) : null;
+  const etaText = estimate && run ? `Tiempo transcurrido: ${formatDuration(elapsed ?? 0)} · restante estimado: ${formatDuration(estimate)} · promedio: ${formatDuration(Math.round(estimate / Math.max(1, run.total_count - run.processed_count)))} por cliente` : elapsed !== null ? `Tiempo transcurrido: ${formatDuration(elapsed)} · calculando el tiempo restante…` : "Esperando a que comience el proceso…";
 
   return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
     <aside className="border-b border-zinc-200 bg-white px-5 py-5 lg:min-h-screen lg:border-r lg:border-b-0">
