@@ -10,7 +10,7 @@ La cola vive en Supabase, usando `pgmq`, igual que ACX. Al iniciar una ejecució
 
 La Edge Function se invoca inmediatamente al iniciar o reanudar, y Supabase Cron la despierta además cada minuto. Por ello la importación continúa aunque cierres el navegador o cierres sesión. La interfaz recibe cambios en tiempo real mediante Supabase Realtime, con sondeo de respaldo mientras una ejecución está activa.
 
-Cada ejecución conserva sus parámetros, contadores, duración, estado final y todos sus eventos. Desde **Ejecuciones** se puede abrir cualquier proceso histórico, revisar su registro completo y volver al listado. **Pausar** mantiene la cola y su cursor para reanudar; **Detener** archiva el mensaje pendiente y finaliza esa ejecución.
+Cada ejecución conserva sus parámetros, contadores, duración, estado final y todos sus eventos. Durante la ejecución se muestra el tiempo transcurrido, una estimación del tiempo restante y el promedio reciente por cliente. Desde **Ejecuciones** se puede abrir cualquier proceso histórico, revisar su registro completo y volver al listado. El registro en directo puede plegarse. **Pausar** mantiene la cola y su cursor para reanudar; **Detener** archiva el mensaje pendiente y finaliza esa ejecución.
 
 ## Variables de entorno
 
