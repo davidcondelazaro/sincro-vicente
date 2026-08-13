@@ -153,7 +153,7 @@ export async function GET(request: Request) {
   try {
     const loaded = await loadCustomer(id);
     if (!loaded) return Response.json({ error: "No existe un cliente activo con ese ID." }, { status: 404 });
-    return Response.json({ prestashop: publicCustomer(loaded.customer), shopify: await findInShopify(loaded.customer.email) });
+    return Response.json({ prestashop: publicCustomer(loaded.customer), shopify: await findInShopify(loaded.customer.email), canWrite: id === required("SYNC_ALLOWED_CUSTOMER_ID") });
   } catch (error) {
     console.error(JSON.stringify({ level: "error", message: "Customer lookup failed", error: error instanceof Error ? error.message : String(error) }));
     return Response.json({ error: "No se pudo consultar el cliente. Revisa las credenciales y el acceso de red." }, { status: 500 });

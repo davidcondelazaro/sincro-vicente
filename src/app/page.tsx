@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 
 type Result = {
+  canWrite: boolean;
   prestashop: {
     id: number;
     firstName: string;
@@ -46,7 +47,7 @@ export default function Home() {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "No se pudo consultar el cliente.");
       setResult(body);
-      setShowWriteDecision(!body.shopify.found);
+      setShowWriteDecision(!body.shopify.found && body.canWrite);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Error inesperado.");
     } finally {
@@ -64,7 +65,7 @@ export default function Home() {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "No se pudo crear el cliente.");
       if (!body.verification?.verified) throw new Error("Shopify confirmó la creación, pero la comprobación posterior no coincidió. Revísalo antes de reintentar.");
-      setResult({ prestashop: result.prestashop, shopify: body.verification.customer });
+      setResult({ prestashop: result.prestashop, shopify: body.verification.customer, canWrite: result.canWrite });
       setShowWriteDecision(false);
       setCreationMessage(`Creación verificada en Shopify. Coinciden ID, email y nombre. Direcciones: ${body.addressesCreated}. Metafields: ${body.metafieldsCreated}.${body.warnings?.length ? ` Avisos: ${body.warnings.join(" ")}` : ""}`);
     } catch (caught) {
@@ -108,6 +109,8 @@ export default function Home() {
           ["Estado", "Cliente encontrado"], ["ID", result.shopify.id!], ["Nombre", `${result.shopify.firstName ?? ""} ${result.shopify.lastName ?? ""}`.trim()], ["Email", result.shopify.email ?? "—"], ["Pedidos", String(result.shopify.orderCount ?? 0)],
         ] : [["Estado", "No existe un cliente con ese email"]]} />
       </section>}
+
+      {result && !result.shopify.found && !result.canWrite && <section className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5 shadow-sm"><h2 className="text-lg font-semibold text-zinc-900">Consulta en modo solo lectura</h2><p className="mt-1 text-sm text-zinc-700">Este cliente no está incluido en la prueba de escritura actual. No se realizará ningún cambio en Shopify.</p></section>}
 
       {result && !result.shopify.found && showWriteDecision && <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
         <h2 className="text-lg font-semibold text-amber-950">¿Quieres grabar este cliente en Shopify?</h2>
