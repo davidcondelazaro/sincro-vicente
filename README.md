@@ -21,4 +21,4 @@ npm run dev
 ```
 
 Abre `http://localhost:3000` e introduce un ID de cliente de PrestaShop.
-Para habilitar una prueba de escritura individual, configura `SYNC_ALLOWED_CUSTOMER_ID` como variable de entorno en Vercel. Nunca la incluyas en Git.
+La creación individual requiere una sesión autenticada. Nunca incluyas claves de Shopify o MySQL en Git.

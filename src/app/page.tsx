@@ -1,9 +1,8 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 type Result = {
-  canWrite: boolean;
   prestashop: {
     id: number;
     firstName: string;
@@ -33,6 +32,16 @@ export default function Home() {
   const [creating, setCreating] = useState(false);
   const [creationMessage, setCreationMessage] = useState<string | null>(null);
   const [showWriteDecision, setShowWriteDecision] = useState(false);
+  const [health, setHealth] = useState<{ mysql: boolean; shopify: boolean } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/health", { cache: "no-store" })
+      .then(async (response) => {
+        const body = await response.json();
+        setHealth({ mysql: Boolean(body.mysql), shopify: Boolean(body.shopify) });
+      })
+      .catch(() => setHealth({ mysql: false, shopify: false }));
+  }, []);
 
   async function inspectCustomer(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -47,7 +56,7 @@ export default function Home() {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "No se pudo consultar el cliente.");
       setResult(body);
-      setShowWriteDecision(!body.shopify.found && body.canWrite);
+      setShowWriteDecision(!body.shopify.found);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Error inesperado.");
     } finally {
@@ -65,7 +74,7 @@ export default function Home() {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "No se pudo crear el cliente.");
       if (!body.verification?.verified) throw new Error("Shopify confirmó la creación, pero la comprobación posterior no coincidió. Revísalo antes de reintentar.");
-      setResult({ prestashop: result.prestashop, shopify: body.verification.customer, canWrite: result.canWrite });
+      setResult({ prestashop: result.prestashop, shopify: body.verification.customer });
       setShowWriteDecision(false);
       setCreationMessage(`Creación verificada en Shopify. Coinciden ID, email y nombre. Direcciones: ${body.addressesCreated}. Metafields: ${body.metafieldsCreated}.${body.warnings?.length ? ` Avisos: ${body.warnings.join(" ")}` : ""}`);
     } catch (caught) {
@@ -81,7 +90,7 @@ export default function Home() {
         <div className="flex items-center justify-between gap-3 lg:block"><div><p className="text-sm font-semibold tracking-[0.18em] text-emerald-700 uppercase">Sincro Vicente</p><p className="mt-1 text-sm text-zinc-500">PrestaShop → Shopify</p></div><form action="/auth/logout" method="post"><button className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 lg:mt-8 lg:w-full">Cerrar sesión</button></form></div>
         <nav className="mt-6 flex gap-2 overflow-x-auto lg:flex-col" aria-label="Módulos de la aplicación"><a href="/" className="shrink-0 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-900">Importar un cliente</a><span className="shrink-0 rounded-lg px-3 py-2 text-sm text-zinc-400">Importaciones masivas <span className="ml-1 text-xs">Próximamente</span></span><span className="shrink-0 rounded-lg px-3 py-2 text-sm text-zinc-400">Ejecuciones <span className="ml-1 text-xs">Próximamente</span></span><span className="shrink-0 rounded-lg px-3 py-2 text-sm text-zinc-400">Configuración <span className="ml-1 text-xs">Próximamente</span></span></nav>
       </aside>
-    <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-6 py-10 sm:px-10 lg:mx-0 lg:py-16">
+    <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-6 py-10 pb-24 sm:px-10 lg:mx-0 lg:py-16 lg:pb-24">
       <header className="space-y-3">
         <p className="text-sm font-semibold tracking-[0.18em] text-emerald-700 uppercase">Clientes</p>
         <h1 className="text-4xl font-semibold tracking-tight text-zinc-950">Importar un cliente</h1>
@@ -110,15 +119,26 @@ export default function Home() {
         ] : [["Estado", "No existe un cliente con ese email"]]} />
       </section>}
 
-      {result && !result.shopify.found && !result.canWrite && <section className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5 shadow-sm"><h2 className="text-lg font-semibold text-zinc-900">Consulta en modo solo lectura</h2><p className="mt-1 text-sm text-zinc-700">Este cliente no está incluido en la prueba de escritura actual. No se realizará ningún cambio en Shopify.</p></section>}
-
       {result && !result.shopify.found && showWriteDecision && <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
         <h2 className="text-lg font-semibold text-amber-950">¿Quieres grabar este cliente en Shopify?</h2>
-        <p className="mt-1 text-sm text-amber-900">Aplicará las reglas del importador Python. Solo usuarios con sesión pueden ejecutar esta prueba; además permite únicamente el ID autorizado y comprueba Shopify de nuevo antes de escribir.</p>
+        <p className="mt-1 text-sm text-amber-900">Aplicará las reglas del importador Python. Solo usuarios con sesión pueden ejecutar esta operación y Shopify se comprueba de nuevo antes de escribir.</p>
         <div className="mt-4 flex gap-3"><button type="button" disabled={creating} onClick={() => setShowWriteDecision(false)} className="h-11 rounded-lg border border-amber-300 bg-white px-5 font-medium text-amber-950 hover:bg-amber-100">Ahora no</button><button type="button" disabled={creating} onClick={createCustomer} className="h-11 rounded-lg bg-amber-700 px-5 font-medium text-white transition hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-60">{creating ? "Grabando…" : "Sí, grabar en Shopify"}</button></div>
       </section>}
-    </main></div>
+    </main>
+    <footer className="fixed inset-x-0 bottom-0 border-t border-zinc-200 bg-white/95 px-5 py-3 shadow-[0_-3px_14px_rgb(0,0,0,0.05)] backdrop-blur">
+      <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center gap-x-6 gap-y-2 text-sm text-zinc-700 lg:ml-[15rem] lg:max-w-none">
+        <span className="font-medium text-zinc-900">Estado de conexiones</span>
+        <ConnectionStatus label="MySQL / PrestaShop" ok={health?.mysql} />
+        <ConnectionStatus label="Shopify" ok={health?.shopify} />
+      </div>
+    </footer>
+  </div>
   );
+}
+
+function ConnectionStatus({ label, ok }: { label: string; ok: boolean | undefined }) {
+  const pending = ok === undefined;
+  return <span className="flex items-center gap-2"><span className={`h-2.5 w-2.5 rounded-full ${pending ? "bg-amber-400" : ok ? "bg-emerald-500" : "bg-red-500"}`} aria-hidden="true" />{label}: {pending ? "comprobando…" : ok ? "conectado" : "no disponible"}</span>;
 }
 
 function CustomerCard({ title, entries }: { title: string; entries: string[][] }) {
