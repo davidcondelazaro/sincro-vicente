@@ -94,14 +94,6 @@ async function findInShopify(email: string) {
   return publicShopifyCustomer(body.data.customers.nodes[0] ?? null);
 }
 
-async function findInShopifyById(id: string) {
-  const body = await shopifyRequest<{ data: { customer: ShopifyCustomer | null } }>(
-    `query CustomerById($id: ID!) { customer(id: $id) { id firstName lastName defaultEmailAddress { emailAddress } numberOfOrders createdAt } }`,
-    { id },
-  );
-  return publicShopifyCustomer(body.data.customer);
-}
-
 function normalizePhone(phone: string | null) {
   if (!phone?.trim()) return null;
   let normalized = [...phone.trim()].filter((character, index) => /\d/.test(character) || (character === "+" && index === 0)).join("");
@@ -207,13 +199,7 @@ export async function POST(request: Request) {
       `mutation MetafieldsSet($metafields: [MetafieldsSetInput!]!) { metafieldsSet(metafields: $metafields) { userErrors { message } } }`, { metafields },
     );
     const metafieldErrors = metafieldResult.data.metafieldsSet.userErrors.map((item) => item.message);
-    const verifiedCustomer = await findInShopifyById(result.customer.id);
-    const verified = verifiedCustomer.found
-      && verifiedCustomer.id === result.customer.id
-      && verifiedCustomer.email?.toLowerCase() === loaded.customer.email.toLowerCase()
-      && verifiedCustomer.firstName === loaded.customer.firstname
-      && verifiedCustomer.lastName === loaded.customer.lastname;
-    return Response.json({ customer: result.customer, addressesCreated: addresses.length, metafieldsCreated: metafields.length, warnings: metafieldErrors, verification: { verified, customer: verifiedCustomer } });
+    return Response.json({ customer: result.customer, addressesCreated: addresses.length, metafieldsCreated: metafields.length, warnings: metafieldErrors });
   } catch (error) {
     console.error(JSON.stringify({ level: "error", message: "Customer create failed", error: error instanceof Error ? error.message : String(error) }));
     return Response.json({ error: "No se pudo crear el cliente. Revisa los permisos de Shopify y la configuración." }, { status: 500 });

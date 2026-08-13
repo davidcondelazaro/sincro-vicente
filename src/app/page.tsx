@@ -79,10 +79,9 @@ export default function Home() {
       const response = await fetch("/api/customer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: String(result.prestashop.id) }) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "No se pudo crear el cliente.");
-      if (!body.verification?.verified) throw new Error("Shopify confirmó la creación, pero la comprobación posterior no coincidió. Revísalo antes de reintentar.");
-      setResult({ prestashop: result.prestashop, shopify: body.verification.customer });
+      setResult({ prestashop: result.prestashop, shopify: { found: true, ...body.customer } });
       setShowWriteDecision(false);
-      setCreationMessage(`Creación verificada en Shopify. Coinciden ID, email y nombre. Direcciones: ${body.addressesCreated}. Metafields: ${body.metafieldsCreated}.${body.warnings?.length ? ` Avisos: ${body.warnings.join(" ")}` : ""}`);
+      setCreationMessage(`Cliente creado en Shopify. ID: ${body.customer.id}. Direcciones: ${body.addressesCreated}. Metafields: ${body.metafieldsCreated}.${body.warnings?.length ? ` Avisos: ${body.warnings.join(" ")}` : ""}`);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Error inesperado.");
     } finally {
