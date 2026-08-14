@@ -11,6 +11,7 @@ type Product = { id: string; name: string | null; active: boolean | null; fecha_
 type IcecatProduct = { id: string; name: string | null; ean13: string | null; shopify?: ShopifyProduct | null };
 type ShopifyProduct = { id: string; handle: string; status: string; title: string; descriptionHtml: string; vendor: string; productType: string; tags: string[]; seo: { title: string | null; description: string | null } | null; media: { nodes: { id: string }[] }; metafields: { nodes: { namespace: string; key: string; value: string }[] }; variants: { nodes: { id: string; sku: string; barcode: string | null; price: string; compareAtPrice: string | null; inventoryPolicy: string; inventoryQuantity: number }[] } };
 type ShopifyUserError = { message: string; field?: string[] | null };
+type ErrorWithDetails = Error & { details?: Record<string, unknown> };
 type Run = { id: string; entity_type: "manufacturers" | "categories" | "features" | "products" | "icecat"; filters: { onlyActive?: boolean; manufacturerId?: string; categoryId?: string; featureId?: string; productId?: string; productIds?: string[]; eans?: string[]; modifiedSince?: string; forceImages?: boolean; force?: boolean; name?: string }; status: string; total_count: number; processed_count: number; created_count: number; updated_count: number; unchanged_count: number; unpublished_count: number; error_count: number; cursor_entity_id: string | null; started_at: string | null };
 type CollectionRef = { id: string; title: string; handle: string; sourceCategoryId: string | null };
 // El origen histórico de las seis exclusiones iniciales era numérico. En la copia
@@ -25,9 +26,23 @@ function shopifyUrl() { return `https://${env("SHOPIFY_STORE_URL").replace(/^htt
 async function shopify<T>(query: string, variables: Record<string, unknown>) {
   const response = await fetch(shopifyUrl(), { method: "POST", headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": env("SHOPIFY_ACCESS_TOKEN") }, body: JSON.stringify({ query, variables }) });
   const body = await response.json() as T & { errors?: { message: string }[] };
-  if (!response.ok || body.errors?.length) throw new Error(body.errors?.[0]?.message ?? `Shopify ${response.status}`);
+  if (!response.ok || body.errors?.length) {
+    const error = new Error(body.errors?.[0]?.message ?? `Shopify ${response.status}`) as ErrorWithDetails;
+    error.details = { provider: "shopify", http_status: response.status, graphql_errors: body.errors ?? [] };
+    throw error;
+  }
   return body;
 }
+function errorDetails(error: unknown, context: Record<string, unknown> = {}) {
+  const value = error as Partial<ErrorWithDetails> & Record<string, unknown>;
+  const message = error instanceof Error ? error.message : typeof error === "string" ? error : (() => { try { return JSON.stringify(error); } catch { return String(error); } })();
+  const rawDetails = value?.details;
+  const providerDetails = rawDetails && typeof rawDetails === "object" && !Array.isArray(rawDetails)
+    ? rawDetails
+    : rawDetails == null ? {} : { raw_details: rawDetails };
+  return { ...context, name: error instanceof Error ? error.name : typeof error, message, ...(error instanceof Error && error.stack ? { stack: error.stack } : {}), ...providerDetails };
+}
+function errorMessage(error: unknown) { return errorDetails(error).message as string; }
 function record(value: unknown): Record<string, unknown> { return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {}; }
 function text(value: unknown) { return typeof value === "string" ? value : ""; }
 function replaceIcecatText(value: unknown, search: string, replacement: string): unknown {
@@ -579,7 +594,8 @@ async function syncActiveProduct(summary: Product, forceImages: boolean, modifie
   const existing = await findProduct(summary);
   // Igual que el Python original: el tipo no se envía en ProductSetInput;
   // Shopify lo resuelve usando la definición existente del metafield.
-  const input: Record<string, unknown> = { title: product.name, handle, descriptionHtml: product.description ?? "", vendor: manufacturer.name, productType: categories[0] ?? "", tags: productTags(product, categories, existing?.tags), status: "ACTIVE", seo: { title: product.meta_title || product.name, description: product.meta_description || htmlToText(product.description_short) }, metafields: fields.map(({ namespace, key, value }) => ({ namespace, key, value })), productOptions: [{ name: "Title", position: 1, values: [{ name: "Default Title" }] }], variants: [{ optionValues: [{ optionName: "Title", name: "Default Title" }], sku: product.id, price, ...(compareAtPrice ? { compareAtPrice } : {}), ...(product.ean13 ? { barcode: product.ean13 } : {}), inventoryPolicy, inventoryQuantities: [{ locationId, name: "on_hand", quantity: stock }] }] };
+  const weight = product.weight == null ? undefined : Number(product.weight);
+  const input: Record<string, unknown> = { title: product.name, handle, descriptionHtml: product.description ?? "", vendor: manufacturer.name, productType: categories[0] ?? "", tags: productTags(product, categories, existing?.tags), status: "ACTIVE", seo: { title: product.meta_title || product.name, description: product.meta_description || htmlToText(product.description_short) }, metafields: fields.map(({ namespace, key, value }) => ({ namespace, key, value })), productOptions: [{ name: "Title", position: 1, values: [{ name: "Default Title" }] }], variants: [{ optionValues: [{ optionName: "Title", name: "Default Title" }], sku: product.id, price, ...(compareAtPrice ? { compareAtPrice } : {}), ...(product.ean13 ? { barcode: product.ean13 } : {}), inventoryPolicy, ...(Number.isFinite(weight) ? { inventoryItem: { measurement: { weight: { value: weight, unit: "KILOGRAMS" } } } } : {}), inventoryQuantities: [{ locationId, name: "on_hand", quantity: stock }] }] };
   if (existing) { input.id = existing.id; if (sameProduct(existing, input, stock, shouldForceImages, Boolean(product.images))) { const sourceCount = String(product.images ?? "").split("@").filter(Boolean).length; return { action: "unchanged" as const, targetId: existing.id, message: `Producto ya actualizado: sin cambios. Imágenes: sin cambios (${existing.media.nodes.length} actuales; ${sourceCount} en origen).` }; } }
   const result = await shopify<{ data: { productSet: { product: { id: string } | null; userErrors: ShopifyUserError[] } } }>(`mutation($input:ProductSetInput!){productSet(input:$input){product{id} userErrors{field message}}}`, { input });
   const updated = result.data.productSet.product; if (!updated || result.data.productSet.userErrors.length) {
@@ -589,7 +605,9 @@ async function syncActiveProduct(summary: Product, forceImages: boolean, modifie
       const field = match ? (input.metafields as { namespace: string; key: string; type?: string }[])[Number(match[1])] : undefined;
       return `${item.message}${path ? ` [${path}${field ? ` → ${field.namespace}.${field.key} (${field.type ?? "tipo no indicado"})` : ""}]` : ""}`;
     }).join(" ");
-    throw new Error(`Shopify productSet: ${details || "no guardó el producto."}`);
+    const error = new Error(`Shopify productSet: ${details || "no guardó el producto."}`) as ErrorWithDetails;
+    error.details = { provider: "shopify", operation: "productSet", user_errors: result.data.productSet.userErrors };
+    throw error;
   }
   const imageResult = await syncProductImages(updated.id, product, shouldForceImages, existing);
   await publish(updated.id);
@@ -634,7 +652,7 @@ export async function processMessage(message: { msg_id: number; message: { run_i
         const { data: control } = await db.from("catalog_import_runs").select("status").eq("id", runId).single();
         if (control?.status === "paused") return;
         if (control?.status === "stopped") return archive(messageId, queueName);
-        let outcome: "created" | "updated" | "error" = "error"; let action: "created" | "unchanged" | "unpublished" | "error" = "error"; let targetId: string | null = null; let messageText = "";
+        let outcome: "created" | "updated" | "unchanged" | "unpublished" | "error" = "error"; let action: "created" | "unchanged" | "unpublished" | "error" = "error"; let targetId: string | null = null; let messageText = ""; let details: Record<string, unknown> | null = null;
         try {
           if (run.entity_type === "manufacturers") {
             const result = await syncManufacturer(entity as Manufacturer);
@@ -664,10 +682,10 @@ export async function processMessage(message: { msg_id: number; message: { run_i
             await new Promise((resolve) => setTimeout(resolve, 200));
           }
         }
-        catch (error) { messageText = error instanceof Error ? error.message : String(error); }
+        catch (error) { details = errorDetails(error, { entity_type: run.entity_type, source_entity_id: entity.id, source_entity_name: entity.name, operation: "catalog_sync" }); messageText = details.message as string; }
         const counts = { processed_count: run.processed_count + 1, cursor_entity_id: entity.id, created_count: run.created_count + (action === "created" ? 1 : 0), updated_count: run.updated_count + (action === "updated" ? 1 : 0), unchanged_count: run.unchanged_count + (action === "unchanged" ? 1 : 0), unpublished_count: run.unpublished_count + (action === "unpublished" ? 1 : 0), error_count: run.error_count + (action === "error" ? 1 : 0), updated_at: new Date().toISOString() };
         await db.from("catalog_import_runs").update(counts).eq("id", runId);
-        await log(runId, { level: outcome === "error" ? "error" : "success", outcome, entity_type: run.entity_type, source_entity_id: entity.id, source_entity_name: entity.name, shopify_resource_id: targetId, message: messageText });
+        await log(runId, { level: outcome === "error" ? "error" : "success", outcome, entity_type: run.entity_type, source_entity_id: entity.id, source_entity_name: entity.name, shopify_resource_id: targetId, message: messageText, ...(details ? { details } : {}) });
         run = { ...run, ...counts };
       }
     }
@@ -675,9 +693,9 @@ export async function processMessage(message: { msg_id: number; message: { run_i
     await log(runId, { level: "info", outcome: "status", entity_type: run.entity_type, message: "Importación completada." });
     await archive(messageId, queueName);
   } catch (error) {
-    const text = error instanceof Error ? error.message : String(error); const attempt = Number(message.read_ct ?? 1);
-    if (attempt >= 3) { await db.from("catalog_import_runs").update({ status: "failed", finished_at: new Date().toISOString() }).eq("id", runId); await log(runId, { level: "error", outcome: "status", entity_type: "manufacturers", message: `Importación fallida: ${text}` }); await archive(messageId, queueName); }
-    else { await db.from("catalog_import_runs").update({ status: "queued" }).eq("id", runId); await log(runId, { level: "warning", outcome: "status", entity_type: "manufacturers", message: `Reintento ${attempt}: ${text}` }); }
+    const details = errorDetails(error, { operation: "catalog_worker", retry_count: Number(message.read_ct ?? 1) }); const text = details.message as string; const attempt = Number(message.read_ct ?? 1);
+    if (attempt >= 3) { await db.from("catalog_import_runs").update({ status: "failed", finished_at: new Date().toISOString() }).eq("id", runId); await log(runId, { level: "error", outcome: "status", entity_type: data.entity_type, message: `Importación fallida: ${text}`, details }); await archive(messageId, queueName); }
+    else { await db.from("catalog_import_runs").update({ status: "queued" }).eq("id", runId); await log(runId, { level: "warning", outcome: "status", entity_type: data.entity_type, message: `Reintento ${attempt}: ${text}`, details }); }
   }
 }
 
