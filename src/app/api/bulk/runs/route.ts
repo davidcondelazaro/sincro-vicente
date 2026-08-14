@@ -4,7 +4,7 @@ import { createClient as createSupabaseClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type Mode = "id" | "from_date" | "latest" | "all";
+type Mode = "from_date" | "latest" | "all";
 const madridTimeZone = "Europe/Madrid";
 
 function required(name: string) {
@@ -25,13 +25,6 @@ async function countCustomers(mode: Mode, parameters: Record<string, unknown>) {
     connectTimeout: 10_000,
   });
   try {
-    if (mode === "id") {
-      const [rows] = await connection.execute<mysql.RowDataPacket[]>(
-        "SELECT COUNT(*) AS total, MAX(id_customer) AS max_id FROM ev_customer WHERE id_customer = ? AND active = 1 AND deleted = 0",
-        [String(parameters.customerId)],
-      );
-      return { total: Number(rows[0].total), maxId: Number(rows[0].max_id ?? 0) };
-    }
     if (mode === "from_date") {
       const [rows] = await connection.execute<mysql.RowDataPacket[]>(
         "SELECT COUNT(*) AS total, MAX(id_customer) AS max_id FROM ev_customer c WHERE active = 1 AND deleted = 0 AND date_add >= ? AND date_add < ? AND EXISTS (SELECT 1 FROM ev_orders o WHERE o.id_customer = c.id_customer AND o.valid = 1)",
@@ -42,7 +35,8 @@ async function countCustomers(mode: Mode, parameters: Record<string, unknown>) {
     const [rows] = await connection.execute<mysql.RowDataPacket[]>(
       "SELECT COUNT(*) AS total, MAX(id_customer) AS max_id FROM ev_customer c WHERE active = 1 AND deleted = 0 AND EXISTS (SELECT 1 FROM ev_orders o WHERE o.id_customer = c.id_customer AND o.valid = 1)",
     );
-    return { total: Math.min(Number(rows[0].total), Number(parameters.latest)), maxId: Number(rows[0].max_id ?? 0) };
+    const total = Number(rows[0].total);
+    return { total: mode === "all" ? total : Math.min(total, Number(parameters.latest)), maxId: Number(rows[0].max_id ?? 0) };
   } finally {
     await connection.end();
   }
@@ -50,11 +44,6 @@ async function countCustomers(mode: Mode, parameters: Record<string, unknown>) {
 
 function validInput(input: Record<string, unknown>) {
   const mode = input.mode;
-  if (mode === "id") {
-    const customerId = String(input.customerId ?? "");
-    if (!/^\d+$/.test(customerId)) throw new Error("Indica un ID numérico de PrestaShop.");
-    return { mode, parameters: { customerId } } as const;
-  }
   if (mode === "from_date") {
     const fromDate = String(input.fromDate ?? "");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(fromDate)) throw new Error("Indica una fecha de inicio válida.");
