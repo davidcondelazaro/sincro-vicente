@@ -84,7 +84,7 @@ export function ConnectionFooter() {
   return <footer className={`fixed inset-x-0 bottom-0 z-20 border-t border-zinc-200 bg-white/95 px-5 py-3 shadow-[0_-3px_14px_rgb(0,0,0,0.05)] backdrop-blur ${hasSidebar ? "lg:left-60" : ""}`}>
     <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-center gap-x-4 gap-y-2 px-2 text-xs text-zinc-700 sm:text-sm">
       {CONNECTIONS.map(({ key, label }) => <ConnectionStatus key={key} label={label} ok={health?.[key]} error={health?.errors[key]} />)}
-      <button type="button" onClick={() => void loadHealth(true)} disabled={checking} title="Comprobar conexiones ahora" aria-label="Comprobar conexiones ahora" className="rounded-md p-1.5 text-emerald-700 hover:bg-emerald-50 disabled:cursor-wait disabled:text-zinc-400">
+      <button type="button" onClick={() => void loadHealth(true)} disabled={checking} title="Comprobar conexiones ahora" aria-label="Comprobar conexiones ahora" className="cursor-pointer rounded-md p-1.5 text-emerald-700 hover:bg-emerald-50 disabled:cursor-wait disabled:text-zinc-400">
         <svg viewBox="0 0 24 24" aria-hidden="true" className={`h-4 w-4 ${checking ? "animate-spin" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16" /><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8" /><path d="M21 3v5h-5" /><path d="M3 21v-5h5" /></svg>
       </button>
     </div>

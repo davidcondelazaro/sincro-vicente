@@ -60,7 +60,7 @@ Actualmente la pantalla permite seleccionar:
 - **Marcas**: crea o conserva las colecciones inteligentes de marca y sus imágenes.
 - **Categorías**: crea las colecciones que faltan y retira de los canales las categorías inactivas o dependientes de un padre inactivo, sin borrarlas.
 - **Características**: crea sólo las definiciones abiertas que faltan. Mantiene las exclusiones históricas (`OFERTA`, `SUPEROFERTA`, `DESCATALOGADO`, `PRECIOOCULTO`, `PRIORIDAD` y las claves heredadas) porque esas claves se utilizan como datos de producto, no como definiciones de metafield.
-- **Productos**: valida todas las relaciones necesarias antes de tocar Shopify: fabricante, categoría, características, valores, precio y stock.
+- **Productos**: valida todas las relaciones necesarias antes de tocar Shopify: fabricante, categoría, características, valores, precio y stock en las altas. En productos existentes actualiza los datos propios del producto, pero deja precio y stock a sus sincronizadores específicos.
 
 Cada ejecución se encola en `catalog_import_runs` y conserva sus eventos en `catalog_import_events`. La interfaz muestra progreso, tiempo transcurrido, estimación, contadores, filtros de historial y el registro detallado por entidad.
 
@@ -69,6 +69,7 @@ Cada ejecución se encola en `catalog_import_runs` y conserva sus eventos en `ca
 Los productos se identifican primero por SKU (el ID de origen) y después por handle. El comportamiento previsto es:
 
 - Activos: si las validaciones son correctas, se crean o actualizan y se publican. Si no hay cambios gestionados, se registra **Sin cambios**.
+- En un alta se escriben también el precio y el stock iniciales. En una actualización no se envían ni precio, ni precio comparativo, ni cantidad de inventario, y esos campos tampoco intervienen en la decisión **Sin cambios**.
 - Inactivos: si no existen en Shopify no se crean; si existen, se archivan.
 - El filtro **Desde fecha de modificación** usa `source_products.fecha_modificacion` como filtro de selección.
 - Si `fecha_modificacion_imagen` es igual o posterior a esa fecha, se activa automáticamente el reemplazo de imágenes para ese producto.

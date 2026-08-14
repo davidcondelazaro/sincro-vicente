@@ -19,6 +19,8 @@ export default function BulkImportsPage() {
   const [latest, setLatest] = useState("100");
   const [run, setRun] = useState<Run | null>(null);
   const [history, setHistory] = useState<Run[]>([]);
+  const [historyPage, setHistoryPage] = useState(0);
+  const [historyHasMore, setHistoryHasMore] = useState(false);
   const [events, setEvents] = useState<ImportEvent[]>([]);
   const [logsExpanded, setLogsExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -33,19 +35,20 @@ export default function BulkImportsPage() {
   }, []);
 
   const loadRun = useCallback(async () => {
-    const response = await fetch("/api/bulk/runs", { cache: "no-store" });
+    const response = await fetch(`/api/bulk/runs?page=${historyPage}`, { cache: "no-store" });
     const body = await response.json();
     if (response.ok) {
       const runs = body.runs as Run[];
       setHistory(runs);
+      setHistoryHasMore(Boolean(body.hasMore));
       setRun((selected) => {
-        const current = selected ? runs.find((item) => item.id === selected.id) ?? runs[0] ?? null : runs[0] ?? null;
+        const current = selected && runs.some((item) => item.id === selected.id) ? runs.find((item) => item.id === selected.id) ?? selected : selected ?? runs[0] ?? null;
         if (current) void loadEvents(current.id);
         return current;
       });
     }
     setLoading(false);
-  }, [loadEvents]);
+  }, [historyPage, loadEvents]);
 
   useEffect(() => { void loadRun(); }, [loadRun]);
   useEffect(() => { createClient().auth.getUser().then(({ data }) => setUserEmail(data.user?.email ?? null)); }, []);
@@ -67,7 +70,7 @@ export default function BulkImportsPage() {
       const response = await fetch("/api/bulk/runs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode, fromDate, latest }) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "No se pudo iniciar la importación.");
-      setRun(body.run); setLogsExpanded(true); setHistory((items) => [body.run, ...items.filter((item) => item.id !== body.run.id)]); setEvents([]); await loadEvents(body.run.id);
+      setHistoryPage(0); setRun(body.run); setLogsExpanded(true); setHistory((items) => [body.run, ...items.filter((item) => item.id !== body.run.id)]); setHistoryHasMore(true); setEvents([]); await loadEvents(body.run.id);
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Error inesperado."); } finally { setStarting(false); }
   }
 
@@ -122,7 +125,7 @@ export default function BulkImportsPage() {
           <div><button type="button" onClick={() => setLogsExpanded((value) => !value)} aria-expanded={logsExpanded} className="mb-3 flex w-full items-center justify-between text-left text-lg font-semibold text-zinc-950"><span>Registro en directo</span><span className="text-sm font-medium text-emerald-700">{logsExpanded ? "Ocultar" : `Ver registro (${events.length})`}</span></button>{logsExpanded && <div className="max-h-[28rem] overflow-auto rounded-xl border border-zinc-200"><ul className="divide-y divide-zinc-100">{events.length ? events.map((item) => <li key={item.id} className="p-3 text-sm"><div className="flex flex-wrap items-center gap-x-2 gap-y-1"><span className={`font-semibold ${item.level === "error" ? "text-red-700" : item.outcome === "created" ? "text-emerald-700" : item.outcome === "existing" ? "text-amber-700" : "text-zinc-700"}`}>{item.outcome === "created" ? "Creado" : item.outcome === "existing" ? "Ya existía" : item.outcome === "error" ? "Error" : "Estado"}</span>{item.prestashop_customer_id && <span>PS #{item.prestashop_customer_id}</span>}{item.customer_email && <span className="text-zinc-600">{item.customer_email}</span>}{item.shopify_customer_id && <a href={shopifyUrl(item.shopify_customer_id)} target="_blank" rel="noreferrer" className="text-emerald-700 underline">Shopify #{item.shopify_customer_id.split("/").pop()}</a>}<time className="ml-auto text-zinc-400">{formatMadridTime(item.created_at)}</time></div><p className="mt-1 text-zinc-600">{item.message}</p></li>) : <li className="p-4 text-sm text-zinc-500">La cola está preparada. Aquí aparecerá cada resultado.</li>}</ul></div>}</div>
         </section>
       ) : null}
-      {!loading && <section id="historial" className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"><div className="flex items-baseline justify-between gap-4"><div><h2 className="text-xl font-semibold">Ejecuciones</h2><p className="mt-1 text-sm text-zinc-600">Cada proceso y todos sus eventos se conservan aquí.</p></div><span className="text-sm text-zinc-500">{history.length} guardadas</span></div><div className="mt-4 overflow-auto rounded-xl border border-zinc-200"><ul className="divide-y divide-zinc-100">{history.length ? history.map((item) => <li key={item.id}><a href={`/ejecuciones/${item.id}`} className={`flex flex-wrap items-center gap-x-4 gap-y-1 p-4 hover:bg-zinc-50 ${run?.id === item.id ? "bg-emerald-50" : ""}`}><span className="font-semibold text-zinc-900">{scopeLabel(item)}</span><span className="text-sm text-zinc-600">{formatMadridDateTime(item.created_at)}</span><span className="text-sm">{item.created_count} creados · {item.existing_count} existentes · {item.error_count} errores</span><span className="text-sm text-zinc-600">{durationLabel(item)}</span><span className="ml-auto text-sm font-medium text-zinc-700">{({ queued: "En cola", running: "En marcha", paused: "Pausada", stopped: "Detenida", completed: "Completada", failed: "Con error" } as const)[item.status]}</span></a></li>) : <li className="p-4 text-sm text-zinc-500">Todavía no hay ejecuciones guardadas.</li>}</ul></div></section>}
+      {!loading && <section id="historial" className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"><div className="flex items-baseline justify-between gap-4"><div><h2 className="text-xl font-semibold">Ejecuciones</h2><p className="mt-1 text-sm text-zinc-600">Cada proceso y todos sus eventos se conservan aquí.</p></div><span className="text-sm text-zinc-500">{history.length} en esta página</span></div><div className="mt-4 overflow-auto rounded-xl border border-zinc-200"><ul className="divide-y divide-zinc-100">{history.length ? history.map((item) => <li key={item.id}><a href={`/ejecuciones/${item.id}`} className={`flex flex-wrap items-center gap-x-4 gap-y-1 p-4 hover:bg-zinc-50 ${run?.id === item.id ? "bg-emerald-50" : ""}`}><span className="font-semibold text-zinc-900">{scopeLabel(item)}</span><span className="text-sm text-zinc-600">{formatMadridDateTime(item.created_at)}</span><span className="text-sm">{item.created_count} creados · {item.existing_count} existentes · {item.error_count} errores</span><span className="text-sm text-zinc-600">{durationLabel(item)}</span><span className="ml-auto text-sm font-medium text-zinc-700">{({ queued: "En cola", running: "En marcha", paused: "Pausada", stopped: "Detenida", completed: "Completada", failed: "Con error" } as const)[item.status]}</span></a></li>) : <li className="p-4 text-sm text-zinc-500">Todavía no hay ejecuciones guardadas.</li>}</ul></div><div className="mt-4 flex items-center justify-between gap-4 text-sm"><button type="button" disabled={historyPage === 0} onClick={() => setHistoryPage((page) => Math.max(0, page - 1))} className="rounded-lg border border-zinc-300 px-3 py-2 disabled:opacity-40">Anterior</button><span className="text-zinc-500">Página {historyPage + 1}</span><button type="button" disabled={!historyHasMore} onClick={() => setHistoryPage((page) => page + 1)} className="rounded-lg border border-zinc-300 px-3 py-2 disabled:opacity-40">Siguiente</button></div></section>}
     </main>
   </div>;
 }
@@ -132,7 +135,7 @@ function formatSpanishDate(value: string) { const [year, month, day] = value.sli
 function formatMadridDateTime(value: string) { return new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", dateStyle: "short", timeStyle: "short" }).format(new Date(value)); }
 function formatMadridTime(value: string) { return new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", timeStyle: "medium" }).format(new Date(value)); }
 function remainingEstimate(run: Run, events: ImportEvent[]) { if (!run.processed_count || run.processed_count >= run.total_count) return null; const processed = events.filter((event) => event.outcome !== "status"); if (processed.length >= 2) { const recent = processed.slice(-12); const intervals = recent.slice(1).map((item, index) => new Date(item.created_at).getTime() - new Date(recent[index].created_at).getTime()).filter((value) => value >= 0 && value < 60_000); if (intervals.length) return Math.round((intervals.reduce((sum, value) => sum + value, 0) / intervals.length) * (run.total_count - run.processed_count)); } if (!run.started_at) return null; const elapsed = Date.now() - new Date(run.started_at).getTime(); return Math.max(0, Math.round((elapsed / run.processed_count) * (run.total_count - run.processed_count))); }
-function formatDuration(milliseconds: number) { const seconds = Math.max(0, Math.round(milliseconds / 1_000)); if (seconds < 60) return `${seconds} s`; const minutes = Math.floor(seconds / 60); const rest = seconds % 60; return rest ? `${minutes} min ${rest} s` : `${minutes} min`; }
+function formatDuration(milliseconds: number) { const safe = Math.max(0, milliseconds); if (safe < 1_000) return `${Math.round(safe)} ms`; const seconds = Math.round(safe / 1_000); if (seconds < 60) return `${seconds} s`; const hours = Math.floor(seconds / 3600); const minutes = Math.floor((seconds % 3600) / 60); const rest = seconds % 60; if (hours) return `${hours} h${minutes ? ` ${minutes} min` : ""}${rest ? ` ${rest} s` : ""}`; return `${minutes} min${rest ? ` ${rest} s` : ""}`; }
 function durationLabel(run: Run) { if (!run.started_at) return "Sin iniciar"; const end = run.finished_at ? new Date(run.finished_at).getTime() : Date.now(); return `Duración: ${formatDuration(end - new Date(run.started_at).getTime())}`; }
 function shopifyUrl(id: string) { return `https://admin.shopify.com/store/${storeSlug}/customers/${id.split("/").pop()}`; }
 function Counter({ label, value, color }: { label: string; value: number; color: string }) { return <div className="rounded-xl bg-zinc-50 p-3"><p className="text-sm text-zinc-500">{label}</p><p className={`mt-1 text-2xl font-semibold ${color}`}>{value}</p></div>; }

@@ -58,13 +58,17 @@ function validInput(input: Record<string, unknown>) {
   throw new Error("Elige el alcance de la importación.");
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = await createSupabaseClient();
   const { data: claims } = await supabase.auth.getClaims();
   if (!claims?.claims.sub) return Response.json({ error: "Necesitas iniciar sesión." }, { status: 401 });
-  const { data, error } = await supabase.from("customer_import_runs").select("*").order("created_at", { ascending: false }).limit(30);
+  const url = new URL(request.url);
+  const page = Math.max(0, Number.parseInt(url.searchParams.get("page") ?? "0", 10) || 0);
+  const pageSize = 15;
+  const { data, error } = await supabase.from("customer_import_runs").select("*").order("created_at", { ascending: false }).range(page * pageSize, page * pageSize + pageSize);
   if (error) return Response.json({ error: "No se pudo recuperar la ejecución." }, { status: 500 });
-  return Response.json({ runs: data ?? [] });
+  const rows = data ?? [];
+  return Response.json({ runs: rows.slice(0, pageSize), hasMore: rows.length > pageSize, page });
 }
 
 export async function POST(request: Request) {

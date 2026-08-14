@@ -3,6 +3,9 @@ import { createClient } from "npm:@supabase/supabase-js@2.112.3";
 
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+const SHOPIFY_TIMEOUT_MS = 20_000;
+const WORKER_HEARTBEAT_MS = 10_000;
+const WORKER_BUDGET_MS = 45_000;
 
 type Manufacturer = { id: string; name: string | null; active: boolean | null; image: string | null };
 type Category = { id: string; name: string | null; link_rewrite: string | null; id_parent: string | null; active: boolean | null };
@@ -12,7 +15,7 @@ type IcecatProduct = { id: string; name: string | null; ean13: string | null; sh
 type ShopifyProduct = { id: string; handle: string; status: string; title: string; descriptionHtml: string; vendor: string; productType: string; tags: string[]; seo: { title: string | null; description: string | null } | null; media: { nodes: { id: string }[] }; metafields: { nodes: { namespace: string; key: string; value: string }[] }; variants: { nodes: { id: string; sku: string; barcode: string | null; price: string; compareAtPrice: string | null; inventoryPolicy: string; inventoryQuantity: number }[] } };
 type ShopifyUserError = { message: string; field?: string[] | null };
 type ErrorWithDetails = Error & { details?: Record<string, unknown> };
-type Run = { id: string; entity_type: "manufacturers" | "categories" | "features" | "products" | "icecat"; filters: { onlyActive?: boolean; manufacturerId?: string; categoryId?: string; featureId?: string; productId?: string; productIds?: string[]; eans?: string[]; modifiedSince?: string; forceImages?: boolean; force?: boolean; name?: string }; status: string; total_count: number; processed_count: number; created_count: number; updated_count: number; unchanged_count: number; unpublished_count: number; error_count: number; cursor_entity_id: string | null; started_at: string | null };
+type Run = { id: string; entity_type: "manufacturers" | "categories" | "features" | "products" | "priorities" | "icecat"; filters: { onlyActive?: boolean; manufacturerId?: string; categoryId?: string; featureId?: string; productId?: string; productIds?: string[]; eans?: string[]; modifiedSince?: string; forceImages?: boolean; force?: boolean; name?: string; collectionName?: string }; status: string; total_count: number; processed_count: number; created_count: number; updated_count: number; unchanged_count: number; unpublished_count: number; error_count: number; cursor_entity_id: string | null; started_at: string | null; worker_token?: string | null };
 type CollectionRef = { id: string; title: string; handle: string; sourceCategoryId: string | null };
 // El origen histórico de las seis exclusiones iniciales era numérico. En la copia
 // actual llegan por sus claves de negocio, así que mantenemos ambas formas.
@@ -23,9 +26,21 @@ const icecatReplacements = ["Empaquetado|Contenido y dimensiones de la caja", "C
 
 function env(name: string) { const value = Deno.env.get(name); if (!value) throw new Error(`Falta ${name}`); return value; }
 function shopifyUrl() { return `https://${env("SHOPIFY_STORE_URL").replace(/^https?:\/\//, "").replace(/\/$/, "")}/admin/api/2026-07/graphql.json`; }
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}, timeoutMs = SHOPIFY_TIMEOUT_MS) {
+  return fetch(input, { ...init, signal: init.signal ?? AbortSignal.timeout(timeoutMs) });
+}
 async function shopify<T>(query: string, variables: Record<string, unknown>) {
-  const response = await fetch(shopifyUrl(), { method: "POST", headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": env("SHOPIFY_ACCESS_TOKEN") }, body: JSON.stringify({ query, variables }) });
-  const body = await response.json() as T & { errors?: { message: string }[] };
+  let response: Response;
+  let body: T & { errors?: { message: string }[] };
+  try {
+    response = await fetchWithTimeout(shopifyUrl(), { method: "POST", headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": env("SHOPIFY_ACCESS_TOKEN") }, body: JSON.stringify({ query, variables }) });
+    const raw = await response.text();
+    try { body = JSON.parse(raw) as T & { errors?: { message: string }[] }; } catch { body = { errors: [{ message: raw || `Shopify ${response.status}` }] } as T & { errors?: { message: string }[] }; }
+  } catch (error) {
+    const wrapped = new Error(`Shopify no respondió en ${SHOPIFY_TIMEOUT_MS / 1000} s: ${errorMessage(error)}`) as ErrorWithDetails;
+    wrapped.details = { provider: "shopify", operation: "graphql", timeout_ms: SHOPIFY_TIMEOUT_MS, cause: errorDetails(error) };
+    throw wrapped;
+  }
   if (!response.ok || body.errors?.length) {
     const error = new Error(body.errors?.[0]?.message ?? `Shopify ${response.status}`) as ErrorWithDetails;
     error.details = { provider: "shopify", http_status: response.status, graphql_errors: body.errors ?? [] };
@@ -141,7 +156,7 @@ async function removeProductRedirect(productHandleValue: string) {
 async function uploadLogo(manufacturer: Manufacturer) {
   if (!manufacturer.image) return null;
   const source = proxyUrl(manufacturer.image);
-  const response = await fetch(source);
+  const response = await fetchWithTimeout(source, {}, 15_000);
   if (!response.ok) throw new Error(`No se pudo descargar el logotipo (${response.status}).`);
   const content = new Uint8Array(await response.arrayBuffer());
   const contentType = response.headers.get("content-type")?.split(";")[0] || "image/jpeg";
@@ -158,7 +173,7 @@ async function uploadLogo(manufacturer: Manufacturer) {
   const form = new FormData();
   for (const parameter of target.parameters) form.append(parameter.name, parameter.value);
   form.append("file", new Blob([content], { type: contentType }), name);
-  const uploaded = await fetch(target.url, { method: "POST", body: form });
+  const uploaded = await fetchWithTimeout(target.url, { method: "POST", body: form }, 20_000);
   if (!uploaded.ok) throw new Error(`No se pudo subir el logotipo a Shopify (${uploaded.status}).`);
   const created = await shopify<{ data: { fileCreate: { files: { id: string }[]; userErrors: { message: string }[] } } }>(
     `mutation($files:[FileCreateInput!]!){fileCreate(files:$files){files{id} userErrors{message}}}`,
@@ -242,6 +257,57 @@ async function categoryCollections() {
   } while (after);
   return collections;
 }
+type PriorityCollection = { id: string; title: string; handle: string; sortOrder: string };
+type PriorityProduct = { id: string; title: string; variants: { nodes: { sku: string | null }[] }; metafield: { value: string } | null };
+async function priorityCollections() {
+  const collections: PriorityCollection[] = [];
+  let after: string | null = null;
+  do {
+    const body = await shopify<{ data: { collections: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: PriorityCollection[] } } }>(
+      `query($after:String){collections(first:250,after:$after){pageInfo{hasNextPage endCursor} nodes{id title handle sortOrder}}}`, { after },
+    );
+    collections.push(...body.data.collections.nodes);
+    after = body.data.collections.pageInfo.hasNextPage ? body.data.collections.pageInfo.endCursor : null;
+  } while (after);
+  return collections;
+}
+async function priorityProducts(collectionId: string) {
+  const products: PriorityProduct[] = [];
+  let after: string | null = null;
+  do {
+    const body = await shopify<{ data: { collection: { products: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: PriorityProduct[] } } | null } }>(
+      `query($id:ID!,$after:String){collection(id:$id){products(first:250,after:$after){pageInfo{hasNextPage endCursor} nodes{id title variants(first:1){nodes{sku}} metafield(namespace:"custom",key:"prioridad"){value}}}}}`, { id: collectionId, after },
+    );
+    if (!body.data.collection) break;
+    products.push(...body.data.collection.products.nodes);
+    after = body.data.collection.products.pageInfo.hasNextPage ? body.data.collection.products.pageInfo.endCursor : null;
+  } while (after);
+  return products;
+}
+function priorityValue(product: PriorityProduct) {
+  const value = Number.parseInt(product.metafield?.value ?? "", 10);
+  return Number.isFinite(value) ? value : 9999;
+}
+async function syncPriorityCollection(collection: PriorityCollection) {
+  const products = await priorityProducts(collection.id);
+  if (!products.length) return { action: "unchanged" as const, targetId: collection.id, message: "Colección sin productos: sin cambios." };
+  if (collection.sortOrder !== "MANUAL") {
+    const result = await shopify<{ data: { collectionUpdate: { userErrors: ShopifyUserError[] } } }>(
+      `mutation($input:CollectionInput!){collectionUpdate(input:$input){userErrors{field message}}}`, { input: { id: collection.id, sortOrder: "MANUAL" } },
+    );
+    if (result.data.collectionUpdate.userErrors.length) throw new Error(result.data.collectionUpdate.userErrors.map((item) => item.message).join(" "));
+  }
+  const desired = products.map((product, index) => ({ product, index })).sort((left, right) => priorityValue(left.product) - priorityValue(right.product) || left.index - right.index);
+  const moves = desired.map((item, index) => ({ id: item.product.id, newPosition: String(index) })).filter((move, index) => products[index]?.id !== move.id);
+  if (!moves.length) return { action: "unchanged" as const, targetId: collection.id, message: `Colección "${collection.title}": orden ya correcto (${products.length} productos).` };
+  for (let index = 0; index < moves.length; index += 250) {
+    const result = await shopify<{ data: { collectionReorderProducts: { userErrors: ShopifyUserError[] } } }>(
+      `mutation($id:ID!,$moves:[MoveInput!]!){collectionReorderProducts(id:$id,moves:$moves){userErrors{field message}}}`, { id: collection.id, moves: moves.slice(index, index + 250) },
+    );
+    if (result.data.collectionReorderProducts.userErrors.length) throw new Error(result.data.collectionReorderProducts.userErrors.map((item) => item.message).join(" "));
+  }
+  return { action: "updated" as const, targetId: collection.id, message: `Colección "${collection.title}" reordenada por prioridad (${products.length} productos).` };
+}
 function findCategoryCollection(category: Category, collections: CollectionRef[]) {
   return collections.find((collection) => collection.sourceCategoryId === category.id)
     ?? collections.find((collection) => collection.handle === categoryHandle(category))
@@ -317,7 +383,7 @@ async function syncManufacturer(manufacturer: Manufacturer) {
 }
 async function log(runId: string, values: Record<string, unknown>) { const { error } = await db.from("catalog_import_events").insert({ run_id: runId, ...values }); if (error) throw error; }
 async function archive(messageId: number, queueName = "catalog_import_jobs") {
-  const rpc = queueName === "icecat_import_jobs" ? "archive_icecat_import_message" : "archive_catalog_import_message";
+  const rpc = queueName === "icecat_import_jobs" ? "archive_icecat_import_message" : queueName === "priority_import_jobs" ? "archive_priority_import_message" : "archive_catalog_import_message";
   const { error } = await db.rpc(rpc, { p_message_id: messageId });
   if (error) throw error;
 }
@@ -352,10 +418,17 @@ async function nextProducts(run: Run) {
   if (run.filters.onlyActive === true) query = query.eq("active", true);
   const productIds = run.filters.productIds?.length ? run.filters.productIds : run.filters.productId ? [run.filters.productId] : [];
   if (productIds.length) query = query.in("id", productIds);
-  if (run.filters.modifiedSince) query = query.gte("fecha_modificacion", run.filters.modifiedSince);
+  if (run.filters.modifiedSince) query = query.gte("fecha_modificacion", `${run.filters.modifiedSince}T00:00:00`);
   const { data, error } = await query;
   if (error) throw error;
   return (data ?? []) as Product[];
+}
+async function nextPriorities(run: Run) {
+  const name = run.filters.collectionName?.toLowerCase();
+  const collections = (await priorityCollections()).filter((collection) => !name || collection.title.toLowerCase().includes(name));
+  const currentIndex = run.cursor_entity_id?.startsWith("priority:") ? Number(run.cursor_entity_id.slice("priority:".length)) + 1 : 0;
+  const collection = collections[currentIndex];
+  return collection ? [{ id: `priority:${currentIndex}`, name: collection.title, priorityCollection: collection }] : [];
 }
 async function nextIcecatProducts(run: Run) {
   const selections = [...new Set([...(run.filters.productIds ?? []).map((value) => `sku:${value}`), ...(run.filters.eans ?? []).map((value) => `barcode:${value}`)])];
@@ -453,7 +526,7 @@ async function stageProductImages(product: Record<string, unknown>, imageUrls: s
   const candidates = await Promise.all(imageUrls.map(async (originalUrl, index) => {
     const filename = productImageFilename(product, index + 1, originalUrl);
     try {
-      const response = await fetch(proxyUrl(originalUrl), { signal: AbortSignal.timeout(15_000) });
+      const response = await fetchWithTimeout(proxyUrl(originalUrl), {}, 15_000);
       if (!response.ok) return null;
       return { filename, alt: String(product.name ?? ""), content: new Uint8Array(await response.arrayBuffer()), mime: response.headers.get("content-type")?.split(";")[0] || "image/jpeg" };
     } catch {
@@ -477,7 +550,7 @@ async function stageProductImages(product: Record<string, unknown>, imageUrls: s
     const form = new FormData();
     for (const parameter of target.parameters) form.append(parameter.name, parameter.value);
     form.append("file", new Blob([item.content], { type: item.mime }), item.filename);
-    const response = await fetch(target.url, { method: "POST", body: form });
+    const response = await fetchWithTimeout(target.url, { method: "POST", body: form }, 20_000);
     if (!response.ok) throw new Error(`No se pudo subir la imagen ${item.filename} a Shopify (${response.status}).`);
     uploaded.push({ resourceUrl: target.resourceUrl, filename: item.filename, alt: item.alt });
   }
@@ -537,7 +610,7 @@ function productTags(product: Record<string, unknown>, categoryNames: string[], 
 }
 function sameSet(left: string[], right: string[]) { return left.length === right.length && left.every((item) => right.includes(item)); }
 function money(value: unknown) { const number = Number(value); return Number.isFinite(number) ? Math.round((number + Number.EPSILON) * 100) / 100 : 0; }
-function productDifferences(existing: ShopifyProduct, input: Record<string, unknown>, stock: number) {
+function productDifferences(existing: ShopifyProduct, input: Record<string, unknown>) {
   const variant = existing.variants.nodes[0]; const desired = (input.variants as Record<string, unknown>[])[0]; const fields = input.metafields as { namespace: string; key: string; value: string }[];
   const currentFields = new Map(existing.metafields.nodes.map((field) => [`${field.namespace}.${field.key}`, field.value]));
   const differences: string[] = [];
@@ -550,17 +623,17 @@ function productDifferences(existing: ShopifyProduct, input: Record<string, unkn
   if (existing.status !== input.status) differences.push("estado");
   if (!sameSet(existing.tags, input.tags as string[])) differences.push("etiquetas");
   if (existing.seo?.title !== (input.seo as { title: string }).title || existing.seo?.description !== (input.seo as { description: string }).description) differences.push("SEO");
-  if (variant && (variant.sku !== desired.sku || variant.barcode !== (desired.barcode ?? null) || money(variant.price) !== money(desired.price) || money(variant.compareAtPrice ?? 0) !== money(desired.compareAtPrice ?? 0) || variant.inventoryPolicy !== desired.inventoryPolicy || variant.inventoryQuantity !== stock)) differences.push("variante/precio/stock");
+  if (variant && (variant.sku !== desired.sku || variant.barcode !== (desired.barcode ?? null) || variant.inventoryPolicy !== desired.inventoryPolicy)) differences.push("variante");
   if (fields.some((field) => currentFields.get(`${field.namespace}.${field.key}`) !== field.value)) differences.push("metacampos");
   return differences;
 }
-function sameProduct(existing: ShopifyProduct, input: Record<string, unknown>, stock: number, forceImages: boolean, hasSourceImages: boolean) {
+function sameProduct(existing: ShopifyProduct, input: Record<string, unknown>, forceImages: boolean, hasSourceImages: boolean) {
   const variant = existing.variants.nodes[0]; const desired = (input.variants as Record<string, unknown>[])[0]; const fields = input.metafields as { namespace: string; key: string; value: string }[];
   const currentFields = new Map(existing.metafields.nodes.map((field) => [`${field.namespace}.${field.key}`, field.value]));
   return !forceImages && (!hasSourceImages || existing.media.nodes.length > 0) && !!variant
     && existing.title === input.title && existing.handle === input.handle && existing.descriptionHtml === input.descriptionHtml && existing.vendor === input.vendor && existing.productType === input.productType && existing.status === input.status
     && sameSet(existing.tags, input.tags as string[]) && existing.seo?.title === (input.seo as { title: string }).title && existing.seo?.description === (input.seo as { description: string }).description
-    && variant.sku === desired.sku && variant.barcode === (desired.barcode ?? null) && money(variant.price) === money(desired.price) && money(variant.compareAtPrice ?? 0) === money(desired.compareAtPrice ?? 0) && variant.inventoryPolicy === desired.inventoryPolicy && variant.inventoryQuantity === stock
+    && variant.sku === desired.sku && variant.barcode === (desired.barcode ?? null) && variant.inventoryPolicy === desired.inventoryPolicy
     && fields.every((field) => currentFields.get(`${field.namespace}.${field.key}`) === field.value);
 }
 async function categoryNames(categoryId: string | null) {
@@ -583,20 +656,27 @@ async function productMetafields(product: Record<string, unknown>) {
 async function getLocationId() { const result = await shopify<{ data: { locations: { nodes: { id: string }[] } } }>(`query{locations(first:1){nodes{id}}}`, {}); return result.data.locations.nodes[0]?.id ?? null; }
 async function syncActiveProduct(summary: Product, forceImages: boolean, modifiedSince?: string) {
   const { data: product, error } = await db.from("source_products").select("*").eq("id", summary.id).single(); if (error || !product) throw error ?? new Error("No se pudo leer el producto.");
-  const imageWasModified = Boolean(modifiedSince && product.fecha_modificacion_imagen && new Date(product.fecha_modificacion_imagen).getTime() >= new Date(modifiedSince).getTime());
+  const imageWasModified = Boolean(modifiedSince && product.fecha_modificacion_imagen && new Date(product.fecha_modificacion_imagen).getTime() >= new Date(`${modifiedSince}T00:00:00`).getTime());
   const shouldForceImages = forceImages || imageWasModified;
-  const [{ data: manufacturer }, { data: priceRow }, { data: stockRow }, categories, fields, locationId] = await Promise.all([
-    db.from("source_manufacturers").select("name").eq("id", product.id_manufacturer).single(), db.from("source_prices").select("precio_tarifa").eq("id_product", product.id).limit(1).single(), db.from("source_stock").select("quantity").eq("id_product", product.id).limit(1).single(), categoryNames(product.id_category_default), productMetafields(product), getLocationId(),
-  ]);
-  if (!manufacturer?.name || !priceRow || !stockRow || !locationId) throw new Error("No se pudieron obtener todos los datos necesarios para sincronizar el producto.");
-  const price = Number(priceRow.precio_tarifa) * 1.21; const compareAtPrice = product.price == null ? undefined : Number(product.price) * 1.21; const stock = product.available_for_order === false ? 0 : Number(stockRow.quantity ?? 0);
-  const handle = String(product.link_rewrite || productHandle(summary)); const inventoryPolicy = product.available_for_order === false || String(product.dato_extra ?? "").includes("out_of_stock{2}") ? "DENY" : "CONTINUE";
   const existing = await findProduct(summary);
+  const [{ data: manufacturer }, categories, fields, locationId] = await Promise.all([
+    db.from("source_manufacturers").select("name").eq("id", product.id_manufacturer).single(), categoryNames(product.id_category_default), productMetafields(product), getLocationId(),
+  ]);
+  if (!manufacturer?.name || !locationId) throw new Error("No se pudieron obtener todos los datos necesarios para sincronizar el producto.");
+  const priceRow = existing ? null : (await db.from("source_prices").select("precio_tarifa").eq("id_product", product.id).limit(1).single()).data;
+  const stockRow = existing ? null : (await db.from("source_stock").select("quantity").eq("id_product", product.id).limit(1).single()).data;
+  if (!existing && (!priceRow || !stockRow)) throw new Error("No se pudieron obtener precio y stock necesarios para dar de alta el producto.");
+  const price = priceRow ? Number(priceRow.precio_tarifa) * 1.21 : undefined;
+  const compareAtPrice = !existing && product.price != null ? Number(product.price) * 1.21 : undefined;
+  const stock = stockRow ? (product.available_for_order === false ? 0 : Number(stockRow.quantity ?? 0)) : undefined;
+  const handle = String(product.link_rewrite || productHandle(summary)); const inventoryPolicy = product.available_for_order === false || String(product.dato_extra ?? "").includes("out_of_stock{2}") ? "DENY" : "CONTINUE";
   // Igual que el Python original: el tipo no se envía en ProductSetInput;
   // Shopify lo resuelve usando la definición existente del metafield.
   const weight = product.weight == null ? undefined : Number(product.weight);
-  const input: Record<string, unknown> = { title: product.name, handle, descriptionHtml: product.description ?? "", vendor: manufacturer.name, productType: categories[0] ?? "", tags: productTags(product, categories, existing?.tags), status: "ACTIVE", seo: { title: product.meta_title || product.name, description: product.meta_description || htmlToText(product.description_short) }, metafields: fields.map(({ namespace, key, value }) => ({ namespace, key, value })), productOptions: [{ name: "Title", position: 1, values: [{ name: "Default Title" }] }], variants: [{ optionValues: [{ optionName: "Title", name: "Default Title" }], sku: product.id, price, ...(compareAtPrice ? { compareAtPrice } : {}), ...(product.ean13 ? { barcode: product.ean13 } : {}), inventoryPolicy, ...(Number.isFinite(weight) ? { inventoryItem: { measurement: { weight: { value: weight, unit: "KILOGRAMS" } } } } : {}), inventoryQuantities: [{ locationId, name: "on_hand", quantity: stock }] }] };
-  if (existing) { input.id = existing.id; if (sameProduct(existing, input, stock, shouldForceImages, Boolean(product.images))) { const sourceCount = String(product.images ?? "").split("@").filter(Boolean).length; return { action: "unchanged" as const, targetId: existing.id, message: `Producto ya actualizado: sin cambios. Imágenes: sin cambios (${existing.media.nodes.length} actuales; ${sourceCount} en origen).` }; } }
+  const variant: Record<string, unknown> = { optionValues: [{ optionName: "Title", name: "Default Title" }], sku: product.id, ...(product.ean13 ? { barcode: product.ean13 } : {}), inventoryPolicy, ...(Number.isFinite(weight) ? { inventoryItem: { measurement: { weight: { value: weight, unit: "KILOGRAMS" } } } } : {}) };
+  if (!existing) Object.assign(variant, { price, ...(compareAtPrice ? { compareAtPrice } : {}), inventoryQuantities: [{ locationId, name: "on_hand", quantity: stock }] });
+  const input: Record<string, unknown> = { title: product.name, handle, descriptionHtml: product.description ?? "", vendor: manufacturer.name, productType: categories[0] ?? "", tags: productTags(product, categories, existing?.tags), status: "ACTIVE", seo: { title: product.meta_title || product.name, description: product.meta_description || htmlToText(product.description_short) }, metafields: fields.map(({ namespace, key, value }) => ({ namespace, key, value })), productOptions: [{ name: "Title", position: 1, values: [{ name: "Default Title" }] }], variants: [variant] };
+  if (existing) { input.id = existing.id; if (sameProduct(existing, input, shouldForceImages, Boolean(product.images))) { const sourceCount = String(product.images ?? "").split("@").filter(Boolean).length; return { action: "unchanged" as const, targetId: existing.id, message: `Producto ya actualizado: sin cambios. Imágenes: sin cambios (${existing.media.nodes.length} actuales; ${sourceCount} en origen).` }; } }
   const result = await shopify<{ data: { productSet: { product: { id: string } | null; userErrors: ShopifyUserError[] } } }>(`mutation($input:ProductSetInput!){productSet(input:$input){product{id} userErrors{field message}}}`, { input });
   const updated = result.data.productSet.product; if (!updated || result.data.productSet.userErrors.length) {
     const details = result.data.productSet.userErrors.map((item) => {
@@ -617,7 +697,7 @@ async function syncActiveProduct(summary: Product, forceImages: boolean, modifie
       ? `Imágenes: se importaron ${imageResult.addedCount} (${imageResult.sourceCount} en origen); no había imágenes anteriores.`
       : `Imágenes: ${imageResult.action}.`;
   const redirectRemoved = existing?.status === "ARCHIVED" ? await removeProductRedirect(existing.handle) : false;
-  const differences = existing ? productDifferences(existing, input, stock) : [];
+  const differences = existing ? productDifferences(existing, input) : [];
   return { action: existing ? "updated" as const : "created" as const, targetId: updated.id, message: `${existing ? "Producto actualizado y publicado." : "Producto creado y publicado."}${redirectRemoved ? " Redirección de producto eliminada." : ""} ${imageMessage}${differences.length ? ` Cambios detectados: ${differences.join(", ")}.` : ""}` };
 }
 export async function processMessage(message: { msg_id: number; message: { run_id?: string }; read_ct?: number }, queueName = "catalog_import_jobs") {
@@ -626,12 +706,40 @@ export async function processMessage(message: { msg_id: number; message: { run_i
   const { data } = await db.from("catalog_import_runs").select("*").eq("id", runId).maybeSingle();
   if (!data || ["completed", "stopped", "failed"].includes(data.status)) return archive(messageId, queueName);
   if (data.status === "paused") return;
+  const workerToken = crypto.randomUUID();
+  const { data: claimed, error: claimError } = await db.rpc("claim_catalog_import_worker", { p_run_id: runId, p_worker_token: workerToken });
+  if (claimError) throw claimError;
+  if (!claimed) {
+    // Otra invocación sigue viva. Conservamos el mensaje en vuelo sin
+    // archivarlo para que el segundo worker no procese la misma ejecución.
+    await db.rpc("renew_import_queue_message", { p_queue_name: queueName, p_message_id: messageId, p_visibility_timeout: 30 });
+    return;
+  }
+  const workerStartedAt = Date.now();
+  let lastHeartbeatAt = 0;
+  const heartbeat = async (entityId: string | null = null, entityName: string | null = null, operation: string | null = null, force = false) => {
+    if (!force && Date.now() - lastHeartbeatAt < WORKER_HEARTBEAT_MS) return;
+    await db.rpc("heartbeat_catalog_import_worker", { p_run_id: runId, p_worker_token: workerToken, p_entity_id: entityId, p_entity_name: entityName, p_operation: operation });
+    await db.rpc("renew_import_queue_message", { p_queue_name: queueName, p_message_id: messageId, p_visibility_timeout: 300 });
+    lastHeartbeatAt = Date.now();
+  };
+  const yieldWorker = async () => {
+    await db.from("catalog_import_runs").update({ status: "queued", updated_at: new Date().toISOString() }).eq("id", runId).eq("worker_token", workerToken);
+    await db.rpc("release_catalog_import_worker", { p_run_id: runId, p_worker_token: workerToken });
+    await db.rpc("renew_import_queue_message", { p_queue_name: queueName, p_message_id: messageId, p_visibility_timeout: 0 });
+  };
   try {
-    await db.from("catalog_import_runs").update({ status: "running", started_at: data.started_at ?? new Date().toISOString() }).eq("id", runId);
+    await heartbeat(null, null, "preparando ejecución", true);
     let run = data as Run;
     const hasIcecatSelections = Boolean(run.filters.productIds?.length || run.filters.eans?.length);
     if (run.entity_type === "icecat" && !hasIcecatSelections && run.processed_count === 0 && !run.cursor_entity_id) {
       const total = await icecatShopifyProductCount(run.filters.force === true);
+      await db.from("catalog_import_runs").update({ total_count: total, updated_at: new Date().toISOString() }).eq("id", runId);
+      run = { ...run, total_count: total };
+    }
+    if (run.entity_type === "priorities" && run.processed_count === 0 && !run.cursor_entity_id) {
+      const priorityName = run.filters.collectionName?.toLowerCase();
+      const total = (await priorityCollections()).filter((collection) => !priorityName || collection.title.toLowerCase().includes(priorityName)).length;
       await db.from("catalog_import_runs").update({ total_count: total, updated_at: new Date().toISOString() }).eq("id", runId);
       run = { ...run, total_count: total };
     }
@@ -643,16 +751,19 @@ export async function processMessage(message: { msg_id: number; message: { run_i
     const collections = run.entity_type === "categories" ? await categoryCollections() : [];
     const definitions = run.entity_type === "features" ? await featureDefinitions() : new Map<string, string>();
     while (run.processed_count < run.total_count) {
+      if (Date.now() - workerStartedAt >= WORKER_BUDGET_MS) { await yieldWorker(); return; }
       const { data: current } = await db.from("catalog_import_runs").select("*").eq("id", runId).single(); run = current as Run;
       if (run.status === "paused") return;
       if (run.status === "stopped") return archive(messageId, queueName);
-      const entities = run.entity_type === "manufacturers" ? await nextManufacturers(run) : run.entity_type === "categories" ? await nextCategories(run) : run.entity_type === "features" ? await nextFeatures(run) : run.entity_type === "products" ? await nextProducts(run) : await nextIcecatProducts(run);
+      const entities = run.entity_type === "manufacturers" ? await nextManufacturers(run) : run.entity_type === "categories" ? await nextCategories(run) : run.entity_type === "features" ? await nextFeatures(run) : run.entity_type === "products" ? await nextProducts(run) : run.entity_type === "priorities" ? await nextPriorities(run) : await nextIcecatProducts(run);
       if (!entities.length) break;
       for (const entity of entities) {
+        if (Date.now() - workerStartedAt >= WORKER_BUDGET_MS) { await yieldWorker(); return; }
         const { data: control } = await db.from("catalog_import_runs").select("status").eq("id", runId).single();
         if (control?.status === "paused") return;
         if (control?.status === "stopped") return archive(messageId, queueName);
-        let outcome: "created" | "updated" | "unchanged" | "unpublished" | "error" = "error"; let action: "created" | "unchanged" | "unpublished" | "error" = "error"; let targetId: string | null = null; let messageText = ""; let details: Record<string, unknown> | null = null;
+        await heartbeat(entity.id, entity.name, "procesando entidad", true);
+        let outcome: "created" | "updated" | "unchanged" | "unpublished" | "error" = "error"; let action: "created" | "updated" | "unchanged" | "unpublished" | "error" = "error"; let targetId: string | null = null; let messageText = ""; let details: Record<string, unknown> | null = null;
         try {
           if (run.entity_type === "manufacturers") {
             const result = await syncManufacturer(entity as Manufacturer);
@@ -675,6 +786,9 @@ export async function processMessage(message: { msg_id: number; message: { run_i
               action = result.action; targetId = result.targetId; outcome = result.action; messageText = result.message;
               if (warnings.length) messageText += ` Aviso: ${warnings.join("; ")}.`;
             }
+          } else if (run.entity_type === "priorities") {
+            const result = await syncPriorityCollection((entity as { priorityCollection: PriorityCollection }).priorityCollection);
+            action = result.action; outcome = result.action; targetId = result.targetId; messageText = result.message;
           } else {
             const result = await syncIcecatProduct(entity as IcecatProduct, run.filters.force === true);
             action = result.action; targetId = result.targetId; outcome = result.action === "created" ? "created" : "updated"; messageText = result.message;
@@ -687,21 +801,24 @@ export async function processMessage(message: { msg_id: number; message: { run_i
         await db.from("catalog_import_runs").update(counts).eq("id", runId);
         await log(runId, { level: outcome === "error" ? "error" : "success", outcome, entity_type: run.entity_type, source_entity_id: entity.id, source_entity_name: entity.name, shopify_resource_id: targetId, message: messageText, ...(details ? { details } : {}) });
         run = { ...run, ...counts };
+        await heartbeat(entity.id, entity.name, "entidad registrada");
       }
     }
     await db.from("catalog_import_runs").update({ status: "completed", finished_at: new Date().toISOString() }).eq("id", runId);
     await log(runId, { level: "info", outcome: "status", entity_type: run.entity_type, message: "Importación completada." });
+    await db.rpc("release_catalog_import_worker", { p_run_id: runId, p_worker_token: workerToken });
     await archive(messageId, queueName);
   } catch (error) {
     const details = errorDetails(error, { operation: "catalog_worker", retry_count: Number(message.read_ct ?? 1) }); const text = details.message as string; const attempt = Number(message.read_ct ?? 1);
+    await db.rpc("release_catalog_import_worker", { p_run_id: runId, p_worker_token: workerToken });
     if (attempt >= 3) { await db.from("catalog_import_runs").update({ status: "failed", finished_at: new Date().toISOString() }).eq("id", runId); await log(runId, { level: "error", outcome: "status", entity_type: data.entity_type, message: `Importación fallida: ${text}`, details }); await archive(messageId, queueName); }
-    else { await db.from("catalog_import_runs").update({ status: "queued" }).eq("id", runId); await log(runId, { level: "warning", outcome: "status", entity_type: data.entity_type, message: `Reintento ${attempt}: ${text}`, details }); }
+    else { await db.from("catalog_import_runs").update({ status: "queued" }).eq("id", runId); await log(runId, { level: "warning", outcome: "status", entity_type: data.entity_type, message: `Reintento ${attempt}: ${text}`, details }); await db.rpc("renew_import_queue_message", { p_queue_name: queueName, p_message_id: messageId, p_visibility_timeout: 0 }); }
   }
 }
 
 export async function handleWorkerRequest(request: Request, queueName = "catalog_import_jobs") {
   if (request.method !== "POST") return json({ error: "Método no permitido" }, 405);
-  const rpc = queueName === "icecat_import_jobs" ? "read_icecat_import_message" : "read_catalog_import_message";
+  const rpc = queueName === "icecat_import_jobs" ? "read_icecat_import_message" : queueName === "priority_import_jobs" ? "read_priority_import_message" : "read_catalog_import_message";
   const { data, error } = await db.rpc(rpc);
   if (error) return json({ error: error.message }, 500);
   if (!data) return json({ accepted: false, empty: true });

@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { ProcessOverview } from "@/components/process-overview";
 
 export default function Home() {
-  redirect("/importacion-clientes");
+  return <ProcessOverview />;
 }
