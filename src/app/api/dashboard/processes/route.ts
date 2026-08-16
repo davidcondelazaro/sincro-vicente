@@ -51,6 +51,7 @@ function normalize(run: RawRun, entity: string, family: string, href: string): P
 }
 
 function syncType(run: RawRun) {
+  if (run.mode === "changes") return "Solo cambios";
   if (run.mode === "all") return "Completa";
   if (run.mode === "partial") return "Parcial";
   if (run.mode === "selective" || run.mode === "id") return "Selectiva";
@@ -99,7 +100,20 @@ export async function GET() {
     { type: "prices", entity: "Precios", family: "Actualización", href: "/importacion-precios" },
     { type: "stock", entity: "Stock", family: "Actualización", href: "/importacion-stock" },
     { type: "sqlserver", entity: "Copia SQL Server", family: "Origen de datos", href: "/importar-datos-sql-server" },
-  ].map((summary) => ({ ...summary, latest: processes.find((process) => process.entity === summary.entity && process.status === "completed") ?? null }));
+  ].map((summary) => ({
+    ...summary,
+    latest: processes
+      .filter((process) => process.entity === summary.entity && process.status === "completed")
+      .sort((a, b) => completionTime(b) - completionTime(a))[0] ?? null,
+  })).sort((a, b) => {
+    if (!a.latest) return 1;
+    if (!b.latest) return -1;
+    return completionTime(b.latest) - completionTime(a.latest);
+  });
 
   return Response.json({ active, summaries });
+}
+
+function completionTime(process: Process) {
+  return new Date(process.finishedAt ?? process.createdAt).getTime();
 }

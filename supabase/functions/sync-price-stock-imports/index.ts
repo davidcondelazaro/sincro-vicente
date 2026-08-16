@@ -8,7 +8,7 @@ const WORKER_BUDGET_MS = 30_000;
 const SHOPIFY_TIMEOUT_MS = 20_000;
 const STOCK_BATCH_SIZE = 25;
 type ImportType = "prices" | "stock";
-type Run = { id: string; import_type: ImportType; mode: "all" | "selective" | "partial"; filters: { productIds?: string[]; changedSince?: string }; status: string; total_count: number; processed_count: number; updated_count: number; unchanged_count: number; warning_count: number; error_count: number; cursor_source_id: string | null };
+type Run = { id: string; import_type: ImportType; mode: "changes" | "all" | "selective" | "partial"; filters: { productIds?: string[]; changedSince?: string }; status: string; total_count: number; processed_count: number; updated_count: number; unchanged_count: number; warning_count: number; error_count: number; cursor_source_id: string | null };
 type ShopifyVariant = { id: string; sku: string | null; price: string; compareAtPrice: string | null; inventoryItem: { id: string; inventoryLevel: { quantities: { name: string; quantity: number }[] } | null } | null };
 type ShopifyProduct = { id: string; variants: { nodes: ShopifyVariant[] } };
 type ErrorWithDetails = Error & { details?: Record<string, unknown> };
@@ -41,6 +41,12 @@ async function shopify<T>(operation: string, query: string, variables: Record<st
 }
 function money(value: number | string | null | undefined) { const parsed = Number(value); return Number.isFinite(parsed) ? Math.round(parsed * 100) / 100 : null; }
 function sameMoney(left: number | string | null | undefined, right: number | string | null | undefined) { const a = money(left); const b = money(right); return a !== null && b !== null && Math.round(a * 100) === Math.round(b * 100); }
+// Shopify usa esta referencia únicamente para identificar el origen del ajuste.
+// No incluimos el SKU sin codificar: algunos contienen espacios u otros caracteres
+// que convertirían la referencia en una URI inválida.
+function stockReference(reference: string) {
+  return `https://sincro-vicente.local/stock-import/${encodeURIComponent(reference)}`;
+}
 async function locationId() {
   const result = await shopify<{ data: { locations: { nodes: { id: string }[] } } }>("locations", "query{locations(first:1){nodes{id}}}", {});
   const id = result.data.locations.nodes[0]?.id; if (!id) throw new Error("Shopify no tiene una ubicación de inventario disponible."); return id;
@@ -64,30 +70,47 @@ async function updatePrice(product: ShopifyProduct, variant: ShopifyVariant, des
 async function updateStock(variant: ShopifyVariant, location: string, quantity: number, reference: string) {
   const inventoryItemId = variant.inventoryItem?.id;
   if (!inventoryItemId) throw new Error("La variante Shopify no tiene artículo de inventario.");
-  const input = { reason: "correction", referenceDocumentUri: `sincro-vicente://stock-import/${reference}`, setQuantities: [{ inventoryItemId, locationId: location, quantity, changeFromQuantity: null }] };
-  const idempotencyKey = `stock-${reference}`;
+  const input = { reason: "correction", referenceDocumentUri: stockReference(reference), setQuantities: [{ inventoryItemId, locationId: location, quantity, changeFromQuantity: null }] };
+  const idempotencyKey = `stock-${encodeURIComponent(reference)}`;
   const result = await shopify<{ data: { inventorySetOnHandQuantities: { userErrors: { field?: string[]; message: string; code?: string }[] } } }>("inventorySetOnHandQuantities", "mutation($input:InventorySetOnHandQuantitiesInput!,$idempotencyKey:String!) {inventorySetOnHandQuantities(input:$input) @idempotent(key:$idempotencyKey) {userErrors{field message code}}}", { input, idempotencyKey });
   const errors = result.data.inventorySetOnHandQuantities.userErrors;
   if (errors.length) { const error = new Error(errors.map((item) => item.message).join(" ")) as ErrorWithDetails; error.details = { provider: "shopify", operation: "inventorySetOnHandQuantities", variables: { input }, response: result, user_errors: errors }; throw error; }
 }
 async function findStockVariants(productIds: string[]) {
-  const query = productIds.map((id) => `sku:${JSON.stringify(id)}`).join(" OR ");
-  const result = await shopify<{ data: { productVariants: { nodes: { id: string; sku: string | null; product: { id: string }; inventoryItem: { id: string } | null }[] } } }>("find_stock_variants", "query($query:String!){productVariants(first:250,query:$query){nodes{id sku product{id} inventoryItem{id}}}}", { query });
-  return new Map(result.data.productVariants.nodes.filter((item) => item.sku && item.inventoryItem).map((item) => [item.sku!, item]));
+  const { data, error } = await db.from("product_shopify_links").select("source_sku,shopify_product_id,shopify_variant_id,shopify_inventory_item_id").eq("link_status", "linked").not("shopify_inventory_item_id", "is", null).in("source_sku", productIds);
+  if (error) throw error;
+  return new Map((data ?? []).map((item) => [item.source_sku, { id: item.shopify_variant_id, sku: item.source_sku, product: { id: item.shopify_product_id }, inventoryItem: { id: item.shopify_inventory_item_id } }]));
 }
 async function findPriceVariants(productIds: string[]) {
-  const query = productIds.map((id) => `sku:${JSON.stringify(id)}`).join(" OR ");
-  const result = await shopify<{ data: { productVariants: { nodes: { id: string; sku: string | null; price: string; compareAtPrice: string | null; product: { id: string } }[] } } }>("find_price_variants", "query($query:String!){productVariants(first:250,query:$query){nodes{id sku price compareAtPrice product{id}}}}", { query });
-  return new Map(result.data.productVariants.nodes.filter((item) => item.sku).map((item) => [item.sku!, item]));
+  const { data, error } = await db.from("product_shopify_links").select("source_sku,shopify_product_id,shopify_variant_id").eq("link_status", "linked").in("source_sku", productIds);
+  if (error) throw error;
+  return new Map((data ?? []).map((item) => [item.source_sku, { id: item.shopify_variant_id, sku: item.source_sku, price: null, compareAtPrice: null, product: { id: item.shopify_product_id } }]));
 }
 async function updateStockBatch(items: { inventoryItemId: string; quantity: number }[], location: string, reference: string) {
-  const input = { reason: "correction", referenceDocumentUri: `sincro-vicente://stock-import/${reference}`, setQuantities: items.map((item) => ({ inventoryItemId: item.inventoryItemId, locationId: location, quantity: item.quantity, changeFromQuantity: null })) };
-  const idempotencyKey = `stock-${reference}`;
+  const input = { reason: "correction", referenceDocumentUri: stockReference(reference), setQuantities: items.map((item) => ({ inventoryItemId: item.inventoryItemId, locationId: location, quantity: item.quantity, changeFromQuantity: null })) };
+  const idempotencyKey = `stock-${encodeURIComponent(reference)}`;
   const result = await shopify<{ data: { inventorySetOnHandQuantities: { userErrors: { field?: string[]; message: string; code?: string }[] } } }>("inventorySetOnHandQuantities", "mutation($input:InventorySetOnHandQuantitiesInput!,$idempotencyKey:String!) {inventorySetOnHandQuantities(input:$input) @idempotent(key:$idempotencyKey) {userErrors{field message code}}}", { input, idempotencyKey });
   const errors = result.data.inventorySetOnHandQuantities.userErrors;
   if (errors.length) { const error = new Error(errors.map((item) => item.message).join(" ")) as ErrorWithDetails; error.details = { provider: "shopify", operation: "inventorySetOnHandQuantities", variables: { input, idempotencyKey }, response: result, user_errors: errors }; throw error; }
 }
-async function log(runId: string, values: Record<string, unknown>) { const { error } = await db.from("price_stock_import_events").insert({ run_id: runId, ...values }); if (error) throw error; }
+async function log(runId: string, values: Record<string, unknown>) {
+  const { error } = await db.from("price_stock_import_events").insert({ run_id: runId, ...values });
+  if (error) throw error;
+  if (values.outcome === "updated" && values.source_row_id) {
+    const { data: run, error: runError } = await db.from("price_stock_import_runs").select("import_type").eq("id", runId).single();
+    if (runError) throw runError;
+    const table = run.import_type === "prices" ? "source_prices" : "source_stock";
+    const { error: syncError } = await db.from(table).update({ shopify_synced: true }).eq("id", values.source_row_id);
+    if (syncError) throw syncError;
+  }
+  if (values.outcome === "error" && values.source_row_id) {
+    const { data: run, error: runError } = await db.from("price_stock_import_runs").select("import_type").eq("id", runId).single();
+    if (runError) throw runError;
+    const table = run.import_type === "prices" ? "source_prices" : "source_stock";
+    const { error: pendingError } = await db.from(table).update({ shopify_synced: false }).eq("id", values.source_row_id);
+    if (pendingError) throw pendingError;
+  }
+}
 async function archive(type: ImportType, messageId: number) { await db.rpc("archive_price_stock_import_message", { p_import_type: type, p_message_id: messageId }); }
 async function triggerNext(type: ImportType) {
   await fetch(`${env("SUPABASE_URL")}/functions/v1/sync-price-stock-imports`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${env("SUPABASE_SERVICE_ROLE_KEY")}`, apikey: env("SUPABASE_SERVICE_ROLE_KEY") }, body: JSON.stringify({ importType: type }) });

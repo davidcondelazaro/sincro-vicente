@@ -18,6 +18,10 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+button:not(:disabled) {
+  cursor: pointer;
+}
+
 @media (max-width: 1023px) {
   header.fixed > :first-child > p {
     position: absolute;

@@ -2,13 +2,13 @@ import { createClient as createSupabaseClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 type ImportType = "prices" | "stock";
-type Mode = "all" | "selective" | "partial";
+type Mode = "changes" | "all" | "selective" | "partial";
 
 function parse(input: Record<string, unknown>) {
   const importType = input.importType as ImportType;
   const mode = input.mode as Mode;
   if (importType !== "prices" && importType !== "stock") throw new Error("Tipo de importación no válido.");
-  if (mode !== "all" && mode !== "selective" && mode !== "partial") throw new Error("Modo de actualización no válido.");
+  if (mode !== "all" && mode !== "selective" && mode !== "partial" && mode !== "changes") throw new Error("Modo de actualización no válido.");
   const productIds = [...new Set(String(input.productIds ?? "").split(",").map((value) => value.trim()).filter(Boolean))];
   if (productIds.join(",").length > 2_000 || productIds.some((value) => value.length > 150)) throw new Error("Los IDs indicados no son válidos.");
   if (mode === "selective" && !productIds.length) throw new Error("Indica al menos un ID de producto.");

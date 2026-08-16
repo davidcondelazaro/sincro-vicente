@@ -14,10 +14,12 @@ function filters(input: Record<string, unknown>) {
   const icecatEans = String(input.eans ?? "").split(",").map((value) => value.trim()).filter(Boolean);
   const productIds = [...new Set(productId.split(",").map((value) => value.trim()).filter(Boolean))];
   const modifiedSince = String(input.modifiedSince ?? "").trim();
+  const productSyncMode = String(input.productSyncMode ?? "changes").trim();
   const collectionName = String(input.collectionName ?? "").trim();
   if (manufacturerId.length > 100 || categoryId.length > 100 || featureId.length > 100 || productId.length > 2000) throw new Error("El filtro es demasiado largo.");
   if (icecatSkus.join(",").length > 2000 || icecatEans.join(",").length > 2000 || icecatSkus.some((value) => !/^[A-Za-z0-9._-]+$/.test(value)) || icecatEans.some((value) => !/^\d{8,14}$/.test(value))) throw new Error("Los SKU o EAN indicados no son válidos.");
   if (modifiedSince && !/^\d{4}-\d{2}-\d{2}$/.test(modifiedSince)) throw new Error("La fecha de modificación no es válida.");
+  if (entityType === "products" && productSyncMode !== "changes" && productSyncMode !== "all") throw new Error("El modo de productos no es válido.");
   if (entityType === "manufacturers") return { entityType, filters: { onlyActive: input.onlyActive !== false, ...(manufacturerId ? { manufacturerId } : {}) } };
   if (entityType === "categories") return { entityType, filters: { ...(categoryId ? { categoryId } : {}) } };
   if (entityType === "features") return { entityType, filters: { ...(featureId ? { featureId } : {}) } };
@@ -25,7 +27,7 @@ function filters(input: Record<string, unknown>) {
   if (entityType === "icecat") return { entityType, filters: { force: input.force === true, ...(icecatSkus.length ? { productIds: [...new Set(icecatSkus)] } : {}), ...(icecatEans.length ? { eans: [...new Set(icecatEans)] } : {}) } };
   // Conservamos la fecha como fecha de calendario. El worker aplica el inicio
   // de ese día tanto a la modificación del producto como a la de sus imágenes.
-  return { entityType, filters: { onlyActive: input.onlyActive === true, forceImages: input.forceImages === true, ...(productIds.length ? { productIds } : {}), ...(modifiedSince ? { modifiedSince } : {}) } };
+  return { entityType, filters: { onlyActive: true, productSyncMode, forceImages: input.forceImages === true, ...(productIds.length ? { productIds } : {}), ...(modifiedSince ? { modifiedSince } : {}) } };
 }
 
 export async function GET(request: Request) {

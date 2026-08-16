@@ -6,7 +6,8 @@
     "dev": "next dev --port 3100",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "sync:shopify-links": "node scripts/sync-shopify-product-links.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

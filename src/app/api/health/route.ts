@@ -1,5 +1,4 @@
 import mysql from "mysql2/promise";
-import sql from "mssql";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -62,14 +61,21 @@ async function checkShopify() {
 }
 
 async function checkSqlServer() {
-  const configured = ["SQL_SERVER_HOST", "SQL_SERVER_DATABASE", "SQL_SERVER_USER", "SQL_SERVER_PASSWORD"].every((name) => Boolean(process.env[name]));
-  if (!configured) return false;
-  const pool = await new sql.ConnectionPool({
-    server: required("SQL_SERVER_HOST"), port: Number(process.env.SQL_SERVER_PORT ?? 1433), database: required("SQL_SERVER_DATABASE"),
-    user: required("SQL_SERVER_USER"), password: required("SQL_SERVER_PASSWORD"), connectionTimeout: 15_000, requestTimeout: 30_000,
-    options: { encrypt: process.env.SQL_SERVER_ENCRYPT === "true", trustServerCertificate: process.env.SQL_SERVER_TRUST_SERVER_CERTIFICATE === "true" },
-  }).connect();
-  try { await pool.request().query("SELECT 1 AS connected"); return true; } finally { await pool.close(); }
+  const response = await fetch(required("SQL_SERVER_PROXY_URL"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${required("SQL_SERVER_PROXY_TOKEN")}`,
+    },
+    body: JSON.stringify({ action: "health" }),
+    signal: AbortSignal.timeout(20_000),
+    cache: "no-store",
+  });
+  const body = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+  if (!response.ok || body?.ok !== true) {
+    throw new Error(body?.error ?? `Puente SQL Server: HTTP ${response.status}`);
+  }
+  return true;
 }
 
 async function checkMhd() {

@@ -75,6 +75,7 @@ Los productos se identifican primero por SKU (el ID de origen) y después por ha
 - Si `fecha_modificacion_imagen` es igual o posterior a esa fecha, se activa automáticamente el reemplazo de imágenes para ese producto.
 - El check **Forzar todas las imágenes** elimina los medios actuales y vuelve a cargarlos desde el origen. El registro indica cuántas había, cuántas se eliminaron y cuántas se importaron.
 - Las etiquetas `Oferta`, `Energética`, `SuperOferta` y `Descatalogado` se gestionan desde los datos de producto; no se convierten en definiciones de características.
+- Los productos cuya categoría por defecto sea `V346` son promociones: usan la plantilla `promociones`, se mantienen activos sólo si lo están en origen y se retiran de todos los canales de venta. Véase [Productos de promociones en Shopify](docs/PROMOCIONES_SHOPIFY.md).
 
 Al archivar un producto existente se prepara una redirección desde `/products/<handle>` a la colección de su categoría. Se reutiliza una redirección existente, se prueban primero la categoría directa y después sus padres, y al reactivar el producto se elimina la redirección asociada. Esta parte requiere el alcance de Shopify `write_online_store_navigation`.
 
@@ -93,6 +94,19 @@ El menú **Importación Icecat** conserva el comportamiento del sincronizador Py
 Las listas opcionales de SKU o EAN se resuelven primero contra Shopify; no son IDs de Shopify. Sin filtros, se recorren todos los productos de Shopify con EAN que aún no tienen `custom.icecat`. Al marcar **Actualizar datos Icecat existentes**, se recorren todos los que tienen EAN y se reemplaza su información existente. Los productos sin EAN, sin presencia en Shopify o sin datos de Icecat quedan registrados como **Sin datos o cambios** y la cola continúa.
 
 La clave de Icecat pertenece al trabajador de Supabase, no a la aplicación de Vercel. Antes de activar la función en producción hay que configurar `ICECAT_USERNAME`, `ICECAT_APP_KEY` y, opcionalmente, `ICECAT_LANGUAGE=es` como secretos de Supabase y desplegar `sync-icecat-imports` después de aplicar las migraciones de Icecat. En local, esos mismos valores se cargan para la Edge Function, sin incluirlos en Git.
+
+## Enlaces entre SKU y Shopify
+
+La tabla privada `product_shopify_links` guarda la relación entre el SKU de Vicente y los ID técnicos de producto, variante única e inventario de Shopify. No depende de `source_products`, por lo que sobrevive a las sustituciones de catálogo desde SQL Server. Cada SKU queda además diagnosticado como `linked`, `missing_in_shopify` o `ambiguous_in_shopify`, con el número de coincidencias.
+
+Para completar o refrescar los enlaces ya existentes en Shopify se usa un proceso manual, nunca la interfaz ni las colas de importación. Tras aplicar la migración, desde `sincro-vicente` y con `CATALOG_INGEST_TOKEN` disponible sólo en el entorno local:
+
+```bash
+set -a; source .env.local; set +a
+npm run sync:shopify-links
+```
+
+El proceso obtiene los SKU de `source_products` y guarda los resultados mediante la Edge Function privada `import-source-catalog`, autenticada con el token de ingesta que ya usa el proyecto. Consulta Shopify en tandas de 50, sin requerir una clave de servicio local. Guarda sólo coincidencias exactas; al finalizar informa de los SKU que no existen en Shopify o que devuelven más de una coincidencia, que se dejan fuera para no guardar asociaciones ambiguas.
 
 ## Estado de conexiones
 

@@ -6,16 +6,19 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 const SHOPIFY_TIMEOUT_MS = 20_000;
 const WORKER_HEARTBEAT_MS = 10_000;
 const WORKER_BUDGET_MS = 45_000;
+const MAX_PRODUCT_IMAGE_BYTES = 25 * 1024 * 1024;
+const PROMOTION_CATEGORY_ID = "V346";
+const PROMOTION_TEMPLATE_SUFFIX = "promociones";
 
 type Manufacturer = { id: string; name: string | null; active: boolean | null; image: string | null };
 type Category = { id: string; name: string | null; link_rewrite: string | null; id_parent: string | null; active: boolean | null };
 type Feature = { id: string; name: string | null };
-type Product = { id: string; name: string | null; active: boolean | null; fecha_modificacion: string | null; fecha_modificacion_imagen: string | null; id_manufacturer: string | null; id_category_default: string | null; product_features: string | null };
+type Product = { id: string; name: string | null; active: boolean | null; fecha_modificacion: string | null; fecha_modificacion_imagen: string | null; images_sync_pending?: boolean; id_manufacturer: string | null; id_category_default: string | null; product_features: string | null };
 type IcecatProduct = { id: string; name: string | null; ean13: string | null; shopify?: ShopifyProduct | null };
-type ShopifyProduct = { id: string; handle: string; status: string; title: string; descriptionHtml: string; vendor: string; productType: string; tags: string[]; seo: { title: string | null; description: string | null } | null; media: { nodes: { id: string }[] }; metafields: { nodes: { namespace: string; key: string; value: string }[] }; variants: { nodes: { id: string; sku: string; barcode: string | null; price: string; compareAtPrice: string | null; inventoryPolicy: string; inventoryQuantity: number }[] } };
+type ShopifyProduct = { id: string; handle: string; status: string; title: string; descriptionHtml: string; vendor: string; productType: string; templateSuffix: string | null; tags: string[]; seo: { title: string | null; description: string | null } | null; media: { nodes: { id: string }[] }; metafields: { nodes: { namespace: string; key: string; value: string }[] }; variants: { nodes: { id: string; sku: string; barcode: string | null; price: string; compareAtPrice: string | null; inventoryPolicy: string; inventoryQuantity: number; inventoryItem?: { id: string } | null }[] } };
 type ShopifyUserError = { message: string; field?: string[] | null };
 type ErrorWithDetails = Error & { details?: Record<string, unknown> };
-type Run = { id: string; entity_type: "manufacturers" | "categories" | "features" | "products" | "priorities" | "icecat"; filters: { onlyActive?: boolean; manufacturerId?: string; categoryId?: string; featureId?: string; productId?: string; productIds?: string[]; eans?: string[]; modifiedSince?: string; forceImages?: boolean; force?: boolean; name?: string; collectionName?: string }; status: string; total_count: number; processed_count: number; created_count: number; updated_count: number; unchanged_count: number; unpublished_count: number; error_count: number; cursor_entity_id: string | null; started_at: string | null; worker_token?: string | null };
+type Run = { id: string; entity_type: "manufacturers" | "categories" | "features" | "products" | "priorities" | "icecat"; filters: { onlyActive?: boolean; productSyncMode?: "changes" | "all"; manufacturerId?: string; categoryId?: string; featureId?: string; productId?: string; productIds?: string[]; eans?: string[]; modifiedSince?: string; forceImages?: boolean; force?: boolean; name?: string; collectionName?: string }; status: string; total_count: number; processed_count: number; created_count: number; updated_count: number; unchanged_count: number; unpublished_count: number; error_count: number; cursor_entity_id: string | null; started_at: string | null; worker_token?: string | null };
 type CollectionRef = { id: string; title: string; handle: string; sourceCategoryId: string | null };
 // El origen histórico de las seis exclusiones iniciales era numérico. En la copia
 // actual llegan por sus claves de negocio, así que mantenemos ambas formas.
@@ -381,7 +384,14 @@ async function syncManufacturer(manufacturer: Manufacturer) {
   await publish(collection.id);
   return { collectionId: collection.id, created: true, action: "created" as const };
 }
-async function log(runId: string, values: Record<string, unknown>) { const { error } = await db.from("catalog_import_events").insert({ run_id: runId, ...values }); if (error) throw error; }
+async function log(runId: string, values: Record<string, unknown>) {
+  const { error } = await db.from("catalog_import_events").insert({ run_id: runId, ...values });
+  if (error) throw error;
+  if (values.entity_type === "products" && values.source_entity_id && ["created", "updated", "unchanged"].includes(String(values.outcome))) {
+    const { error: syncError } = await db.from("source_products").update({ shopify_synced: true, images_sync_pending: false }).eq("id", values.source_entity_id);
+    if (syncError) throw syncError;
+  }
+}
 async function archive(messageId: number, queueName = "catalog_import_jobs") {
   const rpc = queueName === "icecat_import_jobs" ? "archive_icecat_import_message" : queueName === "priority_import_jobs" ? "archive_priority_import_message" : "archive_catalog_import_message";
   const { error } = await db.rpc(rpc, { p_message_id: messageId });
@@ -413,15 +423,27 @@ async function nextFeatures(run: Run) {
   return (data ?? []) as Feature[];
 }
 async function nextProducts(run: Run) {
-  let query = db.from("source_products").select("id,name,active,fecha_modificacion,fecha_modificacion_imagen,id_manufacturer,id_category_default,product_features").order("id", { ascending: true }).limit(10);
-  if (run.cursor_entity_id) query = query.gt("id", run.cursor_entity_id);
-  if (run.filters.onlyActive === true) query = query.eq("active", true);
   const productIds = run.filters.productIds?.length ? run.filters.productIds : run.filters.productId ? [run.filters.productId] : [];
-  if (productIds.length) query = query.in("id", productIds);
-  if (run.filters.modifiedSince) query = query.gte("fecha_modificacion", `${run.filters.modifiedSince}T00:00:00`);
-  const { data, error } = await query;
-  if (error) throw error;
-  return (data ?? []) as Product[];
+  let cursor = run.cursor_entity_id;
+  while (true) {
+    let query = db.from("source_products").select("id,name,active,fecha_modificacion,fecha_modificacion_imagen,images_sync_pending,id_manufacturer,id_category_default,product_features,shopify_synced").order("id", { ascending: true }).limit(100);
+    if (cursor) query = query.gt("id", cursor);
+    query = query.eq("active", true);
+    if (productIds.length) query = query.in("id", productIds);
+    if (run.filters.modifiedSince) query = query.gte("fecha_modificacion", `${run.filters.modifiedSince}T00:00:00`);
+    const { data, error } = await query;
+    if (error) throw error;
+    const rows = (data ?? []) as (Product & { shopify_synced?: boolean })[];
+    if (!rows.length) return [];
+    if (run.filters.productSyncMode !== "changes") return rows.slice(0, 10);
+    const { data: links, error: linkError } = await db.from("product_shopify_links").select("source_sku,link_status").in("source_sku", rows.map((row) => row.id));
+    if (linkError) throw linkError;
+    const linked = new Map((links ?? []).map((link) => [link.source_sku, link.link_status]));
+    const candidates = rows.filter((row) => row.shopify_synced === false || row.images_sync_pending === true || linked.get(row.id) !== "linked");
+    if (candidates.length) return candidates.slice(0, 10);
+    cursor = rows[rows.length - 1].id;
+    if (rows.length < 100) return [];
+  }
 }
 async function nextPriorities(run: Run) {
   const name = run.filters.collectionName?.toLowerCase();
@@ -487,8 +509,9 @@ async function validateProduct(product: Product) {
   if (problems.length) throw new Error(`Datos de origen incompletos: ${problems.join("; ")}.`);
   return warnings;
 }
-function productHandle(product: Product) { return (product.name ?? product.id).toLocaleLowerCase("es-ES").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""); }
-const shopifyProductFields = `id handle status title descriptionHtml vendor productType tags seo{title description} media(first:50){nodes{id}} metafields(first:250){nodes{namespace key value}} variants(first:100){nodes{id sku barcode price compareAtPrice inventoryPolicy inventoryQuantity}}`;
+function productHandle(product: Product) { return (product.name ?? product.id).trim().toLocaleLowerCase("es-ES").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""); }
+function sourceProductHandle(value: string | null | undefined, fallback: string) { return String(value || fallback).trim().replace(/^-+|-+$/g, ""); }
+const shopifyProductFields = `id handle status title descriptionHtml vendor productType templateSuffix tags seo{title description} media(first:50){nodes{id}} metafields(first:250){nodes{namespace key value}} variants(first:100){nodes{id sku barcode price compareAtPrice inventoryPolicy inventoryQuantity inventoryItem{id}}}`;
 function icecatShopifyQuery(force: boolean) { return force ? "barcode:*" : "barcode:* AND -metafields.custom.icecat:*"; }
 async function icecatShopifyProductCount(force: boolean) {
   const result = await shopify<{ data: { productsCount: { count: number } } }>(`query($query:String!){productsCount(query:$query,limit:null){count}}`, { query: icecatShopifyQuery(force) });
@@ -498,8 +521,23 @@ async function findShopifyProduct(query: string) {
   const result = await shopify<{ data: { products: { nodes: ShopifyProduct[] } } }>(`query($query:String!){products(first:1,query:$query){nodes{${shopifyProductFields}}}}`, { query });
   return result.data.products.nodes[0] ?? null;
 }
+async function findShopifyProductById(id: string) {
+  const result = await shopify<{ data: { product: ShopifyProduct | null } }>(`query($id:ID!){product(id:$id){${shopifyProductFields}}}`, { id });
+  return result.data.product;
+}
 async function findProduct(product: Pick<Product, "id" | "name">) {
+  const { data: link } = await db.from("product_shopify_links").select("shopify_product_id,link_status").eq("source_sku", product.id).maybeSingle();
+  if (link?.link_status === "linked" && link.shopify_product_id) {
+    const linked = await findShopifyProductById(link.shopify_product_id);
+    if (linked) return linked;
+  }
   return await findShopifyProduct(`sku:${JSON.stringify(product.id)}`) ?? await findShopifyProduct(`handle:${JSON.stringify(productHandle(product))}`);
+}
+async function upsertProductShopifyLink(sourceSku: string, product: ShopifyProduct) {
+  const variant = product.variants.nodes.find((item) => item.sku === sourceSku) ?? product.variants.nodes[0];
+  if (!variant) throw new Error(`Shopify no devolvió la variante técnica del SKU ${sourceSku}.`);
+  const { error } = await db.from("product_shopify_links").upsert({ source_sku: sourceSku, link_status: "linked", shopify_match_count: 1, shopify_product_id: product.id, shopify_variant_id: variant.id, shopify_inventory_item_id: variant.inventoryItem?.id ?? null, shopify_handle: product.handle, shopify_status: product.status }, { onConflict: "source_sku" });
+  if (error) throw error;
 }
 async function syncIcecatProduct(product: IcecatProduct, force: boolean) {
   const existing = product.shopify ?? await findProduct(product);
@@ -528,8 +566,13 @@ async function stageProductImages(product: Record<string, unknown>, imageUrls: s
     try {
       const response = await fetchWithTimeout(proxyUrl(originalUrl), {}, 15_000);
       if (!response.ok) return null;
-      return { filename, alt: String(product.name ?? ""), content: new Uint8Array(await response.arrayBuffer()), mime: response.headers.get("content-type")?.split(";")[0] || "image/jpeg" };
-    } catch {
+      const declaredLength = Number(response.headers.get("content-length") ?? 0);
+      if (declaredLength > MAX_PRODUCT_IMAGE_BYTES) throw new Error(`La imagen ${filename} supera el límite de 25 MB y no se subirá.`);
+      const content = new Uint8Array(await response.arrayBuffer());
+      if (content.byteLength > MAX_PRODUCT_IMAGE_BYTES) throw new Error(`La imagen ${filename} supera el límite de 25 MB y no se subirá.`);
+      return { filename, alt: String(product.name ?? ""), content, mime: response.headers.get("content-type")?.split(";")[0] || "image/jpeg" };
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("supera el límite de 25 MB")) throw error;
       return null;
     }
   }));
@@ -600,6 +643,9 @@ async function archiveInactiveProduct(product: Product) {
   return { action: "unpublished" as const, targetId: existing.id, message: `Producto inactivo archivado y redirigido a /collections/${collection.handle}.` };
 }
 function htmlToText(value: string | null) { return (value ?? "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim(); }
+// Shopify serializa los saltos HTML como <br>, aunque origen los entregue
+// como <br />. Comparamos una forma canónica para no actualizar sin cambios.
+function normalizedHtml(value: unknown) { return String(value ?? "").replace(/<br\s*\/?>/gi, "<br>").trim(); }
 function productTags(product: Record<string, unknown>, categoryNames: string[], existing: string[] = []) {
   const tags = [...categoryNames];
   if (product.on_sale === true) tags.push("Oferta");
@@ -617,9 +663,10 @@ function productDifferences(existing: ShopifyProduct, input: Record<string, unkn
   if (!variant) differences.push("variante");
   if (existing.title !== input.title) differences.push("título");
   if (existing.handle !== input.handle) differences.push("handle");
-  if (existing.descriptionHtml !== input.descriptionHtml) differences.push("descripción");
+  if (normalizedHtml(existing.descriptionHtml) !== normalizedHtml(input.descriptionHtml)) differences.push("descripción");
   if (existing.vendor !== input.vendor) differences.push("fabricante");
   if (existing.productType !== input.productType) differences.push("tipo de producto");
+  if (typeof input.templateSuffix === "string" && existing.templateSuffix !== input.templateSuffix) differences.push("plantilla de tema");
   if (existing.status !== input.status) differences.push("estado");
   if (!sameSet(existing.tags, input.tags as string[])) differences.push("etiquetas");
   if (existing.seo?.title !== (input.seo as { title: string }).title || existing.seo?.description !== (input.seo as { description: string }).description) differences.push("SEO");
@@ -631,7 +678,8 @@ function sameProduct(existing: ShopifyProduct, input: Record<string, unknown>, f
   const variant = existing.variants.nodes[0]; const desired = (input.variants as Record<string, unknown>[])[0]; const fields = input.metafields as { namespace: string; key: string; value: string }[];
   const currentFields = new Map(existing.metafields.nodes.map((field) => [`${field.namespace}.${field.key}`, field.value]));
   return !forceImages && (!hasSourceImages || existing.media.nodes.length > 0) && !!variant
-    && existing.title === input.title && existing.handle === input.handle && existing.descriptionHtml === input.descriptionHtml && existing.vendor === input.vendor && existing.productType === input.productType && existing.status === input.status
+    && existing.title === input.title && existing.handle === input.handle && normalizedHtml(existing.descriptionHtml) === normalizedHtml(input.descriptionHtml) && existing.vendor === input.vendor && existing.productType === input.productType && existing.status === input.status
+    && (typeof input.templateSuffix !== "string" || existing.templateSuffix === input.templateSuffix)
     && sameSet(existing.tags, input.tags as string[]) && existing.seo?.title === (input.seo as { title: string }).title && existing.seo?.description === (input.seo as { description: string }).description
     && variant.sku === desired.sku && variant.barcode === (desired.barcode ?? null) && variant.inventoryPolicy === desired.inventoryPolicy
     && fields.every((field) => currentFields.get(`${field.namespace}.${field.key}`) === field.value);
@@ -658,6 +706,7 @@ async function syncActiveProduct(summary: Product, forceImages: boolean, modifie
   const { data: product, error } = await db.from("source_products").select("*").eq("id", summary.id).single(); if (error || !product) throw error ?? new Error("No se pudo leer el producto.");
   const imageWasModified = Boolean(modifiedSince && product.fecha_modificacion_imagen && new Date(product.fecha_modificacion_imagen).getTime() >= new Date(`${modifiedSince}T00:00:00`).getTime());
   const shouldForceImages = forceImages || imageWasModified;
+  const isPromotion = product.id_category_default === PROMOTION_CATEGORY_ID;
   const existing = await findProduct(summary);
   const [{ data: manufacturer }, categories, fields, locationId] = await Promise.all([
     db.from("source_manufacturers").select("name").eq("id", product.id_manufacturer).single(), categoryNames(product.id_category_default), productMetafields(product), getLocationId(),
@@ -669,15 +718,16 @@ async function syncActiveProduct(summary: Product, forceImages: boolean, modifie
   const price = priceRow ? Number(priceRow.precio_tarifa) * 1.21 : undefined;
   const compareAtPrice = !existing && product.price != null ? Number(product.price) * 1.21 : undefined;
   const stock = stockRow ? (product.available_for_order === false ? 0 : Number(stockRow.quantity ?? 0)) : undefined;
-  const handle = String(product.link_rewrite || productHandle(summary)); const inventoryPolicy = product.available_for_order === false || String(product.dato_extra ?? "").includes("out_of_stock{2}") ? "DENY" : "CONTINUE";
+  const title = String(product.name ?? product.id).trim();
+  const handle = sourceProductHandle(product.link_rewrite, productHandle(summary)); const inventoryPolicy = product.available_for_order === false || String(product.dato_extra ?? "").includes("out_of_stock{2}") ? "DENY" : "CONTINUE";
   // Igual que el Python original: el tipo no se envía en ProductSetInput;
   // Shopify lo resuelve usando la definición existente del metafield.
   const weight = product.weight == null ? undefined : Number(product.weight);
   const variant: Record<string, unknown> = { optionValues: [{ optionName: "Title", name: "Default Title" }], sku: product.id, ...(product.ean13 ? { barcode: product.ean13 } : {}), inventoryPolicy, ...(Number.isFinite(weight) ? { inventoryItem: { measurement: { weight: { value: weight, unit: "KILOGRAMS" } } } } : {}) };
   if (!existing) Object.assign(variant, { price, ...(compareAtPrice ? { compareAtPrice } : {}), inventoryQuantities: [{ locationId, name: "on_hand", quantity: stock }] });
-  const input: Record<string, unknown> = { title: product.name, handle, descriptionHtml: product.description ?? "", vendor: manufacturer.name, productType: categories[0] ?? "", tags: productTags(product, categories, existing?.tags), status: "ACTIVE", seo: { title: product.meta_title || product.name, description: product.meta_description || htmlToText(product.description_short) }, metafields: fields.map(({ namespace, key, value }) => ({ namespace, key, value })), productOptions: [{ name: "Title", position: 1, values: [{ name: "Default Title" }] }], variants: [variant] };
-  if (existing) { input.id = existing.id; if (sameProduct(existing, input, shouldForceImages, Boolean(product.images))) { const sourceCount = String(product.images ?? "").split("@").filter(Boolean).length; return { action: "unchanged" as const, targetId: existing.id, message: `Producto ya actualizado: sin cambios. Imágenes: sin cambios (${existing.media.nodes.length} actuales; ${sourceCount} en origen).` }; } }
-  const result = await shopify<{ data: { productSet: { product: { id: string } | null; userErrors: ShopifyUserError[] } } }>(`mutation($input:ProductSetInput!){productSet(input:$input){product{id} userErrors{field message}}}`, { input });
+  const input: Record<string, unknown> = { title, handle, descriptionHtml: product.description ?? "", vendor: manufacturer.name, productType: categories[0] ?? "", tags: productTags(product, categories, existing?.tags), status: "ACTIVE", seo: { title: String(product.meta_title || title).trim(), description: product.meta_description || htmlToText(product.description_short) }, metafields: fields.map(({ namespace, key, value }) => ({ namespace, key, value })), productOptions: [{ name: "Title", position: 1, values: [{ name: "Default Title" }] }], variants: [variant], ...(isPromotion ? { templateSuffix: PROMOTION_TEMPLATE_SUFFIX } : {}) };
+  if (existing) { input.id = existing.id; if (sameProduct(existing, input, shouldForceImages, Boolean(product.images))) { await upsertProductShopifyLink(product.id, existing); const sourceCount = String(product.images ?? "").split("@").filter(Boolean).length; return { action: "unchanged" as const, targetId: existing.id, message: `Producto ya actualizado: sin cambios. Imágenes: sin cambios (${existing.media.nodes.length} actuales; ${sourceCount} en origen).` }; } }
+  const result = await shopify<{ data: { productSet: { product: ShopifyProduct | null; userErrors: ShopifyUserError[] } } }>(`mutation($input:ProductSetInput!){productSet(input:$input){product{${shopifyProductFields}} userErrors{field message}}}`, { input });
   const updated = result.data.productSet.product; if (!updated || result.data.productSet.userErrors.length) {
     const details = result.data.productSet.userErrors.map((item) => {
       const path = item.field?.join(".");
@@ -691,6 +741,7 @@ async function syncActiveProduct(summary: Product, forceImages: boolean, modifie
   }
   const imageResult = await syncProductImages(updated.id, product, shouldForceImages, existing);
   await publish(updated.id);
+  await upsertProductShopifyLink(product.id, updated);
   const imageMessage = imageResult.removedCount
     ? `Imágenes: se reemplazaron ${imageResult.removedCount} por ${imageResult.addedCount} nuevas (${imageResult.sourceCount} en origen).`
     : imageResult.addedCount
@@ -698,7 +749,8 @@ async function syncActiveProduct(summary: Product, forceImages: boolean, modifie
       : `Imágenes: ${imageResult.action}.`;
   const redirectRemoved = existing?.status === "ARCHIVED" ? await removeProductRedirect(existing.handle) : false;
   const differences = existing ? productDifferences(existing, input) : [];
-  return { action: existing ? "updated" as const : "created" as const, targetId: updated.id, message: `${existing ? "Producto actualizado y publicado." : "Producto creado y publicado."}${redirectRemoved ? " Redirección de producto eliminada." : ""} ${imageMessage}${differences.length ? ` Cambios detectados: ${differences.join(", ")}.` : ""}` };
+  const publicationMessage = existing ? "Producto actualizado y publicado." : "Producto creado y publicado.";
+  return { action: existing ? "updated" as const : "created" as const, targetId: updated.id, message: `${publicationMessage}${redirectRemoved ? " Redirección de producto eliminada." : ""} ${imageMessage}${differences.length ? ` Cambios detectados: ${differences.join(", ")}.` : ""}` };
 }
 export async function processMessage(message: { msg_id: number; message: { run_id?: string }; read_ct?: number }, queueName = "catalog_import_jobs") {
   const messageId = Number(message.msg_id); const runId = message.message?.run_id;
@@ -782,7 +834,7 @@ export async function processMessage(message: { msg_id: number; message: { run_i
               action = result.action; targetId = result.targetId; outcome = result.action === "unpublished" ? "updated" : "updated"; messageText = result.message;
             } else {
               const warnings = await validateProduct(product);
-              const result = await syncActiveProduct(product, run.filters.forceImages === true, run.filters.modifiedSince);
+              const result = await syncActiveProduct(product, run.filters.forceImages === true || product.images_sync_pending === true, run.filters.modifiedSince);
               action = result.action; targetId = result.targetId; outcome = result.action; messageText = result.message;
               if (warnings.length) messageText += ` Aviso: ${warnings.join("; ")}.`;
             }

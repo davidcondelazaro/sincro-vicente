@@ -17,10 +17,26 @@ Deno.serve(async (request) => {
   if (!token || request.headers.get("x-catalog-ingest-token") !== token) return respond({ error: "No autorizado" }, 401);
   try {
     const body = await request.json() as {
-      action: "start" | "rows" | "complete" | "fail" | "sqlserver-start" | "sqlserver-rows" | "sqlserver-progress" | "sqlserver-complete" | "sqlserver-fail" | "sqlserver-list";
+      action: "start" | "rows" | "complete" | "fail" | "sqlserver-start" | "sqlserver-rows" | "sqlserver-progress" | "sqlserver-complete" | "sqlserver-fail" | "sqlserver-list" | "shopify-links-skus" | "shopify-links-upsert";
       batchId?: string; sourceType?: "sqlite" | "sqlserver" | "csv"; sourceName?: string; entity?: string; rows?: Record<string, unknown>[]; counts?: Record<string, number>; error?: string;
-      tableNames?: string[]; sourceTable?: string; rowStart?: number; progress?: Record<string, unknown>;
+      tableNames?: string[]; sourceTable?: string; rowStart?: number; progress?: Record<string, unknown>; afterSourceSku?: string;
     };
+    if (body.action === "shopify-links-skus") {
+      let query = db.from("source_products").select("id").order("id", { ascending: true }).limit(500);
+      if (body.afterSourceSku) query = query.gt("id", body.afterSourceSku);
+      const { data, error } = await query;
+      if (error) throw error;
+      return respond({ rows: data ?? [] });
+    }
+    if (body.action === "shopify-links-upsert") {
+      if (!body.rows?.length || body.rows.length > 50) return respond({ error: "El lote de enlaces debe contener entre 1 y 50 filas" }, 400);
+      const allowedStatuses = new Set(["linked", "missing_in_shopify", "ambiguous_in_shopify"]);
+      const valid = body.rows.every((row) => typeof row.source_sku === "string" && row.source_sku.trim() && allowedStatuses.has(String(row.link_status)) && Number.isInteger(row.shopify_match_count));
+      if (!valid) return respond({ error: "Lote de enlaces no válido" }, 400);
+      const { error } = await db.from("product_shopify_links").upsert(body.rows, { onConflict: "source_sku" });
+      if (error) throw error;
+      return respond({ accepted: body.rows.length });
+    }
     if (body.action === "sqlserver-list") {
       const { data, error } = await db.from("source_sqlserver_import_runs").select("*").order("started_at", { ascending: false }).limit(15);
       if (error) throw error;

@@ -4,8 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 
-type Section = "home" | "customer" | "customers" | "catalog" | "priorities" | "icecat" | "supabase" | "prices" | "stock";
-type IconName = "home" | "database" | "users" | "catalog" | "price" | "stock" | "sort" | "icecat" | "export";
+type Section = "home" | "customer" | "customers" | "catalog" | "priorities" | "icecat" | "supabase" | "prices" | "stock" | "orders";
+type IconName = "home" | "database" | "users" | "catalog" | "price" | "stock" | "sort" | "icecat" | "orders" | "export";
 
 const navigation: { section: Section; href: string; label: string; icon: IconName }[] = [
   { section: "home", href: "/", label: "Inicio", icon: "home" },
@@ -16,6 +16,7 @@ const navigation: { section: Section; href: string; label: string; icon: IconNam
   { section: "stock", href: "/importacion-stock", label: "Importación de stock", icon: "stock" },
   { section: "priorities", href: "/ordenacion-productos", label: "Ordenación de productos", icon: "sort" },
   { section: "icecat", href: "/importacion-icecat", label: "Importación Icecat", icon: "icecat" },
+  { section: "orders", href: "/pedidos-mhd", label: "Pedidos MHD", icon: "orders" },
 ];
 
 export function AppSidebar({ active, userEmail }: { active: Section; userEmail: string | null }) {
@@ -32,7 +33,7 @@ export function AppSidebar({ active, userEmail }: { active: Section; userEmail: 
     <aside className={`fixed inset-y-0 right-0 z-50 flex w-72 min-w-0 flex-col overflow-hidden border-l border-zinc-200 bg-white px-5 py-5 shadow-xl transition-transform lg:static lg:w-60 lg:border-b-0 lg:border-l-0 lg:shadow-none ${open ? "translate-x-0" : "translate-x-full lg:translate-x-0"}`}>
       <div className="hidden min-w-0 lg:block"><Link href="/" className="block" aria-label="Ir al inicio"><Image src="/electronica-vicente.webp" alt="Electrónica Vicente" width={600} height={152} priority className="h-auto w-full max-w-[13rem]" /><p className="mt-3 text-sm font-semibold tracking-[0.18em] text-emerald-700 uppercase">Sincro Vicente</p></Link><p className="mt-5 text-xs text-zinc-500">Sesión iniciada</p><p className="mt-1 truncate text-sm font-medium text-zinc-800">{userEmail ?? "comprobando…"}</p><form action="/auth/logout" method="post"><button className="mt-3 w-full rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50">Cerrar sesión</button></form></div>
       <div className="flex items-center justify-between lg:hidden"><p className="text-sm font-semibold text-zinc-900">MENÚ</p><button type="button" onClick={close} className="grid h-11 w-11 place-items-center rounded-lg text-3xl leading-none text-zinc-600 hover:bg-zinc-100" aria-label="Cerrar menú">×</button></div>
-      <nav className="mt-5 flex min-w-0 flex-col gap-2 lg:mt-6" aria-label="Módulos de la aplicación">{navigation.map((entry) => <a key={entry.section} onClick={close} href={entry.href} className={itemClass(entry.section)}><Icon name={entry.icon} /><span className="min-w-0 truncate">{entry.label}</span></a>)}<span className="flex min-w-0 items-center gap-3 rounded-lg px-3 py-2 text-sm text-zinc-400"><Icon name="export" /><span className="min-w-0"><span className="block truncate">Exportar pedidos a MHD</span><span className="block text-xs">Próximamente</span></span></span></nav>
+      <nav className="mt-5 flex min-w-0 flex-col gap-2 lg:mt-6" aria-label="Módulos de la aplicación">{navigation.map((entry) => <a key={entry.section} onClick={close} href={entry.href} className={itemClass(entry.section)}><Icon name={entry.icon} /><span className="min-w-0 truncate">{entry.label}</span></a>)}</nav>
     </aside>
   </>;
 }
@@ -47,6 +48,7 @@ function Icon({ name }: { name: IconName }) {
     stock: <><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5v-9Z" /><path d="m3.5 7.8 8.5 4.5 8.5-4.5M12 12.5V21" /></>,
     sort: <><path d="M8 6h13M8 12h10M8 18h7M3 6h.01M3 12h.01M3 18h.01" /></>,
     icecat: <><circle cx="12" cy="12" r="9" /><path d="M3.6 9h16.8M3.6 15h16.8M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" /></>,
+    orders: <><path d="M6 3h12v18H6z" /><path d="M9 3v3h6V3M9 10h6M9 14h6M9 18h3" /></>,
     export: <><path d="M10 17l5-5-5-5" /><path d="M15 12H3" /><path d="M21 19V5a2 2 0 0 0-2-2h-6" /></>,
   };
   return <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
