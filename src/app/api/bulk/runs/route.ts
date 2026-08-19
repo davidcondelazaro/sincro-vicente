@@ -25,15 +25,16 @@ async function countCustomers(mode: Mode, parameters: Record<string, unknown>) {
     connectTimeout: 10_000,
   });
   try {
+    const validOrdersFilter = parameters.onlyWithValidOrders ? " AND EXISTS (SELECT 1 FROM ev_orders o WHERE o.id_customer = c.id_customer AND o.valid = 1)" : "";
     if (mode === "from_date") {
       const [rows] = await connection.execute<mysql.RowDataPacket[]>(
-        "SELECT COUNT(*) AS total, MAX(id_customer) AS max_id FROM ev_customer c WHERE active = 1 AND deleted = 0 AND date_add >= ? AND date_add < ? AND EXISTS (SELECT 1 FROM ev_orders o WHERE o.id_customer = c.id_customer AND o.valid = 1)",
+        `SELECT COUNT(*) AS total, MAX(id_customer) AS max_id FROM ev_customer c WHERE active = 1 AND deleted = 0 AND date_add >= ? AND date_add < ?${validOrdersFilter}`,
         [String(parameters.fromDate), String(parameters.until)],
       );
       return { total: Number(rows[0].total), maxId: Number(rows[0].max_id ?? 0) };
     }
     const [rows] = await connection.execute<mysql.RowDataPacket[]>(
-      "SELECT COUNT(*) AS total, MAX(id_customer) AS max_id FROM ev_customer c WHERE active = 1 AND deleted = 0 AND EXISTS (SELECT 1 FROM ev_orders o WHERE o.id_customer = c.id_customer AND o.valid = 1)",
+      `SELECT COUNT(*) AS total, MAX(id_customer) AS max_id FROM ev_customer c WHERE active = 1 AND deleted = 0${validOrdersFilter}`,
     );
     const total = Number(rows[0].total);
     return { total: mode === "all" ? total : Math.min(total, Number(parameters.latest)), maxId: Number(rows[0].max_id ?? 0) };
@@ -47,14 +48,14 @@ function validInput(input: Record<string, unknown>) {
   if (mode === "from_date") {
     const fromDate = String(input.fromDate ?? "");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(fromDate)) throw new Error("Indica una fecha de inicio válida.");
-    return { mode, parameters: { fromDate: `${fromDate} 00:00:00`, until: madridMysqlDateTime() } } as const;
+    return { mode, parameters: { fromDate: `${fromDate} 00:00:00`, until: madridMysqlDateTime(), onlyWithValidOrders: input.onlyWithValidOrders === true } } as const;
   }
   if (mode === "latest") {
     const latest = Number(input.latest);
     if (!Number.isInteger(latest) || latest < 1 || latest > 100_000) throw new Error("Indica entre 1 y 100.000 clientes.");
-    return { mode, parameters: { latest } } as const;
+    return { mode, parameters: { latest, onlyWithValidOrders: input.onlyWithValidOrders === true } } as const;
   }
-  if (mode === "all") return { mode, parameters: {} } as const;
+  if (mode === "all") return { mode, parameters: { onlyWithValidOrders: input.onlyWithValidOrders === true } } as const;
   throw new Error("Elige el alcance de la importación.");
 }
 

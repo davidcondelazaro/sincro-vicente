@@ -4,12 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 
-type Section = "home" | "customer" | "customers" | "catalog" | "priorities" | "icecat" | "supabase" | "prices" | "stock" | "orders";
+type Section = "home" | "customer" | "customers" | "catalog" | "priorities" | "icecat" | "supabase" | "mhdImport" | "mhdCatalog" | "prices" | "stock" | "orders";
 type IconName = "home" | "database" | "users" | "catalog" | "price" | "stock" | "sort" | "icecat" | "orders" | "export";
 
 const navigation: { section: Section; href: string; label: string; icon: IconName }[] = [
   { section: "home", href: "/", label: "Inicio", icon: "home" },
-  { section: "supabase", href: "/importar-datos-sql-server", label: "Importar a Supabase", icon: "database" },
+  { section: "supabase", href: "/importar-datos-sql-server", label: "Importar de SQL Server", icon: "database" },
+  { section: "mhdImport", href: "/importar-datos-mhd", label: "Importar de MHD", icon: "database" },
+  { section: "mhdCatalog", href: "/importacion-catalogo-mhd", label: "Catálogo MHD", icon: "catalog" },
   { section: "customers", href: "/importacion-clientes", label: "Importación de clientes", icon: "users" },
   { section: "catalog", href: "/importacion-catalogo", label: "Importación catálogo", icon: "catalog" },
   { section: "prices", href: "/importacion-precios", label: "Importación de precios", icon: "price" },
@@ -27,11 +29,11 @@ export function AppSidebar({ active, userEmail }: { active: Section; userEmail: 
   return <>
     <header className="fixed inset-x-0 top-0 z-30 flex items-center justify-between border-b border-zinc-200 bg-white px-5 py-3 shadow-sm lg:hidden">
       <Link href="/" aria-label="Ir al inicio"><Image src="/electronica-vicente.webp" alt="Electrónica Vicente" width={600} height={152} priority className="h-auto w-40" /><p className="mt-1 text-xs font-semibold tracking-[0.16em] text-emerald-700 uppercase">Sincro Vicente</p></Link>
-      <div className="flex items-center gap-2"><form action="/auth/logout" method="post"><button type="submit" className="grid h-10 w-10 cursor-pointer place-items-center rounded-lg border border-zinc-300 text-zinc-700 hover:bg-zinc-50" aria-label="Cerrar sesión"><Icon name="export" /></button></form><button type="button" onClick={() => setOpen(true)} className="grid h-10 w-10 cursor-pointer place-items-center rounded-lg border border-zinc-300 text-zinc-700 hover:bg-zinc-50" aria-label="Abrir menú"><svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg></button></div>
+      <div className="flex items-center gap-2"><form action="/auth/logout" method="post"><button type="submit" className="grid h-10 w-10 place-items-center rounded-xl border border-zinc-300 bg-white text-zinc-800 shadow-sm hover:bg-zinc-50" aria-label="Cerrar sesión"><Icon name="export" /></button></form><button type="button" onClick={() => setOpen(true)} className="grid h-10 w-10 cursor-pointer place-items-center rounded-lg border border-zinc-300 text-zinc-700 hover:bg-zinc-50" aria-label="Abrir menú"><svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg></button></div>
     </header>
     {open && <button type="button" onClick={close} className="fixed inset-0 z-40 bg-zinc-950/30 lg:hidden" aria-label="Cerrar menú" />}
     <aside className={`fixed inset-y-0 right-0 z-50 flex w-72 min-w-0 flex-col overflow-hidden border-l border-zinc-200 bg-white px-5 py-5 shadow-xl transition-transform lg:static lg:w-60 lg:border-b-0 lg:border-l-0 lg:shadow-none ${open ? "translate-x-0" : "translate-x-full lg:translate-x-0"}`}>
-      <div className="hidden min-w-0 lg:block"><Link href="/" className="block" aria-label="Ir al inicio"><Image src="/electronica-vicente.webp" alt="Electrónica Vicente" width={600} height={152} priority className="h-auto w-full max-w-[13rem]" /><p className="mt-3 text-sm font-semibold tracking-[0.18em] text-emerald-700 uppercase">Sincro Vicente</p></Link><p className="mt-5 text-xs text-zinc-500">Sesión iniciada</p><p className="mt-1 truncate text-sm font-medium text-zinc-800">{userEmail ?? "comprobando…"}</p><form action="/auth/logout" method="post"><button className="mt-3 w-full rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50">Cerrar sesión</button></form></div>
+      <div className="hidden min-w-0 lg:block"><Link href="/" className="block" aria-label="Ir al inicio"><Image src="/electronica-vicente.webp" alt="Electrónica Vicente" width={600} height={152} priority className="h-auto w-full max-w-[13rem]" /><p className="mt-3 text-sm font-semibold tracking-[0.18em] text-emerald-700 uppercase">Sincro Vicente</p></Link><p className="mt-5 text-xs text-zinc-500">Sesión iniciada</p><p className="mt-1 truncate text-sm font-medium text-zinc-800">{userEmail ?? "comprobando…"}</p><form action="/auth/logout" method="post"><button className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50"><Icon name="export" />Cerrar sesión</button></form></div>
       <div className="flex items-center justify-between lg:hidden"><p className="text-sm font-semibold text-zinc-900">MENÚ</p><button type="button" onClick={close} className="grid h-11 w-11 place-items-center rounded-lg text-3xl leading-none text-zinc-600 hover:bg-zinc-100" aria-label="Cerrar menú">×</button></div>
       <nav className="mt-5 flex min-w-0 flex-col gap-2 lg:mt-6" aria-label="Módulos de la aplicación">{navigation.map((entry) => <a key={entry.section} onClick={close} href={entry.href} className={itemClass(entry.section)}><Icon name={entry.icon} /><span className="min-w-0 truncate">{entry.label}</span></a>)}</nav>
     </aside>
@@ -49,7 +51,7 @@ function Icon({ name }: { name: IconName }) {
     sort: <><path d="M8 6h13M8 12h10M8 18h7M3 6h.01M3 12h.01M3 18h.01" /></>,
     icecat: <><circle cx="12" cy="12" r="9" /><path d="M3.6 9h16.8M3.6 15h16.8M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" /></>,
     orders: <><path d="M6 3h12v18H6z" /><path d="M9 3v3h6V3M9 10h6M9 14h6M9 18h3" /></>,
-    export: <><path d="M10 17l5-5-5-5" /><path d="M15 12H3" /><path d="M21 19V5a2 2 0 0 0-2-2h-6" /></>,
+    export: <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /></>,
   };
   return <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }

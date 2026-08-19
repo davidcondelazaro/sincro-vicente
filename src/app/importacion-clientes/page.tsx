@@ -17,6 +17,7 @@ export default function BulkImportsPage() {
   const [mode, setMode] = useState<Mode>("from_date");
   const [fromDate, setFromDate] = useState("");
   const [latest, setLatest] = useState("100");
+  const [onlyWithValidOrders, setOnlyWithValidOrders] = useState(false);
   const [run, setRun] = useState<Run | null>(null);
   const [history, setHistory] = useState<Run[]>([]);
   const [historyPage, setHistoryPage] = useState(0);
@@ -67,7 +68,7 @@ export default function BulkImportsPage() {
   async function start(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setStarting(true); setError(null);
     try {
-      const response = await fetch("/api/bulk/runs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode, fromDate, latest }) });
+      const response = await fetch("/api/bulk/runs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode, fromDate, latest, onlyWithValidOrders }) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "No se pudo iniciar la importación.");
       setHistoryPage(0); setRun(body.run); setLogsExpanded(true); setHistory((items) => [body.run, ...items.filter((item) => item.id !== body.run.id)]); setHistoryHasMore(true); setEvents([]); await loadEvents(body.run.id);
@@ -93,7 +94,7 @@ export default function BulkImportsPage() {
   return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
     <AppSidebar active="customers" userEmail={userEmail} />
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-7 px-6 pb-24 pt-28 sm:px-10 lg:mx-0 lg:py-16">
-      <header><h1 className="text-4xl font-semibold tracking-tight text-zinc-950">Importación de clientes desde PrestaShop</h1><p className="mt-3 max-w-3xl text-zinc-600">Lanza una importación persistente. Puedes cerrar esta pantalla: la cola seguirá procesando y podrás volver a ver su avance. Los alcances masivos incluyen únicamente clientes activos con al menos un pedido válido.</p></header>
+      <header><h1 className="text-4xl font-semibold tracking-tight text-zinc-950">Importación de clientes desde PrestaShop</h1><p className="mt-3 max-w-3xl text-zinc-600">Lanza una importación persistente. Puedes cerrar esta pantalla: la cola seguirá procesando y podrás volver a ver su avance. Los alcances masivos incluyen clientes activos y no eliminados, tengan pedidos o no.</p></header>
       {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">{error}</p>}
       <form onSubmit={start} className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
         <fieldset disabled={Boolean(active) || starting} className="space-y-4 disabled:opacity-60"><legend className="text-lg font-semibold">Alcance de la importación</legend><div className="grid gap-3 md:grid-cols-3">
@@ -103,7 +104,8 @@ export default function BulkImportsPage() {
         </div>
         {mode === "from_date" && <label className="block text-sm font-medium">Desde la fecha<input required value={fromDate} onChange={(event) => setFromDate(event.target.value)} type="date" className="mt-1 block h-11 w-full rounded-lg border border-zinc-300 px-3" /><span className="mt-1 block font-normal text-zinc-500">Desde las 00:00, hora de Madrid.</span></label>}
         {mode === "latest" && <label className="block text-sm font-medium">Número de últimos clientes<input required value={latest} onChange={(event) => setLatest(event.target.value)} type="number" min="1" max="100000" className="mt-1 block h-11 w-full rounded-lg border border-zinc-300 px-3" /></label>}
-        {mode === "all" && <p className="text-sm text-zinc-600">Se incluirán todos los clientes activos que tengan al menos un pedido válido.</p>}
+        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-zinc-200 p-4 text-sm text-zinc-700"><input checked={onlyWithValidOrders} onChange={(event) => setOnlyWithValidOrders(event.target.checked)} type="checkbox" className="mt-0.5 size-4" /><span><span className="font-medium text-zinc-950">Solo clientes con pedidos válidos</span><span className="mt-1 block text-zinc-500">Si no lo marcas, se importarán también los clientes sin compras.</span></span></label>
+        {mode === "all" && <p className="text-sm text-zinc-600">Se incluirán todos los clientes activos y no eliminados{onlyWithValidOrders ? " que tengan al menos un pedido válido." : "."}</p>}
         <button className="h-11 rounded-lg bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800 disabled:opacity-60">{starting ? "Preparando cola…" : "Iniciar el proceso"}</button></fieldset>
       </form>
       {loading ? <p className="text-zinc-500">Cargando ejecuciones…</p> : run ? (

@@ -7,7 +7,7 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 
 type Row = { id_customer: number; firstname: string; lastname: string; email: string; newsletter: number; note: string | null; fecha_alta: string; total_pedidos: number; importe_total: number | string | null };
 type Address = { firstname: string | null; lastname: string | null; address1: string | null; address2: string | null; city: string | null; postcode: string | null; phone: string | null; dni: string | null; company: string | null; vat_number: string | null; province_name: string | null; country_code: string | null };
-type Parameters = { customerId?: string; fromDate?: string; until?: string; latest?: number; maxCustomerId: number };
+type Parameters = { customerId?: string; fromDate?: string; until?: string; latest?: number; maxCustomerId: number; onlyWithValidOrders?: boolean };
 
 const province: Record<string, string> = { Baleares: "Islas Baleares", Girona: "Gerona", "A Coruña": "La Coruña", Lleida: "Lérida" };
 const prefix: Record<string, string> = { PT: "+351", ES: "+34", FR: "+33", IT: "+39", DE: "+49", GB: "+44", UK: "+44" };
@@ -30,7 +30,8 @@ async function idsForRun(mode: string, parameters: Parameters, cursor: number | 
   const connection = await mysqlConnection();
   try {
     const values: (number | string)[] = [parameters.maxCustomerId];
-    let where = "c.active = 1 AND c.deleted = 0 AND c.id_customer <= ? AND EXISTS (SELECT 1 FROM ev_orders o WHERE o.id_customer = c.id_customer AND o.valid = 1)";
+    let where = "c.active = 1 AND c.deleted = 0 AND c.id_customer <= ?";
+    if (parameters.onlyWithValidOrders) where += " AND EXISTS (SELECT 1 FROM ev_orders o WHERE o.id_customer = c.id_customer AND o.valid = 1)";
     if (cursor) { where += " AND c.id_customer < ?"; values.push(cursor); }
     if (mode === "from_date") { where += " AND c.date_add >= ? AND c.date_add <= ?"; values.push(parameters.fromDate!, parameters.until!); }
     values.push(Math.min(25, remaining));

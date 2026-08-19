@@ -715,8 +715,9 @@ async function syncActiveProduct(summary: Product, forceImages: boolean, modifie
   const priceRow = existing ? null : (await db.from("source_prices").select("precio_tarifa").eq("id_product", product.id).limit(1).single()).data;
   const stockRow = existing ? null : (await db.from("source_stock").select("quantity").eq("id_product", product.id).limit(1).single()).data;
   if (!existing && (!priceRow || !stockRow)) throw new Error("No se pudieron obtener precio y stock necesarios para dar de alta el producto.");
-  const price = priceRow ? Number(priceRow.precio_tarifa) * 1.21 : undefined;
-  const compareAtPrice = !existing && product.price != null ? Number(product.price) * 1.21 : undefined;
+  // Conservamos la precisión de origen hasta después de aplicar el IVA.
+  const price = priceRow ? money(Number(priceRow.precio_tarifa) * 1.21) : undefined;
+  const compareAtPrice = !existing && product.price != null ? money(Number(product.price) * 1.21) : undefined;
   const stock = stockRow ? (product.available_for_order === false ? 0 : Number(stockRow.quantity ?? 0)) : undefined;
   const title = String(product.name ?? product.id).trim();
   const handle = sourceProductHandle(product.link_rewrite, productHandle(summary)); const inventoryPolicy = product.available_for_order === false || String(product.dato_extra ?? "").includes("out_of_stock{2}") ? "DENY" : "CONTINUE";

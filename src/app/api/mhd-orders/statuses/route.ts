@@ -25,6 +25,14 @@ function dateFromMhd(value: MhdStatusEntry["fecha"]) {
   }
   return null;
 }
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
 
 export async function POST() {
   const supabase = await createClient();
@@ -33,12 +41,13 @@ export async function POST() {
 
   const { data: exports, error: exportsError } = await supabase
     .from("mhd_order_exports")
-    .select("id,mhd_order_id,mhd_status")
+    .select("id,mhd_order_id,mhd_status,mhd_status_payload")
     .eq("status", "exported")
     .not("mhd_order_id", "is", null);
   if (exportsError) return Response.json({ error: "No se pudieron cargar los pedidos exportados." }, { status: 500 });
 
   let checkedCount = 0;
+  let changedCount = 0;
   const errors: string[] = [];
   for (const item of exports ?? []) {
     try {
@@ -49,12 +58,19 @@ export async function POST() {
       const received = (body.data.arr_estados ?? []).filter((entry) => entry.estado).map((entry) => ({ status: entry.estado!, occurred_at: dateFromMhd(entry.fecha), source_payload: entry }));
       const latest = received.sort((a, b) => (b.occurred_at ?? "").localeCompare(a.occurred_at ?? ""))[0];
       const currentStatus = body.data.estado_cliente ?? latest?.status ?? item.mhd_status;
-      await supabase.from("mhd_order_exports").update({ mhd_status: currentStatus, mhd_status_payload: { estado_cliente: body.data.estado_cliente ?? null, arr_estados: body.data.arr_estados ?? [] }, mhd_status_updated_at: latest?.occurred_at ?? new Date().toISOString(), last_checked_at: new Date().toISOString() }).eq("id", item.id);
+      const statusPayload = { estado_cliente: body.data.estado_cliente ?? null, arr_estados: body.data.arr_estados ?? [] };
+      const previousPayload = item.mhd_status_payload as { estado_cliente?: string | null; arr_estados?: MhdStatusEntry[] } | null;
+      const statusChanged = currentStatus !== item.mhd_status;
+      const payloadStatusChanged = previousPayload?.estado_cliente !== statusPayload.estado_cliente;
+      const historyChanged = canonicalJson(previousPayload?.arr_estados ?? []) !== canonicalJson(statusPayload.arr_estados);
+      const changed = statusChanged || payloadStatusChanged || historyChanged;
+      if (changed) changedCount += 1;
+      await supabase.from("mhd_order_exports").update({ mhd_status: currentStatus, mhd_status_payload: statusPayload, mhd_status_updated_at: latest?.occurred_at ?? new Date().toISOString(), last_checked_at: new Date().toISOString() }).eq("id", item.id);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error desconocido.";
       errors.push(`Pedido MHD #${item.mhd_order_id}: ${message}`);
       await supabase.from("mhd_order_exports").update({ last_checked_at: new Date().toISOString() }).eq("id", item.id);
     }
   }
-  return Response.json({ checkedCount, errors });
+  return Response.json({ checkedCount, changedCount, errors });
 }

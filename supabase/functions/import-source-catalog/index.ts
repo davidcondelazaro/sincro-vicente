@@ -17,7 +17,7 @@ Deno.serve(async (request) => {
   if (!token || request.headers.get("x-catalog-ingest-token") !== token) return respond({ error: "No autorizado" }, 401);
   try {
     const body = await request.json() as {
-      action: "start" | "rows" | "complete" | "fail" | "sqlserver-start" | "sqlserver-rows" | "sqlserver-progress" | "sqlserver-complete" | "sqlserver-fail" | "sqlserver-list" | "shopify-links-skus" | "shopify-links-upsert";
+      action: "start" | "rows" | "complete" | "fail" | "sqlserver-start" | "sqlserver-rows" | "sqlserver-progress" | "sqlserver-complete" | "sqlserver-fail" | "sqlserver-list" | "shopify-links-skus" | "shopify-links-upsert" | "mhd-product-detail";
       batchId?: string; sourceType?: "sqlite" | "sqlserver" | "csv"; sourceName?: string; entity?: string; rows?: Record<string, unknown>[]; counts?: Record<string, number>; error?: string;
       tableNames?: string[]; sourceTable?: string; rowStart?: number; progress?: Record<string, unknown>; afterSourceSku?: string;
     };
@@ -79,6 +79,74 @@ Deno.serve(async (request) => {
         const { error: deleteError } = await db.from("source_sqlserver_rows").delete().eq("import_run_id", body.batchId);
         if (deleteError) throw deleteError;
         const { error } = await db.from("source_sqlserver_import_runs").update({ status: "failed", error_message: body.error ?? "Error de copia", completed_at: new Date().toISOString() }).eq("id", body.batchId);
+        if (error) throw error;
+        return respond({ ok: true });
+      }
+    }
+    if (body.action === "mhd-list") {
+      const { data, error } = await db.from("mhd_catalog_import_runs").select("*").order("started_at", { ascending: false }).limit(30);
+      if (error) throw error;
+      return respond({ runs: data ?? [] });
+    }
+    if (body.action === "mhd-view") {
+      const entityTables: Record<string, { table: string; select: string; order: string; search: string[]; supportsEan?: boolean }> = {
+        products: { table: "mhd_catalog_products", select: "codigo,titulo,nombre_marca,nombre_familia,pvp,stock,loaded_at", order: "codigo", search: ["codigo", "codigo_ean", "titulo"] },
+        categories: { table: "mhd_catalog_categories", select: "cd_familia,nombre,nivel,activo,visible,breadcrumb,loaded_at", order: "nombre", search: ["nombre", "cd_familia"] },
+        brands: { table: "mhd_catalog_brands", select: "cd_marca,nombre,activo,validada,loaded_at", order: "nombre", search: ["nombre", "cd_marca"] },
+        prices: { table: "mhd_catalog_prices", select: "codigo,pvp,pvp_antes,iva,fecha_modificacion_precio,loaded_at", order: "codigo", search: ["codigo"], supportsEan: true },
+        stock: { table: "mhd_catalog_stock", select: "codigo,stock,fecha_modificacion_stock,loaded_at", order: "codigo", search: ["codigo"], supportsEan: true },
+      };
+      const item = entityTables[String((body as Record<string, unknown>).entity ?? "products")];
+      if (!item) return respond({ error: "Entidad MHD no válida" }, 400);
+      const page = Math.max(0, Number((body as Record<string, unknown>).page ?? 0));
+      const search = String((body as Record<string, unknown>).search ?? "").trim();
+      let query = db.from(item.table).select(item.select, { count: "exact" }).order(item.order).range(page * 50, page * 50 + 49);
+      if (search && item.supportsEan) {
+        const { data: eanProducts, error: eanError } = await db.from("mhd_catalog_products").select("codigo").ilike("codigo_ean", `%${search}%`).limit(100);
+        if (eanError) throw eanError;
+        if (eanProducts?.length) query = query.in("codigo", eanProducts.map((product) => product.codigo));
+        else query = query.ilike("codigo", `%${search}%`);
+      } else if (search) query = query.or(item.search.map((column) => `${column}.ilike.%${search.replaceAll("%", "\\%").replaceAll(",", "\\,")}%`).join(","));
+      const { data, error, count } = await query;
+      if (error) throw error;
+      return respond({ rows: data ?? [], total: count ?? 0 });
+    }
+    if (body.action === "mhd-product-detail") {
+      const codigo = String((body as Record<string, unknown>).codigo ?? "").trim();
+      if (!codigo) return respond({ error: "Falta el código del producto" }, 400);
+      const { data, error } = await db.from("mhd_catalog_products").select("codigo,source_payload").eq("codigo", codigo).maybeSingle();
+      if (error) throw error;
+      if (!data) return respond({ error: "Producto MHD no encontrado" }, 404);
+      return respond({ product: data.source_payload });
+    }
+    if (body.action === "mhd-start") {
+      const { data, error } = await db.from("mhd_catalog_import_runs").insert({}).select("*").single();
+      if (error) throw error;
+      return respond({ run: data }, 201);
+    }
+    if (body.action?.startsWith("mhd-")) {
+      if (!body.batchId) return respond({ error: "Falta batchId" }, 400);
+      if (body.action === "mhd-progress") {
+        const { error } = await db.from("mhd_catalog_import_runs").update({ progress: body.progress ?? {}, record_counts: body.counts ?? {} }).eq("id", body.batchId).eq("status", "running");
+        if (error) throw error;
+        return respond({ ok: true });
+      }
+      if (body.action === "mhd-rows") {
+        const allowed = new Set(["products", "categories", "brands", "prices", "stock"]);
+        if (!body.entity || !allowed.has(body.entity) || !body.rows?.length || body.rows.length > 1_000) return respond({ error: "Lote MHD no válido" }, 400);
+        const rows = body.rows.map((row) => ({ import_run_id: body.batchId, entity_type: body.entity, source_id: String(row.source_id ?? ""), payload: row.payload, loaded_at: new Date().toISOString() }));
+        if (!rows.every((row) => row.source_id && row.payload && typeof row.payload === "object" && !Array.isArray(row.payload))) return respond({ error: "Fila MHD no válida" }, 400);
+        const { error } = await db.from("mhd_catalog_raw_rows").upsert(rows, { onConflict: "import_run_id,entity_type,source_id" });
+        if (error) throw error;
+        return respond({ accepted: rows.length });
+      }
+      if (body.action === "mhd-complete") {
+        const { data, error } = await db.rpc("replace_mhd_catalog_from_run", { p_run_id: body.batchId });
+        if (error) throw error;
+        return respond({ counts: data });
+      }
+      if (body.action === "mhd-fail") {
+        const { error } = await db.from("mhd_catalog_import_runs").update({ status: "failed", error_message: body.error ?? "Error de copia MHD", completed_at: new Date().toISOString() }).eq("id", body.batchId).eq("status", "running");
         if (error) throw error;
         return respond({ ok: true });
       }

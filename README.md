@@ -2,7 +2,7 @@
 
 Aplicación privada para consultar e importar clientes de PrestaShop a Shopify.
 
-La importación masiva toma únicamente clientes activos con, al menos, un pedido válido. Puede abarcar desde una fecha, los últimos N o todos los clientes.
+La importación masiva toma clientes activos y no eliminados, tengan pedidos o no. Puede abarcar desde una fecha, los últimos N o todos los clientes; el operador puede marcar el filtro para incluir únicamente quienes tengan al menos un pedido válido.
 
 ## Importaciones masivas
 
