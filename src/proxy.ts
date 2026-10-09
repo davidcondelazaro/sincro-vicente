@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/proxy";
 
-const publicPaths = new Set(["/login", "/set-password", "/auth/logout", "/auth/confirm"]);
+// /api/shopify/portes: la llama Shopify en el pago (servicio de portes), sin sesión.
+const publicPaths = new Set(["/login", "/set-password", "/auth/logout", "/auth/confirm", "/api/shopify/portes"]);
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
