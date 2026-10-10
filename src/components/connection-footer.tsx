@@ -79,9 +79,8 @@ export function ConnectionFooter() {
   }, [loadHealth, pathname]);
 
   if (pathname === "/login" || pathname === "/set-password" || pathname.startsWith("/auth/")) return null;
-  const hasSidebar = pathname.startsWith("/importacion-") || pathname.startsWith("/importar-datos-") || pathname.startsWith("/importaciones-");
 
-  return <footer className={`fixed inset-x-0 bottom-0 z-20 border-t border-zinc-200 bg-white/95 px-5 py-3 shadow-[0_-3px_14px_rgb(0,0,0,0.05)] backdrop-blur ${hasSidebar ? "lg:left-60" : ""}`}>
+  return <footer className="fixed inset-x-0 bottom-0 z-20 border-t border-zinc-200 bg-white/95 px-5 py-3 shadow-[0_-3px_14px_rgb(0,0,0,0.05)] backdrop-blur lg:left-60 lg:flex lg:min-h-14 lg:items-center lg:py-0">
     <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-center gap-x-4 gap-y-2 px-2 text-xs text-zinc-700 sm:text-sm">
       {CONNECTIONS.map(({ key, label }) => <ConnectionStatus key={key} label={label} ok={health?.[key]} error={health?.errors[key]} />)}
       <button type="button" onClick={() => void loadHealth(true)} disabled={checking} title="Comprobar conexiones ahora" aria-label="Comprobar conexiones ahora" className="cursor-pointer rounded-md p-1.5 text-emerald-700 hover:bg-emerald-50 disabled:cursor-wait disabled:text-zinc-400">

@@ -32,7 +32,7 @@ export function AppSidebar({ active, userEmail }: { active: Section; userEmail: 
       <button type="button" onClick={() => setOpen(true)} className="grid h-10 w-10 cursor-pointer place-items-center rounded-lg border border-zinc-300 text-zinc-700 hover:bg-zinc-50" aria-label="Abrir menú"><svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg></button>
     </header>
     {open && <button type="button" onClick={close} className="fixed inset-0 z-40 bg-zinc-950/30 lg:hidden" aria-label="Cerrar menú" />}
-    <aside className={`fixed inset-y-0 right-0 z-50 flex w-72 min-w-0 flex-col overflow-hidden border-l border-zinc-200 bg-white px-5 py-5 shadow-xl transition-transform lg:sticky lg:top-0 lg:h-screen lg:w-60 lg:border-b-0 lg:border-l-0 lg:shadow-none ${open ? "translate-x-0" : "translate-x-full lg:translate-x-0"}`}>
+    <aside className={`fixed inset-y-0 right-0 z-50 flex w-72 min-w-0 flex-col overflow-hidden border-l border-zinc-200 bg-white px-5 pt-5 shadow-xl transition-transform lg:sticky lg:top-0 lg:h-screen lg:w-60 lg:border-b-0 lg:border-l-0 lg:shadow-none ${open ? "translate-x-0" : "translate-x-full lg:translate-x-0"}`}>
       <div className="hidden min-w-0 lg:block"><Link href="/" className="block" aria-label="Ir al inicio"><Image src="/electronica-vicente.webp" alt="Electrónica Vicente" width={600} height={152} priority className="h-auto w-full max-w-[13rem]" /><p className="mt-3 text-sm font-semibold tracking-[0.18em] text-emerald-700 uppercase">Sincro Vicente</p></Link></div>
       <div className="flex items-center justify-between lg:hidden"><p className="text-sm font-semibold text-zinc-900">MENÚ</p><button type="button" onClick={close} className="grid h-11 w-11 place-items-center rounded-lg text-3xl leading-none text-zinc-600 hover:bg-zinc-100" aria-label="Cerrar menú">×</button></div>
       <nav className="-mx-1 mt-5 flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-y-auto px-1 lg:mt-6" aria-label="Módulos de la aplicación">{navigation.map((entry) => <div key={entry.section}>{entry.section === "supabase" && <div className="my-3 border-t border-zinc-200" />}<a onClick={close} href={entry.href} className={itemClass(entry.section)}><Icon name={entry.icon} /><span className="min-w-0 truncate">{entry.label}</span></a></div>)}</nav>
@@ -56,8 +56,8 @@ function UserMenu({ email }: { email: string | null }) {
     return () => { document.removeEventListener("pointerdown", onPointer); document.removeEventListener("keydown", onKey); };
   }, [open]);
 
-  return <div ref={ref} className="relative mt-4 border-t border-zinc-200 pt-4">
-    {open && <div role="menu" className="absolute inset-x-0 bottom-full mb-2 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg">
+  return <div ref={ref} className="relative -mx-5 mt-4 flex h-14 shrink-0 items-center border-t border-zinc-200 px-3">
+    {open && <div role="menu" className="absolute inset-x-3 bottom-full mb-2 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg">
       <div className="border-b border-zinc-100 px-3 py-2.5"><p className="truncate text-sm font-medium text-zinc-900">{name || label}</p><p className="truncate text-xs text-zinc-500">{label}</p></div>
       <form action="/auth/logout" method="post" className="p-1"><button type="submit" role="menuitem" className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-zinc-700 hover:bg-zinc-100"><Icon name="export" />Cerrar sesión</button></form>
     </div>}
