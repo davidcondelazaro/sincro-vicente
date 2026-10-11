@@ -16,6 +16,7 @@ type Stats = {
   top_products: { id: number; title: string | null; handle: string | null; count: number }[];
   top_tools: { name: string; count: number }[];
   guard_by_kind?: Record<string, number>;
+  coupons?: { code: string; title: string; bot_allowed: boolean; conversations_offered: number; orders_with_code: number; orders_from_chat: number; revenue_from_chat: number }[];
   conversion?: { orders: number; revenue: number; assisted_orders: number; assisted_revenue: number; influenced_orders: number; influenced_revenue: number; avg_ticket_chat: number | null; avg_ticket_other: number | null; conversations_with_order: number; unpaid_chat_orders?: number; first_order_at: string | null; top_sold: { id: number; title: string | null; units: number }[] };
   quality?: Record<string, number>;
   issue_types?: Record<string, number>;
@@ -70,6 +71,7 @@ export function ChatbotStats() {
       </section>
 
       {stats.conversion && <Conversion c={stats.conversion} conversations={t.conversations} />}
+      {(stats.coupons?.length ?? 0) > 0 && <Coupons coupons={stats.coupons!} />}
 
       <Panel title="Conversaciones por día"><DayChart days={fillDays(stats.by_day, range)} /></Panel>
 
@@ -129,6 +131,26 @@ function Conversion({ c, conversations }: { c: NonNullable<Stats["conversion"]>;
     {c.top_sold.length > 0 && <Panel title="Productos recomendados por el chat que se vendieron"><ol className="flex flex-col gap-2 text-sm">{c.top_sold.map((product, index) => <li key={product.id} className="flex items-baseline gap-3"><span className="w-5 shrink-0 text-right tabular-nums text-zinc-400">{index + 1}</span><span className="min-w-0 flex-1 truncate text-zinc-800">{product.title ?? `Producto ${product.id}`}</span><span className="tabular-nums text-zinc-600">{number(product.units)} uds.</span></li>)}</ol></Panel>}
     <p className="-mt-3 text-xs text-zinc-500"><strong className="font-medium text-zinc-600">Asistido:</strong> el pedido se hizo con un carrito en el que se usó el chat. <strong className="font-medium text-zinc-600">Influido:</strong> el cliente, con sesión iniciada, compró en los 7 días siguientes un producto que el chat le mostró. Solo cuentan los pedidos pagados (total o parcialmente), descontando lo reembolsado. Se mide desde el 11/10/2026; los pedidos anteriores no llevan la marca. Quien usa el chat ya suele tener más intención de compra: el ticket o la conversión más altos no significan que el chat los cause.</p>
   </>;
+}
+
+// Cupones: conversaciones en que el bot escribió el código y pedidos pagados que lo usaron.
+function Coupons({ coupons }: { coupons: NonNullable<Stats["coupons"]> }) {
+  const leaked = coupons.filter((c) => !c.bot_allowed && c.conversations_offered > 0);
+  return <Panel title="Cupones">
+    <div className="overflow-x-auto"><table className="w-full text-sm">
+      <thead className="text-left text-xs text-zinc-500"><tr><th className="py-1.5 pr-4 font-medium">Código</th><th className="py-1.5 pr-4 font-medium">Lo da el chat</th><th className="py-1.5 pr-4 text-right font-medium">Ofrecido en</th><th className="py-1.5 pr-4 text-right font-medium">Pedidos con el código</th><th className="py-1.5 pr-4 text-right font-medium">De ellos, tras ofrecerlo el chat</th><th className="py-1.5 text-right font-medium">Ingresos</th></tr></thead>
+      <tbody className="divide-y divide-zinc-100">{coupons.map((c) => <tr key={c.code}>
+        <td className="py-2 pr-4 font-mono font-medium text-zinc-900">{c.code}</td>
+        <td className="py-2 pr-4 text-zinc-600">{c.bot_allowed ? "Sí" : "No"}</td>
+        <td className="py-2 pr-4 text-right tabular-nums text-zinc-800">{number(c.conversations_offered)} conv.</td>
+        <td className="py-2 pr-4 text-right tabular-nums text-zinc-800">{number(c.orders_with_code)}</td>
+        <td className="py-2 pr-4 text-right tabular-nums text-zinc-800">{number(c.orders_from_chat)}</td>
+        <td className="py-2 text-right tabular-nums text-zinc-800">{euro(c.revenue_from_chat)}</td>
+      </tr>)}</tbody>
+    </table></div>
+    {leaked.length > 0 && <p className="mt-3 text-sm text-red-700">⚠ El chat mencionó {leaked.map((c) => c.code).join(", ")} sin tenerlo permitido: revisa esas conversaciones.</p>}
+    <p className="mt-3 text-xs text-zinc-500">«Ofrecido» = el chat escribió el código en una conversación del periodo. «Tras ofrecerlo el chat» = pedido pagado con el código, atribuido a una conversación en la que el chat lo ofreció.</p>
+  </Panel>;
 }
 
 function Tile({ label, value, note }: { label: string; value: string; note: string }) {
