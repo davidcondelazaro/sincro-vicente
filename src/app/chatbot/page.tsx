@@ -7,7 +7,8 @@ import { createClient } from "@/lib/supabase/client";
 type Tab = "conversations" | "support" | "errors" | "syncs";
 type Row = Record<string, unknown> & { id: string | number };
 type Message = { id: number; role: "user" | "assistant" | "tool"; content: string | null; tool_calls: unknown; product_ids: number[] | null; model: string | null; input_tokens: number | null; output_tokens: number | null; latency_ms: number | null; channel: string | null; created_at: string };
-type Thread = { messages: Message[]; support: Row[]; errors: Row[] };
+type VoiceSession = { customer_name: string | null; page: { productHandle?: string; collectionHandle?: string } | null; started_at: string };
+type Thread = { conversation: Row | null; voice: VoiceSession[]; messages: Message[]; support: Row[]; errors: Row[] };
 
 const tabs: { key: Tab; label: string; placeholder: string }[] = [
   { key: "conversations", label: "Conversaciones", placeholder: "Página de origen" },
@@ -83,8 +84,7 @@ function ConversationItem({ row, open, onToggle }: { row: Row; open: boolean; on
     <button type="button" onClick={onToggle} aria-expanded={open} className="flex w-full cursor-pointer flex-wrap items-center gap-x-4 gap-y-1 px-5 py-4 text-left hover:bg-zinc-50">
       <span className="text-sm font-medium text-zinc-900">{date(row.last_at)}</span>
       <span className="text-sm text-zinc-500">{Number(row.message_count ?? 0)} mensajes</span>
-      <span className="min-w-0 flex-1 truncate text-sm text-zinc-500" title={String(row.page_url ?? "")}>{pagePath(row.page_url)}</span>
-      <span className="text-sm font-medium text-emerald-700">{open ? "▼ Ocultar" : "▶ Ver"}</span>
+      <span className="ml-auto text-sm font-medium text-emerald-700">{open ? "▼ Ocultar" : "▶ Ver"}</span>
     </button>
     {open && <ConversationThread id={String(row.id)} startedAt={row.started_at} />}
   </li>;
@@ -101,8 +101,14 @@ function ConversationThread({ id, startedAt }: { id: string; startedAt: unknown 
   if (error) return <p className="border-t border-zinc-100 bg-red-50 px-5 py-4 text-sm text-red-800">{error}</p>;
   if (!thread) return <p className="border-t border-zinc-100 bg-zinc-50 px-5 py-4 text-sm text-zinc-500">Cargando conversación…</p>;
   const tokens = thread.messages.reduce((sum, message) => sum + (message.input_tokens ?? 0) + (message.output_tokens ?? 0), 0);
+  const startPage = startingPage(thread);
+  const customer = customerOf(thread);
   return <div className="border-t border-zinc-100 bg-zinc-50 px-5 py-5">
-    <p className="text-xs text-zinc-500">Iniciada {date(startedAt)} · {tokens.toLocaleString("es-ES")} tokens · <span className="font-mono">{id}</span></p>
+    <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+      <div><dt className="text-xs font-medium text-zinc-500">Cliente</dt><dd className="mt-0.5 text-zinc-900">{customer ?? <span className="text-zinc-500">Sin nombre guardado</span>}</dd></div>
+      <div className="min-w-0"><dt className="text-xs font-medium text-zinc-500">Página donde empezó</dt><dd className="mt-0.5 truncate">{startPage ? <a href={startPage} target="_blank" rel="noreferrer" title={startPage} className="text-emerald-700 hover:underline">{pagePath(startPage)}</a> : <span className="text-zinc-500">Desconocida</span>}</dd></div>
+    </dl>
+    <p className="mt-3 text-xs text-zinc-500">Iniciada {date(startedAt)} · {tokens.toLocaleString("es-ES")} tokens · <span className="font-mono">{id}</span></p>
     <div className="mt-4 flex flex-col gap-3">{thread.messages.map((message) => <MessageBubble key={message.id} message={message} />)}</div>
     {thread.support.length > 0 && <div className="mt-5"><h3 className="text-sm font-semibold text-zinc-800">Peticiones de soporte</h3><ul className="mt-2 divide-y divide-zinc-200 rounded-xl border border-zinc-200 bg-white">{thread.support.map((row) => <SupportItem key={String(row.id)} row={row} />)}</ul></div>}
     {thread.errors.length > 0 && <div className="mt-5"><h3 className="text-sm font-semibold text-zinc-800">Errores del widget</h3><ul className="mt-2 divide-y divide-zinc-200 rounded-xl border border-zinc-200 bg-white">{thread.errors.map((row) => <ErrorItem key={String(row.id)} row={row} />)}</ul></div>}
@@ -165,6 +171,24 @@ function duration(start: unknown, end: unknown) {
   const seconds = Math.round((new Date(String(end)).getTime() - new Date(String(start)).getTime()) / 1000);
   if (!Number.isFinite(seconds) || seconds < 0) return "";
   return seconds < 60 ? `${seconds} s` : `${Math.floor(seconds / 60)} min ${seconds % 60} s`;
+}
+
+// Las conversaciones de texto guardan la URL; las de voz, solo el producto o la colección abiertos.
+function startingPage(thread: Thread) {
+  if (thread.conversation?.page_url) return String(thread.conversation.page_url);
+  const page = thread.voice.find((session) => session.page?.productHandle || session.page?.collectionHandle)?.page;
+  if (page?.productHandle) return `https://electronica-vicente.myshopify.com/products/${page.productHandle}`;
+  if (page?.collectionHandle) return `https://electronica-vicente.myshopify.com/collections/${page.collectionHandle}`;
+  return null;
+}
+
+// El nombre del cliente con sesión iniciada solo se guarda en las sesiones de voz; si no, el que dio en una petición de soporte.
+function customerOf(thread: Thread) {
+  const voiceName = thread.voice.find((session) => session.customer_name)?.customer_name;
+  if (voiceName) return voiceName;
+  const request = thread.support[0];
+  if (request) return `${String(request.name ?? "")} · ${String(request.email ?? "")} (soporte)`;
+  return null;
 }
 
 function pagePath(value: unknown) {

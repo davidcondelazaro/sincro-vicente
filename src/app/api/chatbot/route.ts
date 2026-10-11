@@ -36,14 +36,16 @@ export async function GET(request: Request) {
     if (view === "conversation") {
       const id = url.searchParams.get("id");
       if (!id) return json({ error: "Falta la conversación." }, 400);
-      const [messages, support, errors] = await Promise.all([
+      const [conversation, voice, messages, support, errors] = await Promise.all([
+        db.from("conversations").select("id, started_at, last_at, page_url, metadata").eq("id", id).maybeSingle(),
+        db.from("voice_sessions").select("customer_name, page, started_at").eq("conversation_id", id).order("started_at"),
         db.from("messages").select("id, role, content, tool_calls, product_ids, model, input_tokens, output_tokens, latency_ms, channel, created_at").eq("conversation_id", id).order("id"),
         db.from("support_requests").select("id, kind, name, email, phone, order_number, description, status, created_at").eq("conversation_id", id).order("created_at"),
         db.from("widget_errors").select("id, kind, message, context, page_url, created_at").eq("conversation_id", id).order("created_at"),
       ]);
-      const failed = messages.error ?? support.error ?? errors.error;
+      const failed = conversation.error ?? voice.error ?? messages.error ?? support.error ?? errors.error;
       if (failed) throw failed;
-      return json({ messages: messages.data, support: support.data, errors: errors.data });
+      return json({ conversation: conversation.data, voice: voice.data, messages: messages.data, support: support.data, errors: errors.data });
     }
 
     if (view === "support") {
