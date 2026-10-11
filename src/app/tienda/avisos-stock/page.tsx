@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { createClient } from "@/lib/supabase/client";
@@ -10,7 +11,8 @@ type Subscription = {
   source: "chat" | "web" | "otro"; conversation_id: string | null; status: "pendiente" | "avisado" | "cancelado" | "error";
   created_at: string; notified_at: string | null; cancelled_at: string | null; cancelled_by: string | null; last_error: string | null;
 };
-type Data = { rows: Subscription[]; total: number; pageSize: number; top: { productId: number; title: string; waiting: number; notified: number }[]; totals: { pending: number; notified: number } };
+type Data = { rows: Subscription[]; total: number; pageSize: number; top: { productId: number; title: string; waiting: number; notified: number }[]; totals: { pending: number; notified: number }; schedule: Schedule };
+type Schedule = { last: { at: string; ok: boolean; sent: number | null; ready: number | null; failed: number | null } | null; next: string | null; enabled: boolean };
 
 const dateFormat = new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", dateStyle: "short", timeStyle: "short" });
 const statusInfo: Record<Subscription["status"], { label: string; tone: string }> = {
@@ -61,6 +63,7 @@ export default function StockAlertsPage() {
   const select = "mt-1 block h-10 rounded-lg border border-zinc-300 bg-white px-2 font-normal";
   return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]"><AppSidebar active="stockAlerts" userEmail={email} /><main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 pb-24 pt-28 sm:px-10 lg:mx-0 lg:py-16">
     <header><p className="text-sm font-semibold tracking-[0.18em] text-emerald-700 uppercase">Tienda</p><h1 className="mt-2 text-4xl font-semibold tracking-tight text-zinc-950">Avisos de stock</h1><p className="mt-3 max-w-3xl text-zinc-600">Clientes que han pedido que les avisemos cuando un producto vuelva a estar disponible, desde el chat o desde la web. El aviso se envía por email una sola vez, tras la copia de productos en la que el producto vuelve a poder comprarse.</p></header>
+    {data?.schedule && <ScheduleLine schedule={data.schedule} />}
     {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p>}
     {data && <section className="grid grid-cols-1 gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-1">
@@ -91,4 +94,15 @@ export default function StockAlertsPage() {
     </section>
     {data && data.total > data.pageSize && <div className="flex items-center justify-between"><button type="button" disabled={!page} onClick={() => setPage((value) => value - 1)} className="cursor-pointer rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50">Anterior</button><span className="text-sm text-zinc-500">Página {page + 1} de {pages}</span><button type="button" disabled={page + 1 >= pages} onClick={() => setPage((value) => value + 1)} className="cursor-pointer rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50">Siguiente</button></div>}
   </main></div>;
+}
+
+/** Cuándo se comprueban los avisos: tras cada copia de productos del chatbot. */
+function ScheduleLine({ schedule }: { schedule: Schedule }) {
+  const { last, next, enabled } = schedule;
+  const result = last && last.sent !== null ? ` · ${last.sent} ${last.sent === 1 ? "enviado" : "enviados"}${last.failed ? `, ${last.failed} con error` : ""}` : "";
+  return <p className="-mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-zinc-600">
+    <span>Última comprobación: {last ? `${dateFormat.format(new Date(last.at))}${last.ok ? result : " · la copia de productos falló"}` : "todavía ninguna"}</span>
+    <span>Próxima: {enabled && next ? dateFormat.format(new Date(next)) : "copia de productos sin programar"}</span>
+    <Link href="/chatbot/sincronizaciones" className="font-medium text-emerald-700 hover:underline">Programación</Link>
+  </p>;
 }

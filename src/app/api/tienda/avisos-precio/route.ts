@@ -1,4 +1,5 @@
 import { errorMessage, json, sessionEmail } from "@/lib/chatbot-api";
+import { alertsSchedule } from "@/lib/chatbot-alerts-schedule";
 import { createChatbotClient } from "@/lib/chatbot-supabase";
 
 export const dynamic = "force-dynamic";
@@ -22,9 +23,10 @@ export async function GET(request: Request) {
     if (status && STATUSES.includes(status)) query = query.eq("status", status);
     if (source === "chat" || source === "web" || source === "otro") query = query.eq("source", source);
     if (search) query = query.or(`email.ilike.*${search}*,product_title.ilike.*${search}*,name.ilike.*${search}*`);
-    const [list, pending] = await Promise.all([
+    const [list, pending, schedule] = await Promise.all([
       query.order("created_at", { ascending: false }).range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1),
       db.from("price_alerts").select("product_id, variant_id, product_title, status").in("status", ["pendiente", "avisado"]),
+      alertsSchedule(db, "avisos_precio"),
     ]);
     if (list.error) throw list.error;
     if (pending.error) throw pending.error;
@@ -41,7 +43,7 @@ export async function GET(request: Request) {
       pending: (pending.data ?? []).filter((row) => row.status === "pendiente").length,
       notified: (pending.data ?? []).filter((row) => row.status === "avisado").length,
     };
-    return json({ rows: list.data, total: list.count ?? 0, pageSize: PAGE_SIZE, top, totals });
+    return json({ rows: list.data, total: list.count ?? 0, pageSize: PAGE_SIZE, top, totals, schedule });
   } catch (caught) {
     return json({ error: errorMessage(caught, "No se pudieron leer los avisos de precio.") }, 500);
   }
