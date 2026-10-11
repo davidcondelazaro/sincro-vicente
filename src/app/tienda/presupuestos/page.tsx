@@ -12,7 +12,7 @@ type Line = {
 };
 type Quote = {
   id: number; conversation_id: string | null; status: string; items: Line[]; comments: string | null; name: string | null; email: string | null;
-  phone: string | null; postal_code: string | null; total: number | null; team_notes: string | null; submitted_at: string; status_changed_at: string | null;
+  phone: string | null; postal_code: string | null; total: number | null; team_notes: string | null; conversation_summary: string | null; submitted_at: string; status_changed_at: string | null;
   status_changed_by: string | null; sent_team_at: string | null; ack_sent_at: string | null; last_error: string | null;
 };
 
@@ -88,6 +88,7 @@ export default function QuotesPage() {
 function QuoteDetail({ quote, onSave }: { quote: Quote; onSave: (changes: { status?: string; teamNotes?: string }) => void }) {
   const [notes, setNotes] = useState(quote.team_notes ?? "");
   return <div className="border-t border-zinc-100 bg-zinc-50 px-5 py-5 text-sm">
+    {quote.conversation_summary && <div className="mb-4"><p className="text-xs text-zinc-500">Resumen de la conversación</p><ul className="mt-1 list-disc space-y-0.5 pl-5 text-zinc-800">{quote.conversation_summary.split("\n").filter(Boolean).map((line, i) => <li key={i}>{line.replace(/^[-•]\s*/, "")}</li>)}</ul></div>}
     <div className="grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-4">
       {[["Nombre", quote.name], ["Email", quote.email], ["Teléfono", quote.phone], ["Código postal", quote.postal_code]].map(([k, v]) => <div key={k}><p className="text-xs text-zinc-500">{k}</p><p className="font-medium text-zinc-900">{k === "Email" && v ? <a href={`mailto:${v}?subject=${encodeURIComponent(`Tu presupuesto PRE-${quote.id}`)}`} className="text-emerald-700 hover:underline">{v}</a> : v ?? "—"}</p></div>)}
     </div>
