@@ -9,8 +9,9 @@ import { createClient } from "@/lib/supabase/client";
 import { outcomeLabels, sentimentLabels, sentimentTones, topicLabels } from "@/lib/chatbot-labels";
 import { ChatbotStats } from "@/components/chatbot-stats";
 import { ChatbotImprovements } from "@/components/chatbot-improvements";
+import { ChatbotDiscounts } from "@/components/chatbot-discounts";
 
-type Tab = "stats" | "conversations" | "improvements" | "support" | "errors" | "syncs" | "settings";
+type Tab = "stats" | "conversations" | "improvements" | "support" | "errors" | "syncs" | "discounts" | "settings";
 type Row = Record<string, unknown> & { id: string | number };
 type Message = { id: number; role: "user" | "assistant" | "tool"; content: string | null; tool_calls: unknown; product_ids: number[] | null; model: string | null; input_tokens: number | null; output_tokens: number | null; latency_ms: number | null; channel: string | null; created_at: string };
 type VoiceSession = { customer_name: string | null; page: { productHandle?: string; collectionHandle?: string } | null; started_at: string };
@@ -18,13 +19,14 @@ type AttributedOrder = { id: number; name: string; created_at: string; total: nu
 type Thread = { conversation: Row | null; voice: VoiceSession[]; messages: Message[]; support: Row[]; errors: Row[]; orders?: AttributedOrder[] };
 
 // Sub-apartados de Chatbot IA: /chatbot/<slug>, cada uno con su entrada en el menú lateral.
-const tabs: { slug: string; key: Tab; label: string; description: string; placeholder: string; sidebar: "chatbotStats" | "chatbotConversations" | "chatbotImprovements" | "chatbotSupport" | "chatbotErrors" | "chatbotSyncs" | "chatbotSettings" }[] = [
+const tabs: { slug: string; key: Tab; label: string; description: string; placeholder: string; sidebar: "chatbotStats" | "chatbotConversations" | "chatbotImprovements" | "chatbotSupport" | "chatbotErrors" | "chatbotSyncs" | "chatbotDiscounts" | "chatbotSettings" }[] = [
   { slug: "estadisticas", key: "stats", label: "Estadísticas", description: "Indicadores de uso y resultado de las conversaciones del chatbot.", placeholder: "", sidebar: "chatbotStats" },
   { slug: "conversaciones", key: "conversations", label: "Conversaciones", description: "Conversaciones de los clientes con el chatbot de la tienda, por texto o por voz.", placeholder: "Cliente, palabra, pedido, email o página", sidebar: "chatbotConversations" },
   { slug: "mejoras", key: "improvements", label: "Mejoras", description: "Fallos del chatbot que encuentra la revisión automática de cada conversación, agrupados en propuestas para mejorar sus instrucciones.", placeholder: "", sidebar: "chatbotImprovements" },
   { slug: "soporte", key: "support", label: "Soporte", description: "Incidencias, reclamaciones y devoluciones que los clientes abren desde el chatbot.", placeholder: "Nombre, email, pedido o texto", sidebar: "chatbotSupport" },
   { slug: "errores", key: "errors", label: "Errores del widget", description: "Fallos técnicos del widget en la tienda (carrito, conexión…).", placeholder: "Tipo, mensaje o página", sidebar: "chatbotErrors" },
   { slug: "sincronizaciones", key: "syncs", label: "Sincronizaciones", description: "Copia del catálogo y del contenido de Shopify en el chatbot: lanzarlas a mano, programarlas e historial.", placeholder: "Tipo o texto del error", sidebar: "chatbotSyncs" },
+  { slug: "cupones", key: "discounts", label: "Cupones descuento", description: "Descuentos de Shopify y cuáles puede dar el chatbot a los clientes.", placeholder: "", sidebar: "chatbotDiscounts" },
   { slug: "configuracion", key: "settings", label: "Configuración", description: "Datos de contacto que usa el chatbot. Los cambios se aplican en el chatbot en menos de un minuto.", placeholder: "", sidebar: "chatbotSettings" },
 ];
 const dateFormat = new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", dateStyle: "short", timeStyle: "short" });
@@ -54,7 +56,7 @@ export default function ChatbotPage() {
   const [openId, setOpenId] = useState<string | number | null>(null);
 
   const load = useCallback(async () => {
-    if (tab === "settings" || tab === "stats" || tab === "improvements") return;
+    if (tab === "settings" || tab === "stats" || tab === "improvements" || tab === "discounts") return;
     setLoading(true);
     try {
       const params = new URLSearchParams({ view: tab, page: String(page), search: query, from: dateFrom, to: dateTo, ...(tab === "conversations" ? analysis : {}) });
@@ -86,7 +88,7 @@ export default function ChatbotPage() {
 
   return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]"><AppSidebar active={current.sidebar} userEmail={email} /><main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 pb-24 pt-28 sm:px-10 lg:mx-0 lg:py-16">
     <header><p className="text-sm font-semibold tracking-[0.18em] text-emerald-700 uppercase">Chatbot IA</p><h1 className="mt-2 text-4xl font-semibold tracking-tight text-zinc-950">{current.label}</h1><p className="mt-3 max-w-3xl text-zinc-600">{current.description}</p></header>
-    {tab === "settings" ? <ChatbotSettings /> : tab === "stats" ? <ChatbotStats /> : tab === "improvements" ? <ChatbotImprovements /> : <>
+    {tab === "settings" ? <ChatbotSettings /> : tab === "stats" ? <ChatbotStats /> : tab === "improvements" ? <ChatbotImprovements /> : tab === "discounts" ? <ChatbotDiscounts /> : <>
     {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p>}
     {tab === "conversations" && focusId && <section className="overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-sm"><div className="flex items-center justify-between px-5 py-3"><h2 className="text-sm font-semibold text-zinc-900">Conversación enlazada</h2><button type="button" onClick={() => { setFocusId(null); window.history.replaceState(null, "", window.location.pathname); }} className="cursor-pointer rounded-md px-2 py-1 text-sm text-zinc-500 hover:bg-zinc-100">Cerrar</button></div><ConversationThread id={focusId} startedAt={null} /></section>}
     {tab === "syncs" && <><ChatbotSyncPanel onChange={load} /><h2 className="mt-2 text-xl font-semibold text-zinc-900">Historial</h2></>}

@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 // Sincronizaciones del chatbot: estado y programación (tabla sync_schedules) y lanzamiento a mano
 // (ruta /api/admin/sync del chatbot, protegida con CHATBOT_ADMIN_SECRET).
-const KINDS = ["collections", "products", "embeddings", "content"] as const;
+const KINDS = ["collections", "products", "embeddings", "content", "discounts"] as const;
 type Kind = (typeof KINDS)[number];
 const isKind = (value: unknown): value is Kind => KINDS.includes(value as Kind);
 const TIMEZONE = "Europe/Madrid";

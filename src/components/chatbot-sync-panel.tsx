@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 // Estado, lanzamiento a mano y programación de las sincronizaciones del chatbot (/api/chatbot/sync).
-type Kind = "collections" | "products" | "embeddings" | "content";
+type Kind = "collections" | "products" | "embeddings" | "content" | "discounts";
 type KindState = {
   kind: Kind;
   schedule: { cron: string; enabled: boolean; updated_at: string; updated_by: string | null } | null;
@@ -17,6 +17,7 @@ const info: Record<Kind, { label: string; description: string }> = {
   products: { label: "Productos", description: "Catálogo, precios, stock y metacampos." },
   embeddings: { label: "Vectores de búsqueda", description: "Recalcula la búsqueda por significado de los productos que han cambiado. Después de productos." },
   content: { label: "Contenido", description: "Páginas, políticas y blog de la tienda." },
+  discounts: { label: "Cupones descuento", description: "Descuentos de Shopify; cuáles puede dar el bot se decide en Chatbot IA → Cupones descuento." },
 };
 const presets = [
   { cron: "0 * * * *", label: "Cada hora, en punto" },
@@ -57,7 +58,7 @@ export function ChatbotSyncPanel({ onChange }: { onChange: () => void }) {
   }, [anyRunning, load, onChange]);
 
   async function runAll() {
-    if (!window.confirm("¿Lanzar ahora todas las sincronizaciones? Van en orden (colecciones, productos, vectores y contenido) y tardan unos minutos.")) return;
+    if (!window.confirm("¿Lanzar ahora todas las sincronizaciones? Van en orden (colecciones, productos, vectores, contenido y cupones) y tardan unos minutos.")) return;
     setLaunchingAll(true); setAllMessage(null);
     try {
       const response = await fetch("/api/chatbot/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "all" }) });
