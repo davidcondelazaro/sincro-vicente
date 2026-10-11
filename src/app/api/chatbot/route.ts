@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 25;
 type Row = Record<string, unknown>;
-type View = "conversations" | "conversation" | "support" | "errors" | "syncs" | "stats";
+type View = "conversations" | "conversation" | "support" | "errors" | "syncs" | "stats" | "guard";
 const ANALYSIS_FILTERS = { sentiment: ["positivo", "neutro", "negativo", "frustrado"], outcome: ["resuelta", "parcial", "no_resuelta", "abandonada"], topic: ["eleccion", "info_producto", "envio", "postventa", "garantia_instalacion", "otro"] } as const;
 const pick = (value: string | null, allowed: readonly string[]) => (value && allowed.includes(value) ? value : null);
 
@@ -73,6 +73,16 @@ export async function GET(request: Request) {
     if (view === "errors") {
       let query = db.from("widget_errors").select("id, conversation_id, kind, message, context, page_url, created_at", { count: "exact" });
       if (search) query = query.or(`kind.ilike.*${search}*,message.ilike.*${search}*,page_url.ilike.*${search}*`);
+      if (since) query = query.gte("created_at", since);
+      if (until) query = query.lt("created_at", until);
+      const { data, count, error } = await query.order("created_at", { ascending: false }).range(from, to);
+      if (error) throw error;
+      return json({ rows: data, total: count ?? 0, pageSize: PAGE_SIZE });
+    }
+
+    if (view === "guard") {
+      let query = db.from("abuse_events").select("id, conversation_id, kind, detail, message, created_at", { count: "exact" });
+      if (search) query = query.or(`kind.ilike.*${search}*,message.ilike.*${search}*`);
       if (since) query = query.gte("created_at", since);
       if (until) query = query.lt("created_at", until);
       const { data, count, error } = await query.order("created_at", { ascending: false }).range(from, to);

@@ -9,18 +9,19 @@ import { createClient } from "@/lib/supabase/client";
 import { outcomeLabels, sentimentLabels, sentimentTones, topicLabels } from "@/lib/chatbot-labels";
 import { ChatbotStats } from "@/components/chatbot-stats";
 
-type Tab = "stats" | "conversations" | "support" | "errors" | "syncs" | "settings";
+type Tab = "stats" | "conversations" | "support" | "errors" | "guard" | "syncs" | "settings";
 type Row = Record<string, unknown> & { id: string | number };
 type Message = { id: number; role: "user" | "assistant" | "tool"; content: string | null; tool_calls: unknown; product_ids: number[] | null; model: string | null; input_tokens: number | null; output_tokens: number | null; latency_ms: number | null; channel: string | null; created_at: string };
 type VoiceSession = { customer_name: string | null; page: { productHandle?: string; collectionHandle?: string } | null; started_at: string };
 type Thread = { conversation: Row | null; voice: VoiceSession[]; messages: Message[]; support: Row[]; errors: Row[] };
 
 // Sub-apartados de Chatbot IA: /chatbot/<slug>, cada uno con su entrada en el menú lateral.
-const tabs: { slug: string; key: Tab; label: string; description: string; placeholder: string; sidebar: "chatbotStats" | "chatbotConversations" | "chatbotSupport" | "chatbotErrors" | "chatbotSyncs" | "chatbotSettings" }[] = [
+const tabs: { slug: string; key: Tab; label: string; description: string; placeholder: string; sidebar: "chatbotStats" | "chatbotConversations" | "chatbotSupport" | "chatbotErrors" | "chatbotGuard" | "chatbotSyncs" | "chatbotSettings" }[] = [
   { slug: "estadisticas", key: "stats", label: "Estadísticas", description: "Indicadores de uso y resultado de las conversaciones del chatbot.", placeholder: "", sidebar: "chatbotStats" },
   { slug: "conversaciones", key: "conversations", label: "Conversaciones", description: "Conversaciones de los clientes con el chatbot de la tienda, por texto o por voz.", placeholder: "Cliente, palabra, pedido, email o página", sidebar: "chatbotConversations" },
   { slug: "soporte", key: "support", label: "Soporte", description: "Incidencias, reclamaciones y devoluciones que los clientes abren desde el chatbot.", placeholder: "Nombre, email, pedido o texto", sidebar: "chatbotSupport" },
   { slug: "errores", key: "errors", label: "Errores del widget", description: "Fallos técnicos del widget en la tienda (carrito, conexión…).", placeholder: "Tipo, mensaje o página", sidebar: "chatbotErrors" },
+  { slug: "proteccion", key: "guard", label: "Protección", description: "Mensajes que el chatbot frenó antes de llegar al modelo: exceso de ritmo, repeticiones, mensajes sin sentido o inapropiados, y conversaciones cerradas.", placeholder: "Tipo o texto del mensaje", sidebar: "chatbotGuard" },
   { slug: "sincronizaciones", key: "syncs", label: "Sincronizaciones", description: "Copia del catálogo y del contenido de Shopify en el chatbot: lanzarlas a mano, programarlas e historial.", placeholder: "Tipo o texto del error", sidebar: "chatbotSyncs" },
   { slug: "configuracion", key: "settings", label: "Configuración", description: "Datos de contacto que usa el chatbot. Los cambios se aplican en el chatbot en menos de un minuto.", placeholder: "", sidebar: "chatbotSettings" },
 ];
@@ -90,6 +91,7 @@ export default function ChatbotPage() {
         {tab === "support" && <SupportItem row={row} />}
         {tab === "errors" && <ErrorItem row={row} onDelete={() => void deleteError(row.id)} />}
         {tab === "syncs" && <SyncItem row={row} />}
+        {tab === "guard" && <GuardItem row={row} />}
       </Fragment>)}</ul>}
     </section>
     {total > pageSize && <div className="flex items-center justify-between"><button type="button" disabled={!page} onClick={() => { setPage((value) => value - 1); setOpenId(null); }} className="cursor-pointer rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50">Anterior</button><span className="text-sm text-zinc-500">Página {page + 1} de {pages}</span><button type="button" disabled={page + 1 >= pages} onClick={() => { setPage((value) => value + 1); setOpenId(null); }} className="cursor-pointer rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50">Siguiente</button></div>}
@@ -176,6 +178,26 @@ function ErrorItem({ row, onDelete }: { row: Row; onDelete?: () => void }) {
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1"><Badge tone="red">{String(row.kind ?? "")}</Badge><span className="min-w-0 truncate text-zinc-500" title={String(row.page_url ?? "")}>{pagePath(row.page_url)}</span><time className="ml-auto text-zinc-400">{date(row.created_at)}</time>{onDelete && <button type="button" onClick={onDelete} className="cursor-pointer rounded-md px-2 py-1 text-xs text-zinc-500 hover:bg-red-50 hover:text-red-700">Borrar</button>}</div>
     <p className="mt-2 break-words text-zinc-800">{String(row.message ?? "")}</p>
     {context && <details className="mt-2 rounded-lg bg-zinc-50 p-2 text-xs"><summary className="cursor-pointer font-medium text-zinc-700">Contexto</summary><pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap break-words text-zinc-600">{JSON.stringify(context, null, 2)}</pre></details>}
+  </li>;
+}
+
+const guardLabels: Record<string, { label: string; tone: "green" | "amber" | "red" }> = {
+  ritmo: { label: "Exceso de ritmo", tone: "amber" },
+  repeticion: { label: "Repetición", tone: "amber" },
+  sin_sentido: { label: "Sin sentido", tone: "amber" },
+  moderacion: { label: "Inapropiado (aviso)", tone: "red" },
+  cierre: { label: "Conversación cerrada", tone: "red" },
+  bloqueado: { label: "Escribió estando cerrada", tone: "red" },
+  autolesion: { label: "Posible autolesión", tone: "red" },
+};
+
+function GuardItem({ row }: { row: Row }) {
+  const kind = guardLabels[String(row.kind)] ?? { label: String(row.kind), tone: "amber" as const };
+  const detail = row.detail && typeof row.detail === "object" ? row.detail as Record<string, unknown> : {};
+  const facts = [detail.limite ? `Límite ${String(detail.limite)}` : null, Array.isArray(detail.categorias) ? `Categorías: ${detail.categorias.join(", ")}` : null, detail.avisos ? `Avisos: ${String(detail.avisos)}` : null, detail.cerrada_hasta ? `Cerrada hasta ${date(detail.cerrada_hasta)}` : null, detail.motivo ? String(detail.motivo) : null].filter(Boolean);
+  return <li className="px-5 py-4 text-sm">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1"><Badge tone={kind.tone}>{kind.label}</Badge>{facts.length > 0 && <span className="text-zinc-500">{facts.join(" · ")}</span>}<time className="ml-auto text-zinc-400">{date(row.created_at)}</time></div>
+    {Boolean(row.message) && <p className="mt-2 break-words text-zinc-800">«{String(row.message)}»</p>}
   </li>;
 }
 

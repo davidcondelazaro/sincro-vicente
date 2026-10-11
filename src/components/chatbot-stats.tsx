@@ -6,7 +6,7 @@ import { outcomeLabels, sentimentLabels, topicLabels } from "@/lib/chatbot-label
 // Indicadores de las conversaciones del chatbot (/api/chatbot?view=stats → función admin_conversation_stats).
 // Un solo color (el verde de la app) en todos los gráficos: cada barra lleva su nombre y su cifra, así que nada depende del color.
 type Stats = {
-  totals: { conversations: number; voice: number; identified: number; with_support: number; needs_review: number; user_messages: number; assistant_messages: number; input_tokens: number; output_tokens: number; avg_latency_ms: number | null; widget_errors: number };
+  totals: { conversations: number; voice: number; identified: number; with_support: number; needs_review: number; user_messages: number; assistant_messages: number; input_tokens: number; output_tokens: number; avg_latency_ms: number | null; widget_errors: number; guard_events?: number; closed_conversations?: number };
   by_day: { day: string; conversations: number; voice: number }[];
   by_hour: Record<string, number>;
   by_weekday: Record<string, number>;
@@ -61,6 +61,7 @@ export function ChatbotStats() {
         <Tile label="Tiempo medio de respuesta" value={t.avg_latency_ms ? `${(t.avg_latency_ms / 1000).toFixed(1).replace(".", ",")} s` : "—"} note="Desde que escribe hasta que termina la respuesta" />
         <Tile label="Tokens" value={compact(t.input_tokens + t.output_tokens)} note={`${compact(t.input_tokens)} de entrada · ${compact(t.output_tokens)} de salida`} />
         <Tile label="Errores del widget" value={number(t.widget_errors)} note="En el periodo" />
+        <Tile label="Mensajes frenados" value={number(t.guard_events ?? 0)} note={`Protección del chat · ${number(t.closed_conversations ?? 0)} conversaciones cerradas`} />
       </section>
 
       <Panel title="Conversaciones por día"><DayChart days={fillDays(stats.by_day, range)} /></Panel>
