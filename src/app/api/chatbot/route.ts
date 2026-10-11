@@ -1,17 +1,11 @@
 import { createChatbotClient } from "@/lib/chatbot-supabase";
-import { createClient } from "@/lib/supabase/server";
+import { errorMessage, json, sessionEmail } from "@/lib/chatbot-api";
 
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 25;
 type Row = Record<string, unknown>;
 type View = "conversations" | "conversation" | "support" | "errors" | "syncs";
-
-async function signedIn() {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getClaims();
-  return Boolean(data?.claims.sub);
-}
 
 // Quita los caracteres con significado en los filtros de PostgREST (or=, comas, paréntesis).
 function term(value: string | null) {
@@ -28,12 +22,8 @@ function madridDayStart(day: string | null, addDays = 0) {
   return new Date(`${iso}T00:00:00${offset}`).toISOString();
 }
 
-function json(body: unknown, status = 200) {
-  return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
-}
-
 export async function GET(request: Request) {
-  if (!(await signedIn())) return json({ error: "Necesitas iniciar sesión." }, 401);
+  if (!(await sessionEmail())) return json({ error: "Necesitas iniciar sesión." }, 401);
   const url = new URL(request.url);
   const view = (url.searchParams.get("view") ?? "conversations") as View;
   const page = Math.max(0, Number(url.searchParams.get("page") ?? 0) || 0);
@@ -98,13 +88,12 @@ export async function GET(request: Request) {
     const rows = (data ?? []) as (Row & { total: number })[];
     return json({ rows, total: Number(rows[0]?.total ?? 0), pageSize: PAGE_SIZE });
   } catch (caught) {
-    const message = caught instanceof Error ? caught.message : (caught as { message?: string })?.message;
-    return json({ error: message ?? "No se pudo consultar el Supabase del chatbot." }, 500);
+    return json({ error: errorMessage(caught, "No se pudo consultar el Supabase del chatbot.") }, 500);
   }
 }
 
 export async function DELETE(request: Request) {
-  if (!(await signedIn())) return json({ error: "Necesitas iniciar sesión." }, 401);
+  if (!(await sessionEmail())) return json({ error: "Necesitas iniciar sesión." }, 401);
   const id = Number(new URL(request.url).searchParams.get("id"));
   if (!Number.isInteger(id) || id <= 0) return json({ error: "Falta el error a borrar." }, 400);
   try {
@@ -112,6 +101,6 @@ export async function DELETE(request: Request) {
     if (error) throw error;
     return json({ ok: true });
   } catch (caught) {
-    return json({ error: (caught as { message?: string })?.message ?? "No se pudo borrar el error." }, 500);
+    return json({ error: errorMessage(caught, "No se pudo borrar el error.") }, 500);
   }
 }
