@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as { days?: unknown } | null;
   const secret = process.env.CHATBOT_ADMIN_SECRET;
   if (!secret) return json({ error: "Falta la variable CHATBOT_ADMIN_SECRET." }, 500);
-  const baseUrl = process.env.CHATBOT_URL ?? "https://chatbot-vicente.vercel.app";
+  const baseUrl = process.env.CHATBOT_URL ?? "https://chatbot.electronicavicente.com";
   try {
     const response = await fetch(`${baseUrl}/api/admin/mejoras`, {
       method: "POST",
