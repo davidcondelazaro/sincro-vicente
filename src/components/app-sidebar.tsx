@@ -30,18 +30,23 @@ export function AppSidebar({ active, userEmail }: { active: Section; userEmail: 
 
   return <>
     <header className="fixed inset-x-0 top-0 z-30 flex items-center justify-between border-b border-zinc-200 bg-white px-5 py-3 shadow-sm lg:hidden">
-      <Link href="/" className="flex items-center gap-2" aria-label="Ir al inicio"><Image src="/electronica-vicente.svg" alt="Electrónica Vicente" width={2124} height={462} priority className="h-auto w-36" /><span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-600/15 ring-inset">Sincro</span></Link>
+      <Link href="/" className="flex items-center gap-2" aria-label="Ir al inicio"><Image src="/electronica-vicente.svg" alt="Electrónica Vicente" width={2124} height={462} priority className="h-auto w-36" /><AppLabels className="hidden sm:flex" /></Link>
       <button type="button" onClick={() => setOpen(true)} className="grid h-10 w-10 cursor-pointer place-items-center rounded-lg border border-zinc-300 text-zinc-700 hover:bg-zinc-50" aria-label="Abrir menú"><svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg></button>
     </header>
     <div className="hidden lg:block" aria-hidden="true" />
     {open && <button type="button" onClick={close} className="fixed inset-0 z-40 bg-zinc-950/30 lg:hidden" aria-label="Cerrar menú" />}
     <aside className={`fixed inset-y-0 right-0 z-50 flex w-72 min-w-0 flex-col overflow-hidden border-l border-zinc-200 bg-white px-5 pt-5 shadow-xl transition-transform lg:right-auto lg:left-0 lg:w-60 lg:border-b-0 lg:border-l-0 lg:border-r lg:shadow-none ${open ? "translate-x-0" : "translate-x-full lg:translate-x-0"}`}>
-      <div className="hidden min-w-0 px-3 lg:block"><Link href="/" className="block" aria-label="Ir al inicio"><Image src="/electronica-vicente.svg" alt="Electrónica Vicente" width={2124} height={462} priority className="h-auto w-full max-w-[13rem]" /><span className="mt-3 inline-block"><span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-600/15 ring-inset">Sincro</span></span></Link></div>
+      <div className="hidden min-w-0 px-3 lg:block"><Link href="/" className="block" aria-label="Ir al inicio"><Image src="/electronica-vicente.svg" alt="Electrónica Vicente" width={2124} height={462} priority className="h-auto w-full max-w-[13rem]" /><AppLabels className="mt-3 flex" /></Link></div>
       <div className="flex items-center justify-between lg:hidden"><p className="text-sm font-semibold text-zinc-900">MENÚ</p><button type="button" onClick={close} className="grid h-11 w-11 place-items-center rounded-lg text-3xl leading-none text-zinc-600 hover:bg-zinc-100" aria-label="Cerrar menú">×</button></div>
       <nav className="-mx-1 mt-5 flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-y-auto px-1 lg:mt-6" aria-label="Módulos de la aplicación">{navigation.map((entry) => <div key={entry.section}>{entry.section === "supabase" && <div className="my-3 border-t border-zinc-200" />}{groupLabels[entry.section] && <p className="mt-4 mb-1 px-3 text-xs font-medium text-zinc-400">{groupLabels[entry.section]}</p>}<a onClick={close} href={entry.href} className={itemClass(entry.section)}><Icon name={entry.icon} /><span className="min-w-0 truncate">{entry.label}</span></a></div>)}</nav>
       <UserMenu email={userEmail} />
     </aside>
   </>;
+}
+
+function AppLabels({ className }: { className: string }) {
+  const label = "rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-emerald-700 ring-1 ring-emerald-600/15 ring-inset";
+  return <span className={`${className} flex-wrap gap-1.5`}><span className={label}>Conector</span><span className={label}>Utilidades</span></span>;
 }
 
 function UserMenu({ email }: { email: string | null }) {
