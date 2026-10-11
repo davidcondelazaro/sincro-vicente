@@ -10,10 +10,10 @@ type Settings = {
   supportEmail: string;
   whatsapp: { number: string | null; hours: string | null; schedule: { days: number[]; from: string; to: string } };
   notices: string | null;
-  teamEmails: { alerts: string[]; tickets: string[]; reports: string[] };
+  teamEmails: { alerts: string[]; tickets: string[]; reports: string[]; quotes: string[] };
 };
-const TEAM_LISTS = ["alerts", "tickets", "reports"] as const;
-const TEAM_LABELS = { alerts: "avisos de errores", tickets: "tickets", reports: "resúmenes" };
+const TEAM_LISTS = ["alerts", "tickets", "quotes", "reports"] as const;
+const TEAM_LABELS = { alerts: "avisos de errores", tickets: "tickets", quotes: "presupuestos", reports: "resúmenes" };
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
@@ -32,7 +32,7 @@ function validate(raw: unknown): { settings?: Settings; error?: string } {
   if (notices.length > 4000) return { error: "Los avisos no pueden pasar de 4.000 caracteres." };
   if (!phone) return { error: "Falta el teléfono." };
   const rawTeam = (body.teamEmails ?? {}) as Record<string, unknown>;
-  const teamEmails = { alerts: [] as string[], tickets: [] as string[], reports: [] as string[] };
+  const teamEmails = { alerts: [] as string[], tickets: [] as string[], reports: [] as string[], quotes: [] as string[] };
   for (const list of TEAM_LISTS) {
     const raw = rawTeam[list];
     const items = (Array.isArray(raw) ? raw.map(String) : String(raw ?? "").split(/[,;\s]+/)).map((item) => item.trim().toLowerCase()).filter(Boolean);

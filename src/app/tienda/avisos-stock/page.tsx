@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { createClient } from "@/lib/supabase/client";
 
@@ -34,25 +34,27 @@ export default function StockAlertsPage() {
   useEffect(() => { createClient().auth.getUser().then(({ data: user }) => setEmail(user.user?.email ?? null)); }, []);
   useEffect(() => { const timer = setTimeout(() => setQuery(search.trim()), 300); return () => clearTimeout(timer); }, [search]);
 
-  const load = useCallback(async () => {
-    try {
-      const params = new URLSearchParams({ status, source, search: query, page: String(page) });
-      const response = await fetch(`/api/tienda/avisos-stock?${params}`, { cache: "no-store" });
-      const body = await response.json();
-      if (!response.ok) throw new Error(body.error ?? "No se pudieron leer los avisos.");
-      setData(body); setError(null);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "No se pudieron leer los avisos.");
-    }
-  }, [status, source, query, page]);
-  useEffect(() => { void load(); }, [load]);
+  const [reload, setReload] = useState(0);
+
+  useEffect(() => {
+    let current = true;
+    const params = new URLSearchParams({ status, source, search: query, page: String(page) });
+    fetch(`/api/tienda/avisos-stock?${params}`, { cache: "no-store" })
+      .then(async (response) => {
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error ?? "No se pudieron leer los avisos.");
+        if (current) { setData(body); setError(null); }
+      })
+      .catch((caught) => { if (current) setError(caught instanceof Error ? caught.message : "No se pudieron leer los avisos."); });
+    return () => { current = false; };
+  }, [status, source, query, page, reload]);
 
   async function cancel(id: number) {
     if (!window.confirm("¿Cancelar este aviso? El cliente no recibirá el email.")) return;
     const response = await fetch("/api/tienda/avisos-stock", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
     const body = await response.json();
     if (!response.ok) { setError(body.error ?? "No se pudo cancelar."); return; }
-    void load();
+    setReload((n) => n + 1);
   }
 
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;

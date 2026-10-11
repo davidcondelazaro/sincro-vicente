@@ -8,11 +8,12 @@ type Settings = {
   supportEmail: string;
   whatsapp: { number: string | null; hours: string | null; schedule: { days: number[]; from: string; to: string } };
   notices: string | null;
-  teamEmails: { alerts: string[]; tickets: string[]; reports: string[] };
+  teamEmails: { alerts: string[]; tickets: string[]; reports: string[]; quotes: string[] };
 };
 const teamLists: { key: keyof Settings["teamEmails"]; label: string; help: string }[] = [
   { key: "alerts", label: "Avisos de errores", help: "Sincronizaciones que fallan o se retrasan, tareas con error, tickets que no se envían y picos de errores del widget." },
   { key: "tickets", label: "Tickets de soporte", help: "Incidencias, reclamaciones y devoluciones que abren los clientes en el chat. Al responder, se contesta al cliente." },
+  { key: "quotes", label: "Presupuestos", help: "Solicitudes de presupuesto a medida del chat, con los precios del día. Al responder, se contesta al cliente." },
   { key: "reports", label: "Resúmenes", help: "Resumen semanal (lunes, 8:00) y aviso diario de conversaciones a revisar." },
 ];
 
@@ -120,6 +121,6 @@ function normalize(raw: unknown): Settings {
       schedule: { days: value.whatsapp?.schedule?.days ?? [1, 2, 3, 4, 5], from: value.whatsapp?.schedule?.from ?? "09:00", to: value.whatsapp?.schedule?.to ?? "15:00" },
     },
     notices: value.notices ?? null,
-    teamEmails: { alerts: value.teamEmails?.alerts ?? [], tickets: value.teamEmails?.tickets ?? [], reports: value.teamEmails?.reports ?? [] },
+    teamEmails: { alerts: value.teamEmails?.alerts ?? [], tickets: value.teamEmails?.tickets ?? [], reports: value.teamEmails?.reports ?? [], quotes: value.teamEmails?.quotes ?? [] },
   };
 }
