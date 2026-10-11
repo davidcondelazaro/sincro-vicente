@@ -16,7 +16,7 @@ type Stats = {
   top_products: { id: number; title: string | null; handle: string | null; count: number }[];
   top_tools: { name: string; count: number }[];
   guard_by_kind?: Record<string, number>;
-  conversion?: { orders: number; revenue: number; assisted_orders: number; assisted_revenue: number; influenced_orders: number; influenced_revenue: number; avg_ticket_chat: number | null; avg_ticket_other: number | null; conversations_with_order: number; first_order_at: string | null; top_sold: { id: number; title: string | null; units: number }[] };
+  conversion?: { orders: number; revenue: number; assisted_orders: number; assisted_revenue: number; influenced_orders: number; influenced_revenue: number; avg_ticket_chat: number | null; avg_ticket_other: number | null; conversations_with_order: number; unpaid_chat_orders?: number; first_order_at: string | null; top_sold: { id: number; title: string | null; units: number }[] };
   quality?: Record<string, number>;
   issue_types?: Record<string, number>;
 };
@@ -125,8 +125,9 @@ function Conversion({ c, conversations }: { c: NonNullable<Stats["conversion"]>;
       <Tile label="Conversión del chat" value={percent(c.conversations_with_order, conversations)} note={`${number(c.conversations_with_order)} conversaciones con pedido`} />
       <Tile label="Ticket medio" value={euro(c.avg_ticket_chat)} note={`Con chat · sin chat: ${euro(c.avg_ticket_other)}`} />
     </section>
+    {(c.unpaid_chat_orders ?? 0) > 0 && <p className="-mt-3 text-sm text-amber-800">{number(c.unpaid_chat_orders ?? 0)} {c.unpaid_chat_orders === 1 ? "pedido del chat pendiente de pago: contará" : "pedidos del chat pendientes de pago: contarán"} cuando se pague.</p>}
     {c.top_sold.length > 0 && <Panel title="Productos recomendados por el chat que se vendieron"><ol className="flex flex-col gap-2 text-sm">{c.top_sold.map((product, index) => <li key={product.id} className="flex items-baseline gap-3"><span className="w-5 shrink-0 text-right tabular-nums text-zinc-400">{index + 1}</span><span className="min-w-0 flex-1 truncate text-zinc-800">{product.title ?? `Producto ${product.id}`}</span><span className="tabular-nums text-zinc-600">{number(product.units)} uds.</span></li>)}</ol></Panel>}
-    <p className="-mt-3 text-xs text-zinc-500"><strong className="font-medium text-zinc-600">Asistido:</strong> el pedido se hizo con un carrito en el que se usó el chat. <strong className="font-medium text-zinc-600">Influido:</strong> el cliente, con sesión iniciada, compró en los 7 días siguientes un producto que el chat le mostró. Se mide desde el 11/10/2026; los pedidos anteriores no llevan la marca. Quien usa el chat ya suele tener más intención de compra: el ticket o la conversión más altos no significan que el chat los cause.</p>
+    <p className="-mt-3 text-xs text-zinc-500"><strong className="font-medium text-zinc-600">Asistido:</strong> el pedido se hizo con un carrito en el que se usó el chat. <strong className="font-medium text-zinc-600">Influido:</strong> el cliente, con sesión iniciada, compró en los 7 días siguientes un producto que el chat le mostró. Solo cuentan los pedidos pagados (total o parcialmente), descontando lo reembolsado. Se mide desde el 11/10/2026; los pedidos anteriores no llevan la marca. Quien usa el chat ya suele tener más intención de compra: el ticket o la conversión más altos no significan que el chat los cause.</p>
   </>;
 }
 
