@@ -11,10 +11,10 @@ type VoiceSession = { customer_name: string | null; page: { productHandle?: stri
 type Thread = { conversation: Row | null; voice: VoiceSession[]; messages: Message[]; support: Row[]; errors: Row[] };
 
 const tabs: { key: Tab; label: string; placeholder: string }[] = [
-  { key: "conversations", label: "Conversaciones", placeholder: "Página de origen" },
+  { key: "conversations", label: "Conversaciones", placeholder: "Cliente, palabra, pedido, email o página" },
   { key: "support", label: "Soporte", placeholder: "Nombre, email, pedido o texto" },
   { key: "errors", label: "Errores del widget", placeholder: "Tipo, mensaje o página" },
-  { key: "syncs", label: "Sincronizaciones", placeholder: "Tipo (products, content…)" },
+  { key: "syncs", label: "Sincronizaciones", placeholder: "Tipo o texto del error" },
 ];
 const dateFormat = new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", dateStyle: "short", timeStyle: "short" });
 const supportStatus: Record<string, string> = { new: "Nueva", sent: "Enviada", error: "Error al enviar" };
@@ -27,6 +27,9 @@ export default function ChatbotPage() {
   const [pageSize, setPageSize] = useState(25);
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
@@ -35,7 +38,7 @@ export default function ChatbotPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ view: tab, page: String(page), search });
+      const params = new URLSearchParams({ view: tab, page: String(page), search: query, from: dateFrom, to: dateTo });
       const response = await fetch(`/api/chatbot?${params}`, { cache: "no-store" });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "No se pudo leer el chatbot.");
@@ -45,8 +48,10 @@ export default function ChatbotPage() {
     } finally {
       setLoading(false);
     }
-  }, [tab, page, search]);
+  }, [tab, page, query, dateFrom, dateTo]);
 
+  // Espera a que se deje de escribir antes de buscar.
+  useEffect(() => { const timer = setTimeout(() => setQuery(search.trim()), 300); return () => clearTimeout(timer); }, [search]);
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { createClient().auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null)); }, []);
 
@@ -66,7 +71,7 @@ export default function ChatbotPage() {
     <header><h1 className="text-4xl font-semibold tracking-tight text-zinc-950">Chatbot</h1><p className="mt-3 max-w-3xl text-zinc-600">Conversaciones, peticiones de soporte, errores del widget e historial de sincronizaciones del chatbot de la tienda.</p></header>
     {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p>}
     <div className="flex flex-wrap gap-2">{tabs.map((item) => <button key={item.key} type="button" onClick={() => select(item.key)} className={`cursor-pointer rounded-lg px-4 py-2 text-sm font-medium ${tab === item.key ? "bg-emerald-700 text-white" : "border border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50"}`}>{item.label}</button>)}</div>
-    <div className="flex flex-wrap items-end justify-between gap-3"><label className="text-sm font-medium text-zinc-700">Buscar<input value={search} onChange={(event) => { setSearch(event.target.value); setPage(0); setOpenId(null); }} className="mt-1 block h-10 w-72 max-w-full rounded-lg border border-zinc-300 bg-white px-3 font-normal" placeholder={current.placeholder} /></label><p className="text-sm text-zinc-500">{total.toLocaleString("es-ES")} registros</p></div>
+    <div className="flex flex-wrap items-end gap-3"><label className="text-sm font-medium text-zinc-700">Buscar<input value={search} onChange={(event) => { setSearch(event.target.value); setPage(0); setOpenId(null); }} className="mt-1 block h-10 w-80 max-w-full rounded-lg border border-zinc-300 bg-white px-3 font-normal" placeholder={current.placeholder} /></label><label className="text-sm font-medium text-zinc-700">Desde<input type="date" value={dateFrom} max={dateTo || undefined} onChange={(event) => { setDateFrom(event.target.value); setPage(0); setOpenId(null); }} className="mt-1 block h-10 rounded-lg border border-zinc-300 bg-white px-3 font-normal" /></label><label className="text-sm font-medium text-zinc-700">Hasta<input type="date" value={dateTo} min={dateFrom || undefined} onChange={(event) => { setDateTo(event.target.value); setPage(0); setOpenId(null); }} className="mt-1 block h-10 rounded-lg border border-zinc-300 bg-white px-3 font-normal" /></label>{(search || dateFrom || dateTo) && <button type="button" onClick={() => { setSearch(""); setDateFrom(""); setDateTo(""); setPage(0); setOpenId(null); }} className="h-10 cursor-pointer rounded-lg px-3 text-sm text-zinc-600 hover:bg-zinc-100">Limpiar</button>}<p className="ml-auto pb-2 text-sm text-zinc-500">{total.toLocaleString("es-ES")} registros</p></div>
     <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
       {loading && !rows.length ? <p className="p-5 text-sm text-zinc-500">Cargando…</p> : !rows.length ? <p className="p-5 text-sm text-zinc-500">No hay registros.</p> : <ul className="divide-y divide-zinc-100">{rows.map((row) => <Fragment key={String(row.id)}>
         {tab === "conversations" && <ConversationItem row={row} open={openId === row.id} onToggle={() => setOpenId(openId === row.id ? null : row.id)} />}

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 25;
+type Row = Record<string, unknown>;
 type View = "conversations" | "conversation" | "support" | "errors" | "syncs";
 
 async function signedIn() {
@@ -15,6 +16,16 @@ async function signedIn() {
 // Quita los caracteres con significado en los filtros de PostgREST (or=, comas, paréntesis).
 function term(value: string | null) {
   return (value ?? "").replace(/[,()*%\\]/g, " ").trim();
+}
+
+// Inicio del día (yyyy-mm-dd) en hora de Madrid, como instante ISO.
+function madridDayStart(day: string | null, addDays = 0) {
+  if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  const date = new Date(`${day}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + addDays);
+  const iso = date.toISOString().slice(0, 10);
+  const offset = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Madrid", timeZoneName: "longOffset" }).formatToParts(date).find((part) => part.type === "timeZoneName")?.value.match(/[+-]\d{2}:\d{2}/)?.[0] ?? "Z";
+  return new Date(`${iso}T00:00:00${offset}`).toISOString();
 }
 
 function json(body: unknown, status = 200) {
@@ -29,6 +40,9 @@ export async function GET(request: Request) {
   const search = term(url.searchParams.get("search"));
   const from = page * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
+  // Filtro de fechas: desde el inicio del día "desde" hasta el final del día "hasta", en hora de Madrid.
+  const since = madridDayStart(url.searchParams.get("from"));
+  const until = madridDayStart(url.searchParams.get("to"), 1);
 
   try {
     const db = createChatbotClient();
@@ -51,6 +65,8 @@ export async function GET(request: Request) {
     if (view === "support") {
       let query = db.from("support_requests").select("id, conversation_id, kind, name, email, phone, order_number, description, status, sent_at, created_at", { count: "exact" });
       if (search) query = query.or(`name.ilike.*${search}*,email.ilike.*${search}*,order_number.ilike.*${search}*,description.ilike.*${search}*`);
+      if (since) query = query.gte("created_at", since);
+      if (until) query = query.lt("created_at", until);
       const { data, count, error } = await query.order("created_at", { ascending: false }).range(from, to);
       if (error) throw error;
       return json({ rows: data, total: count ?? 0, pageSize: PAGE_SIZE });
@@ -59,6 +75,8 @@ export async function GET(request: Request) {
     if (view === "errors") {
       let query = db.from("widget_errors").select("id, conversation_id, kind, message, context, page_url, created_at", { count: "exact" });
       if (search) query = query.or(`kind.ilike.*${search}*,message.ilike.*${search}*,page_url.ilike.*${search}*`);
+      if (since) query = query.gte("created_at", since);
+      if (until) query = query.lt("created_at", until);
       const { data, count, error } = await query.order("created_at", { ascending: false }).range(from, to);
       if (error) throw error;
       return json({ rows: data, total: count ?? 0, pageSize: PAGE_SIZE });
@@ -66,26 +84,19 @@ export async function GET(request: Request) {
 
     if (view === "syncs") {
       let query = db.from("sync_runs").select("id, kind, started_at, finished_at, status, stats, error", { count: "exact" });
-      if (search) query = query.ilike("kind", `%${search}%`);
+      if (search) query = query.or(`kind.ilike.*${search}*,error.ilike.*${search}*`);
+      if (since) query = query.gte("started_at", since);
+      if (until) query = query.lt("started_at", until);
       const { data, count, error } = await query.order("started_at", { ascending: false }).range(from, to);
       if (error) throw error;
       return json({ rows: data, total: count ?? 0, pageSize: PAGE_SIZE });
     }
 
-    let query = db.from("conversations").select("id, started_at, last_at, page_url, metadata, messages(count), voice_sessions(customer_name), support_requests(name)", { count: "exact" });
-    if (search) query = query.ilike("page_url", `%${search}%`);
-    const { data, count, error } = await query.order("last_at", { ascending: false }).range(from, to);
+    // Busca en cliente, mensajes, soporte y página (función admin_search_conversations del chatbot).
+    const { data, error } = await db.rpc("admin_search_conversations", { p_search: search || null, p_from: since, p_to: until, p_limit: PAGE_SIZE, p_offset: from });
     if (error) throw error;
-    // Nombre del cliente con sesión iniciada (chat de texto o voz) o, si no, el de una petición de soporte.
-    const rows = (data ?? []).map(({ messages, voice_sessions, support_requests, ...row }) => ({
-      ...row,
-      message_count: (messages as { count: number }[] | null)?.[0]?.count ?? 0,
-      customer_name: (row.metadata as { customer_name?: string | null } | null)?.customer_name
-        ?? (voice_sessions as { customer_name: string | null }[] | null)?.find((session) => session.customer_name)?.customer_name
-        ?? (support_requests as { name: string }[] | null)?.[0]?.name
-        ?? null,
-    }));
-    return json({ rows, total: count ?? 0, pageSize: PAGE_SIZE });
+    const rows = (data ?? []) as (Row & { total: number })[];
+    return json({ rows, total: Number(rows[0]?.total ?? 0), pageSize: PAGE_SIZE });
   } catch (caught) {
     const message = caught instanceof Error ? caught.message : (caught as { message?: string })?.message;
     return json({ error: message ?? "No se pudo consultar el Supabase del chatbot." }, 500);
