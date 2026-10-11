@@ -61,7 +61,7 @@ export function ChatbotSettings() {
   return <div className="flex flex-col gap-6">
     <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
       <h2 className="text-lg font-semibold text-zinc-900">Emails del equipo</h2>
-      <p className="mt-1 text-sm text-zinc-500">Quién recibe los emails internos del chatbot. Varios emails, separados por comas. Si una lista está vacía, se usa la que haya en la configuración del servidor.</p>
+      <p className="mt-1 text-sm text-zinc-500">Quién recibe los emails internos del chatbot. Varios emails, separados por comas. Si una lista está vacía, ese email no se envía a nadie.</p>
       <div className="mt-4 flex flex-col gap-4">{teamLists.map((list) => <label key={list.key} className={label}>{list.label}
         <input value={settings.teamEmails[list.key].join(", ")} onChange={(event) => update((draft) => { draft.teamEmails[list.key] = event.target.value.split(",").map((item) => item.trim()); })} onBlur={() => update((draft) => { draft.teamEmails[list.key] = draft.teamEmails[list.key].filter(Boolean); })} placeholder="persona@electronicavicente.com, otra@electronicavicente.com" className={input} />
         <span className="mt-1 block text-xs font-normal text-zinc-500">{list.help}</span></label>)}</div>
