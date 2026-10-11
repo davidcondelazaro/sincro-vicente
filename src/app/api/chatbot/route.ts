@@ -59,7 +59,14 @@ export async function GET(request: Request) {
         : { data: [], error: null };
       if (ordersError) throw ordersError;
       const attributionOf = new Map((attributed ?? []).map((row) => [row.order_id, row.attribution]));
-      return json({ conversation: conversation.data, voice: voice.data, messages: messages.data, support: support.data, errors: errors.data, orders: (orders ?? []).map((order) => ({ ...order, attribution: attributionOf.get(order.id) })) });
+      // Uso del email del cliente en esta conversación: consentimientos, avisos de stock y envíos de productos.
+      const [consents, subscriptions, sentEmails] = await Promise.all([
+        db.from("consents").select("id, purpose, email, text_version, status, created_at, decided_at").eq("conversation_id", id).order("created_at"),
+        db.from("stock_subscriptions").select("id, product_title, email, status, created_at, notified_at").eq("conversation_id", id).order("created_at"),
+        db.from("customer_emails").select("id, email, kind, product_ids, created_at").eq("conversation_id", id).order("created_at"),
+      ]);
+      return json({
+        consents: consents.data ?? [], subscriptions: subscriptions.data ?? [], sentEmails: sentEmails.data ?? [], conversation: conversation.data, voice: voice.data, messages: messages.data, support: support.data, errors: errors.data, orders: (orders ?? []).map((order) => ({ ...order, attribution: attributionOf.get(order.id) })) });
     }
 
     if (view === "stats") {
