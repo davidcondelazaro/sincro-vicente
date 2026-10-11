@@ -21,7 +21,7 @@ const navigation: { section: Section; href: string; label: string; icon: IconNam
   { section: "icecat", href: "/importacion-icecat", label: "Importación Icecat", icon: "icecat" },
 ];
 
-const groupLabels: Partial<Record<Section, string>> = { mhdImport: "Utilidades", supabase: "Sincronizaciones" };
+const groupLabels: Partial<Record<Section, string>> = { mhdImport: "MHD", supabase: "Pladisel" };
 
 export function AppSidebar({ active, userEmail }: { active: Section; userEmail: string | null }) {
   const [open, setOpen] = useState(false);
