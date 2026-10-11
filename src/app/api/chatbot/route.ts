@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 25;
 type Row = Record<string, unknown>;
-type View = "conversations" | "conversation" | "support" | "errors" | "syncs" | "stats" | "guard";
+type View = "conversations" | "conversation" | "support" | "errors" | "syncs" | "stats";
 const ANALYSIS_FILTERS = { sentiment: ["positivo", "neutro", "negativo", "frustrado"], outcome: ["resuelta", "parcial", "no_resuelta", "abandonada"], topic: ["eleccion", "info_producto", "envio", "postventa", "garantia_instalacion", "otro"] } as const;
 const pick = (value: string | null, allowed: readonly string[]) => (value && allowed.includes(value) ? value : null);
 
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
       const id = url.searchParams.get("id");
       if (!id) return json({ error: "Falta la conversación." }, 400);
       const [conversation, voice, messages, support, errors] = await Promise.all([
-        db.from("conversations").select("id, started_at, last_at, page_url, metadata, summary, sentiment, outcome, topic, needs_review, review_reason").eq("id", id).maybeSingle(),
+        db.from("conversations").select("id, started_at, last_at, page_url, metadata, summary, sentiment, outcome, topic, needs_review, review_reason, quality_rating, quality_issues, reviewed_at").eq("id", id).maybeSingle(),
         db.from("voice_sessions").select("customer_name, page, started_at").eq("conversation_id", id).order("started_at"),
         db.from("messages").select("id, role, content, tool_calls, product_ids, model, input_tokens, output_tokens, latency_ms, channel, created_at").eq("conversation_id", id).order("id"),
         db.from("support_requests").select("id, kind, name, email, phone, order_number, description, status, created_at").eq("conversation_id", id).order("created_at"),
@@ -80,16 +80,6 @@ export async function GET(request: Request) {
       return json({ rows: data, total: count ?? 0, pageSize: PAGE_SIZE });
     }
 
-    if (view === "guard") {
-      let query = db.from("abuse_events").select("id, conversation_id, kind, detail, message, created_at", { count: "exact" });
-      if (search) query = query.or(`kind.ilike.*${search}*,message.ilike.*${search}*`);
-      if (since) query = query.gte("created_at", since);
-      if (until) query = query.lt("created_at", until);
-      const { data, count, error } = await query.order("created_at", { ascending: false }).range(from, to);
-      if (error) throw error;
-      return json({ rows: data, total: count ?? 0, pageSize: PAGE_SIZE });
-    }
-
     if (view === "syncs") {
       let query = db.from("sync_runs").select("id, kind, started_at, finished_at, status, stats, error", { count: "exact" });
       if (search) query = query.or(`kind.ilike.*${search}*,error.ilike.*${search}*`);
@@ -108,6 +98,8 @@ export async function GET(request: Request) {
       p_outcome: pick(url.searchParams.get("outcome"), ANALYSIS_FILTERS.outcome),
       p_topic: pick(url.searchParams.get("topic"), ANALYSIS_FILTERS.topic),
       p_needs_review: review === "1" ? true : null,
+      p_with_issues: url.searchParams.get("issues") === "1" ? true : null,
+      p_with_guard: url.searchParams.get("guard") === "1" ? true : null,
     });
     if (error) throw error;
     const rows = (data ?? []) as (Row & { total: number })[];

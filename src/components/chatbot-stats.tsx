@@ -6,7 +6,7 @@ import { outcomeLabels, sentimentLabels, topicLabels } from "@/lib/chatbot-label
 // Indicadores de las conversaciones del chatbot (/api/chatbot?view=stats → función admin_conversation_stats).
 // Un solo color (el verde de la app) en todos los gráficos: cada barra lleva su nombre y su cifra, así que nada depende del color.
 type Stats = {
-  totals: { conversations: number; voice: number; identified: number; with_support: number; needs_review: number; user_messages: number; assistant_messages: number; input_tokens: number; output_tokens: number; avg_latency_ms: number | null; widget_errors: number; guard_events?: number; closed_conversations?: number };
+  totals: { conversations: number; voice: number; identified: number; with_support: number; needs_review: number; user_messages: number; assistant_messages: number; input_tokens: number; output_tokens: number; avg_latency_ms: number | null; widget_errors: number; guard_events?: number; closed_conversations?: number; guard_without_conversation?: number };
   by_day: { day: string; conversations: number; voice: number }[];
   by_hour: Record<string, number>;
   by_weekday: Record<string, number>;
@@ -15,6 +15,9 @@ type Stats = {
   topic: Record<string, number>;
   top_products: { id: number; title: string | null; handle: string | null; count: number }[];
   top_tools: { name: string; count: number }[];
+  guard_by_kind?: Record<string, number>;
+  quality?: Record<string, number>;
+  issue_types?: Record<string, number>;
 };
 
 const ranges = [
@@ -23,6 +26,8 @@ const ranges = [
   { key: "90", label: "Últimos 90 días" },
   { key: "all", label: "Todo" },
 ] as const;
+const issueTypeLabels: Record<string, string> = { dato_erroneo: "Dato erróneo", dato_no_respaldado: "Dato no respaldado", no_entendio: "No entendió al cliente", herramienta: "Herramienta mal usada", regla_incumplida: "Regla incumplida", derivacion: "Derivación a una persona", tono: "Tono o extensión", otro: "Otro" };
+const guardLabels: Record<string, string> = { ritmo: "Exceso de ritmo", repeticion: "Mensaje repetido", sin_sentido: "Mensaje sin sentido", moderacion: "Inapropiado (aviso)", cierre: "Conversación cerrada", bloqueado: "Escribió estando cerrada", autolesion: "Posible autolesión" };
 const weekdays = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 const number = (value: number) => value.toLocaleString("es-ES");
 const percent = (part: number, total: number) => (total ? `${Math.round((part / total) * 100)} %` : "—");
@@ -61,7 +66,6 @@ export function ChatbotStats() {
         <Tile label="Tiempo medio de respuesta" value={t.avg_latency_ms ? `${(t.avg_latency_ms / 1000).toFixed(1).replace(".", ",")} s` : "—"} note="Desde que escribe hasta que termina la respuesta" />
         <Tile label="Tokens" value={compact(t.input_tokens + t.output_tokens)} note={`${compact(t.input_tokens)} de entrada · ${compact(t.output_tokens)} de salida`} />
         <Tile label="Errores del widget" value={number(t.widget_errors)} note="En el periodo" />
-        <Tile label="Mensajes frenados" value={number(t.guard_events ?? 0)} note={`Protección del chat · ${number(t.closed_conversations ?? 0)} conversaciones cerradas`} />
       </section>
 
       <Panel title="Conversaciones por día"><DayChart days={fillDays(stats.by_day, range)} /></Panel>
@@ -73,6 +77,22 @@ export function ChatbotStats() {
       </div>
       <p className="-mt-3 text-xs text-zinc-500">Sentimiento, resultado y motivo los estima un modelo de IA al terminar cada conversación: sirven para ver tendencias, no como nota exacta de cada una.</p>
 
+      <h2 className="mt-2 text-xl font-semibold text-zinc-900">Calidad de las respuestas</h2>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Panel title="Valoración de la revisión"><Bars items={entries(stats.quality ?? {}, { bien: "Bien", mejorable: "Mejorable", mal: "Mal", sin_revisar: "Sin revisar todavía" })} total={t.conversations} /></Panel>
+        <Panel title="Tipos de fallo encontrados"><Bars items={entries(stats.issue_types ?? {}, issueTypeLabels)} /></Panel>
+      </div>
+      <p className="-mt-3 text-xs text-zinc-500">Revisión automática de cada conversación terminada. Las propuestas de mejora están en Chatbot IA → Mejoras.</p>
+
+      <h2 className="mt-2 text-xl font-semibold text-zinc-900">Protección del chat</h2>
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Tile label="Mensajes frenados" value={number(t.guard_events ?? 0)} note="No llegaron al modelo ni gastaron en OpenAI" />
+        <Tile label="Conversaciones cerradas" value={number(t.closed_conversations ?? 0)} note="Por mensajes inapropiados repetidos" />
+        <Tile label="Sin conversación" value={number(t.guard_without_conversation ?? 0)} note="Frenados antes de abrirla (ritmo o IP bloqueada)" />
+      </section>
+      <Panel title="Por tipo"><Bars items={entries(stats.guard_by_kind ?? {}, guardLabels)} total={t.guard_events ?? 0} /></Panel>
+
+      <h2 className="mt-2 text-xl font-semibold text-zinc-900">Actividad</h2>
       <div className="grid gap-6 lg:grid-cols-2">
         <Panel title="Mensajes de clientes por hora (hora de Madrid)"><HourChart byHour={stats.by_hour} /></Panel>
         <Panel title="Mensajes de clientes por día de la semana"><Bars items={weekdays.map((name, index) => ({ key: String(index + 1), label: name, value: stats.by_weekday[String(index + 1)] ?? 0 }))} total={t.user_messages} keepOrder /></Panel>
