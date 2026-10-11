@@ -76,11 +76,12 @@ export async function GET(request: Request) {
     if (search) query = query.ilike("page_url", `%${search}%`);
     const { data, count, error } = await query.order("last_at", { ascending: false }).range(from, to);
     if (error) throw error;
-    // Nombre del cliente: el de la sesión de voz (cliente con sesión iniciada) o, si no, el de una petición de soporte.
+    // Nombre del cliente con sesión iniciada (chat de texto o voz) o, si no, el de una petición de soporte.
     const rows = (data ?? []).map(({ messages, voice_sessions, support_requests, ...row }) => ({
       ...row,
       message_count: (messages as { count: number }[] | null)?.[0]?.count ?? 0,
-      customer_name: (voice_sessions as { customer_name: string | null }[] | null)?.find((session) => session.customer_name)?.customer_name
+      customer_name: (row.metadata as { customer_name?: string | null } | null)?.customer_name
+        ?? (voice_sessions as { customer_name: string | null }[] | null)?.find((session) => session.customer_name)?.customer_name
         ?? (support_requests as { name: string }[] | null)?.[0]?.name
         ?? null,
     }));

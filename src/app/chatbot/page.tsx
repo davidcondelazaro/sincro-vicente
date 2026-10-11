@@ -183,8 +183,10 @@ function startingPage(thread: Thread) {
   return null;
 }
 
-// El nombre del cliente con sesión iniciada solo se guarda en las sesiones de voz; si no, el que dio en una petición de soporte.
+// Nombre del cliente con sesión iniciada (chat de texto o voz); si no, el que dio en una petición de soporte.
 function customerOf(thread: Thread) {
+  const textName = (thread.conversation?.metadata as { customer_name?: string | null } | null)?.customer_name;
+  if (textName) return textName;
   const voiceName = thread.voice.find((session) => session.customer_name)?.customer_name;
   if (voiceName) return voiceName;
   const request = thread.support[0];
