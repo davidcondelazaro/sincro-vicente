@@ -8,7 +8,13 @@ type Settings = {
   supportEmail: string;
   whatsapp: { number: string | null; hours: string | null; schedule: { days: number[]; from: string; to: string } };
   notices: string | null;
+  teamEmails: { alerts: string[]; tickets: string[]; reports: string[] };
 };
+const teamLists: { key: keyof Settings["teamEmails"]; label: string; help: string }[] = [
+  { key: "alerts", label: "Avisos de errores", help: "Sincronizaciones que fallan o se retrasan, tareas con error, tickets que no se envían y picos de errores del widget." },
+  { key: "tickets", label: "Tickets de soporte", help: "Incidencias, reclamaciones y devoluciones que abren los clientes en el chat. Al responder, se contesta al cliente." },
+  { key: "reports", label: "Resúmenes", help: "Resumen semanal (lunes, 8:00) y aviso diario de conversaciones a revisar." },
+];
 
 const dayNames = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 const dateFormat = new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", dateStyle: "short", timeStyle: "short" });
@@ -53,6 +59,14 @@ export function ChatbotSettings() {
 
   const schedule = settings.whatsapp.schedule;
   return <div className="flex flex-col gap-6">
+    <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+      <h2 className="text-lg font-semibold text-zinc-900">Emails del equipo</h2>
+      <p className="mt-1 text-sm text-zinc-500">Quién recibe los emails internos del chatbot. Varios emails, separados por comas. Si una lista está vacía, se usa la que haya en la configuración del servidor.</p>
+      <div className="mt-4 flex flex-col gap-4">{teamLists.map((list) => <label key={list.key} className={label}>{list.label}
+        <input value={settings.teamEmails[list.key].join(", ")} onChange={(event) => update((draft) => { draft.teamEmails[list.key] = event.target.value.split(",").map((item) => item.trim()); })} onBlur={() => update((draft) => { draft.teamEmails[list.key] = draft.teamEmails[list.key].filter(Boolean); })} placeholder="persona@electronicavicente.com, otra@electronicavicente.com" className={input} />
+        <span className="mt-1 block text-xs font-normal text-zinc-500">{list.help}</span></label>)}</div>
+    </section>
+
     <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
       <h2 className="text-lg font-semibold text-zinc-900">Avisos e instrucciones temporales</h2>
       <p className="mt-1 text-sm text-zinc-500">Se añaden a las instrucciones del chatbot, en texto y en voz, y los tiene en cuenta cuando vienen al caso. Para cosas que cambian: vacaciones, retrasos en envíos, promociones, cierres de tienda… Quítalos cuando dejen de valer.</p>
@@ -106,5 +120,6 @@ function normalize(raw: unknown): Settings {
       schedule: { days: value.whatsapp?.schedule?.days ?? [1, 2, 3, 4, 5], from: value.whatsapp?.schedule?.from ?? "09:00", to: value.whatsapp?.schedule?.to ?? "15:00" },
     },
     notices: value.notices ?? null,
+    teamEmails: { alerts: value.teamEmails?.alerts ?? [], tickets: value.teamEmails?.tickets ?? [], reports: value.teamEmails?.reports ?? [] },
   };
 }

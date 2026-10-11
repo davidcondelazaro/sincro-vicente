@@ -10,7 +10,10 @@ type Settings = {
   supportEmail: string;
   whatsapp: { number: string | null; hours: string | null; schedule: { days: number[]; from: string; to: string } };
   notices: string | null;
+  teamEmails: { alerts: string[]; tickets: string[]; reports: string[] };
 };
+const TEAM_LISTS = ["alerts", "tickets", "reports"] as const;
+const TEAM_LABELS = { alerts: "avisos de errores", tickets: "tickets", reports: "resúmenes" };
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
@@ -28,6 +31,16 @@ function validate(raw: unknown): { settings?: Settings; error?: string } {
   const notices = typeof body.notices === "string" ? body.notices.trim() : "";
   if (notices.length > 4000) return { error: "Los avisos no pueden pasar de 4.000 caracteres." };
   if (!phone) return { error: "Falta el teléfono." };
+  const rawTeam = (body.teamEmails ?? {}) as Record<string, unknown>;
+  const teamEmails = { alerts: [] as string[], tickets: [] as string[], reports: [] as string[] };
+  for (const list of TEAM_LISTS) {
+    const raw = rawTeam[list];
+    const items = (Array.isArray(raw) ? raw.map(String) : String(raw ?? "").split(/[,;\s]+/)).map((item) => item.trim().toLowerCase()).filter(Boolean);
+    const invalid = items.find((item) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(item));
+    if (invalid) return { error: `El email «${invalid}» de ${TEAM_LABELS[list]} no es válido.` };
+    if (items.length > 20) return { error: `Como mucho 20 emails en ${TEAM_LABELS[list]}.` };
+    teamEmails[list] = [...new Set(items)];
+  }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(supportEmail)) return { error: "El email de soporte no es válido." };
   if (number && !/^\d{8,15}$/.test(number)) return { error: "El WhatsApp debe ser el número con prefijo de país, sin «+» ni espacios (p. ej. 34699742952)." };
   if (!HHMM.test(from) || !HHMM.test(to) || from >= to) return { error: "El horario de WhatsApp debe tener «desde» y «hasta» en formato HH:MM, y «desde» antes que «hasta»." };
@@ -37,6 +50,7 @@ function validate(raw: unknown): { settings?: Settings; error?: string } {
       supportEmail,
       whatsapp: { number: number || null, hours: text(whatsapp.hours) || null, schedule: { days, from, to } },
       notices: notices || null,
+      teamEmails,
     },
   };
 }
