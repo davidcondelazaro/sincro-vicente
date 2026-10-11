@@ -51,7 +51,15 @@ export async function GET(request: Request) {
       ]);
       const failed = conversation.error ?? voice.error ?? messages.error ?? support.error ?? errors.error;
       if (failed) throw failed;
-      return json({ conversation: conversation.data, voice: voice.data, messages: messages.data, support: support.data, errors: errors.data });
+      // Pedidos atribuidos a la conversación (vista attributed_orders del chatbot).
+      const { data: attributed, error: attributedError } = await db.from("attributed_orders").select("order_id, attribution").eq("conversation_id", id);
+      if (attributedError) throw attributedError;
+      const { data: orders, error: ordersError } = attributed?.length
+        ? await db.from("shop_orders").select("id, name, created_at, total, refunded, currency, line_items").in("id", attributed.map((row) => row.order_id)).order("created_at")
+        : { data: [], error: null };
+      if (ordersError) throw ordersError;
+      const attributionOf = new Map((attributed ?? []).map((row) => [row.order_id, row.attribution]));
+      return json({ conversation: conversation.data, voice: voice.data, messages: messages.data, support: support.data, errors: errors.data, orders: (orders ?? []).map((order) => ({ ...order, attribution: attributionOf.get(order.id) })) });
     }
 
     if (view === "stats") {
@@ -100,6 +108,7 @@ export async function GET(request: Request) {
       p_needs_review: review === "1" ? true : null,
       p_with_issues: url.searchParams.get("issues") === "1" ? true : null,
       p_with_guard: url.searchParams.get("guard") === "1" ? true : null,
+      p_with_order: url.searchParams.get("order") === "1" ? true : null,
     });
     if (error) throw error;
     const rows = (data ?? []) as (Row & { total: number })[];

@@ -16,6 +16,7 @@ type Stats = {
   top_products: { id: number; title: string | null; handle: string | null; count: number }[];
   top_tools: { name: string; count: number }[];
   guard_by_kind?: Record<string, number>;
+  conversion?: { orders: number; revenue: number; assisted_orders: number; assisted_revenue: number; influenced_orders: number; influenced_revenue: number; avg_ticket_chat: number | null; avg_ticket_other: number | null; conversations_with_order: number; first_order_at: string | null; top_sold: { id: number; title: string | null; units: number }[] };
   quality?: Record<string, number>;
   issue_types?: Record<string, number>;
 };
@@ -68,6 +69,8 @@ export function ChatbotStats() {
         <Tile label="Errores del widget" value={number(t.widget_errors)} note="En el periodo" />
       </section>
 
+      {stats.conversion && <Conversion c={stats.conversion} conversations={t.conversations} />}
+
       <Panel title="Conversaciones por día"><DayChart days={fillDays(stats.by_day, range)} /></Panel>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -102,9 +105,29 @@ export function ChatbotStats() {
         <Panel title="Productos que más muestra el chatbot">{stats.top_products.length ? <ol className="flex flex-col gap-2 text-sm">{stats.top_products.map((product, index) => <li key={product.id} className="flex items-baseline gap-3"><span className="w-5 shrink-0 text-right tabular-nums text-zinc-400">{index + 1}</span><span className="min-w-0 flex-1 truncate text-zinc-800" title={product.title ?? String(product.id)}>{product.title ?? `Producto ${product.id}`}</span><span className="tabular-nums text-zinc-600">{number(product.count)}</span></li>)}</ol> : <Empty />}</Panel>
         <Panel title="Herramientas que más usa el chatbot"><Bars items={stats.top_tools.map((tool) => ({ key: tool.name, label: tool.name.replaceAll("_", " "), value: tool.count }))} keepOrder /></Panel>
       </div>
-      <p className="text-xs text-zinc-500">Pendiente: conversión (ventas atribuidas al chat) y coste en euros. Para el coste hace falta fijar el precio por token de cada modelo.</p>
+      <p className="text-xs text-zinc-500">Pendiente: coste en euros del consumo de OpenAI.</p>
     </>}
   </div>;
+}
+
+const euro = (value: number | null | undefined) => (value === null || value === undefined ? "—" : new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(value));
+
+// Ventas atribuidas al chat: pedidos con la marca de la conversación (asistidos) o en los que el cliente con sesión
+// compró en los 7 días siguientes un producto que el bot le mostró (influidos).
+function Conversion({ c, conversations }: { c: NonNullable<Stats["conversion"]>; conversations: number }) {
+  const attributedOrders = c.assisted_orders + c.influenced_orders;
+  const attributedRevenue = c.assisted_revenue + c.influenced_revenue;
+  return <>
+    <h2 className="mt-2 text-xl font-semibold text-zinc-900">Ventas atribuidas al chat</h2>
+    <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <Tile label="Pedidos atribuidos" value={number(attributedOrders)} note={`${number(c.assisted_orders)} asistidos · ${number(c.influenced_orders)} influidos · de ${number(c.orders)} pedidos`} />
+      <Tile label="Ingresos atribuidos" value={euro(attributedRevenue)} note={`${percent(attributedRevenue, c.revenue)} de ${euro(c.revenue)} en el periodo`} />
+      <Tile label="Conversión del chat" value={percent(c.conversations_with_order, conversations)} note={`${number(c.conversations_with_order)} conversaciones con pedido`} />
+      <Tile label="Ticket medio" value={euro(c.avg_ticket_chat)} note={`Con chat · sin chat: ${euro(c.avg_ticket_other)}`} />
+    </section>
+    {c.top_sold.length > 0 && <Panel title="Productos recomendados por el chat que se vendieron"><ol className="flex flex-col gap-2 text-sm">{c.top_sold.map((product, index) => <li key={product.id} className="flex items-baseline gap-3"><span className="w-5 shrink-0 text-right tabular-nums text-zinc-400">{index + 1}</span><span className="min-w-0 flex-1 truncate text-zinc-800">{product.title ?? `Producto ${product.id}`}</span><span className="tabular-nums text-zinc-600">{number(product.units)} uds.</span></li>)}</ol></Panel>}
+    <p className="-mt-3 text-xs text-zinc-500"><strong className="font-medium text-zinc-600">Asistido:</strong> el pedido se hizo con un carrito en el que se usó el chat. <strong className="font-medium text-zinc-600">Influido:</strong> el cliente, con sesión iniciada, compró en los 7 días siguientes un producto que el chat le mostró. Se mide desde el 11/10/2026; los pedidos anteriores no llevan la marca. Quien usa el chat ya suele tener más intención de compra: el ticket o la conversión más altos no significan que el chat los cause.</p>
+  </>;
 }
 
 function Tile({ label, value, note }: { label: string; value: string; note: string }) {
