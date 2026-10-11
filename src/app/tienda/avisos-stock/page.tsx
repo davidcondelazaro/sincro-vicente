@@ -62,7 +62,7 @@ export default function StockAlertsPage() {
   return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]"><AppSidebar active="stockAlerts" userEmail={email} /><main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 pb-24 pt-28 sm:px-10 lg:mx-0 lg:py-16">
     <header><p className="text-sm font-semibold tracking-[0.18em] text-emerald-700 uppercase">Tienda</p><h1 className="mt-2 text-4xl font-semibold tracking-tight text-zinc-950">Avisos de stock</h1><p className="mt-3 max-w-3xl text-zinc-600">Clientes que han pedido que les avisemos cuando un producto vuelva a estar disponible, desde el chat o desde la web. El aviso se envía por email una sola vez, tras la copia de productos en la que el producto vuelve a poder comprarse.</p></header>
     {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p>}
-    {data && <section className="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
+    {data && <section className="grid grid-cols-1 gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-1">
         <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm"><p className="text-sm text-zinc-500">Esperando aviso</p><p className="mt-1 text-2xl font-semibold tabular-nums">{data.totals.pending.toLocaleString("es-ES", { useGrouping: "always" })}</p></div>
         <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm"><p className="text-sm text-zinc-500">Avisos enviados</p><p className="mt-1 text-2xl font-semibold tabular-nums">{data.totals.notified.toLocaleString("es-ES", { useGrouping: "always" })}</p></div>
