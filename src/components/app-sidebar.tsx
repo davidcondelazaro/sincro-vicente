@@ -4,8 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-type Section = "home" | "customer" | "customers" | "catalog" | "priorities" | "icecat" | "supabase" | "mhdImport" | "mhdCatalog" | "prices" | "stock" | "orders";
-type IconName = "home" | "database" | "users" | "catalog" | "price" | "stock" | "sort" | "icecat" | "orders" | "export";
+type Section = "home" | "customer" | "customers" | "catalog" | "priorities" | "icecat" | "supabase" | "mhdImport" | "mhdCatalog" | "prices" | "stock" | "orders" | "chatbot";
+type IconName = "home" | "database" | "users" | "catalog" | "price" | "stock" | "sort" | "icecat" | "orders" | "chat" | "export";
 
 const navigation: { section: Section; href: string; label: string; icon: IconName }[] = [
   { section: "home", href: "/", label: "Inicio", icon: "home" },
@@ -19,9 +19,10 @@ const navigation: { section: Section; href: string; label: string; icon: IconNam
   { section: "stock", href: "/importacion-stock", label: "Importación de stock", icon: "stock" },
   { section: "priorities", href: "/ordenacion-productos", label: "Ordenación de productos", icon: "sort" },
   { section: "icecat", href: "/importacion-icecat", label: "Importación Icecat", icon: "icecat" },
+  { section: "chatbot", href: "/chatbot", label: "Chatbot", icon: "chat" },
 ];
 
-const groupLabels: Partial<Record<Section, string>> = { mhdImport: "MHD", supabase: "Pladisel" };
+const groupLabels: Partial<Record<Section, string>> = { mhdImport: "MHD", supabase: "Pladisel", chatbot: "Chatbot" };
 
 export function AppSidebar({ active, userEmail }: { active: Section; userEmail: string | null }) {
   const [open, setOpen] = useState(false);
@@ -38,7 +39,7 @@ export function AppSidebar({ active, userEmail }: { active: Section; userEmail: 
     <aside className={`fixed inset-y-0 right-0 z-50 flex w-72 min-w-0 flex-col overflow-hidden border-l border-zinc-200 bg-white px-5 pt-5 shadow-xl transition-transform lg:right-auto lg:left-0 lg:w-60 lg:border-b-0 lg:border-l-0 lg:border-r lg:shadow-none ${open ? "translate-x-0" : "translate-x-full lg:translate-x-0"}`}>
       <div className="hidden min-w-0 px-3 lg:block"><Link href="/" className="block" aria-label="Ir al inicio"><Image src="/electronica-vicente.svg" alt="Electrónica Vicente" width={2124} height={462} priority className="h-auto w-full max-w-[13rem]" /><AppLabels className="mt-3 flex" /></Link></div>
       <div className="flex items-center justify-between lg:hidden"><p className="text-sm font-semibold text-zinc-900">MENÚ</p><button type="button" onClick={close} className="grid h-11 w-11 place-items-center rounded-lg text-3xl leading-none text-zinc-600 hover:bg-zinc-100" aria-label="Cerrar menú">×</button></div>
-      <nav className="-mx-1 mt-5 flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-y-auto px-1 lg:mt-6" aria-label="Módulos de la aplicación">{navigation.map((entry) => <div key={entry.section}>{entry.section === "supabase" && <div className="my-3 border-t border-zinc-200" />}{groupLabels[entry.section] && <p className="mt-4 mb-1 px-3 text-xs font-medium text-zinc-400">{groupLabels[entry.section]}</p>}<a onClick={close} href={entry.href} className={itemClass(entry.section)}><Icon name={entry.icon} /><span className="min-w-0 truncate">{entry.label}</span></a></div>)}</nav>
+      <nav className="-mx-1 mt-5 flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-y-auto px-1 lg:mt-6" aria-label="Módulos de la aplicación">{navigation.map((entry) => <div key={entry.section}>{(entry.section === "supabase" || entry.section === "chatbot") && <div className="my-3 border-t border-zinc-200" />}{groupLabels[entry.section] && <p className="mt-4 mb-1 px-3 text-xs font-medium text-zinc-400">{groupLabels[entry.section]}</p>}<a onClick={close} href={entry.href} className={itemClass(entry.section)}><Icon name={entry.icon} /><span className="min-w-0 truncate">{entry.label}</span></a></div>)}</nav>
       <UserMenu email={userEmail} />
     </aside>
   </>;
@@ -88,6 +89,7 @@ function Icon({ name }: { name: IconName }) {
     sort: <><path d="M8 6h13M8 12h10M8 18h7M3 6h.01M3 12h.01M3 18h.01" /></>,
     icecat: <><circle cx="12" cy="12" r="9" /><path d="M3.6 9h16.8M3.6 15h16.8M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" /></>,
     orders: <><path d="M6 3h12v18H6z" /><path d="M9 3v3h6V3M9 10h6M9 14h6M9 18h3" /></>,
+    chat: <path d="M21 12a8 8 0 0 1-11.8 7L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z" />,
     export: <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /></>,
   };
   return <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
