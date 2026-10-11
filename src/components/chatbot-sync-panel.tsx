@@ -33,6 +33,8 @@ const formatDate = (value: string | null | undefined) => (value ? dateFormat.for
 export function ChatbotSyncPanel({ onChange }: { onChange: () => void }) {
   const [kinds, setKinds] = useState<KindState[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [launchingAll, setLaunchingAll] = useState(false);
+  const [allMessage, setAllMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -54,9 +56,27 @@ export function ChatbotSyncPanel({ onChange }: { onChange: () => void }) {
     return () => clearInterval(timer);
   }, [anyRunning, load, onChange]);
 
+  async function runAll() {
+    if (!window.confirm("¿Lanzar ahora todas las sincronizaciones? Van en orden (colecciones, productos, vectores y contenido) y tardan unos minutos.")) return;
+    setLaunchingAll(true); setAllMessage(null);
+    try {
+      const response = await fetch("/api/chatbot/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "all" }) });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "No se pudieron lanzar.");
+      setAllMessage({ tone: "ok", text: "Lanzadas. Van una detrás de otra; el estado se actualiza solo." });
+      setTimeout(() => { void load(); onChange(); }, 2000);
+    } catch (caught) {
+      setAllMessage({ tone: "error", text: caught instanceof Error ? caught.message : "No se pudieron lanzar." });
+    } finally { setLaunchingAll(false); }
+  }
+
   if (error) return <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p>;
   if (!kinds) return <p className="text-sm text-zinc-500">Cargando sincronizaciones…</p>;
   return <section className="grid gap-4 md:grid-cols-2">
+    <div className="flex flex-wrap items-center gap-3 md:col-span-2">
+      <button type="button" disabled={launchingAll || anyRunning} onClick={() => void runAll()} className="cursor-pointer rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50">{launchingAll ? "Lanzando…" : anyRunning ? "Hay sincronizaciones en curso…" : "Lanzar todo ahora"}</button>
+      {allMessage && <p className={`text-sm ${allMessage.tone === "ok" ? "text-emerald-700" : "text-red-700"}`}>{allMessage.text}</p>}
+    </div>
     {kinds.map((item) => <SyncCard key={item.kind} state={item} onChange={() => { void load(); onChange(); }} />)}
     <p className="text-xs text-zinc-500 md:col-span-2">La programación usa expresiones cron en hora de Madrid. El chatbot la revisa cada 5 minutos, así que una sincronización puede empezar hasta 5 minutos después de su hora.</p>
   </section>;

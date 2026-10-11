@@ -54,11 +54,11 @@ export async function PUT(request: Request) {
   }
 }
 
-// Lanza una sincronización ahora: { kind }.
+// Lanza una sincronización ahora: { kind } con un tipo o "all" (todas en orden).
 export async function POST(request: Request) {
   if (!(await sessionEmail())) return json({ error: "Necesitas iniciar sesión." }, 401);
   const body = (await request.json().catch(() => null)) as { kind?: unknown } | null;
-  if (!isKind(body?.kind)) return json({ error: "Tipo de sincronización no válido." }, 400);
+  if (body?.kind !== "all" && !isKind(body?.kind)) return json({ error: "Tipo de sincronización no válido." }, 400);
   const secret = process.env.CHATBOT_ADMIN_SECRET;
   if (!secret) return json({ error: "Falta la variable CHATBOT_ADMIN_SECRET." }, 500);
   const baseUrl = process.env.CHATBOT_URL ?? "https://chatbot-vicente.vercel.app";
