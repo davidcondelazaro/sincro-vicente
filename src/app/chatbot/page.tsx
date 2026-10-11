@@ -84,6 +84,7 @@ function ConversationItem({ row, open, onToggle }: { row: Row; open: boolean; on
     <button type="button" onClick={onToggle} aria-expanded={open} className="flex w-full cursor-pointer flex-wrap items-center gap-x-4 gap-y-1 px-5 py-4 text-left hover:bg-zinc-50">
       <span className="text-sm font-medium text-zinc-900">{date(row.last_at)}</span>
       <span className="text-sm text-zinc-500">{Number(row.message_count ?? 0)} mensajes</span>
+      {Boolean(row.customer_name) && <span className="text-sm font-medium text-zinc-800">{String(row.customer_name)}</span>}
       <span className="ml-auto text-sm font-medium text-emerald-700">{open ? "▼ Ocultar" : "▶ Ver"}</span>
     </button>
     {open && <ConversationThread id={String(row.id)} startedAt={row.started_at} />}

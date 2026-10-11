@@ -72,11 +72,18 @@ export async function GET(request: Request) {
       return json({ rows: data, total: count ?? 0, pageSize: PAGE_SIZE });
     }
 
-    let query = db.from("conversations").select("id, started_at, last_at, page_url, metadata, messages(count)", { count: "exact" });
+    let query = db.from("conversations").select("id, started_at, last_at, page_url, metadata, messages(count), voice_sessions(customer_name), support_requests(name)", { count: "exact" });
     if (search) query = query.ilike("page_url", `%${search}%`);
     const { data, count, error } = await query.order("last_at", { ascending: false }).range(from, to);
     if (error) throw error;
-    const rows = (data ?? []).map(({ messages, ...row }) => ({ ...row, message_count: (messages as { count: number }[] | null)?.[0]?.count ?? 0 }));
+    // Nombre del cliente: el de la sesión de voz (cliente con sesión iniciada) o, si no, el de una petición de soporte.
+    const rows = (data ?? []).map(({ messages, voice_sessions, support_requests, ...row }) => ({
+      ...row,
+      message_count: (messages as { count: number }[] | null)?.[0]?.count ?? 0,
+      customer_name: (voice_sessions as { customer_name: string | null }[] | null)?.find((session) => session.customer_name)?.customer_name
+        ?? (support_requests as { name: string }[] | null)?.[0]?.name
+        ?? null,
+    }));
     return json({ rows, total: count ?? 0, pageSize: PAGE_SIZE });
   } catch (caught) {
     const message = caught instanceof Error ? caught.message : (caught as { message?: string })?.message;
