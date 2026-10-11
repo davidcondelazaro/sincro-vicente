@@ -35,6 +35,7 @@ export function AppSidebar({ active, userEmail }: { active: Section; userEmail: 
   const close = () => setOpen(false);
 
   return <>
+    <title>{pageTitle(active)}</title>
     <header className="fixed inset-x-0 top-0 z-30 flex items-center justify-between border-b border-zinc-200 bg-white px-5 py-3 shadow-sm lg:hidden">
       <Link href="/" className="flex items-center gap-2" aria-label="Ir al inicio"><Image src="/electronica-vicente.svg" alt="Electrónica Vicente" width={2124} height={462} priority className="h-auto w-36" /><AppLabels className="hidden sm:flex" /></Link>
       <button type="button" onClick={() => setOpen(true)} className="grid h-10 w-10 cursor-pointer place-items-center rounded-lg border border-zinc-300 text-zinc-700 hover:bg-zinc-50" aria-label="Abrir menú"><svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg></button>
@@ -53,6 +54,14 @@ export function AppSidebar({ active, userEmail }: { active: Section; userEmail: 
 function AppLabels({ className }: { className: string }) {
   const label = "rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-emerald-700 ring-1 ring-emerald-600/15 ring-inset";
   return <span className={`${className} flex-wrap gap-1.5`}><span className={label}>Conector</span><span className={label}>Utilidades</span></span>;
+}
+
+// Título de la pestaña: "Apartado · Grupo · Sincro Vicente" (el grupo es la última etiqueta del menú antes del apartado).
+function pageTitle(section: Section) {
+  const index = navigation.findIndex((entry) => entry.section === section);
+  if (index <= 0) return "Sincro Vicente";
+  const group = navigation.slice(0, index + 1).map((entry) => groupLabels[entry.section]).filter(Boolean).at(-1);
+  return [navigation[index].label, group, "Sincro Vicente"].filter(Boolean).join(" · ");
 }
 
 function UserMenu({ email }: { email: string | null }) {

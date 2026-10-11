@@ -37,7 +37,7 @@ export default function LoginPage() {
     setLoading(false);
   }
 
-  return <main className="mx-auto flex min-h-screen w-full max-w-md items-center px-6 py-16">
+  return <main className="mx-auto flex min-h-screen w-full max-w-md items-center px-6 py-16"><title>Acceso · Sincro Vicente</title>
     <form onSubmit={signIn} className="w-full space-y-5 rounded-2xl border border-zinc-200 bg-white p-7 shadow-sm">
       <div><p className="text-sm font-semibold tracking-[0.18em] text-emerald-700 uppercase">Sincro Vicente</p><h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">Acceso privado</h1><p className="mt-2 text-sm text-zinc-600">Introduce tus credenciales para continuar.</p></div>
       <label className="flex flex-col gap-1 text-sm font-medium text-zinc-700">Email<input type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} className="h-11 rounded-lg border border-zinc-300 px-3 outline-none ring-emerald-600 focus:ring-2" /></label>
