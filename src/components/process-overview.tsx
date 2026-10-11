@@ -54,6 +54,6 @@ function LatestProcess({ summary }: { summary: Summary }) {
 }
 
 function statusLabel(status: Status) { return ({ queued: "Preparando", running: "En marcha", paused: "Pausada", stopped: "Detenida", completed: "Completada", failed: "Con error" } as const)[status]; }
-function formatNumber(value: number) { return new Intl.NumberFormat("es-ES").format(value); }
+function formatNumber(value: number) { return new Intl.NumberFormat("es-ES", { useGrouping: "always" }).format(value); }
 function formatDate(value: string) { return new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", dateStyle: "short", timeStyle: "short" }).format(new Date(value)); }
 function formatDuration(milliseconds: number) { const safe = Math.max(0, milliseconds); if (safe < 1_000) return `${Math.round(safe)} ms`; const seconds = Math.round(safe / 1000); if (seconds < 60) return `${seconds} s`; const hours = Math.floor(seconds / 3600); const minutes = Math.floor(seconds % 3600 / 60); const rest = seconds % 60; return hours ? `${hours} h${minutes ? ` ${minutes} min` : ""}${rest ? ` ${rest} s` : ""}` : `${minutes} min${rest ? ` ${rest} s` : ""}`; }

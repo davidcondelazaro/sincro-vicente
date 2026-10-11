@@ -24,7 +24,7 @@ const STATUS: Record<string, { label: string; tone: string }> = {
   descartado: { label: "Descartado", tone: "bg-zinc-100 text-zinc-500" },
 };
 const dateFormat = new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", dateStyle: "short", timeStyle: "short" });
-const euro = (v: number) => new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR", minimumFractionDigits: Number.isInteger(v) ? 0 : 2 }).format(v);
+const euro = (v: number) => new Intl.NumberFormat("es-ES", { useGrouping: "always", style: "currency", currency: "EUR", minimumFractionDigits: Number.isInteger(v) ? 0 : 2 }).format(v);
 const lineTotal = (l: Line) => l.quantity * (l.unit_price + l.services.reduce((s, x) => s + x.price, 0) + (l.warranty?.price ?? 0));
 
 export default function QuotesPage() {

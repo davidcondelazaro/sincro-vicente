@@ -31,7 +31,7 @@ const ranges = [
 const issueTypeLabels: Record<string, string> = { dato_erroneo: "Dato erróneo", dato_no_respaldado: "Dato no respaldado", no_entendio: "No entendió al cliente", herramienta: "Herramienta mal usada", regla_incumplida: "Regla incumplida", derivacion: "Derivación a una persona", tono: "Tono o extensión", otro: "Otro" };
 const guardLabels: Record<string, string> = { ritmo: "Exceso de ritmo", repeticion: "Mensaje repetido", sin_sentido: "Mensaje sin sentido", moderacion: "Inapropiado (aviso)", cierre: "Conversación cerrada", bloqueado: "Escribió estando cerrada", autolesion: "Posible autolesión" };
 const weekdays = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
-const number = (value: number) => value.toLocaleString("es-ES");
+const number = (value: number) => value.toLocaleString("es-ES", { useGrouping: "always" });
 const percent = (part: number, total: number) => (total ? `${Math.round((part / total) * 100)} %` : "—");
 const madridDay = (date: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(date);
 
@@ -112,7 +112,7 @@ export function ChatbotStats() {
   </div>;
 }
 
-const euro = (value: number | null | undefined) => (value === null || value === undefined ? "—" : new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(value));
+const euro = (value: number | null | undefined) => (value === null || value === undefined ? "—" : new Intl.NumberFormat("es-ES", { useGrouping: "always", style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(value));
 
 // Ventas atribuidas al chat: pedidos con la marca de la conversación (asistidos) o en los que el cliente con sesión
 // compró en los 7 días siguientes un producto que el bot le mostró (influidos).
@@ -226,5 +226,5 @@ function fillDays(days: Stats["by_day"], range: string) {
 }
 
 function compact(value: number) {
-  return new Intl.NumberFormat("es-ES", { notation: "compact", maximumFractionDigits: 1 }).format(value);
+  return new Intl.NumberFormat("es-ES", { useGrouping: "always", notation: "compact", maximumFractionDigits: 1 }).format(value);
 }

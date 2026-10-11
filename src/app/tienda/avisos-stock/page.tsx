@@ -64,8 +64,8 @@ export default function StockAlertsPage() {
     {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p>}
     {data && <section className="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-1">
-        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm"><p className="text-sm text-zinc-500">Esperando aviso</p><p className="mt-1 text-2xl font-semibold tabular-nums">{data.totals.pending.toLocaleString("es-ES")}</p></div>
-        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm"><p className="text-sm text-zinc-500">Avisos enviados</p><p className="mt-1 text-2xl font-semibold tabular-nums">{data.totals.notified.toLocaleString("es-ES")}</p></div>
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm"><p className="text-sm text-zinc-500">Esperando aviso</p><p className="mt-1 text-2xl font-semibold tabular-nums">{data.totals.pending.toLocaleString("es-ES", { useGrouping: "always" })}</p></div>
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm"><p className="text-sm text-zinc-500">Avisos enviados</p><p className="mt-1 text-2xl font-semibold tabular-nums">{data.totals.notified.toLocaleString("es-ES", { useGrouping: "always" })}</p></div>
       </div>
       <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
         <h2 className="text-base font-semibold text-zinc-900">Productos con más gente esperando</h2>
@@ -76,7 +76,7 @@ export default function StockAlertsPage() {
       <label className="text-sm font-medium text-zinc-700">Buscar<input value={search} onChange={(event) => { setSearch(event.target.value); setPage(0); }} placeholder="Email, nombre o producto" className="mt-1 block h-10 w-72 max-w-full rounded-lg border border-zinc-300 bg-white px-3 font-normal" /></label>
       <label className="text-sm font-medium text-zinc-700">Estado<select value={status} onChange={(event) => { setStatus(event.target.value); setPage(0); }} className={select}><option value="">Todos</option><option value="pendiente">Esperando</option><option value="avisado">Avisados</option><option value="cancelado">Cancelados</option><option value="error">Con error</option></select></label>
       <label className="text-sm font-medium text-zinc-700">Origen<select value={source} onChange={(event) => { setSource(event.target.value); setPage(0); }} className={select}><option value="">Todos</option><option value="chat">Chat</option><option value="web">Web</option><option value="otro">Otro</option></select></label>
-      <p className="ml-auto pb-2 text-sm text-zinc-500">{(data?.total ?? 0).toLocaleString("es-ES")} avisos</p>
+      <p className="ml-auto pb-2 text-sm text-zinc-500">{(data?.total ?? 0).toLocaleString("es-ES", { useGrouping: "always" })} avisos</p>
     </div>
     <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
       {!data ? <p className="p-5 text-sm text-zinc-500">Cargando…</p> : !data.rows.length ? <p className="p-5 text-sm text-zinc-500">No hay avisos con estos filtros.</p> : <ul className="divide-y divide-zinc-100">{data.rows.map((row) => {

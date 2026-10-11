@@ -72,7 +72,7 @@ export function ChatbotSettings() {
       <h2 className="text-lg font-semibold text-zinc-900">Avisos e instrucciones temporales</h2>
       <p className="mt-1 text-sm text-zinc-500">Se añaden a las instrucciones del chatbot, en texto y en voz, y los tiene en cuenta cuando vienen al caso. Para cosas que cambian: vacaciones, retrasos en envíos, promociones, cierres de tienda… Quítalos cuando dejen de valer.</p>
       <textarea value={settings.notices ?? ""} onChange={(event) => update((draft) => { draft.notices = event.target.value || null; })} rows={5} maxLength={4000} placeholder={"Del 24 al 31 de diciembre los envíos tardan 2 días más de lo habitual.\nEsta semana hay un 10 % de descuento en lavadoras Balay (ya aplicado en el precio)."} className="mt-4 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900" />
-      <p className="mt-1 text-right text-xs text-zinc-400">{(settings.notices ?? "").length.toLocaleString("es-ES")} / 4.000</p>
+      <p className="mt-1 text-right text-xs text-zinc-400">{(settings.notices ?? "").length.toLocaleString("es-ES", { useGrouping: "always" })} / 4.000</p>
     </section>
 
     <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
