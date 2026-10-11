@@ -6,15 +6,18 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { ChatbotSettings } from "@/components/chatbot-settings";
 import { ChatbotSyncPanel } from "@/components/chatbot-sync-panel";
 import { createClient } from "@/lib/supabase/client";
+import { outcomeLabels, sentimentLabels, sentimentTones, topicLabels } from "@/lib/chatbot-labels";
+import { ChatbotStats } from "@/components/chatbot-stats";
 
-type Tab = "conversations" | "support" | "errors" | "syncs" | "settings";
+type Tab = "stats" | "conversations" | "support" | "errors" | "syncs" | "settings";
 type Row = Record<string, unknown> & { id: string | number };
 type Message = { id: number; role: "user" | "assistant" | "tool"; content: string | null; tool_calls: unknown; product_ids: number[] | null; model: string | null; input_tokens: number | null; output_tokens: number | null; latency_ms: number | null; channel: string | null; created_at: string };
 type VoiceSession = { customer_name: string | null; page: { productHandle?: string; collectionHandle?: string } | null; started_at: string };
 type Thread = { conversation: Row | null; voice: VoiceSession[]; messages: Message[]; support: Row[]; errors: Row[] };
 
 // Sub-apartados de Chatbot IA: /chatbot/<slug>, cada uno con su entrada en el menú lateral.
-const tabs: { slug: string; key: Tab; label: string; description: string; placeholder: string; sidebar: "chatbotConversations" | "chatbotSupport" | "chatbotErrors" | "chatbotSyncs" | "chatbotSettings" }[] = [
+const tabs: { slug: string; key: Tab; label: string; description: string; placeholder: string; sidebar: "chatbotStats" | "chatbotConversations" | "chatbotSupport" | "chatbotErrors" | "chatbotSyncs" | "chatbotSettings" }[] = [
+  { slug: "estadisticas", key: "stats", label: "Estadísticas", description: "Indicadores de uso y resultado de las conversaciones del chatbot.", placeholder: "", sidebar: "chatbotStats" },
   { slug: "conversaciones", key: "conversations", label: "Conversaciones", description: "Conversaciones de los clientes con el chatbot de la tienda, por texto o por voz.", placeholder: "Cliente, palabra, pedido, email o página", sidebar: "chatbotConversations" },
   { slug: "soporte", key: "support", label: "Soporte", description: "Incidencias, reclamaciones y devoluciones que los clientes abren desde el chatbot.", placeholder: "Nombre, email, pedido o texto", sidebar: "chatbotSupport" },
   { slug: "errores", key: "errors", label: "Errores del widget", description: "Fallos técnicos del widget en la tienda (carrito, conexión…).", placeholder: "Tipo, mensaje o página", sidebar: "chatbotErrors" },
@@ -38,16 +41,17 @@ export default function ChatbotPage() {
   const [query, setQuery] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [analysis, setAnalysis] = useState({ sentiment: "", outcome: "", topic: "", review: "" });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | number | null>(null);
 
   const load = useCallback(async () => {
-    if (tab === "settings") return;
+    if (tab === "settings" || tab === "stats") return;
     setLoading(true);
     try {
-      const params = new URLSearchParams({ view: tab, page: String(page), search: query, from: dateFrom, to: dateTo });
+      const params = new URLSearchParams({ view: tab, page: String(page), search: query, from: dateFrom, to: dateTo, ...(tab === "conversations" ? analysis : {}) });
       const response = await fetch(`/api/chatbot?${params}`, { cache: "no-store" });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "No se pudo leer el chatbot.");
@@ -57,7 +61,7 @@ export default function ChatbotPage() {
     } finally {
       setLoading(false);
     }
-  }, [tab, page, query, dateFrom, dateTo]);
+  }, [tab, page, query, dateFrom, dateTo, analysis]);
 
   // Espera a que se deje de escribir antes de buscar.
   useEffect(() => { const timer = setTimeout(() => setQuery(search.trim()), 300); return () => clearTimeout(timer); }, [search]);
@@ -76,10 +80,10 @@ export default function ChatbotPage() {
 
   return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]"><AppSidebar active={current.sidebar} userEmail={email} /><main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 pb-24 pt-28 sm:px-10 lg:mx-0 lg:py-16">
     <header><p className="text-sm font-semibold tracking-[0.18em] text-emerald-700 uppercase">Chatbot IA</p><h1 className="mt-2 text-4xl font-semibold tracking-tight text-zinc-950">{current.label}</h1><p className="mt-3 max-w-3xl text-zinc-600">{current.description}</p></header>
-    {tab === "settings" ? <ChatbotSettings /> : <>
+    {tab === "settings" ? <ChatbotSettings /> : tab === "stats" ? <ChatbotStats /> : <>
     {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p>}
     {tab === "syncs" && <><ChatbotSyncPanel onChange={load} /><h2 className="mt-2 text-xl font-semibold text-zinc-900">Historial</h2></>}
-    <div className="flex flex-wrap items-end gap-3"><label className="text-sm font-medium text-zinc-700">Buscar<input value={search} onChange={(event) => { setSearch(event.target.value); setPage(0); setOpenId(null); }} className="mt-1 block h-10 w-80 max-w-full rounded-lg border border-zinc-300 bg-white px-3 font-normal" placeholder={current.placeholder} /></label><label className="text-sm font-medium text-zinc-700">Desde<input type="date" value={dateFrom} max={dateTo || undefined} onChange={(event) => { setDateFrom(event.target.value); setPage(0); setOpenId(null); }} className="mt-1 block h-10 rounded-lg border border-zinc-300 bg-white px-3 font-normal" /></label><label className="text-sm font-medium text-zinc-700">Hasta<input type="date" value={dateTo} min={dateFrom || undefined} onChange={(event) => { setDateTo(event.target.value); setPage(0); setOpenId(null); }} className="mt-1 block h-10 rounded-lg border border-zinc-300 bg-white px-3 font-normal" /></label>{(search || dateFrom || dateTo) && <button type="button" onClick={() => { setSearch(""); setDateFrom(""); setDateTo(""); setPage(0); setOpenId(null); }} className="h-10 cursor-pointer rounded-lg px-3 text-sm text-zinc-600 hover:bg-zinc-100">Limpiar</button>}<p className="ml-auto pb-2 text-sm text-zinc-500">{total.toLocaleString("es-ES")} registros</p></div>
+    <div className="flex flex-wrap items-end gap-3"><label className="text-sm font-medium text-zinc-700">Buscar<input value={search} onChange={(event) => { setSearch(event.target.value); setPage(0); setOpenId(null); }} className="mt-1 block h-10 w-80 max-w-full rounded-lg border border-zinc-300 bg-white px-3 font-normal" placeholder={current.placeholder} /></label><label className="text-sm font-medium text-zinc-700">Desde<input type="date" value={dateFrom} max={dateTo || undefined} onChange={(event) => { setDateFrom(event.target.value); setPage(0); setOpenId(null); }} className="mt-1 block h-10 rounded-lg border border-zinc-300 bg-white px-3 font-normal" /></label><label className="text-sm font-medium text-zinc-700">Hasta<input type="date" value={dateTo} min={dateFrom || undefined} onChange={(event) => { setDateTo(event.target.value); setPage(0); setOpenId(null); }} className="mt-1 block h-10 rounded-lg border border-zinc-300 bg-white px-3 font-normal" /></label>{tab === "conversations" && <AnalysisFilters value={analysis} onChange={(next) => { setAnalysis(next); setPage(0); setOpenId(null); }} />}{(search || dateFrom || dateTo || Object.values(analysis).some(Boolean)) && <button type="button" onClick={() => { setSearch(""); setDateFrom(""); setDateTo(""); setAnalysis({ sentiment: "", outcome: "", topic: "", review: "" }); setPage(0); setOpenId(null); }} className="h-10 cursor-pointer rounded-lg px-3 text-sm text-zinc-600 hover:bg-zinc-100">Limpiar</button>}<p className="ml-auto pb-2 text-sm text-zinc-500">{total.toLocaleString("es-ES")} registros</p></div>
     <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
       {loading && !rows.length ? <p className="p-5 text-sm text-zinc-500">Cargando…</p> : !rows.length ? <p className="p-5 text-sm text-zinc-500">No hay registros.</p> : <ul className="divide-y divide-zinc-100">{rows.map((row) => <Fragment key={String(row.id)}>
         {tab === "conversations" && <ConversationItem row={row} open={openId === row.id} onToggle={() => setOpenId(openId === row.id ? null : row.id)} />}
@@ -93,12 +97,23 @@ export default function ChatbotPage() {
   </main></div>;
 }
 
+function AnalysisFilters({ value, onChange }: { value: { sentiment: string; outcome: string; topic: string; review: string }; onChange: (next: { sentiment: string; outcome: string; topic: string; review: string }) => void }) {
+  const select = "mt-1 block h-10 rounded-lg border border-zinc-300 bg-white px-2 font-normal";
+  const options = (labels: Record<string, string>) => Object.entries(labels).map(([key, text]) => <option key={key} value={key}>{text}</option>);
+  return <>
+    <label className="text-sm font-medium text-zinc-700">Sentimiento<select value={value.sentiment} onChange={(event) => onChange({ ...value, sentiment: event.target.value })} className={select}><option value="">Todos</option>{options(sentimentLabels)}</select></label>
+    <label className="text-sm font-medium text-zinc-700">Resultado<select value={value.outcome} onChange={(event) => onChange({ ...value, outcome: event.target.value })} className={select}><option value="">Todos</option>{options(outcomeLabels)}</select></label>
+    <label className="text-sm font-medium text-zinc-700">Motivo<select value={value.topic} onChange={(event) => onChange({ ...value, topic: event.target.value })} className={select}><option value="">Todos</option>{options(topicLabels)}</select></label>
+    <label className="flex h-10 items-center gap-2 text-sm font-medium text-zinc-700"><input type="checkbox" checked={value.review === "1"} onChange={(event) => onChange({ ...value, review: event.target.checked ? "1" : "" })} className="h-4 w-4 accent-emerald-700" />Solo a revisar</label>
+  </>;
+}
+
 function ConversationItem({ row, open, onToggle }: { row: Row; open: boolean; onToggle: () => void }) {
   return <li>
     <button type="button" onClick={onToggle} aria-expanded={open} className="flex w-full cursor-pointer items-start gap-4 px-5 py-3.5 text-left hover:bg-zinc-50">
       <span className="min-w-0 flex-1">
         <span className={`block truncate text-sm ${row.summary ? "font-medium text-zinc-900" : "text-zinc-400 italic"}`}>{row.summary ? String(row.summary) : "Sin resumen todavía"}</span>
-        <span className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-zinc-500"><span>{date(row.last_at)}</span><span>{Number(row.message_count ?? 0)} mensajes</span>{Boolean(row.customer_name) && <span className="font-medium text-zinc-700">{String(row.customer_name)}</span>}{row.used_voice === true && <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 font-medium text-sky-800"><svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>Voz</span>}</span>
+        <span className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">{Boolean(row.sentiment) && <span className={`rounded-full px-2 font-medium ${sentimentTones[String(row.sentiment)] ?? ""}`}>{sentimentLabels[String(row.sentiment)]}</span>}{row.needs_review === true && <span className="rounded-full bg-amber-100 px-2 font-medium text-amber-900" title={String(row.review_reason ?? "")}>⚠ Revisar</span>}<span>{date(row.last_at)}</span><span>{Number(row.message_count ?? 0)} mensajes</span>{Boolean(row.customer_name) && <span className="font-medium text-zinc-700">{String(row.customer_name)}</span>}{row.used_voice === true && <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 font-medium text-sky-800"><svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>Voz</span>}</span>
       </span>
       <span className="shrink-0 pt-0.5 text-sm font-medium text-emerald-700">{open ? "▼ Ocultar" : "▶ Ver"}</span>
     </button>
@@ -120,6 +135,11 @@ function ConversationThread({ id, startedAt }: { id: string; startedAt: unknown 
   const startPage = startingPage(thread);
   const customer = customerOf(thread);
   return <div className="border-t border-zinc-100 bg-zinc-50 px-5 py-5">
+    {Boolean(thread.conversation?.sentiment) && <div className={`mb-4 rounded-xl border p-3 text-sm ${thread.conversation?.needs_review ? "border-amber-200 bg-amber-50" : "border-zinc-200 bg-white"}`}>
+      <div className="flex flex-wrap gap-x-5 gap-y-1"><span><span className="text-zinc-500">Sentimiento:</span> <span className="font-medium text-zinc-900">{sentimentLabels[String(thread.conversation?.sentiment)]}</span></span><span><span className="text-zinc-500">Resultado:</span> <span className="font-medium text-zinc-900">{outcomeLabels[String(thread.conversation?.outcome)]}</span></span><span><span className="text-zinc-500">Motivo:</span> <span className="font-medium text-zinc-900">{topicLabels[String(thread.conversation?.topic)]}</span></span></div>
+      {thread.conversation?.needs_review === true && <p className="mt-1.5 text-amber-900">⚠ Revisar: {String(thread.conversation?.review_reason ?? "")}</p>}
+      <p className="mt-1.5 text-xs text-zinc-500">Análisis automático; orientativo.</p>
+    </div>}
     <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
       <div><dt className="text-xs font-medium text-zinc-500">Cliente</dt><dd className="mt-0.5 text-zinc-900">{customer ?? <span className="text-zinc-500">Sin nombre guardado</span>}</dd></div>
       <div className="min-w-0"><dt className="text-xs font-medium text-zinc-500">Página donde empezó</dt><dd className="mt-0.5 truncate">{startPage ? <a href={startPage} target="_blank" rel="noreferrer" title={startPage} className="text-emerald-700 hover:underline">{pagePath(startPage)}</a> : <span className="text-zinc-500">Desconocida</span>}</dd></div>

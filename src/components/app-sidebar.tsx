@@ -4,11 +4,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-type Section = "home" | "customer" | "customers" | "catalog" | "priorities" | "icecat" | "supabase" | "mhdImport" | "mhdCatalog" | "prices" | "stock" | "orders" | "chatbotConversations" | "chatbotSupport" | "chatbotErrors" | "chatbotSyncs" | "chatbotSettings";
-type IconName = "home" | "database" | "users" | "catalog" | "price" | "stock" | "sort" | "icecat" | "orders" | "chat" | "support" | "alert" | "sync" | "settings" | "export";
+type Section = "home" | "customer" | "customers" | "catalog" | "priorities" | "icecat" | "supabase" | "mhdImport" | "mhdCatalog" | "prices" | "stock" | "orders" | "chatbotStats" | "chatbotConversations" | "chatbotSupport" | "chatbotErrors" | "chatbotSyncs" | "chatbotSettings";
+type IconName = "home" | "database" | "users" | "catalog" | "price" | "stock" | "sort" | "icecat" | "orders" | "chart" | "chat" | "support" | "alert" | "sync" | "settings" | "export";
 
 const navigation: { section: Section; href: string; label: string; icon: IconName }[] = [
   { section: "home", href: "/", label: "Inicio", icon: "home" },
+  { section: "chatbotStats", href: "/chatbot/estadisticas", label: "Estadísticas", icon: "chart" },
   { section: "chatbotConversations", href: "/chatbot/conversaciones", label: "Conversaciones", icon: "chat" },
   { section: "chatbotSupport", href: "/chatbot/soporte", label: "Soporte", icon: "support" },
   { section: "chatbotErrors", href: "/chatbot/errores", label: "Errores del widget", icon: "alert" },
@@ -26,7 +27,7 @@ const navigation: { section: Section; href: string; label: string; icon: IconNam
   { section: "icecat", href: "/importacion-icecat", label: "Importación Icecat", icon: "icecat" },
 ];
 
-const groupLabels: Partial<Record<Section, string>> = { mhdImport: "MHD", supabase: "Pladisel", chatbotConversations: "Chatbot IA" };
+const groupLabels: Partial<Record<Section, string>> = { mhdImport: "MHD", supabase: "Pladisel", chatbotStats: "Chatbot IA" };
 
 export function AppSidebar({ active, userEmail }: { active: Section; userEmail: string | null }) {
   const [open, setOpen] = useState(false);
@@ -93,6 +94,7 @@ function Icon({ name }: { name: IconName }) {
     sort: <><path d="M8 6h13M8 12h10M8 18h7M3 6h.01M3 12h.01M3 18h.01" /></>,
     icecat: <><circle cx="12" cy="12" r="9" /><path d="M3.6 9h16.8M3.6 15h16.8M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" /></>,
     orders: <><path d="M6 3h12v18H6z" /><path d="M9 3v3h6V3M9 10h6M9 14h6M9 18h3" /></>,
+    chart: <><path d="M3 3v18h18" /><path d="M7 16v-4M12 16V8M17 16v-7" /></>,
     chat: <path d="M21 12a8 8 0 0 1-11.8 7L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z" />,
     support: <><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4" /><path d="m5.6 5.6 3.6 3.6M14.8 14.8l3.6 3.6M14.8 9.2l3.6-3.6M5.6 18.4l3.6-3.6" /></>,
     alert: <><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" /><path d="M12 9v4M12 17h.01" /></>,

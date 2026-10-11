@@ -7,6 +7,7 @@ type Settings = {
   phone: string;
   supportEmail: string;
   whatsapp: { number: string | null; hours: string | null; schedule: { days: number[]; from: string; to: string } };
+  notices: string | null;
 };
 
 const dayNames = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
@@ -53,6 +54,13 @@ export function ChatbotSettings() {
   const schedule = settings.whatsapp.schedule;
   return <div className="flex flex-col gap-6">
     <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+      <h2 className="text-lg font-semibold text-zinc-900">Avisos e instrucciones temporales</h2>
+      <p className="mt-1 text-sm text-zinc-500">Se añaden a las instrucciones del chatbot, en texto y en voz, y los tiene en cuenta cuando vienen al caso. Para cosas que cambian: vacaciones, retrasos en envíos, promociones, cierres de tienda… Quítalos cuando dejen de valer.</p>
+      <textarea value={settings.notices ?? ""} onChange={(event) => update((draft) => { draft.notices = event.target.value || null; })} rows={5} maxLength={4000} placeholder={"Del 24 al 31 de diciembre los envíos tardan 2 días más de lo habitual.\nEsta semana hay un 10 % de descuento en lavadoras Balay (ya aplicado en el precio)."} className="mt-4 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900" />
+      <p className="mt-1 text-right text-xs text-zinc-400">{(settings.notices ?? "").length.toLocaleString("es-ES")} / 4.000</p>
+    </section>
+
+    <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
       <h2 className="text-lg font-semibold text-zinc-900">Contacto</h2>
       <p className="mt-1 text-sm text-zinc-500">El chatbot los da cuando el cliente pide hablar con alguien o abre una incidencia.</p>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -97,5 +105,6 @@ function normalize(raw: unknown): Settings {
       hours: value.whatsapp?.hours ?? null,
       schedule: { days: value.whatsapp?.schedule?.days ?? [1, 2, 3, 4, 5], from: value.whatsapp?.schedule?.from ?? "09:00", to: value.whatsapp?.schedule?.to ?? "15:00" },
     },
+    notices: value.notices ?? null,
   };
 }

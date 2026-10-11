@@ -5,7 +5,9 @@ export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 25;
 type Row = Record<string, unknown>;
-type View = "conversations" | "conversation" | "support" | "errors" | "syncs";
+type View = "conversations" | "conversation" | "support" | "errors" | "syncs" | "stats";
+const ANALYSIS_FILTERS = { sentiment: ["positivo", "neutro", "negativo", "frustrado"], outcome: ["resuelta", "parcial", "no_resuelta", "abandonada"], topic: ["eleccion", "info_producto", "envio", "postventa", "garantia_instalacion", "otro"] } as const;
+const pick = (value: string | null, allowed: readonly string[]) => (value && allowed.includes(value) ? value : null);
 
 // Quita los caracteres con significado en los filtros de PostgREST (or=, comas, paréntesis).
 function term(value: string | null) {
@@ -41,7 +43,7 @@ export async function GET(request: Request) {
       const id = url.searchParams.get("id");
       if (!id) return json({ error: "Falta la conversación." }, 400);
       const [conversation, voice, messages, support, errors] = await Promise.all([
-        db.from("conversations").select("id, started_at, last_at, page_url, metadata").eq("id", id).maybeSingle(),
+        db.from("conversations").select("id, started_at, last_at, page_url, metadata, summary, sentiment, outcome, topic, needs_review, review_reason").eq("id", id).maybeSingle(),
         db.from("voice_sessions").select("customer_name, page, started_at").eq("conversation_id", id).order("started_at"),
         db.from("messages").select("id, role, content, tool_calls, product_ids, model, input_tokens, output_tokens, latency_ms, channel, created_at").eq("conversation_id", id).order("id"),
         db.from("support_requests").select("id, kind, name, email, phone, order_number, description, status, created_at").eq("conversation_id", id).order("created_at"),
@@ -50,6 +52,12 @@ export async function GET(request: Request) {
       const failed = conversation.error ?? voice.error ?? messages.error ?? support.error ?? errors.error;
       if (failed) throw failed;
       return json({ conversation: conversation.data, voice: voice.data, messages: messages.data, support: support.data, errors: errors.data });
+    }
+
+    if (view === "stats") {
+      const { data, error } = await db.rpc("admin_conversation_stats", { p_from: since, p_to: until });
+      if (error) throw error;
+      return json({ stats: data });
     }
 
     if (view === "support") {
@@ -83,7 +91,14 @@ export async function GET(request: Request) {
     }
 
     // Busca en cliente, mensajes, soporte y página (función admin_search_conversations del chatbot).
-    const { data, error } = await db.rpc("admin_search_conversations", { p_search: search || null, p_from: since, p_to: until, p_limit: PAGE_SIZE, p_offset: from });
+    const review = url.searchParams.get("review");
+    const { data, error } = await db.rpc("admin_search_conversations", {
+      p_search: search || null, p_from: since, p_to: until, p_limit: PAGE_SIZE, p_offset: from,
+      p_sentiment: pick(url.searchParams.get("sentiment"), ANALYSIS_FILTERS.sentiment),
+      p_outcome: pick(url.searchParams.get("outcome"), ANALYSIS_FILTERS.outcome),
+      p_topic: pick(url.searchParams.get("topic"), ANALYSIS_FILTERS.topic),
+      p_needs_review: review === "1" ? true : null,
+    });
     if (error) throw error;
     const rows = (data ?? []) as (Row & { total: number })[];
     return json({ rows, total: Number(rows[0]?.total ?? 0), pageSize: PAGE_SIZE });

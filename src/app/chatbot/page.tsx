@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function ChatbotIndex() {
-  redirect("/chatbot/conversaciones");
+  redirect("/chatbot/estadisticas");
 }

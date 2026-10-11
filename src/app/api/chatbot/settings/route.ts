@@ -9,6 +9,7 @@ type Settings = {
   phone: string;
   supportEmail: string;
   whatsapp: { number: string | null; hours: string | null; schedule: { days: number[]; from: string; to: string } };
+  notices: string | null;
 };
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -24,6 +25,8 @@ function validate(raw: unknown): { settings?: Settings; error?: string } {
   const days = Array.isArray(schedule.days) ? [...new Set(schedule.days.map(Number))].filter((day) => Number.isInteger(day) && day >= 1 && day <= 7).sort() : [];
   const from = text(schedule.from);
   const to = text(schedule.to);
+  const notices = typeof body.notices === "string" ? body.notices.trim() : "";
+  if (notices.length > 4000) return { error: "Los avisos no pueden pasar de 4.000 caracteres." };
   if (!phone) return { error: "Falta el teléfono." };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(supportEmail)) return { error: "El email de soporte no es válido." };
   if (number && !/^\d{8,15}$/.test(number)) return { error: "El WhatsApp debe ser el número con prefijo de país, sin «+» ni espacios (p. ej. 34699742952)." };
@@ -33,6 +36,7 @@ function validate(raw: unknown): { settings?: Settings; error?: string } {
       phone,
       supportEmail,
       whatsapp: { number: number || null, hours: text(whatsapp.hours) || null, schedule: { days, from, to } },
+      notices: notices || null,
     },
   };
 }
