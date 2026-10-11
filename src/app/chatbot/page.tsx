@@ -86,11 +86,12 @@ export default function ChatbotPage() {
 
 function ConversationItem({ row, open, onToggle }: { row: Row; open: boolean; onToggle: () => void }) {
   return <li>
-    <button type="button" onClick={onToggle} aria-expanded={open} className="flex w-full cursor-pointer flex-wrap items-center gap-x-4 gap-y-1 px-5 py-4 text-left hover:bg-zinc-50">
-      <span className="text-sm font-medium text-zinc-900">{date(row.last_at)}</span>
-      <span className="text-sm text-zinc-500">{Number(row.message_count ?? 0)} mensajes</span>
-      {Boolean(row.customer_name) && <span className="text-sm font-medium text-zinc-800">{String(row.customer_name)}</span>}
-      <span className="ml-auto text-sm font-medium text-emerald-700">{open ? "▼ Ocultar" : "▶ Ver"}</span>
+    <button type="button" onClick={onToggle} aria-expanded={open} className="flex w-full cursor-pointer items-start gap-4 px-5 py-3.5 text-left hover:bg-zinc-50">
+      <span className="min-w-0 flex-1">
+        <span className={`block truncate text-sm ${row.summary ? "font-medium text-zinc-900" : "text-zinc-400 italic"}`}>{row.summary ? String(row.summary) : "Sin resumen todavía"}</span>
+        <span className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-zinc-500"><span>{date(row.last_at)}</span><span>{Number(row.message_count ?? 0)} mensajes</span>{Boolean(row.customer_name) && <span className="font-medium text-zinc-700">{String(row.customer_name)}</span>}</span>
+      </span>
+      <span className="shrink-0 pt-0.5 text-sm font-medium text-emerald-700">{open ? "▼ Ocultar" : "▶ Ver"}</span>
     </button>
     {open && <ConversationThread id={String(row.id)} startedAt={row.started_at} />}
   </li>;
