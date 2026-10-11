@@ -9,6 +9,7 @@ type Settings = {
   whatsapp: { number: string | null; hours: string | null; schedule: { days: number[]; from: string; to: string } };
   notices: string | null;
   teamEmails: { alerts: string[]; tickets: string[]; reports: string[]; quotes: string[] };
+  priceAlerts: { minPercent: number; minEuros: number };
 };
 const teamLists: { key: keyof Settings["teamEmails"]; label: string; help: string }[] = [
   { key: "alerts", label: "Avisos de errores", help: "Sincronizaciones que fallan o se retrasan, tareas con error, tickets que no se envían y picos de errores del widget." },
@@ -76,6 +77,16 @@ export function ChatbotSettings() {
     </section>
 
     <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+      <h2 className="text-lg font-semibold text-zinc-900">Avisos de bajada de precio</h2>
+      <p className="mt-1 text-sm text-zinc-500">El aviso es único: solo se envía si el precio baja al menos esto respecto al que tenía cuando el cliente se apuntó (se exigen las dos cosas). Así no se gasta en una bajada de céntimos.</p>
+      <div className="mt-4 flex flex-wrap gap-4">
+        <label className={label}>Bajada mínima (%)<input type="number" min={0} max={50} step={0.5} value={settings.priceAlerts.minPercent} onChange={(event) => update((draft) => { draft.priceAlerts.minPercent = Number(event.target.value); })} className={input.replace("w-full", "w-32")} /></label>
+        <label className={label}>Bajada mínima (€)<input type="number" min={0} max={500} step={1} value={settings.priceAlerts.minEuros} onChange={(event) => update((draft) => { draft.priceAlerts.minEuros = Number(event.target.value); })} className={input.replace("w-full", "w-32")} /></label>
+      </div>
+      <p className="mt-2 text-xs text-zinc-500">Ejemplo con estos valores: si se apuntó a {euroExample(500)}, se avisa cuando baje a {euroExample(Math.max(0, 500 - Math.max(settings.priceAlerts.minEuros || 0, 500 * (settings.priceAlerts.minPercent || 0) / 100)))} o menos.</p>
+    </section>
+
+    <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
       <h2 className="text-lg font-semibold text-zinc-900">Contacto</h2>
       <p className="mt-1 text-sm text-zinc-500">El chatbot los da cuando el cliente pide hablar con alguien o abre una incidencia.</p>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -95,8 +106,8 @@ export function ChatbotSettings() {
         <legend className={label}>Días y horas en que se atiende (hora peninsular)</legend>
         <div className="mt-2 flex flex-wrap gap-2">{dayNames.map((name, index) => { const day = index + 1; const on = schedule.days.includes(day); return <button key={day} type="button" aria-pressed={on} onClick={() => update((draft) => { const days = draft.whatsapp.schedule.days; draft.whatsapp.schedule.days = on ? days.filter((value) => value !== day) : [...days, day].sort(); })} className={`cursor-pointer rounded-lg px-3 py-1.5 text-sm font-medium ${on ? "bg-emerald-700 text-white" : "border border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-50"}`}>{name}</button>; })}</div>
         <div className="mt-3 flex flex-wrap gap-4">
-          <label className={label}>Desde<input type="time" value={schedule.from} onChange={(event) => update((draft) => { draft.whatsapp.schedule.from = event.target.value; })} className={`${input} w-32`} /></label>
-          <label className={label}>Hasta<input type="time" value={schedule.to} onChange={(event) => update((draft) => { draft.whatsapp.schedule.to = event.target.value; })} className={`${input} w-32`} /></label>
+          <label className={label}>Desde<input type="time" value={schedule.from} onChange={(event) => update((draft) => { draft.whatsapp.schedule.from = event.target.value; })} className={input.replace("w-full", "w-32")} /></label>
+          <label className={label}>Hasta<input type="time" value={schedule.to} onChange={(event) => update((draft) => { draft.whatsapp.schedule.to = event.target.value; })} className={input.replace("w-full", "w-32")} /></label>
         </div>
       </fieldset>
     </section>
@@ -122,5 +133,8 @@ function normalize(raw: unknown): Settings {
     },
     notices: value.notices ?? null,
     teamEmails: { alerts: value.teamEmails?.alerts ?? [], tickets: value.teamEmails?.tickets ?? [], reports: value.teamEmails?.reports ?? [], quotes: value.teamEmails?.quotes ?? [] },
+    priceAlerts: { minPercent: value.priceAlerts?.minPercent ?? 3, minEuros: value.priceAlerts?.minEuros ?? 1 },
   };
 }
+
+const euroExample = (value: number) => new Intl.NumberFormat("es-ES", { useGrouping: "always", style: "currency", currency: "EUR", minimumFractionDigits: Number.isInteger(value) ? 0 : 2 }).format(value);

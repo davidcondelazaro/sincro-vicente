@@ -11,6 +11,7 @@ type Settings = {
   whatsapp: { number: string | null; hours: string | null; schedule: { days: number[]; from: string; to: string } };
   notices: string | null;
   teamEmails: { alerts: string[]; tickets: string[]; reports: string[]; quotes: string[] };
+  priceAlerts: { minPercent: number; minEuros: number };
 };
 const TEAM_LISTS = ["alerts", "tickets", "quotes", "reports"] as const;
 const TEAM_LABELS = { alerts: "avisos de errores", tickets: "tickets", quotes: "presupuestos", reports: "resúmenes" };
@@ -41,6 +42,11 @@ function validate(raw: unknown): { settings?: Settings; error?: string } {
     if (items.length > 20) return { error: `Como mucho 20 emails en ${TEAM_LABELS[list]}.` };
     teamEmails[list] = [...new Set(items)];
   }
+  const rawPrice = (body.priceAlerts ?? {}) as Record<string, unknown>;
+  const minPercent = Number(String(rawPrice.minPercent ?? 3).replace(",", "."));
+  const minEuros = Number(String(rawPrice.minEuros ?? 1).replace(",", "."));
+  if (!Number.isFinite(minPercent) || minPercent < 0 || minPercent > 50) return { error: "La bajada mínima en % debe estar entre 0 y 50." };
+  if (!Number.isFinite(minEuros) || minEuros < 0 || minEuros > 500) return { error: "La bajada mínima en € debe estar entre 0 y 500." };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(supportEmail)) return { error: "El email de soporte no es válido." };
   if (number && !/^\d{8,15}$/.test(number)) return { error: "El WhatsApp debe ser el número con prefijo de país, sin «+» ni espacios (p. ej. 34699742952)." };
   if (!HHMM.test(from) || !HHMM.test(to) || from >= to) return { error: "El horario de WhatsApp debe tener «desde» y «hasta» en formato HH:MM, y «desde» antes que «hasta»." };
@@ -51,6 +57,7 @@ function validate(raw: unknown): { settings?: Settings; error?: string } {
       whatsapp: { number: number || null, hours: text(whatsapp.hours) || null, schedule: { days, from, to } },
       notices: notices || null,
       teamEmails,
+      priceAlerts: { minPercent: Math.round(minPercent * 10) / 10, minEuros: Math.round(minEuros * 100) / 100 },
     },
   };
 }
