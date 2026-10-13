@@ -17,7 +17,8 @@ type Message = { id: number; role: "user" | "assistant" | "tool"; content: strin
 type VoiceSession = { customer_name: string | null; page: { productHandle?: string; collectionHandle?: string } | null; started_at: string };
 type AttributedOrder = { id: number; name: string; created_at: string; total: number; refunded: number; currency: string; attribution: string; line_items: { title: string; quantity: number }[] };
 type EmailUse = { consents: { id: string; purpose: string; email: string; text_version: string; status: string; created_at: string; decided_at: string | null }[]; subscriptions: { id: number; product_title: string; email: string; status: string; created_at: string; notified_at: string | null }[]; sentEmails: { id: number; email: string; kind: string; product_ids: number[]; created_at: string }[] };
-type Thread = { conversation: Row | null; voice: VoiceSession[]; messages: Message[]; support: Row[]; errors: Row[]; orders?: AttributedOrder[] } & Partial<EmailUse>;
+type Attachment = { id: string; message_id: number | null; support_request_id: number | null; mime: string; bytes: number; width: number | null; height: number | null; filename: string | null; created_at: string; url: string | null };
+type Thread = { attachments?: Attachment[]; conversation: Row | null; voice: VoiceSession[]; messages: Message[]; support: Row[]; errors: Row[]; orders?: AttributedOrder[] } & Partial<EmailUse>;
 
 // Sub-apartados de Chatbot IA: /chatbot/<slug>, cada uno con su entrada en el menú lateral.
 const tabs: { slug: string; key: Tab; label: string; description: string; placeholder: string; sidebar: "chatbotStats" | "chatbotConversations" | "chatbotImprovements" | "chatbotSupport" | "chatbotErrors" | "chatbotSyncs" | "chatbotDiscounts" | "chatbotSettings" }[] = [
@@ -47,10 +48,13 @@ export default function ChatbotPage() {
   const [query, setQuery] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [analysis, setAnalysis] = useState({ sentiment: "", outcome: "", topic: "", review: "", issues: "", guard: "", order: "" });
+  const [analysis, setAnalysis] = useState({ sentiment: "", outcome: "", topic: "", review: "", issues: "", guard: "", order: "", attachments: "" });
   // Enlace directo a una conversación (?conversacion=<id>), por ejemplo desde Mejoras.
   const [focusId, setFocusId] = useState<string | null>(null);
   useEffect(() => { setFocusId(new URLSearchParams(window.location.search).get("conversacion")); }, []);
+  // Enlace directo a una petición de soporte (?peticion=<id>), desde la conversación que la originó.
+  const [requestId, setRequestId] = useState<string | null>(null);
+  useEffect(() => { setRequestId(new URLSearchParams(window.location.search).get("peticion")); }, []);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
@@ -60,7 +64,7 @@ export default function ChatbotPage() {
     if (tab === "settings" || tab === "stats" || tab === "improvements" || tab === "discounts") return;
     setLoading(true);
     try {
-      const params = new URLSearchParams({ view: tab, page: String(page), search: query, from: dateFrom, to: dateTo, ...(tab === "conversations" ? analysis : {}) });
+      const params = new URLSearchParams({ view: tab, page: String(page), search: query, from: dateFrom, to: dateTo, ...(tab === "conversations" ? analysis : {}), ...(tab === "support" && requestId ? { id: requestId } : {}) });
       const response = await fetch(`/api/chatbot?${params}`, { cache: "no-store" });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "No se pudo leer el chatbot.");
@@ -70,7 +74,7 @@ export default function ChatbotPage() {
     } finally {
       setLoading(false);
     }
-  }, [tab, page, query, dateFrom, dateTo, analysis]);
+  }, [tab, page, query, dateFrom, dateTo, analysis, requestId]);
 
   // Espera a que se deje de escribir antes de buscar.
   useEffect(() => { const timer = setTimeout(() => setQuery(search.trim()), 300); return () => clearTimeout(timer); }, [search]);
@@ -92,12 +96,13 @@ export default function ChatbotPage() {
     {tab === "settings" ? <ChatbotSettings /> : tab === "stats" ? <ChatbotStats /> : tab === "improvements" ? <ChatbotImprovements /> : tab === "discounts" ? <ChatbotDiscounts /> : <>
     {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p>}
     {tab === "conversations" && focusId && <section className="overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-sm"><div className="flex items-center justify-between px-5 py-3"><h2 className="text-sm font-semibold text-zinc-900">Conversación enlazada</h2><button type="button" onClick={() => { setFocusId(null); window.history.replaceState(null, "", window.location.pathname); }} className="cursor-pointer rounded-md px-2 py-1 text-sm text-zinc-500 hover:bg-zinc-100">Cerrar</button></div><ConversationThread id={focusId} startedAt={null} /></section>}
+    {tab === "support" && requestId && <p className="flex items-center justify-between rounded-xl border border-emerald-200 bg-white px-5 py-3 text-sm text-zinc-700">Mostrando solo la petición nº {requestId}.<button type="button" onClick={() => { setRequestId(null); setPage(0); window.history.replaceState(null, "", window.location.pathname); }} className="cursor-pointer rounded-md px-2 py-1 text-sm font-medium text-emerald-700 hover:bg-emerald-50">Ver todas</button></p>}
     {tab === "syncs" && <><ChatbotSyncPanel onChange={load} /><h2 className="mt-2 text-xl font-semibold text-zinc-900">Historial</h2></>}
-    <div className="flex flex-wrap items-end gap-3"><label className="text-sm font-medium text-zinc-700">Buscar<input value={search} onChange={(event) => { setSearch(event.target.value); setPage(0); setOpenId(null); }} className="mt-1 block h-10 w-80 max-w-full rounded-lg border border-zinc-300 bg-white px-3 font-normal" placeholder={current.placeholder} /></label><label className="text-sm font-medium text-zinc-700">Desde<input type="date" value={dateFrom} max={dateTo || undefined} onChange={(event) => { setDateFrom(event.target.value); setPage(0); setOpenId(null); }} className="mt-1 block h-10 rounded-lg border border-zinc-300 bg-white px-3 font-normal" /></label><label className="text-sm font-medium text-zinc-700">Hasta<input type="date" value={dateTo} min={dateFrom || undefined} onChange={(event) => { setDateTo(event.target.value); setPage(0); setOpenId(null); }} className="mt-1 block h-10 rounded-lg border border-zinc-300 bg-white px-3 font-normal" /></label>{tab === "conversations" && <AnalysisFilters value={analysis} onChange={(next) => { setAnalysis(next); setPage(0); setOpenId(null); }} />}{(search || dateFrom || dateTo || Object.values(analysis).some(Boolean)) && <button type="button" onClick={() => { setSearch(""); setDateFrom(""); setDateTo(""); setAnalysis({ sentiment: "", outcome: "", topic: "", review: "", issues: "", guard: "", order: "" }); setPage(0); setOpenId(null); }} className="h-10 cursor-pointer rounded-lg px-3 text-sm text-zinc-600 hover:bg-zinc-100">Limpiar</button>}<p className="ml-auto pb-2 text-sm text-zinc-500">{total.toLocaleString("es-ES", { useGrouping: "always" })} registros</p></div>
+    <div className="flex flex-wrap items-end gap-3"><label className="text-sm font-medium text-zinc-700">Buscar<input value={search} onChange={(event) => { setSearch(event.target.value); setPage(0); setOpenId(null); }} className="mt-1 block h-10 w-80 max-w-full rounded-lg border border-zinc-300 bg-white px-3 font-normal" placeholder={current.placeholder} /></label><label className="text-sm font-medium text-zinc-700">Desde<input type="date" value={dateFrom} max={dateTo || undefined} onChange={(event) => { setDateFrom(event.target.value); setPage(0); setOpenId(null); }} className="mt-1 block h-10 rounded-lg border border-zinc-300 bg-white px-3 font-normal" /></label><label className="text-sm font-medium text-zinc-700">Hasta<input type="date" value={dateTo} min={dateFrom || undefined} onChange={(event) => { setDateTo(event.target.value); setPage(0); setOpenId(null); }} className="mt-1 block h-10 rounded-lg border border-zinc-300 bg-white px-3 font-normal" /></label>{tab === "conversations" && <AnalysisFilters value={analysis} onChange={(next) => { setAnalysis(next); setPage(0); setOpenId(null); }} />}{(search || dateFrom || dateTo || Object.values(analysis).some(Boolean)) && <button type="button" onClick={() => { setSearch(""); setDateFrom(""); setDateTo(""); setAnalysis({ sentiment: "", outcome: "", topic: "", review: "", issues: "", guard: "", order: "", attachments: "" }); setPage(0); setOpenId(null); }} className="h-10 cursor-pointer rounded-lg px-3 text-sm text-zinc-600 hover:bg-zinc-100">Limpiar</button>}<p className="ml-auto pb-2 text-sm text-zinc-500">{total.toLocaleString("es-ES", { useGrouping: "always" })} registros</p></div>
     <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
       {loading && !rows.length ? <p className="p-5 text-sm text-zinc-500">Cargando…</p> : !rows.length ? <p className="p-5 text-sm text-zinc-500">No hay registros.</p> : <ul className="divide-y divide-zinc-100">{rows.map((row) => <Fragment key={String(row.id)}>
         {tab === "conversations" && <ConversationItem row={row} open={openId === row.id} onToggle={() => setOpenId(openId === row.id ? null : row.id)} />}
-        {tab === "support" && <SupportItem row={row} />}
+        {tab === "support" && <SupportItem row={row} attachments={(row.attachments as Attachment[] | undefined) ?? []} />}
         {tab === "errors" && <ErrorItem row={row} onDelete={() => void deleteError(row.id)} />}
         {tab === "syncs" && <SyncItem row={row} />}
       </Fragment>)}</ul>}
@@ -107,7 +112,7 @@ export default function ChatbotPage() {
   </main></div>;
 }
 
-type AnalysisFilter = { sentiment: string; outcome: string; topic: string; review: string; issues: string; guard: string; order: string };
+type AnalysisFilter = { sentiment: string; outcome: string; topic: string; review: string; issues: string; guard: string; order: string; attachments: string };
 type QualityIssue = { type: string; severity: string; quote: string; explanation: string; suggestion: string };
 const issueTypeLabels: Record<string, string> = { dato_erroneo: "Dato erróneo", dato_no_respaldado: "Dato no respaldado", no_entendio: "No entendió", herramienta: "Herramienta", regla_incumplida: "Regla incumplida", derivacion: "Derivación", tono: "Tono", otro: "Otro" };
 const ratingLabels: Record<string, string> = { bien: "Bien", mejorable: "Mejorable", mal: "Mal" };
@@ -136,6 +141,7 @@ function AnalysisFilters({ value, onChange }: { value: AnalysisFilter; onChange:
     <label className="flex h-10 items-center gap-2 text-sm font-medium text-zinc-700"><input type="checkbox" checked={value.issues === "1"} onChange={(event) => onChange({ ...value, issues: event.target.checked ? "1" : "" })} className="h-4 w-4 accent-emerald-700" />Con fallos</label>
     <label className="flex h-10 items-center gap-2 text-sm font-medium text-zinc-700"><input type="checkbox" checked={value.guard === "1"} onChange={(event) => onChange({ ...value, guard: event.target.checked ? "1" : "" })} className="h-4 w-4 accent-emerald-700" />Con protección</label>
     <label className="flex h-10 items-center gap-2 text-sm font-medium text-zinc-700"><input type="checkbox" checked={value.order === "1"} onChange={(event) => onChange({ ...value, order: event.target.checked ? "1" : "" })} className="h-4 w-4 accent-emerald-700" />Con pedido</label>
+    <label className="flex h-10 items-center gap-2 text-sm font-medium text-zinc-700"><input type="checkbox" checked={value.attachments === "1"} onChange={(event) => onChange({ ...value, attachments: event.target.checked ? "1" : "" })} className="h-4 w-4 accent-emerald-700" />Con adjuntos</label>
   </>;
 }
 
@@ -144,7 +150,7 @@ function ConversationItem({ row, open, onToggle }: { row: Row; open: boolean; on
     <button type="button" onClick={onToggle} aria-expanded={open} className="flex w-full cursor-pointer items-start gap-4 px-5 py-3.5 text-left hover:bg-zinc-50">
       <span className="min-w-0 flex-1">
         <span className={`block truncate text-sm ${row.summary ? "font-medium text-zinc-900" : "text-zinc-400 italic"}`}>{row.summary ? String(row.summary) : "Sin resumen todavía"}</span>
-        <span className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">{Boolean(row.sentiment) && <span className={`rounded-full px-2 font-medium ${sentimentTones[String(row.sentiment)] ?? ""}`}>{sentimentLabels[String(row.sentiment)]}</span>}{row.needs_review === true && <span className="rounded-full bg-amber-100 px-2 font-medium text-amber-900" title={String(row.review_reason ?? "")}>⚠ Revisar</span>}{Number(row.order_count ?? 0) > 0 && <span className="rounded-full bg-emerald-50 px-2 font-medium text-emerald-800" title="Pedidos atribuidos a esta conversación">🛒 {Number(row.order_count) === 1 ? "Pedido" : `${Number(row.order_count)} pedidos`} · {euro(Number(row.order_revenue ?? 0))}</span>}{row.closed === true ? <span className="rounded-full bg-red-50 px-2 font-medium text-red-800" title="Cerrada por la protección del chat">🚫 Cerrada</span> : Number(row.guard_count ?? 0) > 0 && <span className="rounded-full bg-amber-50 px-2 font-medium text-amber-800" title="Mensajes que la protección del chat frenó antes del modelo">{Number(row.guard_count)} {Number(row.guard_count) === 1 ? "mensaje frenado" : "mensajes frenados"}</span>}{Number(row.issue_count ?? 0) > 0 && <span className={`rounded-full px-2 font-medium ${row.quality_rating === "mal" ? "bg-red-50 text-red-800" : "bg-zinc-100 text-zinc-700"}`}>{Number(row.issue_count)} {Number(row.issue_count) === 1 ? "fallo" : "fallos"}</span>}<span>{date(row.last_at)}</span><span>{Number(row.message_count ?? 0)} mensajes</span>{Boolean(row.customer_name) && <span className="font-medium text-zinc-700">{String(row.customer_name)}</span>}{row.used_voice === true && <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 font-medium text-sky-800"><svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>Voz</span>}</span>
+        <span className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">{Boolean(row.sentiment) && <span className={`rounded-full px-2 font-medium ${sentimentTones[String(row.sentiment)] ?? ""}`}>{sentimentLabels[String(row.sentiment)]}</span>}{row.needs_review === true && <span className="rounded-full bg-amber-100 px-2 font-medium text-amber-900" title={String(row.review_reason ?? "")}>⚠ Revisar</span>}{Number(row.order_count ?? 0) > 0 && <span className="rounded-full bg-emerald-50 px-2 font-medium text-emerald-800" title="Pedidos atribuidos a esta conversación">🛒 {Number(row.order_count) === 1 ? "Pedido" : `${Number(row.order_count)} pedidos`} · {euro(Number(row.order_revenue ?? 0))}</span>}{row.closed === true ? <span className="rounded-full bg-red-50 px-2 font-medium text-red-800" title="Cerrada por la protección del chat">🚫 Cerrada</span> : Number(row.guard_count ?? 0) > 0 && <span className="rounded-full bg-amber-50 px-2 font-medium text-amber-800" title="Mensajes que la protección del chat frenó antes del modelo">{Number(row.guard_count)} {Number(row.guard_count) === 1 ? "mensaje frenado" : "mensajes frenados"}</span>}{Number(row.issue_count ?? 0) > 0 && <span className={`rounded-full px-2 font-medium ${row.quality_rating === "mal" ? "bg-red-50 text-red-800" : "bg-zinc-100 text-zinc-700"}`}>{Number(row.issue_count)} {Number(row.issue_count) === 1 ? "fallo" : "fallos"}</span>}<span>{date(row.last_at)}</span><span>{Number(row.message_count ?? 0)} mensajes</span>{Number(row.attachment_count ?? 0) > 0 && <span className="rounded-full bg-zinc-100 px-2 font-medium text-zinc-700" title="Fotos o PDF que adjuntó el cliente">📎 {Number(row.attachment_count)} {Number(row.attachment_count) === 1 ? "adjunto" : "adjuntos"}</span>}{Boolean(row.customer_name) && <span className="font-medium text-zinc-700">{String(row.customer_name)}</span>}{row.used_voice === true && <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 font-medium text-sky-800"><svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>Voz</span>}</span>
       </span>
       <span className="shrink-0 pt-0.5 text-sm font-medium text-emerald-700">{open ? "▼ Ocultar" : "▶ Ver"}</span>
     </button>
@@ -177,34 +183,57 @@ function ConversationThread({ id, startedAt }: { id: string; startedAt: unknown 
       <div className="min-w-0"><dt className="text-xs font-medium text-zinc-500">Página donde empezó</dt><dd className="mt-0.5 truncate">{startPage ? <a href={startPage} target="_blank" rel="noreferrer" title={startPage} className="text-emerald-700 hover:underline">{pagePath(startPage)}</a> : <span className="text-zinc-500">Desconocida</span>}</dd></div>
     </dl>
     <p className="mt-3 text-xs text-zinc-500">Iniciada {date(startedAt)} · {tokens.toLocaleString("es-ES", { useGrouping: "always" })} tokens · <span className="font-mono">{id}</span></p>
-    <div className="mt-4 flex flex-col gap-3">{thread.messages.map((message) => <MessageBubble key={message.id} message={message} />)}</div>
+    <div className="mt-4 flex flex-col gap-3">{thread.messages.map((message) => <MessageBubble key={message.id} message={message} attachments={(thread.attachments ?? []).filter((item) => item.message_id === message.id)} />)}</div>
     {(thread.orders?.length ?? 0) > 0 && <div className="mt-5"><h3 className="text-sm font-semibold text-zinc-800">Pedidos atribuidos</h3><ul className="mt-2 divide-y divide-zinc-200 rounded-xl border border-zinc-200 bg-white">{thread.orders!.map((order) => <li key={order.id} className="px-4 py-3 text-sm"><div className="flex flex-wrap items-center gap-x-3 gap-y-1"><span className="font-semibold text-zinc-900">{order.name}</span><Badge tone="green">{order.attribution === "asistido" ? "Asistido (marca del chat)" : "Influido (compró un producto recomendado)"}</Badge><span className="font-medium text-zinc-800">{euro(Number(order.total) - Number(order.refunded))}</span><time className="ml-auto text-zinc-400">{date(order.created_at)}</time></div><p className="mt-1 text-zinc-600">{order.line_items.map((line) => `${line.quantity} × ${line.title}`).join(" · ")}</p></li>)}</ul></div>}
     {((thread.consents?.length ?? 0) + (thread.subscriptions?.length ?? 0) + (thread.sentEmails?.length ?? 0)) > 0 && <div className="mt-5"><h3 className="text-sm font-semibold text-zinc-800">Uso del email del cliente</h3><ul className="mt-2 divide-y divide-zinc-200 rounded-xl border border-zinc-200 bg-white text-sm">
       {(thread.consents ?? []).map((c) => <li key={c.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5"><Badge tone={c.status === "aceptado" ? "green" : c.status === "rechazado" ? "red" : "amber"}>Consentimiento {c.status}</Badge><span className="text-zinc-700">{c.purpose === "aviso_stock" ? "Aviso de stock" : "Envío de productos"} · {c.email}</span><span className="text-xs text-zinc-500">texto v{c.text_version}</span><time className="ml-auto text-zinc-400">{date(c.decided_at ?? c.created_at)}</time></li>)}
       {(thread.subscriptions ?? []).map((s) => <li key={`s${s.id}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5"><Badge tone={s.status === "avisado" ? "green" : s.status === "pendiente" ? "amber" : "red"}>Aviso de stock: {s.status}</Badge><span className="min-w-0 truncate text-zinc-700">{s.product_title}</span><time className="ml-auto text-zinc-400">{date(s.notified_at ?? s.created_at)}</time></li>)}
       {(thread.sentEmails ?? []).map((e) => <li key={`e${e.id}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5"><Badge tone="green">Email enviado</Badge><span className="text-zinc-700">{e.product_ids.length} {e.product_ids.length === 1 ? "producto" : "productos"} a {e.email}</span><time className="ml-auto text-zinc-400">{date(e.created_at)}</time></li>)}
     </ul></div>}
-    {thread.support.length > 0 && <div className="mt-5"><h3 className="text-sm font-semibold text-zinc-800">Peticiones de soporte</h3><ul className="mt-2 divide-y divide-zinc-200 rounded-xl border border-zinc-200 bg-white">{thread.support.map((row) => <SupportItem key={String(row.id)} row={row} />)}</ul></div>}
+    {thread.support.length > 0 && <div className="mt-5"><h3 className="text-sm font-semibold text-zinc-800">Peticiones de soporte</h3><ul className="mt-2 divide-y divide-zinc-200 rounded-xl border border-zinc-200 bg-white">{thread.support.map((row) => <SupportItem key={String(row.id)} row={row} inConversation attachments={(thread.attachments ?? []).filter((item) => item.support_request_id === row.id)} />)}</ul></div>}
     {thread.errors.length > 0 && <div className="mt-5"><h3 className="text-sm font-semibold text-zinc-800">Errores del widget</h3><ul className="mt-2 divide-y divide-zinc-200 rounded-xl border border-zinc-200 bg-white">{thread.errors.map((row) => <ErrorItem key={String(row.id)} row={row} />)}</ul></div>}
   </div>;
 }
 
-function MessageBubble({ message }: { message: Message }) {
+function MessageBubble({ message, attachments }: { message: Message; attachments: Attachment[] }) {
   if (message.role === "tool") return <details className="max-w-3xl rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-600"><summary className="cursor-pointer font-medium">Resultado de herramienta · {time(message.created_at)}</summary><pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap break-words">{message.content}</pre></details>;
   const user = message.role === "user";
   const tools = toolNames(message.tool_calls);
   return <div className={`flex ${user ? "justify-end" : "justify-start"}`}><div className={`max-w-3xl rounded-2xl px-4 py-3 text-sm ${user ? "bg-emerald-700 text-white" : "border border-zinc-200 bg-white text-zinc-800"}`}>
+    {attachments.length > 0 && <AttachmentList items={attachments} className={message.content ? "mb-2" : ""} />}
     {message.content && <p className="whitespace-pre-wrap break-words">{bold(message.content)}</p>}
     {tools.length > 0 && <p className={`mt-1 text-xs ${user ? "text-emerald-100" : "text-zinc-500"}`}>Herramientas: {tools.join(", ")}</p>}
     <p className={`mt-1 text-xs ${user ? "text-emerald-100" : "text-zinc-400"}`}>{[time(message.created_at), message.channel === "voice" ? "voz" : null, message.product_ids?.length ? `${message.product_ids.length} productos` : null, message.model === "proteccion" ? "protección del chat (sin modelo)" : message.model, message.latency_ms ? `${(message.latency_ms / 1000).toFixed(1)} s` : null].filter(Boolean).join(" · ")}</p>
   </div></div>;
 }
 
-function SupportItem({ row }: { row: Row }) {
+// Fotos (miniatura) y PDF que adjuntó el cliente; cada uno abre el archivo en otra pestaña (enlace firmado de 1 hora).
+function AttachmentList({ items, className = "" }: { items: Attachment[]; className?: string }) {
+  return <div className={`flex flex-wrap gap-2 ${className}`}>{items.map((item) => {
+    const pdf = item.mime === "application/pdf";
+    const label = pdf ? item.filename ?? "Documento PDF" : "Foto";
+    if (!item.url) return <span key={item.id} className="rounded-lg bg-zinc-100 px-2 py-1 text-xs text-zinc-500">{label} (no disponible)</span>;
+    return pdf
+      ? <a key={item.id} href={item.url} target="_blank" rel="noreferrer" title={`${label} · ${kb(item.bytes)}`} className="inline-flex max-w-56 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-800 hover:border-emerald-600"><span aria-hidden="true">📄</span><span className="truncate">{label}</span></a>
+      // eslint-disable-next-line @next/next/no-img-element
+      : <a key={item.id} href={item.url} target="_blank" rel="noreferrer" title={`Foto · ${item.width && item.height ? `${item.width}×${item.height} · ` : ""}${kb(item.bytes)}`} className="block overflow-hidden rounded-lg border border-zinc-200 bg-white hover:border-emerald-600"><img src={item.url} alt="Foto adjunta por el cliente" loading="lazy" className="h-24 w-24 object-cover" /></a>;
+  })}</div>;
+}
+
+function kb(bytes: number) {
+  return bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1).replace(".", ",")} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+// En Soporte enlaza con la conversación que originó la petición; dentro de la conversación, con la petición en Soporte.
+function SupportItem({ row, attachments = [], inConversation = false }: { row: Row; attachments?: Attachment[]; inConversation?: boolean }) {
   const status = String(row.status ?? "");
   return <li className="px-5 py-4 text-sm">
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1"><span className="font-semibold text-zinc-900">{String(row.kind ?? "")}</span><span className="text-zinc-700">{String(row.name ?? "")}</span><a href={`mailto:${String(row.email ?? "")}`} className="text-emerald-700 hover:underline">{String(row.email ?? "")}</a>{Boolean(row.phone) && <span className="text-zinc-600">{String(row.phone)}</span>}{Boolean(row.order_number) && <span className="text-zinc-600">Pedido {String(row.order_number)}</span>}<Badge tone={status === "error" ? "red" : status === "sent" ? "green" : "amber"}>{supportStatus[status] ?? status}</Badge><time className="ml-auto text-zinc-400">{date(row.created_at)}</time></div>
     <p className="mt-2 whitespace-pre-wrap text-zinc-700">{String(row.description ?? "")}</p>
+    {attachments.length > 0 && <AttachmentList items={attachments} className="mt-3" />}
+    {inConversation
+      ? <a href={`/chatbot/soporte?peticion=${encodeURIComponent(String(row.id))}`} className="mt-2 inline-block text-sm font-medium text-emerald-700 hover:underline">Ver en Soporte →</a>
+      : Boolean(row.conversation_id) && <a href={`/chatbot/conversaciones?conversacion=${encodeURIComponent(String(row.conversation_id))}`} className="mt-2 inline-block text-sm font-medium text-emerald-700 hover:underline">Ver la conversación →</a>}
   </li>;
 }
 

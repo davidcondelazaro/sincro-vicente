@@ -14,6 +14,20 @@ function term(value: string | null) {
   return (value ?? "").replace(/[,()*%\\]/g, " ").trim();
 }
 
+// Fotos y PDF que el cliente adjuntó (tabla attachments del chatbot), con enlaces firmados: el bucket `adjuntos` es privado.
+// Solo los enviados con un mensaje; los demás el chatbot los borra al día.
+const ATTACHMENT_COLUMNS = "id, conversation_id, message_id, support_request_id, path, mime, bytes, width, height, filename, created_at";
+async function signedAttachments(db: ReturnType<typeof createChatbotClient>, column: "conversation_id" | "support_request_id", values: (string | number)[]) {
+  if (!values.length) return [];
+  const { data, error } = await db.from("attachments").select(ATTACHMENT_COLUMNS).in(column, values).not("message_id", "is", null).order("created_at");
+  if (error) throw error;
+  if (!data?.length) return [];
+  const { data: signed, error: signError } = await db.storage.from("adjuntos").createSignedUrls(data.map((row) => row.path), 3600);
+  if (signError) throw signError;
+  const urlOf = new Map((signed ?? []).map((item) => [item.path, item.signedUrl]));
+  return data.map(({ path, ...row }) => ({ ...row, url: urlOf.get(path) ?? null }));
+}
+
 // Inicio del día (yyyy-mm-dd) en hora de Madrid, como instante ISO.
 function madridDayStart(day: string | null, addDays = 0) {
   if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
@@ -51,6 +65,7 @@ export async function GET(request: Request) {
       ]);
       const failed = conversation.error ?? voice.error ?? messages.error ?? support.error ?? errors.error;
       if (failed) throw failed;
+      const attachments = await signedAttachments(db, "conversation_id", [id]);
       // Pedidos atribuidos a la conversación (vista attributed_orders del chatbot).
       const { data: attributed, error: attributedError } = await db.from("attributed_orders").select("order_id, attribution").eq("conversation_id", id);
       if (attributedError) throw attributedError;
@@ -66,7 +81,7 @@ export async function GET(request: Request) {
         db.from("customer_emails").select("id, email, kind, product_ids, created_at").eq("conversation_id", id).order("created_at"),
       ]);
       return json({
-        consents: consents.data ?? [], subscriptions: subscriptions.data ?? [], sentEmails: sentEmails.data ?? [], conversation: conversation.data, voice: voice.data, messages: messages.data, support: support.data, errors: errors.data, orders: (orders ?? []).map((order) => ({ ...order, attribution: attributionOf.get(order.id) })) });
+        consents: consents.data ?? [], subscriptions: subscriptions.data ?? [], sentEmails: sentEmails.data ?? [], attachments, conversation: conversation.data, voice: voice.data, messages: messages.data, support: support.data, errors: errors.data, orders: (orders ?? []).map((order) => ({ ...order, attribution: attributionOf.get(order.id) })) });
     }
 
     if (view === "stats") {
@@ -77,12 +92,17 @@ export async function GET(request: Request) {
 
     if (view === "support") {
       let query = db.from("support_requests").select("id, conversation_id, kind, name, email, phone, order_number, description, status, sent_at, created_at", { count: "exact" });
+      // ?id=<n>: una petición concreta (enlace desde la conversación que la originó).
+      const requestId = Number(url.searchParams.get("id"));
+      if (Number.isInteger(requestId) && requestId > 0) query = query.eq("id", requestId);
       if (search) query = query.or(`name.ilike.*${search}*,email.ilike.*${search}*,order_number.ilike.*${search}*,description.ilike.*${search}*`);
       if (since) query = query.gte("created_at", since);
       if (until) query = query.lt("created_at", until);
       const { data, count, error } = await query.order("created_at", { ascending: false }).range(from, to);
       if (error) throw error;
-      return json({ rows: data, total: count ?? 0, pageSize: PAGE_SIZE });
+      const attachments = await signedAttachments(db, "support_request_id", (data ?? []).map((row) => row.id));
+      const rows = (data ?? []).map((row) => ({ ...row, attachments: attachments.filter((item) => item.support_request_id === row.id) }));
+      return json({ rows, total: count ?? 0, pageSize: PAGE_SIZE });
     }
 
     if (view === "errors") {
@@ -116,6 +136,7 @@ export async function GET(request: Request) {
       p_with_issues: url.searchParams.get("issues") === "1" ? true : null,
       p_with_guard: url.searchParams.get("guard") === "1" ? true : null,
       p_with_order: url.searchParams.get("order") === "1" ? true : null,
+      p_with_attachments: url.searchParams.get("attachments") === "1" ? true : null,
     });
     if (error) throw error;
     const rows = (data ?? []) as (Row & { total: number })[];

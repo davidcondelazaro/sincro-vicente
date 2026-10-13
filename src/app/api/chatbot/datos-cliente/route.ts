@@ -47,7 +47,15 @@ async function collect(db: Db, email: string, withMessages: boolean) {
       if (msgError) throw msgError;
       const byConversation = new Map<string, unknown[]>();
       for (const m of messages ?? []) byConversation.set(m.conversation_id, [...(byConversation.get(m.conversation_id) ?? []), { role: m.role, content: m.content, created_at: m.created_at }]);
-      conversations = conversations.map((c) => ({ ...c, messages: byConversation.get(String(c.id)) ?? [] }));
+      // Fotos y PDF que adjuntó, con un enlace de descarga válido 7 días (el bucket `adjuntos` es privado).
+      const { data: files, error: fileError } = await db.from("attachments").select("conversation_id, path, mime, bytes, filename, created_at").in("conversation_id", ids).not("message_id", "is", null).order("created_at");
+      if (fileError) throw fileError;
+      const { data: signed, error: signError } = files?.length ? await db.storage.from("adjuntos").createSignedUrls(files.map((f) => f.path), 7 * 24 * 3600) : { data: [], error: null };
+      if (signError) throw signError;
+      const urlOf = new Map((signed ?? []).map((item) => [item.path, item.signedUrl]));
+      const filesByConversation = new Map<string, unknown[]>();
+      for (const f of files ?? []) filesByConversation.set(f.conversation_id, [...(filesByConversation.get(f.conversation_id) ?? []), { tipo: f.mime === "application/pdf" ? "pdf" : "foto", nombre: f.filename, bytes: f.bytes, created_at: f.created_at, enlace_7_dias: urlOf.get(f.path) ?? null }]);
+      conversations = conversations.map((c) => ({ ...c, messages: byConversation.get(String(c.id)) ?? [], adjuntos: filesByConversation.get(String(c.id)) ?? [] }));
     }
   }
   sections.conversations = { label: "Conversaciones del chat", rows: conversations };
