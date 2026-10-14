@@ -15,8 +15,8 @@ const CONNECTIONS: { key: ConnectionKey; label: string }[] = [
   { key: "sqlServer", label: "SQL Pladisel" },
   { key: "mhd", label: "API MHD" },
   { key: "icecat", label: "Icecat API" },
-  { key: "openai", label: "API OpenAI" },
-  { key: "resend", label: "Resend" },
+  { key: "openai", label: "Open AI API" },
+  { key: "resend", label: "Resend API" },
 ];
 
 const REFRESH_INTERVAL_MS = 5 * 60 * 1_000;
