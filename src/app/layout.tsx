@@ -14,6 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  title: "Utilidades Electrónica Vicente",
   description: "Sincronización de catálogo y pedidos, y gestión del chatbot de Electrónica Vicente.",
 };
 

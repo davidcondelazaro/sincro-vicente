@@ -62,12 +62,12 @@ function AppLabels({ className }: { className: string }) {
   return <span className={`${className} flex-wrap gap-1.5`}><span className={label}>Conector</span><span className={label}>Utilidades</span></span>;
 }
 
-// Título de la pestaña: "Apartado · Grupo · Sincro Vicente" (el grupo es la última etiqueta del menú antes del apartado).
+// Título de la pestaña: "Apartado · Grupo · Utilidades Electrónica Vicente" (el grupo es la última etiqueta del menú antes del apartado).
 function pageTitle(section: Section) {
   const index = navigation.findIndex((entry) => entry.section === section);
-  if (index <= 0) return "Sincro Vicente";
+  if (index <= 0) return "Utilidades Electrónica Vicente";
   const group = navigation.slice(0, index + 1).map((entry) => groupLabels[entry.section]).filter(Boolean).at(-1);
-  return [navigation[index].label, group, "Sincro Vicente"].filter(Boolean).join(" · ");
+  return [navigation[index].label, group, "Utilidades Electrónica Vicente"].filter(Boolean).join(" · ");
 }
 
 function UserMenu({ email }: { email: string | null }) {
