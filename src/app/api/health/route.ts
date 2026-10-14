@@ -11,7 +11,9 @@ type Health = {
   sqlServer: boolean;
   mhd: boolean;
   icecat: boolean;
-  errors: Partial<Record<"mysql" | "shopify" | "sqlServer" | "mhd" | "icecat", string>>;
+  openai: boolean;
+  resend: boolean;
+  errors: Partial<Record<"mysql" | "shopify" | "sqlServer" | "mhd" | "icecat" | "openai" | "resend", string>>;
   checkedAt: string;
 };
 
@@ -114,21 +116,47 @@ async function checkIcecat() {
   }
 }
 
+type ChatbotServices = { openai?: boolean; resend?: boolean; errors?: { openai?: string; resend?: string } };
+
+// Las claves de OpenAI y Resend viven en el chatbot: él hace la comprobación y aquí solo se pregunta el resultado.
+async function fetchChatbotServices(): Promise<ChatbotServices> {
+  const baseUrl = process.env.CHATBOT_URL ?? "https://chatbot.electronicavicente.com";
+  const response = await fetch(`${baseUrl}/api/admin/salud`, {
+    headers: { Authorization: `Bearer ${required("CHATBOT_ADMIN_SECRET")}` },
+    signal: AbortSignal.timeout(12_000),
+    cache: "no-store",
+  });
+  const body = await response.json().catch(() => null) as ChatbotServices & { error?: string } | null;
+  if (!response.ok || !body) throw new Error(body?.error ?? `Chatbot: HTTP ${response.status}`);
+  return body;
+}
+
+async function checkChatbotService(services: Promise<ChatbotServices>, key: "openai" | "resend", label: string) {
+  const body = await services;
+  if (body[key] !== true) throw new Error(body.errors?.[key] ?? `${label} no disponible.`);
+}
+
 async function checkHealth(): Promise<Health> {
-  const [mysqlResult, shopifyResult, sqlServerResult, mhdResult, icecatResult] = await Promise.allSettled([checkMySql(), checkShopify(), checkSqlServer(), checkMhd(), checkIcecat()]);
+  const chatbotServices = fetchChatbotServices();
+  chatbotServices.catch(() => undefined);
+  const [mysqlResult, shopifyResult, sqlServerResult, mhdResult, icecatResult, openAiResult, resendResult] = await Promise.allSettled([checkMySql(), checkShopify(), checkSqlServer(), checkMhd(), checkIcecat(), checkChatbotService(chatbotServices, "openai", "OpenAI"), checkChatbotService(chatbotServices, "resend", "Resend")]);
   const mysqlOk = mysqlResult.status === "fulfilled";
   const shopifyOk = shopifyResult.status === "fulfilled";
   const sqlServerOk = sqlServerResult.status === "fulfilled" && sqlServerResult.value;
   const mhdOk = mhdResult.status === "fulfilled";
   const icecatOk = icecatResult.status === "fulfilled";
+  const openAiOk = openAiResult.status === "fulfilled";
+  const resendOk = resendResult.status === "fulfilled";
 
   if (!mysqlOk) console.error(JSON.stringify({ level: "error", message: "MySQL health check failed", error: String(mysqlResult.reason) }));
   if (!shopifyOk) console.error(JSON.stringify({ level: "error", message: "Shopify health check failed", error: String(shopifyResult.reason) }));
   if (sqlServerResult.status === "rejected") console.error(JSON.stringify({ level: "error", message: "SQL Server health check failed" }));
   if (!mhdOk) console.error(JSON.stringify({ level: "error", message: "MHD health check failed", error: String(mhdResult.reason) }));
   if (!icecatOk) console.error(JSON.stringify({ level: "error", message: "Icecat health check failed", error: String(icecatResult.reason) }));
+  if (!openAiOk) console.error(JSON.stringify({ level: "error", message: "OpenAI health check failed", error: String(openAiResult.reason) }));
+  if (!resendOk) console.error(JSON.stringify({ level: "error", message: "Resend health check failed", error: String(resendResult.reason) }));
 
-  return { mysql: mysqlOk, shopify: shopifyOk, sqlServer: sqlServerOk, mhd: mhdOk, icecat: icecatOk, errors: { ...(mysqlOk ? {} : { mysql: failureMessage(mysqlResult) }), ...(shopifyOk ? {} : { shopify: failureMessage(shopifyResult) }), ...(sqlServerOk ? {} : { sqlServer: failureMessage(sqlServerResult) }), ...(mhdOk ? {} : { mhd: failureMessage(mhdResult) }), ...(icecatOk ? {} : { icecat: failureMessage(icecatResult) }) }, checkedAt: new Date().toISOString() };
+  return { mysql: mysqlOk, shopify: shopifyOk, sqlServer: sqlServerOk, mhd: mhdOk, icecat: icecatOk, openai: openAiOk, resend: resendOk, errors: { ...(mysqlOk ? {} : { mysql: failureMessage(mysqlResult) }), ...(shopifyOk ? {} : { shopify: failureMessage(shopifyResult) }), ...(sqlServerOk ? {} : { sqlServer: failureMessage(sqlServerResult) }), ...(mhdOk ? {} : { mhd: failureMessage(mhdResult) }), ...(icecatOk ? {} : { icecat: failureMessage(icecatResult) }), ...(openAiOk ? {} : { openai: failureMessage(openAiResult) }), ...(resendOk ? {} : { resend: failureMessage(resendResult) }) }, checkedAt: new Date().toISOString() };
 }
 
 export async function GET(request: Request) {
@@ -146,7 +174,7 @@ export async function GET(request: Request) {
 
   const health = cachedHealth!;
   return Response.json(health, {
-    status: health.mysql && health.shopify && health.mhd && health.icecat ? 200 : 503,
+    status: health.mysql && health.shopify && health.mhd && health.icecat && health.openai && health.resend ? 200 : 503,
     headers: { "Cache-Control": "no-store" },
   });
 }

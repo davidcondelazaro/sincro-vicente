@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 
-type ConnectionKey = "mysql" | "shopify" | "sqlServer" | "mhd" | "icecat";
+type ConnectionKey = "mysql" | "shopify" | "sqlServer" | "mhd" | "icecat" | "openai" | "resend";
 type Health = Record<ConnectionKey, boolean> & {
   errors: Partial<Record<ConnectionKey, string>>;
   checkedAt?: string;
@@ -15,6 +15,8 @@ const CONNECTIONS: { key: ConnectionKey; label: string }[] = [
   { key: "sqlServer", label: "SQL Pladisel" },
   { key: "mhd", label: "API MHD" },
   { key: "icecat", label: "Icecat API" },
+  { key: "openai", label: "API OpenAI" },
+  { key: "resend", label: "Resend" },
 ];
 
 const REFRESH_INTERVAL_MS = 5 * 60 * 1_000;
@@ -42,6 +44,8 @@ export function ConnectionFooter() {
         sqlServer: Boolean(body.sqlServer),
         mhd: Boolean(body.mhd),
         icecat: Boolean(body.icecat),
+        openai: Boolean(body.openai),
+        resend: Boolean(body.resend),
         errors: body.errors ?? {},
         checkedAt: body.checkedAt,
       });
@@ -53,6 +57,8 @@ export function ConnectionFooter() {
         sqlServer: false,
         mhd: false,
         icecat: false,
+        openai: false,
+        resend: false,
         errors: Object.fromEntries(CONNECTIONS.map(({ key }) => [key, CONNECTION_ERROR])),
       });
       lastCheckAt.current = Date.now();
