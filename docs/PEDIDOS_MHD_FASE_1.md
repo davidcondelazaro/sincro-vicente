@@ -46,17 +46,30 @@ separado. Para conservar la interpretación comercial del pedido, el campo
 
 ```text
 Observaciones del pedido: [nota escrita en Shopify]
-El cliente pide que se envíen todos los artículos juntos.
 Detalle de los descuentos aplicados: [códigos, títulos o literales de Shopify]
 ```
 
-La segunda línea solo aparece si el pedido trae el atributo `Enviar todo junto`
-con valor `Sí` (el carrito del theme lo guarda cuando el cliente marca la
-casilla; en el admin se ve en «Detalles adicionales»). La sincronización lee
-`customAttributes` del pedido y lo guarda en `source_payload`; las
-observaciones se recalculan en cada exportación a partir de la nota original,
-así que el aviso nunca se duplica ni sustituye a la nota del cliente. Las
-pruebas están en `tests/mhd-order-notes.test.mjs` (`npm test`).
+### Aviso «Enviar todo junto» (desactivado)
+
+**Desactivado el 17-10-2026 por decisión del usuario**, a la vez que se quitó el
+interruptor del carrito en el theme. Hoy las observaciones llevan solo la nota
+del cliente y los descuentos.
+
+Qué hacía: si el pedido traía el atributo `Enviar todo junto` con valor `Sí`
+(el carrito lo guardaba al marcar la casilla; en el admin se ve en «Detalles
+adicionales»), añadía en línea aparte, justo después de la nota del cliente:
+
+```text
+El cliente pide que se envíen todos los artículos juntos.
+```
+
+La sincronización sigue leyendo `customAttributes` del pedido y guardándolo en
+`source_payload`; las observaciones se recalculan en cada exportación a partir
+de la nota original, así que el aviso no se duplica ni sustituye a la nota.
+
+Para reactivarlo: volver a poner el interruptor en el theme y cambiar
+`SHIP_TOGETHER_ENABLED` a `true` en `src/lib/mhd-order-notes.ts`; ajustar la
+primera prueba de `tests/mhd-order-notes.test.mjs` (`npm test`).
 
 ## Correspondencias de provincias
 

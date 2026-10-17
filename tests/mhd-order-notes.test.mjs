@@ -1,8 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildMhdOrderObservations, SHIP_TOGETHER_NOTE } from "../src/lib/mhd-order-notes.ts";
+import { buildMhdOrderObservations as buildDefault, SHIP_TOGETHER_ENABLED, SHIP_TOGETHER_NOTE } from "../src/lib/mhd-order-notes.ts";
+
+// El aviso está desactivado desde el 17-10-2026; el resto de pruebas lo activan para cubrir la lógica por si se reactiva.
+const buildMhdOrderObservations = (input) => buildDefault({ shipTogetherEnabled: true, ...input });
 
 const shipTogether = [{ key: "Enviar todo junto", value: "Sí" }];
+
+test("desactivado: con el atributo, las observaciones son solo la nota del cliente", () => {
+  assert.equal(SHIP_TOGETHER_ENABLED, false);
+  assert.equal(buildDefault({ orderNote: "Llamar antes", customAttributes: shipTogether }), "Observaciones del pedido: Llamar antes");
+  assert.equal(buildDefault({ orderNote: null, customAttributes: shipTogether }), "");
+});
 
 test("sin el atributo, las observaciones no cambian", () => {
   assert.equal(buildMhdOrderObservations({ orderNote: "Llamar antes", discountSummary: "VERANO10" }), "Observaciones del pedido: Llamar antes\nDetalle de los descuentos aplicados: VERANO10");
