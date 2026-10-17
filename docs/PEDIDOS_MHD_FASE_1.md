@@ -46,8 +46,17 @@ separado. Para conservar la interpretación comercial del pedido, el campo
 
 ```text
 Observaciones del pedido: [nota escrita en Shopify]
+El cliente pide que se envíen todos los artículos juntos.
 Detalle de los descuentos aplicados: [códigos, títulos o literales de Shopify]
 ```
+
+La segunda línea solo aparece si el pedido trae el atributo `Enviar todo junto`
+con valor `Sí` (el carrito del theme lo guarda cuando el cliente marca la
+casilla; en el admin se ve en «Detalles adicionales»). La sincronización lee
+`customAttributes` del pedido y lo guarda en `source_payload`; las
+observaciones se recalculan en cada exportación a partir de la nota original,
+así que el aviso nunca se duplica ni sustituye a la nota del cliente. Las
+pruebas están en `tests/mhd-order-notes.test.mjs` (`npm test`).
 
 ## Correspondencias de provincias
 

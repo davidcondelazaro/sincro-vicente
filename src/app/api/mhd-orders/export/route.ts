@@ -15,7 +15,7 @@ type Order = {
   id: string; shopify_order_name: string; email: string | null; order_note: string | null;
   discount_summary: string | null; shipping_country_code: string | null;
   shipping_province_code: string | null; eligibility_status: string;
-  source_payload: { shippingAddress?: Address | null; billingAddress?: Address | null };
+  source_payload: { shippingAddress?: Address | null; billingAddress?: Address | null; customAttributes?: { key: string; value: string | null }[] | null };
 };
 type Line = { sku: string | null; quantity: number; unit_price: string };
 type Mapping = { mhd_province_id: number; mhd_province_name: string; active: boolean };
@@ -122,7 +122,7 @@ export async function POST(request: Request) {
 
   const payload = {
     email: typedOrder.email.trim(), referencia_web: typedOrder.shopify_order_name,
-    observaciones: buildMhdOrderObservations({ orderNote: typedOrder.order_note, discountSummary: typedOrder.discount_summary }),
+    observaciones: buildMhdOrderObservations({ orderNote: typedOrder.order_note, discountSummary: typedOrder.discount_summary, customAttributes: typedOrder.source_payload.customAttributes }),
     envio: mhdAddress(address!, typedMapping, typedCountry),
     ...(billing ? { facturacion: billing } : {}),
     productos: productPayload,
