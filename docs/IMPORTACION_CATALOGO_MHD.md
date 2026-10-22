@@ -102,7 +102,7 @@ Se utilizará un enfoque híbrido:
 El hash protege frente a cambios de campos no previstos, fechas que no se
 actualicen correctamente y precisión insuficiente de las marcas de tiempo.
 
-## Bajas por ausencia en MHD
+## Bajas por ausencia en MHD (diseño inicial; hoy pendiente, ver «Bajas y reaparecidos: pendiente»)
 
 MHD no proporciona actualmente un indicador fiable de baja. La aplicación
 detectará las bajas comparando una lectura completa correcta con la fotografía
@@ -222,35 +222,43 @@ Pantalla «Importar de MHD» ─► /api/mhd-catalog-import ─► mhd_import_st
 
 ### Importaciones disponibles (todas manuales)
 
-| Tipo | Qué lee | Tamaño de página | Marca bajas |
-| --- | --- | --- | --- |
-| Completa | categorías → marcas → productos → precios → stock | — | Sí |
-| Categorías | `/categories?nivel=1`, `2` y `3` (18 + 157 + 476) | 1.000 | No |
-| Marcas | `/brands` | 1.000 | No |
-| Productos | `/products` | 1.000 | Sí |
-| Precios | `/prices` | 5.000 | No |
-| Stock | `/stocks` | 5.000 | No |
+| Tipo | Qué lee | Tamaño de página |
+| --- | --- | --- |
+| Completa | categorías → marcas → productos → precios → stock | — |
+| Categorías | `/categories?nivel=1`, `2` y `3` (18 + 157 + 476) | 1.000 |
+| Marcas | `/brands` | 1.000 |
+| Productos | `/products` | 1.000 |
+| Precios | `/prices` (todos) | 5.000 |
+| Stock | `/stocks` (todo) | 5.000 |
+
+Cada tipo se lee entero: ninguna importación pide a MHD solo lo modificado
+desde la anterior (su API no documenta ese filtro). Las fechas de modificación
+(`fecha_modificacion_*`) se guardan, pero aún no se usan; servirán en la fase 2
+para pedir solo las fichas de detalle de productos nuevos o modificados. Lo que
+ha cambiado de verdad se ve en `source_changed` (huella del contenido).
 
 El nivel 3 de categorías no trae su familia: se guarda en `cod_familia` como los
 tres primeros caracteres del código (`H0101` → `H01`).
 
-### Bajas y reaparecidos
+### Bajas y reaparecidos: pendiente (decidido 2026-10-22)
 
-MHD no comunica las bajas. Solo se marcan cuando **los productos se han leído
-enteros y bien** (importación completa o de productos):
+**La importación no marca bajas ni reaparecidos.** Se programó en la fase 1 y
+se retiró el mismo día (migración `20261022140000_mhd_import_sin_bajas`):
+mientras no se procese nada de este catálogo en Shopify no aportan nada.
 
-1. Se comprueba que el número de productos distintos recibidos en la ejecución
-   coincide con el total que declara MHD. Si no (el catálogo cambió durante la
-   lectura), la ejecución termina con error y **no se marcan bajas**.
-2. Por precaución, si salieran más de un 10 % de bajas (mínimo 200), tampoco se
-   marcan y la ejecución termina con error para revisarlo.
-3. Lo que estaba `present` y no ha venido pasa a `absent_in_mhd`.
+Qué pasó: la primera importación de productos en producción comparó con la
+última buena, la del 19 de agosto (32.372 productos). Hoy MHD tiene 30.649:
+6.587 ya no estaban (una muestra de 8 daba 404 en MHD) y 4.864 eran nuevos. El
+freno del 10 % impidió marcarlas. Por eso `mhd_catalog_products` conserva
+filas de agosto que MHD ya no tiene; se distinguen por `last_seen_run_id` /
+`last_seen_at` (no vistas en la última importación de productos).
 
-Los productos que estaban de baja y vuelven a venir se marcan `present` en
-cuanto llega su página. Bajas y reaparecidos se guardan por ejecución en
-`mhd_catalog_presence_changes`; la pantalla los cuenta en el histórico y
-permite verlos y descargarlos en CSV. Precios, stock, marcas y categorías nunca
-marcan bajas. Ninguna de estas marcas actúa todavía sobre Shopify.
+Cuando se retome, el diseño propuesto era: solo una lectura completa de
+productos que termine bien marca bajas (lo que estaba presente y no ha venido)
+y guarda por ejecución la lista de bajas y reaparecidos; las parciales nunca.
+Habría que decidir antes qué hacer con las filas antiguas (empezar de cero
+desde una importación completa o marcarlas en bloque) y si el freno se
+confirma a mano desde la pantalla.
 
 ### Pantalla
 
@@ -285,4 +293,6 @@ JWT; la protege `x-mhd-import-token`) y app en Vercel. Comprobado que la base
 de datos llega a la función (respuesta 202). Tiempos en local contra la API
 real: completa ~4 min 30 s (productos 3 min 44 s, precios 21 s, stock 20 s,
 marcas 2 s, categorías 2 s); solo productos 2 min 58 s. La primera completa
-en producción queda pendiente de lanzarla a mano.
+en producción queda pendiente de lanzarla a mano. Primera importación de
+productos en producción (22-10, 12:52): 30.649 productos en 2 min 10 s, sin
+errores.

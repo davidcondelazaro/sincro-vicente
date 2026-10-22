@@ -15,15 +15,9 @@ async function session() {
   return data?.claims.sub ? supabase : null;
 }
 
-export async function GET(request: Request) {
+export async function GET() {
   const supabase = await session();
   if (!supabase) return Response.json({ error: "Necesitas iniciar sesión." }, { status: 401 });
-  const changesOf = new URL(request.url).searchParams.get("changes");
-  if (changesOf) {
-    const { data, error } = await supabase.rpc("mhd_import_presence_changes", { p_run_id: changesOf });
-    if (error) return Response.json({ error: error.message }, { status: 500 });
-    return Response.json({ changes: data ?? [] });
-  }
   const { data, error } = await supabase.rpc("mhd_import_status", { p_limit: 20 });
   if (error) return Response.json({ error: "No se pudo consultar el historial MHD." }, { status: 500 });
   return Response.json(data);

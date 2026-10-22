@@ -8,24 +8,23 @@ type EntityProgress = { done?: number; total?: number; estimated?: number; pages
 type PageError = { entity: string; part: number; page: number; attempts: number; error: string; at: string };
 type Status = "running" | "stopped" | "completed" | "failed" | "discarded";
 type Run = {
-  id: string; kind: string; status: Status; entities: string[]; stop_requested: boolean; absences_applied: boolean;
+  id: string; kind: string; status: Status; entities: string[]; stop_requested: boolean;
   cursor: { entity_index?: number; part?: number; page?: number; failures?: number };
   entity_progress: Record<string, EntityProgress>; record_counts: Record<string, number>; progress: { phase?: string; entity_timings?: Record<string, { started_at: string; completed_at?: string }> };
   error_message: string | null; started_at: string; completed_at: string | null; last_activity_at: string | null;
-  page_errors: PageError[]; removed: number; reappeared: number;
+  page_errors: PageError[];
 };
-type Change = { codigo: string; change: "baja" | "reaparece"; titulo: string | null; nombre_marca: string | null };
 
 const labels: Record<string, string> = { categories: "Categorías", brands: "Marcas", products: "Productos", prices: "Precios", stock: "Stock" };
 const kindLabels: Record<string, string> = { full: "Completa", ...labels };
 const pageSizes: Record<string, number> = { categories: 1000, brands: 1000, products: 1000, prices: 5000, stock: 5000 };
 const launchers = [
-  { kind: "full", detail: "Categorías, marcas, productos, precios y stock. Marca bajas." },
+  { kind: "full", detail: "Categorías, marcas, productos, precios y stock." },
   { kind: "categories", detail: "Los tres niveles: líneas, familias y subfamilias." },
   { kind: "brands", detail: "Listado de marcas." },
-  { kind: "products", detail: "Catálogo de productos. Marca bajas." },
-  { kind: "prices", detail: "Solo precios (/prices). Nunca marca bajas." },
-  { kind: "stock", detail: "Solo stock (/stocks). Nunca marca bajas." },
+  { kind: "products", detail: "Catálogo de productos." },
+  { kind: "prices", detail: "Todos los precios (/prices)." },
+  { kind: "stock", detail: "Todo el stock (/stocks)." },
 ];
 const STALL_MS = 60_000;
 
@@ -36,7 +35,6 @@ export default function MhdImportPage() {
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(Date.now());
   const [clockOffset, setClockOffset] = useState(0);
-  const [changes, setChanges] = useState<{ runId: string; rows: Change[] } | null>(null);
 
   const load = useCallback(async () => {
     const response = await fetch("/api/mhd-catalog-import", { cache: "no-store" });
@@ -65,17 +63,10 @@ export default function MhdImportPage() {
       await load();
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Error inesperado."); } finally { setBusy(false); }
   }
-  async function showChanges(runId: string) {
-    if (changes?.runId === runId) { setChanges(null); return; }
-    const response = await fetch(`/api/mhd-catalog-import?changes=${runId}`, { cache: "no-store" });
-    const body = await response.json();
-    if (!response.ok) { setError(body.error ?? "No se pudo cargar la lista."); return; }
-    setChanges({ runId, rows: body.changes ?? [] });
-  }
 
   const serverNow = now + clockOffset;
   return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]"><AppSidebar active="mhdImport" userEmail={email} /><main className="mx-auto flex w-full max-w-5xl flex-col gap-7 px-6 pb-24 pt-28 sm:px-10 lg:mx-0 lg:py-16">
-    <header><h1 className="text-4xl font-semibold tracking-tight text-zinc-950">Importar de MHD</h1><p className="mt-3 max-w-3xl text-zinc-600">Copia el catálogo desde la API de MHD a Supabase, página a página. Si se corta, se reanuda desde la última página buena. Las bajas solo se marcan cuando se leen todos los productos bien.</p></header>
+    <header><h1 className="text-4xl font-semibold tracking-tight text-zinc-950">Importar de MHD</h1><p className="mt-3 max-w-3xl text-zinc-600">Copia el catálogo desde la API de MHD a Supabase, página a página. Si se corta, se reanuda desde la última página buena. Todavía no marca bajas (pendiente).</p></header>
     {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">{error}</p>}
 
     <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
@@ -86,14 +77,11 @@ export default function MhdImportPage() {
 
     {active && <ActiveRun run={active} now={serverNow} busy={busy} act={act} />}
 
-    <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"><div className="flex flex-wrap items-baseline justify-between gap-4"><div><h2 className="text-xl font-semibold">Histórico</h2><p className="mt-1 text-sm text-zinc-600">Cada ejecución conserva sus totales, la duración de cada parte y sus bajas y reaparecidos.</p></div><span className="text-sm text-zinc-500">{runs.length} ejecuciones recientes</span></div>
+    <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"><div className="flex flex-wrap items-baseline justify-between gap-4"><div><h2 className="text-xl font-semibold">Histórico</h2><p className="mt-1 text-sm text-zinc-600">Cada ejecución conserva sus totales y la duración de cada parte.</p></div><span className="text-sm text-zinc-500">{runs.length} ejecuciones recientes</span></div>
       <div className="mt-4 overflow-hidden rounded-xl border border-zinc-200"><ul className="divide-y divide-zinc-100">{runs.length ? runs.map((run) => <li key={run.id} className="p-4">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1"><StatusBadge status={run.status} /><span className="text-sm font-semibold text-zinc-900">{kindLabels[run.kind] ?? run.kind}</span><time className="text-sm text-zinc-600">{formatDate(run.started_at)}</time><span className="text-sm text-zinc-600">Duración: {formatDuration(elapsedMs(run.started_at, run.completed_at ?? run.last_activity_at, serverNow))}</span>
-          {(run.removed > 0 || run.reappeared > 0) && <button onClick={() => showChanges(run.id)} className="text-sm font-medium text-emerald-700 hover:underline">{run.removed} bajas · {run.reappeared} reaparecidos</button>}
-          {run.absences_applied && !run.removed && !run.reappeared && <span className="text-sm text-zinc-500">Sin bajas ni reaparecidos</span>}</div>
-        <div className="mt-3 grid gap-2 sm:grid-cols-5">{(run.entities ?? Object.keys(labels)).map((key) => <EntitySummary key={key} label={labels[key] ?? key} progress={run.entity_progress?.[key]} legacyCount={run.record_counts?.[key]} legacyTiming={run.progress?.entity_timings?.[key]} now={serverNow} />)}</div>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1"><StatusBadge status={run.status} /><span className="text-sm font-semibold text-zinc-900">{kindLabels[run.kind] ?? run.kind}</span><time className="text-sm text-zinc-600">{formatDate(run.started_at)}</time><span className="text-sm text-zinc-600">Duración: {formatDuration(elapsedMs(run.started_at, run.completed_at ?? run.last_activity_at, serverNow))}</span></div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-5">{(run.entities ?? Object.keys(labels)).map((key) => <EntitySummary key={key} label={labels[key] ?? key} progress={run.entity_progress?.[key]} legacyCount={run.record_counts?.[key]} legacyTiming={run.progress?.entity_timings?.[key]} now={serverNow} runEnd={run.status === "running" ? null : run.completed_at ?? run.last_activity_at} />)}</div>
         {run.error_message && <p className="mt-3 text-sm text-red-700">{run.error_message}</p>}
-        {changes?.runId === run.id && <ChangesTable rows={changes.rows} runId={run.id} />}
       </li>) : <li className="p-4 text-sm text-zinc-500">Todavía no hay importaciones MHD.</li>}</ul></div></section>
   </main></div>;
 }
@@ -157,22 +145,13 @@ function PageErrors({ errors }: { errors: PageError[] }) {
   return <div className="mt-4"><h3 className="text-sm font-semibold text-zinc-900">Errores por página</h3><div className="mt-2 overflow-x-auto rounded-lg border border-zinc-200"><table className="w-full text-left text-sm"><thead className="bg-zinc-50 text-zinc-600"><tr><th className="px-3 py-2">Hora</th><th className="px-3 py-2">Entidad</th><th className="px-3 py-2">Página</th><th className="px-3 py-2">Intentos</th><th className="px-3 py-2">Error</th></tr></thead><tbody className="divide-y divide-zinc-100">{errors.map((item, index) => <tr key={index}><td className="whitespace-nowrap px-3 py-2">{formatDate(item.at)}</td><td className="px-3 py-2">{labels[item.entity] ?? item.entity}{item.entity === "categories" ? ` (nivel ${item.part + 1})` : ""}</td><td className="px-3 py-2">{item.page}</td><td className="px-3 py-2">{item.attempts}</td><td className="px-3 py-2 text-red-700">{item.error}</td></tr>)}</tbody></table></div></div>;
 }
 
-function ChangesTable({ rows, runId }: { rows: Change[]; runId: string }) {
-  function download() {
-    const csv = ["codigo;cambio;titulo;marca", ...rows.map((row) => [row.codigo, row.change, row.titulo ?? "", row.nombre_marca ?? ""].map((value) => `"${value.replaceAll("\"", "\"\"")}"`).join(";"))].join("\n");
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
-    link.download = `mhd-bajas-reaparecidos-${runId.slice(0, 8)}.csv`;
-    link.click();
-  }
-  return <div className="mt-3 rounded-lg border border-zinc-200"><div className="flex items-center justify-between border-b border-zinc-100 p-3"><span className="text-sm font-semibold">{rows.length.toLocaleString("es-ES")} productos</span><button onClick={download} className="text-sm font-medium text-emerald-700 hover:underline">Descargar CSV</button></div><div className="max-h-80 overflow-auto"><table className="w-full text-left text-sm"><thead className="sticky top-0 bg-zinc-50 text-zinc-600"><tr><th className="px-3 py-2">Código</th><th className="px-3 py-2">Cambio</th><th className="px-3 py-2">Título</th><th className="px-3 py-2">Marca</th></tr></thead><tbody className="divide-y divide-zinc-100">{rows.map((row) => <tr key={row.codigo}><td className="px-3 py-2 font-mono">{row.codigo}</td><td className={`px-3 py-2 ${row.change === "baja" ? "text-red-700" : "text-emerald-700"}`}>{row.change === "baja" ? "Baja" : "Reaparece"}</td><td className="px-3 py-2">{row.titulo}</td><td className="px-3 py-2">{row.nombre_marca}</td></tr>)}</tbody></table></div></div>;
-}
 
-function EntitySummary({ label, progress, legacyCount, legacyTiming, now }: { label: string; progress?: EntityProgress; legacyCount?: number; legacyTiming?: { started_at: string; completed_at?: string }; now: number }) {
+function EntitySummary({ label, progress, legacyCount, legacyTiming, now, runEnd }: { label: string; progress?: EntityProgress; legacyCount?: number; legacyTiming?: { started_at: string; completed_at?: string }; now: number; runEnd: string | null }) {
   const count = progress?.done ?? legacyCount;
   const startedAt = progress?.started_at ?? legacyTiming?.started_at;
   const completedAt = progress?.completed_at ?? legacyTiming?.completed_at;
-  const duration = startedAt ? formatDuration(elapsedMs(startedAt, completedAt ?? null, now)) : "Pendiente";
+  // Una parte sin cerrar de una ejecución ya terminada cuenta hasta el final de la ejecución.
+  const duration = startedAt ? formatDuration(elapsedMs(startedAt, completedAt ?? runEnd, now)) : "Pendiente";
   return <div className="rounded-lg bg-zinc-50 p-3"><p className="text-xs font-medium uppercase tracking-wide text-zinc-500">{label}</p><p className="mt-1 font-semibold text-zinc-900">{count !== undefined ? count.toLocaleString("es-ES") : "—"}</p><p className="text-xs text-zinc-500">{startedAt && !completedAt ? `${duration} (sin terminar)` : duration}</p></div>;
 }
 function Bar({ percent, small = false }: { percent: number; small?: boolean }) { return <div className={`${small ? "h-2" : "h-3"} overflow-hidden rounded-full bg-zinc-100`}><div className="h-full bg-emerald-600 transition-all" style={{ width: `${percent}%` }} /></div>; }
