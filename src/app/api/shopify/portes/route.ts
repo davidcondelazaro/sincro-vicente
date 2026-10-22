@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
+import { CLAVE_PORTES, zonaDeEnvio } from "@/lib/mhd-order-lines";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,41 +14,8 @@ export const dynamic = "force-dynamic";
 // - Zona sin envío (Canarias, Ceuta, Melilla, islas de Portugal, otros países): sin tarifa.
 // En los registros solo va lo necesario para calcular: nada de nombre, calle, teléfono ni empresa.
 
-type Zona = "peninsula" | "baleares" | "portugal_1" | "portugal_2";
-
-const CLAVE_PORTES: Record<Zona, string> = {
-  peninsula: "gastos_envio_peninsula_particulares",
-  baleares: "gastos_envio_baleares_particulares",
-  portugal_1: "gastos_envio_portugal_baremo_1_particulares",
-  portugal_2: "gastos_envio_portugal_baremo_2_particulares",
-};
-
 type Destino = { country?: string; province?: string; postal_code?: string };
 type Linea = { sku?: string; quantity?: number; grams?: number; product_id?: number; properties?: Record<string, string> };
-
-function zonaDeEnvio(destino: Destino): Zona | null {
-  const pais = destino.country;
-  const provincia = destino.province ?? "";
-  const cp = String(destino.postal_code ?? "").replace(/\s/g, "");
-
-  if (pais === "ES") {
-    const prefijo = cp.slice(0, 2);
-    // Canarias (GC, TF / 35, 38), Ceuta (CE / 51) y Melilla (ML / 52): sin envío
-    if (["GC", "TF", "CE", "ML"].includes(provincia) || ["35", "38", "51", "52"].includes(prefijo)) return null;
-    if (provincia === "PM" || prefijo === "07") return "baleares";
-    return "peninsula";
-  }
-
-  if (pais === "PT") {
-    // Baremos de MHD por código postal (4 primeras cifras); 9000-9999 son las islas, sin envío
-    const numero = Number.parseInt(cp.slice(0, 4), 10);
-    if (Number.isNaN(numero) || numero >= 9000) return null;
-    if ((numero >= 2200 && numero <= 2499) || (numero >= 3000 && numero <= 4999)) return "portugal_1";
-    return "portugal_2";
-  }
-
-  return null;
-}
 
 function firmaValida(cuerpo: string, firma: string | null): boolean | null {
   const secreto = process.env.SHOPIFY_API_SECRET;
@@ -103,7 +71,7 @@ export async function POST(request: Request) {
     return sinTarifas();
   }
 
-  const zona = zonaDeEnvio(destino);
+  const zona = zonaDeEnvio({ country: destino.country, province: destino.province, postalCode: destino.postal_code });
   const resumen = {
     firma: firma === null ? "sin comprobar" : "válida",
     destino: { pais: destino.country, provincia: destino.province, cp: destino.postal_code },

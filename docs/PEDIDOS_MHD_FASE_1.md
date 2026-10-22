@@ -162,3 +162,103 @@ La futura actualización de envío en Shopify deberá crear o completar el
 fulfillment correspondiente con transportista, tracking y URL. Solo se
 implementará cuando MHD confirme de dónde obtiene esos datos y qué estado
 representa exactamente la expedición.
+
+## Respuesta de MHD (octubre de 2026)
+
+MHD ha publicado la documentación en una URL nueva y ha resuelto la mayoría de
+los puntos pendientes; el detalle está en [API_MHD.md](API_MHD.md):
+
+- `GET /orders/:id` ya devuelve transportista, número y URL de seguimiento, y
+  las facturas (`arr_facturas_info_full`, enlaces permanentes).
+- La lista de estados está en `GET /order-states`. `Enviado` es el id 10.
+- MHD no puede indicar qué productos van en cada envío si hay varios.
+- Las cuatro propiedades de seguimiento se unificarán en una (avisarán).
+- `precio` y `portes` de cada línea son **unitarios**. La exportación actual
+  pone el total de portes en la primera línea, así que se multiplica si esa
+  línea tiene más de una unidad. Hay que corregirlo.
+
+### De dónde sale el porte por unidad
+
+Desde el 9-10-2026 los portes de Shopify no son una tarifa fija: los calcula el
+servicio de envío `src/app/api/shopify/portes/route.ts` (CarrierService),
+documentado en `theme-enterprise-vicente/docs/opciones-entrega.md`:
+
+- Cada aparato lleva el metacampo de producto `custom.opciones_entrega` (JSON
+  con las mismas claves que MHD: `gastos_envio_peninsula_particulares`,
+  `gastos_envio_baleares_particulares`,
+  `gastos_envio_portugal_baremo_1_particulares`,
+  `gastos_envio_portugal_baremo_2_particulares`, `subida_puerta_particulares`,
+  `retirada_usado_particulares`, `instalacion_particulares`).
+- La zona sale de la dirección de envío: península; Baleares (`PM` / CP 07);
+  Portugal baremo 1 (CP 2200-2499 y 3000-4999) o baremo 2 (resto, salvo 9000+).
+- Portes del pedido = suma de (porte del aparato en esa zona × cantidad).
+  Aparato sin metacampo: 0 €.
+
+Por tanto, el `portes` de cada línea en MHD es el valor de ese metacampo para
+la zona del pedido, por unidad. El pedido de Shopify solo guarda el total de
+envío, sin desglose, así que hay que leer el metacampo y comprobar que la suma
+(porte × cantidad) coincide con el envío cobrado. Si no coincide (por ejemplo,
+porque el metacampo ha cambiado desde la compra o hay un descuento en el
+envío), no se exporta sin revisión. En la recogida en tienda los portes son 0.
+
+### Servicios y garantías
+
+Los servicios (`SUBIDA-*`, `RETIRADA`, `INSTALACION-*`) van como líneas anidadas
+bajo su aparato (`lineItemGroup.variantSku`). En MHD no son productos: se
+convierten en `subida`/`precio_subida`, `retirada`/`precio_retirada` e
+`instalacion`/`precio_instalacion` de la línea del aparato, con el precio
+unitario pagado (MHD lo multiplica por la cantidad).
+
+- La tienda no permite separar servicios y unidades: un servicio lleva siempre
+  las mismas unidades que su aparato. Si no coinciden, el pedido se bloquea.
+- La instalación incluye la subida: si llegan las dos a la vez, se bloquea.
+- Las garantías (y cualquier otra línea anidada que no sea un servicio) no son
+  de MHD y no se envían.
+
+Implementado en `src/lib/mhd-order-lines.ts`, que usan la sincronización (para
+calcular la elegibilidad y mostrar el motivo de bloqueo), la exportación y el
+servicio de portes (zonas). La comprobación de la respuesta de MHD solo compara
+los aparatos enviados.
+
+### Seguimiento y facturas en la actualización de estados (10-10-2026)
+
+«Actualizar desde MHD» guarda en `mhd_order_exports.mhd_status_payload`:
+
+- `respuesta_mhd`: **la respuesta completa** de `GET /orders/:id` tal como
+  llega, para no perder ningún campo que MHD añada. Es la última consulta; no se
+  guarda histórico.
+- `estado_cliente`, `id_estado_cliente` y `arr_estados`.
+- `seguimiento`: lista de `{ carrier_code, carrier_name, tracking_number,
+  carrier_url, zip_code }`, juntando las cuatro propiedades de MHD sin repetir
+  números (se prefiere el enlace de `arr_seguimiento_info`). Cuando MHD las
+  unifique, solo cambia `trackingFrom` en `src/lib/mhd-order-status.ts`.
+- `facturas`: lista de `{ url_factura, nombre_factura }` de
+  `arr_facturas_info_full` (o del antiguo `arr_facturas_info`).
+
+La tarjeta del pedido muestra el transportista y el número de seguimiento con
+su enlace, y los enlaces a las facturas. De momento solo dentro de
+sincro-vicente: no se escribe nada en Shopify ni se envía al cliente.
+
+### Marcar como enviado en Shopify (10-10-2026, en pruebas)
+
+Formulario manual en la tarjeta del pedido (`POST /api/mhd-orders/fulfill`):
+
+- Si MHD está en Enviado, En tránsito o Finalizado (ids 10, 11, 12) y ha dado
+  seguimiento, el formulario sale relleno con sus datos; si no, vacío (sirve
+  para pruebas o si MHD no da seguimiento). En los dos casos se puede corregir.
+- **Transportista**: texto libre, cualquier agencia.
+- **Números de seguimiento**: uno o varios, cada uno con su **enlace opcional**.
+  Shopify empareja números y enlaces por posición, así que van en todos o en
+  ninguno. Sin enlace, Shopify solo enlaza el seguimiento si reconoce el
+  transportista; si no, muestra el nombre y el número.
+- Los enlaces deben ser direcciones `http(s)` válidas.
+- Se envía **todo el pedido** (MHD no indica qué productos van en cada envío),
+  un fulfillment por ubicación con todos los números de seguimiento. La
+  recogida en tienda no se toca.
+- «Avisar al cliente por correo» viene desmarcado: con él marcado, Shopify manda
+  su correo de envío.
+- El resultado se guarda en `shopify_mhd_orders.shopify_fulfillment_payload`
+  (seguimiento enviado, el que dio MHD y los fulfillments creados) y el pedido
+  queda como `FULFILLED`.
+- Requiere el permiso `write_merchant_managed_fulfillment_orders` en la app de
+  Shopify.

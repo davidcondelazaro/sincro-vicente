@@ -1,3 +1,4 @@
+import { buildMhdProductLines, type MhdProductLine, type ShopifyLinePayload } from "@/lib/mhd-order-lines";
 import { buildMhdOrderObservations } from "@/lib/mhd-order-notes";
 import { createClient } from "@/lib/supabase/server";
 
@@ -14,10 +15,10 @@ type Address = {
 type Order = {
   id: string; shopify_order_name: string; email: string | null; order_note: string | null;
   discount_summary: string | null; shipping_country_code: string | null;
-  shipping_province_code: string | null; eligibility_status: string;
+  shipping_province_code: string | null; eligibility_status: string; shipping_amount: string | null;
   source_payload: { shippingAddress?: Address | null; billingAddress?: Address | null; customAttributes?: { key: string; value: string | null }[] | null };
 };
-type Line = { sku: string | null; quantity: number; unit_price: string };
+type Line = { sku: string | null; quantity: number; unit_price: string; line_payload: ShopifyLinePayload | null };
 type Mapping = { mhd_province_id: number; mhd_province_name: string; active: boolean };
 type Country = { mhd_country_id: number; shipping_enabled: boolean };
 type MhdResponse = { success?: boolean; data?: { id?: number; id_transaccion?: string; estado_cliente?: string; arr_productos?: { cd_articulo?: string; cantidad?: number }[] }; errors?: unknown };
@@ -57,11 +58,11 @@ function addressError(address: Address | null | undefined) {
   if (!address.company?.trim()) return "Falta el NIF/CIF en el campo Empresa de Shopify.";
   return null;
 }
-function mhdProductMatches(lines: Line[], response: MhdResponse) {
+function mhdProductMatches(lines: MhdProductLine[], response: MhdResponse) {
   const returned = response.data?.arr_productos ?? [];
   const requestedBySku = new Map<string, number>();
   const returnedBySku = new Map<string, number>();
-  for (const line of lines) requestedBySku.set(line.sku!, (requestedBySku.get(line.sku!) ?? 0) + line.quantity);
+  for (const line of lines) requestedBySku.set(line.codigo, (requestedBySku.get(line.codigo) ?? 0) + line.cantidad);
   for (const line of returned) if (line.cd_articulo) returnedBySku.set(line.cd_articulo, (returnedBySku.get(line.cd_articulo) ?? 0) + (line.cantidad ?? 0));
   return requestedBySku.size === returnedBySku.size && [...requestedBySku].every(([sku, quantity]) => returnedBySku.get(sku) === quantity);
 }
@@ -86,7 +87,7 @@ export async function POST(request: Request) {
   if (!typedOrder.email?.trim()) return Response.json({ error: "Falta el email del cliente." }, { status: 422 });
 
   const [{ data: lines, error: linesError }, { data: mapping, error: mappingError }, { data: country, error: countryError }, { data: priorExport, error: exportError }] = await Promise.all([
-    supabase.from("shopify_mhd_order_lines").select("sku,quantity,unit_price").eq("order_id", orderId),
+    supabase.from("shopify_mhd_order_lines").select("sku,quantity,unit_price,line_payload").eq("order_id", orderId),
     supabase.from("mhd_order_province_mappings").select("mhd_province_id,mhd_province_name,active").eq("country_iso_2", typedOrder.shipping_country_code ?? "").eq("shopify_province_code", typedOrder.shipping_province_code ?? "").maybeSingle(),
     supabase.from("mhd_order_countries").select("mhd_country_id,shipping_enabled").eq("iso_2", typedOrder.shipping_country_code ?? "").maybeSingle(),
     supabase.from("mhd_order_exports").select("id,status,mhd_order_id").eq("order_id", orderId).maybeSingle(),
@@ -114,11 +115,13 @@ export async function POST(request: Request) {
   const billing = typedBillingMapping?.active && typedBillingCountry?.shipping_enabled
     ? mhdAddress(billingAddress!, typedBillingMapping, typedBillingCountry, address!.company)
     : undefined;
-  const productPayload = typedLines.map((line, index) => ({
-    codigo: line.sku, cantidad: line.quantity, precio: Number(line.unit_price),
-    portes: index === 0 ? Number((order as { shipping_amount?: string | null }).shipping_amount ?? 0) : 0,
-    subida: false, precio_subida: null, instalacion: false, precio_instalacion: null, retirada: false, precio_retirada: null,
-  }));
+  const mhdLines = buildMhdProductLines({
+    lines: typedLines.map((line) => ({ sku: line.sku, quantity: line.quantity, unitPrice: line.unit_price, payload: line.line_payload })),
+    destination: { country: address!.countryCodeV2, province: address!.provinceCode, postalCode: address!.zip },
+    shippingAmount: typedOrder.shipping_amount ?? 0,
+  });
+  if (!mhdLines.ok) return Response.json({ error: mhdLines.reason }, { status: 422 });
+  const productPayload = mhdLines.productos;
 
   const payload = {
     email: typedOrder.email.trim(), referencia_web: typedOrder.shopify_order_name,
@@ -137,7 +140,7 @@ export async function POST(request: Request) {
     const response = await fetch(mhdUrl("/orders"), { method: "POST", headers: mhdHeaders(), body: JSON.stringify(payload), cache: "no-store", signal: AbortSignal.timeout(30_000) });
     const responsePayload = await response.json().catch(() => ({})) as MhdResponse;
     const mhdOrderId = responsePayload.data?.id ?? null;
-    const success = response.ok && responsePayload.success === true && mhdOrderId && mhdProductMatches(typedLines, responsePayload);
+    const success = response.ok && responsePayload.success === true && mhdOrderId && mhdProductMatches(productPayload, responsePayload);
     const outcome = success ? "success" : mhdOrderId ? "unknown" : "failed";
     const status = success ? "exported" : outcome;
     const errorMessage = success ? null : responsePayload.errors ? "MHD rechazó o no confirmó todas las líneas del pedido." : "MHD no confirmó todas las líneas del pedido.";

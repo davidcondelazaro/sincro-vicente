@@ -1,10 +1,11 @@
+import { invoicesFrom, trackingFrom, type MhdOrderData } from "@/lib/mhd-order-status";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type MhdStatusEntry = { estado?: string; fecha?: number | string | null };
-type MhdOrderResponse = { success?: boolean; data?: { estado_cliente?: string | null; arr_estados?: MhdStatusEntry[] } };
+type MhdOrderResponse = { success?: boolean; data?: MhdOrderData };
 
 function required(name: string) { const value = process.env[name]; if (!value) throw new Error(`Falta la variable ${name}.`); return value; }
 function mhdUrl(path: string) {
@@ -58,12 +59,13 @@ export async function POST() {
       const received = (body.data.arr_estados ?? []).filter((entry) => entry.estado).map((entry) => ({ status: entry.estado!, occurred_at: dateFromMhd(entry.fecha), source_payload: entry }));
       const latest = received.sort((a, b) => (b.occurred_at ?? "").localeCompare(a.occurred_at ?? ""))[0];
       const currentStatus = body.data.estado_cliente ?? latest?.status ?? item.mhd_status;
-      const statusPayload = { estado_cliente: body.data.estado_cliente ?? null, arr_estados: body.data.arr_estados ?? [] };
-      const previousPayload = item.mhd_status_payload as { estado_cliente?: string | null; arr_estados?: MhdStatusEntry[] } | null;
-      const statusChanged = currentStatus !== item.mhd_status;
-      const payloadStatusChanged = previousPayload?.estado_cliente !== statusPayload.estado_cliente;
-      const historyChanged = canonicalJson(previousPayload?.arr_estados ?? []) !== canonicalJson(statusPayload.arr_estados);
-      const changed = statusChanged || payloadStatusChanged || historyChanged;
+      const statusPayload = {
+        estado_cliente: body.data.estado_cliente ?? null, id_estado_cliente: body.data.id_estado_cliente ?? null, arr_estados: body.data.arr_estados ?? [],
+        seguimiento: trackingFrom(body.data), facturas: invoicesFrom(body.data),
+        // Respuesta completa de MHD tal como llega, para no perder ningún campo que añadan
+        respuesta_mhd: body.data,
+      };
+      const changed = currentStatus !== item.mhd_status || canonicalJson(item.mhd_status_payload ?? null) !== canonicalJson(statusPayload);
       if (changed) changedCount += 1;
       await supabase.from("mhd_order_exports").update({ mhd_status: currentStatus, mhd_status_payload: statusPayload, mhd_status_updated_at: latest?.occurred_at ?? new Date().toISOString(), last_checked_at: new Date().toISOString() }).eq("id", item.id);
     } catch (error) {
