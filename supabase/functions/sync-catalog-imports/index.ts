@@ -95,14 +95,18 @@ function processIcecatData(payload: Record<string, unknown>) {
 }
 async function icecatData(ean: string) {
   const query = new URLSearchParams({ UserName: env("ICECAT_USERNAME"), Language: Deno.env.get("ICECAT_LANGUAGE") || "es", GTIN: ean, app_key: env("ICECAT_APP_KEY") });
-  const url = `https://live.icecat.biz/api?${query.toString()}`;
-  let response = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+  // Full Icecat sólo responde a IPs autorizadas: si hay proxy (servidor de Pladisel, IP fija) se sale por él.
+  const proxyUrl = Deno.env.get("ICECAT_PROXY_URL");
+  const url = `${proxyUrl || "https://live.icecat.biz/api"}?${query.toString()}`;
+  const init = () => ({ signal: AbortSignal.timeout(20_000), headers: proxyUrl ? { "X-Proxy-Token": env("ICECAT_PROXY_TOKEN") } : undefined });
+  let response = await fetch(url, init());
   if (response.status === 429) {
     const retryAfter = Number(response.headers.get("retry-after") ?? "1");
     await new Promise((resolve) => setTimeout(resolve, Math.max(1, Math.min(retryAfter, 30)) * 1_000));
-    response = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+    response = await fetch(url, init());
   }
-  if (response.status === 401) throw new Error("Icecat rechazó las credenciales configuradas.");
+  if (response.status === 401) throw new Error(proxyUrl ? "Icecat o el proxy de Pladisel rechazaron las credenciales configuradas." : "Icecat rechazó las credenciales configuradas.");
+  if (response.status === 403) throw new Error("Icecat rechazó la IP de salida: el producto es Full Icecat y la IP no está autorizada.");
   if (response.status === 429 || response.status >= 500) throw new Error(`Icecat no está disponible temporalmente (${response.status}).`);
   if (!response.ok) return null;
   const payload = await response.json() as Record<string, unknown>;

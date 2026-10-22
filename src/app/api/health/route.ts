@@ -102,18 +102,18 @@ async function checkIcecat() {
   const query = new URLSearchParams({
     UserName: required("ICECAT_USERNAME"),
     Language: process.env.ICECAT_LANGUAGE || "es",
-    GTIN: "0000000000000",
+    // Producto de Full Icecat del catálogo MHD: sólo responde 200 si la IP de salida está autorizada.
+    GTIN: "3700460207656",
     app_key: required("ICECAT_APP_KEY"),
   });
-  const response = await fetch(`https://live.icecat.biz/api?${query.toString()}`, {
-    signal: AbortSignal.timeout(10_000),
+  const proxyUrl = process.env.ICECAT_PROXY_URL;
+  const response = await fetch(`${proxyUrl || "https://live.icecat.biz/api"}?${query.toString()}`, {
+    headers: proxyUrl ? { "X-Proxy-Token": required("ICECAT_PROXY_TOKEN") } : undefined,
+    signal: AbortSignal.timeout(15_000),
     cache: "no-store",
   });
-  // El GTIN de prueba no tiene por qué existir: 200, 400 o 404 demuestran que
-  // Icecat ha recibido y atendido correctamente las credenciales y la petición.
-  if (![200, 400, 404].includes(response.status)) {
-    throw new Error(`Icecat: HTTP ${response.status} ${response.statusText}`.trim());
-  }
+  if (response.status === 403) throw new Error("Icecat: IP de salida no autorizada para Full Icecat.");
+  if (!response.ok) throw new Error(`Icecat: HTTP ${response.status} ${response.statusText}`.trim());
 }
 
 type ChatbotServices = { openai?: boolean; resend?: boolean; errors?: { openai?: string; resend?: string } };

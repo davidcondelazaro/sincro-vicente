@@ -8,10 +8,11 @@ Deno.serve(async (request) => {
   const appKey = Deno.env.get("ICECAT_APP_KEY");
   if (!username || !appKey) return json({ icecat: false, configured: false }, 503);
   try {
-    const query = new URLSearchParams({ UserName: username, Language: Deno.env.get("ICECAT_LANGUAGE") || "es", GTIN: "0000000000000", app_key: appKey });
-    const response = await fetch(`https://live.icecat.biz/api?${query.toString()}`, { signal: AbortSignal.timeout(10_000) });
-    // Un EAN inexistente es una respuesta válida: sólo rechazamos credenciales, IP o API no disponible.
-    return json({ icecat: ![401, 403, 429, 500, 502, 503, 504].includes(response.status), configured: true }, response.ok || response.status === 400 || response.status === 404 ? 200 : 503);
+    // Producto de Full Icecat del catálogo MHD: sólo responde 200 si la IP de salida (o la del proxy) está autorizada.
+    const query = new URLSearchParams({ UserName: username, Language: Deno.env.get("ICECAT_LANGUAGE") || "es", GTIN: "3700460207656", app_key: appKey });
+    const proxyUrl = Deno.env.get("ICECAT_PROXY_URL");
+    const response = await fetch(`${proxyUrl || "https://live.icecat.biz/api"}?${query.toString()}`, { signal: AbortSignal.timeout(15_000), headers: proxyUrl ? { "X-Proxy-Token": Deno.env.get("ICECAT_PROXY_TOKEN") ?? "" } : undefined });
+    return json({ icecat: response.ok, configured: true, ...(response.status === 403 ? { error: "IP de salida no autorizada para Full Icecat." } : {}) }, response.ok ? 200 : 503);
   } catch {
     return json({ icecat: false, configured: true }, 503);
   }
