@@ -276,3 +276,13 @@ select cron.alter_job(jobid, active := false) from cron.job;
 Las credenciales de MHD de la función van en `supabase/functions/.env` (ignorado
 por git). Para la app contra Supabase local: configuración
 `sincro-vicente-local` de `.claude/launch.json` (puerto 3101).
+
+### Despliegue (2026-10-22)
+
+En producción: migración `20261022100000_mhd_catalog_import_por_paginas`,
+secretos `MHD_API_*` en Supabase, función `mhd-catalog-import` (sin verificación
+JWT; la protege `x-mhd-import-token`) y app en Vercel. Comprobado que la base
+de datos llega a la función (respuesta 202). Tiempos en local contra la API
+real: completa ~4 min 30 s (productos 3 min 44 s, precios 21 s, stock 20 s,
+marcas 2 s, categorías 2 s); solo productos 2 min 58 s. La primera completa
+en producción queda pendiente de lanzarla a mano.
