@@ -1,5 +1,4 @@
 create extension if not exists pgmq;
-
 create table public.customer_import_runs (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references auth.users(id) on delete cascade,
@@ -18,7 +17,6 @@ create table public.customer_import_runs (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
-
 create table public.customer_import_events (
   id bigint generated always as identity primary key,
   run_id uuid not null references public.customer_import_runs(id) on delete cascade,
@@ -30,17 +28,13 @@ create table public.customer_import_events (
   message text not null,
   created_at timestamptz not null default now()
 );
-
 create index customer_import_runs_owner_created_idx on public.customer_import_runs(owner_id, created_at desc);
 create index customer_import_events_run_created_idx on public.customer_import_events(run_id, created_at desc);
-
 alter table public.customer_import_runs enable row level security;
 alter table public.customer_import_events enable row level security;
-
 create policy "Users can read their import runs"
   on public.customer_import_runs for select to authenticated
   using ((select auth.uid()) = owner_id);
-
 create policy "Users can read their import events"
   on public.customer_import_events for select to authenticated
   using (exists (
@@ -48,14 +42,11 @@ create policy "Users can read their import events"
     where run.id = customer_import_events.run_id
       and run.owner_id = (select auth.uid())
   ));
-
 alter table public.customer_import_runs replica identity full;
 alter table public.customer_import_events replica identity full;
 alter publication supabase_realtime add table public.customer_import_runs;
 alter publication supabase_realtime add table public.customer_import_events;
-
 select pgmq.create('customer_import_jobs');
-
 create or replace function public.enqueue_customer_import(p_run_id uuid)
 returns bigint
 language plpgsql
@@ -70,7 +61,6 @@ begin
   return message_id;
 end;
 $$;
-
 create or replace function public.claim_customer_import_job()
 returns table(message_id bigint, run_id uuid)
 language sql
@@ -80,7 +70,6 @@ as $$
   select message.msg_id, (message.message ->> 'run_id')::uuid
   from pgmq.read('customer_import_jobs', 180, 1) as message;
 $$;
-
 create or replace function public.release_customer_import_job(p_message_id bigint, p_delay_seconds integer default 0)
 returns boolean
 language plpgsql
@@ -92,7 +81,6 @@ begin
   return true;
 end;
 $$;
-
 create or replace function public.archive_customer_import_job(p_message_id bigint)
 returns boolean
 language sql
@@ -101,7 +89,6 @@ set search_path = public, pgmq
 as $$
   select pgmq.archive('customer_import_jobs', p_message_id);
 $$;
-
 revoke all on function public.enqueue_customer_import(uuid) from public, anon, authenticated;
 revoke all on function public.claim_customer_import_job() from public, anon, authenticated;
 revoke all on function public.release_customer_import_job(bigint, integer) from public, anon, authenticated;

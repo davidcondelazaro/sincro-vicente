@@ -139,6 +139,5 @@ begin
   return jsonb_build_object('batch_id', v_batch_id, 'record_counts', v_counts);
 end;
 $$;
-
 revoke all on function public.replace_source_catalog_from_sqlserver(uuid) from public;
 grant execute on function public.replace_source_catalog_from_sqlserver(uuid) to service_role;

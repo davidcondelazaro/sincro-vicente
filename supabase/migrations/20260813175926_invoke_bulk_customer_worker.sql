@@ -1,6 +1,5 @@
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
-
 do $$
 begin
   if not exists (select 1 from vault.secrets where name = 'sincro_vicente_project_url') then
@@ -11,11 +10,9 @@ begin
   end if;
 end;
 $$;
-
 select cron.unschedule(jobid)
 from cron.job
 where jobname = 'sincro-vicente-customer-import-worker';
-
 select cron.schedule(
   'sincro-vicente-customer-import-worker',
   '* * * * *',

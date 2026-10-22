@@ -1,14 +1,10 @@
 create extension if not exists pgmq;
-
 select pgmq.create('icecat_import_jobs');
-
 alter table public.catalog_import_runs
   add column if not exists queue_name text not null default 'catalog_import_jobs';
-
 alter table public.catalog_import_runs
   add constraint catalog_import_runs_queue_name_check
   check (queue_name in ('catalog_import_jobs', 'icecat_import_jobs'));
-
 create or replace function public.start_catalog_import(p_entity_type text, p_filters jsonb default '{}'::jsonb)
 returns public.catalog_import_runs
 language plpgsql
@@ -64,7 +60,6 @@ begin
   return v_run;
 end;
 $$;
-
 create or replace function public.read_icecat_import_message()
 returns jsonb
 language plpgsql
@@ -78,7 +73,6 @@ begin
   return v_message;
 end;
 $$;
-
 create or replace function public.archive_icecat_import_message(p_message_id bigint)
 returns boolean
 language plpgsql
@@ -90,7 +84,6 @@ begin
   return pgmq.archive('icecat_import_jobs', p_message_id);
 end;
 $$;
-
 create or replace function public.set_catalog_import_status(p_run_id uuid, p_status text)
 returns text
 language plpgsql
@@ -121,7 +114,6 @@ begin
   return p_status;
 end;
 $$;
-
 revoke all on function public.read_icecat_import_message() from public, anon, authenticated;
 grant execute on function public.read_icecat_import_message() to service_role;
 revoke all on function public.archive_icecat_import_message(bigint) from public, anon, authenticated;

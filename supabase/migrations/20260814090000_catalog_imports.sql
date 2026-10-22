@@ -1,5 +1,4 @@
 create extension if not exists pgmq;
-
 create table public.catalog_import_runs (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references auth.users(id) on delete cascade,
@@ -18,7 +17,6 @@ create table public.catalog_import_runs (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
-
 create table public.catalog_import_events (
   id bigint generated always as identity primary key,
   run_id uuid not null references public.catalog_import_runs(id) on delete cascade,
@@ -31,7 +29,6 @@ create table public.catalog_import_events (
   message text not null,
   created_at timestamptz not null default now()
 );
-
 create index catalog_import_runs_owner_created_idx on public.catalog_import_runs(owner_id, created_at desc);
 create index catalog_import_events_run_created_idx on public.catalog_import_events(run_id, created_at desc);
 create unique index catalog_import_one_active_entity_per_owner
@@ -40,10 +37,8 @@ create unique index catalog_import_one_active_entity_per_owner
 create unique index catalog_import_queue_message_idx
   on public.catalog_import_runs(queue_message_id)
   where queue_message_id is not null;
-
 alter table public.catalog_import_runs enable row level security;
 alter table public.catalog_import_events enable row level security;
-
 create policy "Users can read their catalog import runs"
   on public.catalog_import_runs for select to authenticated
   using ((select auth.uid()) = owner_id);
@@ -54,14 +49,11 @@ create policy "Users can read their catalog import events"
     where run.id = catalog_import_events.run_id
       and run.owner_id = (select auth.uid())
   ));
-
 alter table public.catalog_import_runs replica identity full;
 alter table public.catalog_import_events replica identity full;
 alter publication supabase_realtime add table public.catalog_import_runs;
 alter publication supabase_realtime add table public.catalog_import_events;
-
 select pgmq.create('catalog_import_jobs');
-
 create or replace function public.start_catalog_import(p_entity_type text, p_filters jsonb default '{}'::jsonb)
 returns public.catalog_import_runs
 language plpgsql
@@ -95,7 +87,6 @@ begin
   return v_run;
 end;
 $$;
-
 create or replace function public.read_catalog_import_message()
 returns jsonb
 language plpgsql
@@ -109,7 +100,6 @@ begin
   return v_message;
 end;
 $$;
-
 create or replace function public.archive_catalog_import_message(p_message_id bigint)
 returns boolean
 language plpgsql
@@ -121,7 +111,6 @@ begin
   return pgmq.archive('catalog_import_jobs', p_message_id);
 end;
 $$;
-
 create or replace function public.set_catalog_import_status(p_run_id uuid, p_status text)
 returns text
 language plpgsql
@@ -152,7 +141,6 @@ begin
   return p_status;
 end;
 $$;
-
 revoke all on function public.start_catalog_import(text, jsonb) from public, anon;
 grant execute on function public.start_catalog_import(text, jsonb) to authenticated;
 revoke all on function public.read_catalog_import_message() from public, anon, authenticated;

@@ -28,6 +28,5 @@ begin
   return p_status;
 end;
 $$;
-
 revoke all on function public.set_customer_import_status(uuid, text) from public, anon;
 grant execute on function public.set_customer_import_status(uuid, text) to authenticated;

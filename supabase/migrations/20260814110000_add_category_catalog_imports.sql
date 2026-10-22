@@ -1,11 +1,9 @@
 alter table public.catalog_import_runs
   drop constraint catalog_import_runs_entity_type_check,
   add constraint catalog_import_runs_entity_type_check check (entity_type in ('manufacturers', 'categories'));
-
 alter table public.catalog_import_events
   drop constraint catalog_import_events_entity_type_check,
   add constraint catalog_import_events_entity_type_check check (entity_type in ('manufacturers', 'categories'));
-
 create or replace function public.start_catalog_import(p_entity_type text, p_filters jsonb default '{}'::jsonb)
 returns public.catalog_import_runs
 language plpgsql

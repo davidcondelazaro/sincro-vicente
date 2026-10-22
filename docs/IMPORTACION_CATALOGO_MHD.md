@@ -142,3 +142,35 @@ archivado en Shopify, con su propia ejecución y trazabilidad.
 4. Añadir el visor **Importación de catálogo MHD**.
 5. Ejecutar y validar una primera carga completa antes de diseñar los flujos
    incrementales de precio y stock.
+
+## Tareas programadas desactivadas (2026-10-22)
+
+Las seis tareas de `cron.job` de Supabase están **desactivadas, no borradas**
+(`active = false`) desde el 2026-10-22:
+
+| id | Tarea | Qué despertaba |
+| --- | --- | --- |
+| 1 | `sincro-vicente-customer-import-worker` | importación de clientes |
+| 2 | `sincro-vicente-icecat-import-worker` | importación de Icecat |
+| 3 | `sincro-vicente-priority-import-worker` | prioridades |
+| 4 | `sincro-vicente-catalog-import-worker` | catálogo de SQL Server |
+| 5 | `sincro-vicente-price-import-worker` | precios |
+| 6 | `sincro-vicente-stock-import-worker` | stock |
+
+**Por qué:** todas se lanzaban cada minuto (`* * * * *`) aunque sus colas
+estuvieran vacías: 6 × 1.440 = **8.640 ejecuciones al día**, sin trabajo que
+hacer (la última importación de clientes era del 13 de agosto). El historial de
+esas ejecuciones (`cron.job_run_details`) ocupaba **684 MB** de una base de
+datos de 1,3 GB; se borraron los registros de más de 7 días.
+
+**Consecuencia:** si se lanza a mano una de esas importaciones antiguas (SQL
+Server, precios, stock, Icecat, clientes) y se corta, ya no se reanuda sola
+cada minuto. Para volver a activar una:
+
+```sql
+select cron.alter_job(job_id := 4, active := true);
+```
+
+La importación de MHD no usaba ninguna de estas tareas. Su rediseño (ver
+[AUDITORIA_IMPORTACION_MHD.md](AUDITORIA_IMPORTACION_MHD.md)) no tendrá tareas
+cada minuto: cada página encadena la siguiente.

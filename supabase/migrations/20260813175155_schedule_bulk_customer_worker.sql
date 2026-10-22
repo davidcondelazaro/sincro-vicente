@@ -1,11 +1,9 @@
 create unique index customer_import_one_active_per_owner
   on public.customer_import_runs (owner_id)
   where status in ('queued', 'running', 'paused');
-
 create unique index customer_import_queue_message_idx
   on public.customer_import_runs (queue_message_id)
   where queue_message_id is not null;
-
 create or replace function public.enqueue_customer_import(p_run_id uuid)
 returns bigint
 language plpgsql
@@ -27,7 +25,6 @@ begin
   return v_message_id;
 end;
 $$;
-
 create or replace function public.read_customer_import_message()
 returns jsonb
 language plpgsql
@@ -41,7 +38,6 @@ begin
   return v_message;
 end;
 $$;
-
 create or replace function public.archive_customer_import_message(p_message_id bigint)
 returns boolean
 language plpgsql
@@ -53,7 +49,6 @@ begin
   return pgmq.archive('customer_import_jobs', p_message_id);
 end;
 $$;
-
 create or replace function public.set_customer_import_status(p_run_id uuid, p_status text)
 returns text
 language plpgsql
@@ -77,7 +72,6 @@ begin
   return p_status;
 end;
 $$;
-
 revoke all on function public.enqueue_customer_import(uuid) from public, anon;
 grant execute on function public.enqueue_customer_import(uuid) to authenticated;
 revoke all on function public.read_customer_import_message() from public, anon, authenticated;
@@ -86,7 +80,6 @@ revoke all on function public.archive_customer_import_message(bigint) from publi
 grant execute on function public.archive_customer_import_message(bigint) to service_role;
 revoke all on function public.set_customer_import_status(uuid, text) from public, anon;
 grant execute on function public.set_customer_import_status(uuid, text) to authenticated;
-
 create policy "Users can create their import runs"
   on public.customer_import_runs for insert to authenticated
   with check ((select auth.uid()) = owner_id);

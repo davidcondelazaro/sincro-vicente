@@ -1,10 +1,8 @@
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
-
 select cron.unschedule(jobid)
 from cron.job
 where jobname = 'sincro-vicente-catalog-import-worker';
-
 select cron.schedule(
   'sincro-vicente-catalog-import-worker',
   '* * * * *',

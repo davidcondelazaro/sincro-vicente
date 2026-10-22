@@ -1,11 +1,9 @@
 alter table public.catalog_import_runs
   drop constraint catalog_import_runs_entity_type_check,
   add constraint catalog_import_runs_entity_type_check check (entity_type in ('manufacturers', 'categories', 'features', 'products', 'icecat'));
-
 alter table public.catalog_import_events
   drop constraint catalog_import_events_entity_type_check,
   add constraint catalog_import_events_entity_type_check check (entity_type in ('manufacturers', 'categories', 'features', 'products', 'icecat'));
-
 create or replace function public.start_catalog_import(p_entity_type text, p_filters jsonb default '{}'::jsonb)
 returns public.catalog_import_runs language plpgsql security definer set search_path = pg_catalog, public, pgmq as $$
 declare v_owner_id uuid := (select auth.uid()); v_filters jsonb := coalesce(p_filters, '{}'::jsonb); v_total integer; v_run public.catalog_import_runs; v_message_id bigint;

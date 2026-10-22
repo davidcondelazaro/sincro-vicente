@@ -1,7 +1,6 @@
 alter table public.catalog_import_runs
   add column unchanged_count integer not null default 0 check (unchanged_count >= 0),
   add column unpublished_count integer not null default 0 check (unpublished_count >= 0);
-
 update public.catalog_import_runs run
 set
   unchanged_count = counts.unchanged_count,
