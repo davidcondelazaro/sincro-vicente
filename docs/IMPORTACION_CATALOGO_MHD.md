@@ -174,3 +174,105 @@ select cron.alter_job(job_id := 4, active := true);
 La importación de MHD no usaba ninguna de estas tareas. Su rediseño (ver
 [AUDITORIA_IMPORTACION_MHD.md](AUDITORIA_IMPORTACION_MHD.md)) no tendrá tareas
 cada minuto: cada página encadena la siguiente.
+
+## Motor de importación por páginas (fase 1, 2026-10-22)
+
+Sustituye al bucle que corría dentro de una función de Vercel (se cortaba a
+los ~5 min sin avisar y dejaba la ejecución «En curso»). Ver la auditoría en
+[AUDITORIA_IMPORTACION_MHD.md](AUDITORIA_IMPORTACION_MHD.md).
+
+### Cómo funciona
+
+```text
+Pantalla «Importar de MHD» ─► /api/mhd-catalog-import ─► mhd_import_start(kind)
+   ▲                                                         │ pg_net
+   │ mhd_import_status() cada 3 s                            ▼
+   │                                  función de Supabase mhd-catalog-import
+   │                                    1. mhd_import_claim: reserva la ejecución (90 s)
+   │                                    2. pide UNA página a MHD (3 intentos)
+   │                                    3. mhd_import_ingest_page: la vuelca a mhd_catalog_*,
+   │                                       avanza el cursor y, por pg_net, pide la siguiente
+   └──────────────────────────────────────────────────────────┘
+```
+
+- **Una página por llamada.** La función contesta enseguida y trabaja en segundo
+  plano. La base de datos guarda el cursor (`entity_index`, `part`, `page`) en
+  `mhd_catalog_import_runs.cursor`; si algo se corta, se sigue desde la última
+  página buena.
+- **Sin tareas cada minuto.** Mientras hay una importación en curso existe la
+  tarea `mhd-catalog-import-vigilante` (cada 2 min): si no hay avance en 90 s y
+  nadie tiene la reserva, relanza la página pendiente. Se crea al empezar y se
+  borra al terminar, detener o fallar.
+- **Una sola importación a la vez**, garantizado por el índice único
+  `mhd_catalog_import_runs_one_active_idx` (estados `running` y `stopped`). Una
+  detenida hay que reanudarla o descartarla antes de lanzar otra.
+- **Errores:** cada página se intenta 3 veces seguidas; si falla, se reintenta la
+  misma página otras 2 veces (a los 10 y 20 s). Al tercer fallo la ejecución
+  queda «Con error» y se puede reanudar desde esa página. Cada página (buena o
+  fallida) queda en `mhd_catalog_import_pages`.
+- **Sin filas en bruto.** Cada página se escribe directamente en las tablas
+  finales (`mhd_catalog_products`, `_categories`, `_brands`, `_prices`,
+  `_stock`) con su huella `source_hash` y la marca `source_changed`. La tabla
+  `mhd_catalog_raw_rows` y el volcado final `replace_mhd_catalog_from_run` se
+  han retirado.
+- **Credenciales:** la función usa `MHD_API_*` (secretos de Supabase). La base de
+  datos la llama con la cabecera `x-mhd-import-token`, guardada en Vault
+  (`mhd_catalog_import_token`, generada por la migración). La URL sale de
+  `sincro_vicente_project_url`.
+
+### Importaciones disponibles (todas manuales)
+
+| Tipo | Qué lee | Tamaño de página | Marca bajas |
+| --- | --- | --- | --- |
+| Completa | categorías → marcas → productos → precios → stock | — | Sí |
+| Categorías | `/categories?nivel=1`, `2` y `3` (18 + 157 + 476) | 1.000 | No |
+| Marcas | `/brands` | 1.000 | No |
+| Productos | `/products` | 1.000 | Sí |
+| Precios | `/prices` | 5.000 | No |
+| Stock | `/stocks` | 5.000 | No |
+
+El nivel 3 de categorías no trae su familia: se guarda en `cod_familia` como los
+tres primeros caracteres del código (`H0101` → `H01`).
+
+### Bajas y reaparecidos
+
+MHD no comunica las bajas. Solo se marcan cuando **los productos se han leído
+enteros y bien** (importación completa o de productos):
+
+1. Se comprueba que el número de productos distintos recibidos en la ejecución
+   coincide con el total que declara MHD. Si no (el catálogo cambió durante la
+   lectura), la ejecución termina con error y **no se marcan bajas**.
+2. Por precaución, si salieran más de un 10 % de bajas (mínimo 200), tampoco se
+   marcan y la ejecución termina con error para revisarlo.
+3. Lo que estaba `present` y no ha venido pasa a `absent_in_mhd`.
+
+Los productos que estaban de baja y vuelven a venir se marcan `present` en
+cuanto llega su página. Bajas y reaparecidos se guardan por ejecución en
+`mhd_catalog_presence_changes`; la pantalla los cuenta en el histórico y
+permite verlos y descargarlos en CSV. Precios, stock, marcas y categorías nunca
+marcan bajas. Ninguna de estas marcas actúa todavía sobre Shopify.
+
+### Pantalla
+
+- % global (los totales aún no leídos se estiman con lo que hay en las tablas)
+  y % por entidad.
+- En la entidad en curso: página X de Y, registros/s y tiempo restante, medidos
+  solo con esa entidad (desde la reanudación, si la hubo).
+- Hora del último avance; aviso en rojo si pasa más de 1 minuto sin avanzar.
+- Errores por página (entidad, página, intentos, mensaje).
+- Botones Detener (al acabar la página en curso), Reanudar y Descartar.
+
+### Desarrollo en local
+
+`npx supabase start` (puertos 563xx, para no chocar con otros proyectos). En
+local hay que apuntar la URL de Vault a Kong para que pg_net llegue a la
+función, y desactivar las tareas cron antiguas que crean las migraciones:
+
+```sql
+select vault.update_secret((select id from vault.secrets where name = 'sincro_vicente_project_url'), 'http://supabase_kong_sincro-vicente:8000');
+select cron.alter_job(jobid, active := false) from cron.job;
+```
+
+Las credenciales de MHD de la función van en `supabase/functions/.env` (ignorado
+por git). Para la app contra Supabase local: configuración
+`sincro-vicente-local` de `.claude/launch.json` (puerto 3101).
