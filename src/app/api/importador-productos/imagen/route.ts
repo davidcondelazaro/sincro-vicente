@@ -1,20 +1,27 @@
-import { energyLabelPng } from "@/lib/mhd-importer/images";
 import { importerSession } from "@/lib/mhd-importer/server";
 import { fetchMhdMedia } from "@/lib/mhd-importer/sources";
 
-// Muestra en la web las fotos y etiquetas de MHD, que solo se sirven con cabeceras de navegador y Referer.
-// Solo deja pasar los dos orígenes de MHD. ?label=1 convierte la etiqueta SVG a PNG (como se subiría a Shopify).
+// Muestra en la web las fotos de una prueba: ?media=<id> sirve un archivo ya tratado (foto o etiqueta, guardado en
+// mhd_importer_media); ?url= sirve el original de MHD, que solo se entrega con cabeceras de navegador y Referer.
 
 export const runtime = "nodejs";
 const ALLOWED = ["cdn.mihogardigital.es", "s3-eu-west-1.amazonaws.com", "www.mihogardigital.es"];
 
 export async function GET(request: Request) {
-  if (!(await importerSession())) return new Response("Necesitas iniciar sesión.", { status: 401 });
-  const params = new URL(request.url).searchParams; const url = params.get("url") ?? "";
+  const session = await importerSession();
+  if (!session) return new Response("Necesitas iniciar sesión.", { status: 401 });
+  const params = new URL(request.url).searchParams;
+  const mediaId = params.get("media");
+  if (mediaId) {
+    const { data, error } = await session.db.from("mhd_importer_media").select("content_type,bytes").eq("id", mediaId).maybeSingle();
+    if (error || !data) return new Response("No existe.", { status: 404 });
+    const hex = String(data.bytes).replace(/^\\x/, "");
+    return new Response(Buffer.from(hex, "hex"), { headers: { "Content-Type": data.content_type, "Cache-Control": "private, max-age=3600" } });
+  }
+  const url = params.get("url") ?? "";
   let host = ""; try { host = new URL(url).hostname; } catch { /* URL no válida */ }
   if (!ALLOWED.includes(host)) return new Response("Origen no permitido.", { status: 400 });
   try {
-    if (params.get("label")) { const png = await energyLabelPng(url); return new Response(Buffer.from(png.bytes), { headers: { "Content-Type": "image/png", "Cache-Control": "private, max-age=3600" } }); }
     const media = await fetchMhdMedia(url);
     return new Response(Buffer.from(media.bytes), { headers: { "Content-Type": media.contentType, "Cache-Control": "private, max-age=3600" } });
   } catch (caught) {

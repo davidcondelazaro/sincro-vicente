@@ -1,0 +1,120 @@
+// Pieza del importador: crea en Shopify, en BORRADOR, el producto que montó el procesador (una prueba guardada en
+// mhd_importer_product_runs). Sube las fotos ya tratadas, la etiqueta energética en PNG y los PDF con su nombre
+// normalizado y los vídeos, y lo crea todo de una vez con `productSet`: textos, SEO, colecciones (tipo, etiquetas, proveedor),
+// categoría, variante, stock por ubicación y metacampos. Nunca publica. Ver docs/IMPORTADOR_PRODUCTOS_MHD.md.
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { ProcessedProduct } from "./processor";
+import { fetchIcecatDocument, type IcecatConfig } from "./sources";
+import { shopifyGraphql, type ShopifyConfig } from "./store-filters";
+
+type UserError = { field: string[] | null; message: string };
+type Upload = { filename: string; mimeType: string; bytes: Uint8Array; resource: "IMAGE" | "FILE" | "VIDEO" };
+
+function check(errors: UserError[], what: string) { if (errors.length) throw new Error(`${what}: ${errors.map((error) => `${error.field?.join(".") ?? ""} ${error.message}`.trim()).join("; ")}`); }
+
+// Subida en dos pasos: Shopify da un destino temporal y allí se envía el archivo; devuelve la URL para usarla después.
+async function stagedUpload(config: ShopifyConfig, files: Upload[]) {
+  if (!files.length) return [];
+  const data = await shopifyGraphql<{ stagedUploadsCreate: { stagedTargets: { url: string; resourceUrl: string; parameters: { name: string; value: string }[] }[]; userErrors: UserError[] } }>(config,
+    `mutation($input: [StagedUploadInput!]!) { stagedUploadsCreate(input: $input) { stagedTargets { url resourceUrl parameters { name value } } userErrors { field message } } }`,
+    { input: files.map((file) => ({ filename: file.filename, mimeType: file.mimeType, resource: file.resource, httpMethod: "POST", fileSize: String(file.bytes.byteLength) })) });
+  check(data.stagedUploadsCreate.userErrors, "No se pudo preparar la subida");
+  const targets = data.stagedUploadsCreate.stagedTargets;
+  await Promise.all(files.map(async (file, index) => {
+    const target = targets[index]; const form = new FormData();
+    for (const parameter of target.parameters) form.append(parameter.name, parameter.value);
+    form.append("file", new Blob([Buffer.from(file.bytes)], { type: file.mimeType }), file.filename);
+    const response = await fetch(target.url, { method: "POST", body: form, signal: AbortSignal.timeout(120_000) });
+    if (!response.ok) throw new Error(`No se pudo subir ${file.filename} (HTTP ${response.status}).`);
+  }));
+  return targets.map((target) => target.resourceUrl);
+}
+
+// Archivos que se enlazan desde metacampos (etiqueta, PDF): se crean en Archivos de Shopify con su nombre.
+async function createFiles(config: ShopifyConfig, files: { originalSource: string; filename: string; contentType: "IMAGE" | "FILE" | "VIDEO"; alt?: string }[]) {
+  if (!files.length) return [];
+  const data = await shopifyGraphql<{ fileCreate: { files: { id: string }[]; userErrors: UserError[] } }>(config,
+    `mutation($files: [FileCreateInput!]!) { fileCreate(files: $files) { files { id } userErrors { field message } } }`,
+    { files: files.map((file) => ({ ...file, duplicateResolutionMode: "APPEND_UUID" })) });
+  check(data.fileCreate.userErrors, "No se pudieron crear los archivos");
+  return data.fileCreate.files.map((file) => file.id);
+}
+
+export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: ShopifyConfig; icecat: IcecatConfig }, runId: string) {
+  const { data: run, error } = await deps.db.from("mhd_importer_product_runs").select("id,status,result,shopify_product_id").eq("id", runId).single();
+  if (error) throw error;
+  if (run.status !== "ok" || !run.result) throw new Error("Esta prueba no tiene un producto montado.");
+  if (run.shopify_product_id) throw new Error(`Esta prueba ya se creó en Shopify (${run.shopify_product_id}).`);
+  const product = run.result as ProcessedProduct; const shop = product.shopify;
+  const { data: media, error: mediaError } = await deps.db.from("mhd_importer_media").select("role,position,filename,content_type,bytes,meta").eq("run_id", runId).order("position");
+  if (mediaError) throw mediaError;
+  const bytesOf = (value: unknown) => new Uint8Array(Buffer.from(String(value).replace(/^\\x/, ""), "hex"));
+
+  // Ubicaciones por nombre.
+  const locations = (await shopifyGraphql<{ locations: { nodes: { id: string; name: string }[] } }>(deps.shopify, `{ locations(first: 20) { nodes { id name } } }`)).locations.nodes;
+  const locationId = (name: string) => { const found = locations.find((location) => location.name === name); if (!found) throw new Error(`No existe la ubicación «${name}» en Shopify.`); return found.id; };
+
+  // 1) Fotos de la galería, en su orden.
+  const photos = (media ?? []).filter((item) => item.role === "image").sort((a, b) => a.position - b.position);
+  const photoUrls = await stagedUpload(deps.shopify, photos.map((item) => ({ filename: item.filename, mimeType: item.content_type, bytes: bytesOf(item.bytes), resource: "IMAGE" as const })));
+  // 2) Etiqueta energética y PDF, como archivos para sus metacampos.
+  const label = (media ?? []).find((item) => item.role === "energy_label");
+  const pdfs = await Promise.all(product.documents.map(async (document) => ({ document, bytes: (await fetchIcecatDocument(deps.icecat, document.url)).bytes })));
+  const fileUploads: Upload[] = [
+    ...(label ? [{ filename: label.filename, mimeType: "image/png", bytes: bytesOf(label.bytes), resource: "IMAGE" as const }] : []),
+    ...pdfs.map((item) => ({ filename: item.document.filename, mimeType: "application/pdf", bytes: item.bytes, resource: "FILE" as const })),
+  ];
+  const fileUrls = await stagedUpload(deps.shopify, fileUploads);
+  const fileIds = await createFiles(deps.shopify, fileUploads.map((file, index) => ({ originalSource: fileUrls[index], filename: file.filename, contentType: file.resource === "IMAGE" ? "IMAGE" as const : "FILE" as const, ...(file.resource === "IMAGE" ? { alt: `Etiqueta energética ${shop.title}` } : {}) })));
+  const labelId = label ? fileIds[0] : null; const documentIds = fileIds.slice(label ? 1 : 0);
+
+  // 3) Vídeos (decidido 2026-10-23): el del producto, en la galería después de las fotos del producto; los de marca,
+  // en `custom.videos`. Cada vídeo se sube una sola vez: si su huella ya está en mhd_importer_shopify_files, se reutiliza.
+  const videos = (media ?? []).filter((item) => item.role === "video").sort((a, b) => a.position - b.position);
+  const meta = (item: { meta: unknown }) => item.meta as Record<string, string>;
+  const productVideos = videos.filter((item) => meta(item).kind === "producto").slice(0, 1);
+  const brandVideos = videos.filter((item) => !productVideos.includes(item));
+  const productVideoUrls = await stagedUpload(deps.shopify, productVideos.map((item) => ({ filename: item.filename, mimeType: "video/mp4", bytes: bytesOf(item.bytes), resource: "VIDEO" as const })));
+  const videoIds: string[] = [];
+  for (const item of brandVideos) {
+    const { data: known } = await deps.db.from("mhd_importer_shopify_files").select("shopify_file_id").eq("hash", meta(item).hash).maybeSingle();
+    if (known) { videoIds.push(known.shopify_file_id); continue; }
+    const [url] = await stagedUpload(deps.shopify, [{ filename: item.filename, mimeType: "video/mp4", bytes: bytesOf(item.bytes), resource: "VIDEO" }]);
+    const [id] = await createFiles(deps.shopify, [{ originalSource: url, filename: item.filename, contentType: "VIDEO", alt: meta(item).description || item.filename }]);
+    const { error: fileError } = await deps.db.from("mhd_importer_shopify_files").insert({ hash: meta(item).hash, shopify_file_id: id, filename: item.filename, kind: "video_marca", source_url: meta(item).sourceUrl ?? null });
+    if (fileError) throw fileError;
+    videoIds.push(id);
+  }
+  const PRODUCT_VIEWS = new Set(["frontal", "tres_cuartos", "abierto", "lateral", "trasera"]);
+  const photoFiles = photos.map((item, index) => ({ originalSource: photoUrls[index], alt: String(meta(item).alt ?? shop.title), filename: item.filename, contentType: "IMAGE" }));
+  const productViews = photos.findIndex((item) => !PRODUCT_VIEWS.has(meta(item).kind));
+  const videoFiles = productVideos.map((item, index) => ({ originalSource: productVideoUrls[index], alt: `${shop.title}, vídeo`, filename: item.filename, contentType: "VIDEO" }));
+  const galleryFiles = [...photoFiles.slice(0, productViews < 0 ? photoFiles.length : productViews), ...videoFiles, ...photoFiles.slice(productViews < 0 ? photoFiles.length : productViews)];
+
+  // 4) Producto entero de una vez, en borrador.
+  const metafields = [
+    ...shop.metafields.filter((item) => item.value !== ""),
+    ...(labelId ? [{ namespace: "custom", key: "etiqueta_energetica", type: "file_reference", value: labelId }] : []),
+    ...(documentIds.length ? [{ namespace: "custom", key: "documentos", type: "list.file_reference", value: JSON.stringify(documentIds) }] : []),
+    ...(videoIds.length ? [{ namespace: "custom", key: "videos", type: "list.file_reference", value: JSON.stringify(videoIds) }] : []),
+  ];
+  const input = {
+    title: shop.title, handle: shop.handle, status: "DRAFT", vendor: shop.vendor, productType: shop.productType ?? "", tags: shop.tags,
+    ...(shop.category ? { category: shop.category.id } : {}), descriptionHtml: shop.descriptionHtml, seo: shop.seo, metafields,
+    files: galleryFiles,
+    productOptions: [{ name: "Title", values: [{ name: "Default Title" }] }],
+    variants: [{
+      optionValues: [{ optionName: "Title", name: "Default Title" }], price: shop.variant.price, sku: shop.variant.sku, barcode: shop.variant.barcode, inventoryPolicy: shop.variant.inventoryPolicy,
+      inventoryItem: { tracked: true, ...(shop.variant.weightKg ? { measurement: { weight: { value: shop.variant.weightKg, unit: "KILOGRAMS" } } } : {}) },
+      inventoryQuantities: shop.inventory.map((item) => ({ locationId: locationId(item.location), name: "available", quantity: item.quantity })),
+    }],
+  };
+  const data = await shopifyGraphql<{ productSet: { product: { id: string; handle: string; status: string } | null; userErrors: UserError[] } }>(deps.shopify,
+    `mutation($input: ProductSetInput!) { productSet(input: $input, synchronous: true) { product { id handle status } userErrors { field message } } }`, { input });
+  check(data.productSet.userErrors, "Shopify no creó el producto");
+  const created = data.productSet.product!;
+  const { error: saveError } = await deps.db.from("mhd_importer_product_runs").update({ shopify_product_id: created.id }).eq("id", runId);
+  if (saveError) throw saveError;
+  const host = deps.shopify.storeUrl.replace(/^https?:\/\//, "").replace(/\.myshopify\.com\/?$/, "");
+  return { id: created.id, handle: created.handle, status: created.status, adminUrl: `https://admin.shopify.com/store/${host}/products/${created.id.split("/").pop()}`, files: { photos: photos.length, label: Boolean(labelId), documents: documentIds.length, productVideos: productVideos.length, brandVideos: videoIds.length } };
+}

@@ -37,7 +37,7 @@ Decisiones ya tomadas por la tienda (no las preguntes otra vez):
 - Más especificaciones: solo datos que la gente compara (consumo, ruido…), no datos técnicos poco conocidos.
 - Medidas (alto, ancho, fondo): solo si las medidas cambian de verdad en la familia y la tienda ya las usa en ella.
 - Umbrales de características según lo habitual en el sector (p. ej. lavadora de fondo reducido = hasta 50 cm).
-- Si un dato no viene como característica, puedes usar la fuente «texto:descripcion» (descripción de MHD y resumen de Icecat) con el método contiene y una lista cerrada de nombres comerciales.
+- Respaldo de la descripción (decidido): para cada característica de filtro.caracteristicas, añade además una segunda regla con la fuente «texto:descripcion» (descripción de MHD y resumen de Icecat), el método contiene y una lista cerrada de nombres, también los comerciales de cada marca (p. ej. Vapor: «vapor», «ironAssist», «SteamCare»), para cuando el dato no venga como característica.
 
 En «questions» deja las dudas que tenga que decidir una persona (p. ej. un valor nuevo para un filtro, o si un dato merece estar en el título). Escribe todo en español.`;
 

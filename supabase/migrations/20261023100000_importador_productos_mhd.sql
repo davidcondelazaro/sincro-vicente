@@ -63,7 +63,14 @@ create or replace function public.mhd_importer_listing_row(p mhd_catalog_product
     'cod_familia', p.cod_familia, 'nombre_familia', p.nombre_familia, 'cod_subfamilia', p.cod_subfamilia, 'nombre_subfamilia', p.nombre_subfamilia,
     'pvp', p.pvp, 'pvp_antes', p.pvp_antes, 'triple_neto', p.triple_neto, 'iva', p.iva, 'stock', p.stock, 'descripcion_ampliada', p.descripcion_ampliada,
     'descripcion', p.source_payload->>'descripcion', 'imagen', p.source_payload->>'imagen', 'letra_eficiencia', p.source_payload->>'letra_eficiencia',
-    'img_eficiencia', p.source_payload->>'img_eficiencia', 'img_ficha_eficiencia', p.source_payload->>'img_ficha_eficiencia', 'presence_status', p.presence_status)
+    'img_eficiencia', p.source_payload->>'img_eficiencia', 'img_ficha_eficiencia', p.source_payload->>'img_ficha_eficiencia', 'presence_status', p.presence_status,
+    'cod_linea', p.cod_linea,
+    -- Portes y servicios de MHD para particulares, tal cual (custom.opciones_entrega).
+    'opciones_entrega', jsonb_build_object(
+      'gastos_envio_peninsula_particulares', p.source_payload->'gastos_envio_peninsula_particulares', 'gastos_envio_baleares_particulares', p.source_payload->'gastos_envio_baleares_particulares',
+      'gastos_envio_portugal_baremo_1_particulares', p.source_payload->'gastos_envio_portugal_baremo_1_particulares', 'gastos_envio_portugal_baremo_2_particulares', p.source_payload->'gastos_envio_portugal_baremo_2_particulares',
+      'subida_puerta_particulares', p.source_payload->'subida_puerta_particulares', 'retirada_usado_particulares', p.source_payload->'retirada_usado_particulares',
+      'instalacion_particulares', p.source_payload->'instalacion_particulares'))
 $$;
 
 create or replace function public.mhd_importer_families() returns jsonb language plpgsql stable security definer set search_path = public as $$
@@ -120,3 +127,36 @@ begin
 end $$;
 revoke execute on function public.mhd_importer_tree() from public, anon;
 grant execute on function public.mhd_importer_tree() to authenticated;
+
+-- Fotos ya tratadas y etiqueta energética de cada prueba de producto, tal como se subirían a Shopify.
+create table public.mhd_importer_media (
+  id uuid primary key default gen_random_uuid(),
+  run_id uuid references public.mhd_importer_product_runs (id) on delete cascade,
+  role text not null check (role in ('image', 'energy_label', 'video')),
+  position integer not null default 0,
+  filename text not null,
+  content_type text not null,
+  width integer,
+  height integer,
+  bytes bytea not null,
+  meta jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+create index mhd_importer_media_run_idx on public.mhd_importer_media (run_id, role, position);
+alter table public.mhd_importer_media enable row level security;
+create policy "Sesión: todo" on public.mhd_importer_media for all to authenticated using (true) with check (true);
+grant select, insert, update, delete on table public.mhd_importer_media to authenticated, service_role;
+
+-- Archivos ya subidos a Shopify, por huella (SHA-1) del contenido: un mismo vídeo de marca que llega en varios
+-- productos se sube una sola vez y se enlaza desde todos (decidido 2026-10-23).
+create table public.mhd_importer_shopify_files (
+  hash text primary key,
+  shopify_file_id text not null,
+  filename text not null,
+  kind text not null,
+  source_url text,
+  created_at timestamptz not null default now()
+);
+alter table public.mhd_importer_shopify_files enable row level security;
+create policy "Sesión: todo" on public.mhd_importer_shopify_files for all to authenticated using (true) with check (true);
+grant select, insert, update, delete on table public.mhd_importer_shopify_files to authenticated, service_role;

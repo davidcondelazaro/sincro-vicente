@@ -44,3 +44,12 @@ export async function fetchMhdMedia(url: string) {
   if (!response.ok) throw new Error(`No se pudo descargar ${url} (HTTP ${response.status}).`);
   return { contentType: response.headers.get("content-type") ?? "application/octet-stream", bytes: new Uint8Array(await response.arrayBuffer()) };
 }
+
+// Documentos e imágenes de Icecat (inishop.com, objects.icecat.biz): también exigen IP autorizada, así que se descargan
+// por el proxy de Pladisel (`?doc=`) si está configurado.
+export async function fetchIcecatDocument(config: IcecatConfig, url: string) {
+  const target = config.proxyUrl ? `${config.proxyUrl}?${new URLSearchParams({ doc: url })}` : url;
+  const response = await fetch(target, { headers: config.proxyUrl ? { "X-Proxy-Token": config.proxyToken ?? "" } : undefined, signal: AbortSignal.timeout(90_000) });
+  if (!response.ok) throw new Error(`No se pudo descargar ${url} de Icecat (HTTP ${response.status}).`);
+  return { contentType: response.headers.get("content-type") ?? "application/octet-stream", bytes: new Uint8Array(await response.arrayBuffer()) };
+}

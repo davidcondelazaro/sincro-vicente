@@ -16,6 +16,7 @@
     "@supabase/supabase-js": "^2.112.3",
     "cron-parser": "^5.10.2",
     "mssql": "^12.2.1",
+    "mupdf": "^1.28.1",
     "mysql2": "^3.23.3",
     "next": "16.3.0",
     "react": "19.2.8",
