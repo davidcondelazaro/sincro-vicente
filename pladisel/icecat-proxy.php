@@ -6,6 +6,8 @@
 //
 // Publicado en pladisel.es/utils/proxy-icecat/proxy-icecat.php (con el token real). Compatible con PHP 7.0.
 // - ?ip=1 devuelve la IP de salida de este servidor (la que hay que autorizar en Icecat).
+// - ?doc=<url> descarga un documento de Icecat (manual, ficha UE, etiqueta...). Solo https y solo
+//   desde inishop.com u objects.icecat.biz, que también exigen IP autorizada.
 // - El resto de parámetros (UserName, app_key, GTIN, Language...) se reenvían tal cual a live.icecat.biz/api.
 
 const PROXY_TOKEN = ''; // Poner aquí el token real al subirlo al servidor.
@@ -21,13 +23,17 @@ if (PROXY_TOKEN === '' || !hash_equals(PROXY_TOKEN, $token)) {
     exit;
 }
 
-function forward($url, &$status) {
+const DOC_HOSTS = ['inishop.com', 'objects.icecat.biz'];
+
+function forward($url, &$status, $timeout = 20) {
     $curl = curl_init($url);
     curl_setopt_array($curl, [
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 20,
+        CURLOPT_TIMEOUT => $timeout,
         CURLOPT_CONNECTTIMEOUT => 10,
         CURLOPT_HEADER => true,
+        // Sin seguir redirecciones: así nunca se sale de los hosts permitidos.
+        CURLOPT_FOLLOWLOCATION => false,
     ]);
     $response = curl_exec($curl);
     if ($response === false) {
@@ -39,7 +45,7 @@ function forward($url, &$status) {
     $headerSize = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
     $headers = [];
     foreach (explode("\r\n", substr($response, 0, $headerSize)) as $line) {
-        if (stripos($line, 'Retry-After:') === 0) $headers[] = $line;
+        if (stripos($line, 'Retry-After:') === 0 || stripos($line, 'Content-Type:') === 0) $headers[] = $line;
     }
     return [substr($response, $headerSize), $headers];
 }
@@ -47,6 +53,22 @@ function forward($url, &$status) {
 if (isset($_GET['ip'])) {
     list($ip) = forward('https://api.ipify.org', $status);
     echo json_encode(['ip' => trim($ip)]);
+    exit;
+}
+
+if (isset($_GET['doc'])) {
+    $doc = (string) $_GET['doc'];
+    $parts = parse_url($doc);
+    $host = strtolower(isset($parts['host']) ? $parts['host'] : '');
+    if (!$parts || (isset($parts['scheme']) ? $parts['scheme'] : '') !== 'https' || !in_array($host, DOC_HOSTS, true)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Documento no permitido: solo https desde ' . implode(' o ', DOC_HOSTS) . '.']);
+        exit;
+    }
+    list($body, $headers) = forward($doc, $status, 90);
+    http_response_code($status);
+    foreach ($headers as $line) header($line);
+    echo $body;
     exit;
 }
 

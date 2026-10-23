@@ -69,6 +69,32 @@ function replaceIcecatText(value: unknown, search: string, replacement: string):
   if (value && typeof value === "object") return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([key, item]) => [key.replaceAll(search, replacement), replaceIcecatText(item, search, replacement)]));
   return value;
 }
+// Icecat da los vídeos de YouTube en varias formas (youtu.be/ID, watch?v=ID, embed/ID), a veces con un
+// `?access=` propio pegado al final; se guarda solo la URL canónica sin parámetros.
+function youtubeVideoId(url: string) {
+  const match = url.match(/^https?:\/\/(?:www\.|m\.)?(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/))([A-Za-z0-9_-]{11})/);
+  return match?.[1] ?? null;
+}
+// Los vídeos se usarán insertados en la web: oEmbed responde 401/403 si el propietario no permite insertarlo y 404 si ya
+// no existe, y esos se descartan. Si YouTube no responde se conserva el vídeo sin título ni miniatura.
+async function embeddableYoutubeVideos(ids: string[]) {
+  const videos: Record<string, string>[] = [];
+  for (const id of ids) {
+    const url = `https://www.youtube.com/watch?v=${id}`;
+    const video: Record<string, string> = { id, url, embed_url: `https://www.youtube-nocookie.com/embed/${id}` };
+    try {
+      const response = await fetch(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(5_000) });
+      if ([401, 403, 404].includes(response.status)) continue;
+      if (response.ok) {
+        const oembed = record(await response.json());
+        if (text(oembed.title)) video.title = text(oembed.title) as string;
+        video.thumbnail_url = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+      }
+    } catch { /* YouTube no disponible: se guarda igualmente */ }
+    videos.push(video);
+  }
+  return videos;
+}
 function processIcecatData(payload: Record<string, unknown>) {
   const data = record(payload.data); const generalInfo = record(data.GeneralInfo);
   if (!Object.keys(data).length) return null;
@@ -91,7 +117,20 @@ function processIcecatData(payload: Record<string, unknown>) {
   }
   let filtered: unknown = specifications;
   for (const item of icecatReplacements) { const [search, replacement] = item.split("|").map((part) => part.trim()); if (search && replacement) filtered = replaceIcecatText(filtered, search, replacement); }
-  return { _icecat_id: generalInfo.IcecatId ?? null, _synced_at: new Date().toISOString(), bullet_points: bulletPoints, specifications: filtered };
+  // Etiqueta energética y ficha de producto UE (PDF oficiales) y vídeos de YouTube: se guardan ya para no repetir la
+  // consulta cuando se muestren. El resto (manuales, folletos, MP4) apunta al CDN de Icecat y se traerá como contenido propio.
+  const documents: Record<string, string | string[]> = {};
+  const youtubeVideos = new Set<string>();
+  for (const itemValue of Array.isArray(data.Multimedia) ? data.Multimedia : []) {
+    const item = record(itemValue); const type = text(item.Type); const url = text(item.URL);
+    if (url && type === "EU Energy Label") documents.eu_energy_label ??= url;
+    if (url && type === "EU Product Fiche") documents.eu_product_fiche ??= url;
+    const youtubeId = url ? youtubeVideoId(url) : null;
+    if (youtubeId) youtubeVideos.add(youtubeId);
+  }
+  // Solo los ID: icecatData comprueba después cuáles se pueden insertar y los completa.
+  if (youtubeVideos.size) documents.youtube_videos = [...youtubeVideos];
+  return { _icecat_id: generalInfo.IcecatId ?? null, _synced_at: new Date().toISOString(), bullet_points: bulletPoints, specifications: filtered, ...(Object.keys(documents).length ? { documents } : {}) };
 }
 async function icecatData(ean: string) {
   const query = new URLSearchParams({ UserName: env("ICECAT_USERNAME"), Language: Deno.env.get("ICECAT_LANGUAGE") || "es", GTIN: ean, app_key: env("ICECAT_APP_KEY") });
@@ -108,9 +147,18 @@ async function icecatData(ean: string) {
   if (response.status === 401) throw new Error(proxyUrl ? "Icecat o el proxy de Pladisel rechazaron las credenciales configuradas." : "Icecat rechazó las credenciales configuradas.");
   if (response.status === 403) throw new Error("Icecat rechazó la IP de salida: el producto es Full Icecat y la IP no está autorizada.");
   if (response.status === 429 || response.status >= 500) throw new Error(`Icecat no está disponible temporalmente (${response.status}).`);
-  if (!response.ok) return null;
-  const payload = await response.json() as Record<string, unknown>;
-  return processIcecatData(payload);
+  const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
+  // 400/404 con «The GTIN can not be found» es el caso normal de un EAN que Icecat no tiene.
+  if (!response.ok) return { data: null, reason: `Icecat no tiene el EAN ${ean}${text(payload.Message) ? ` (${response.status}: ${text(payload.Message)})` : ` (${response.status})`}.` };
+  const data = processIcecatData(payload);
+  if (!data) return { data: null, reason: `Icecat respondió sin ficha para el EAN ${ean}.` };
+  const documents = data.documents as Record<string, unknown> | undefined;
+  if (documents && Array.isArray(documents.youtube_videos)) {
+    const videos = await embeddableYoutubeVideos(documents.youtube_videos as string[]);
+    if (videos.length) documents.youtube_videos = videos; else delete documents.youtube_videos;
+    if (!Object.keys(documents).length) delete (data as Record<string, unknown>).documents;
+  }
+  return { data, reason: null };
 }
 async function setIcecatMetafield(productId: string, value: Record<string, unknown>) {
   const result = await shopify<{ data: { metafieldsSet: { userErrors: ShopifyUserError[] } } }>(
@@ -516,7 +564,9 @@ async function validateProduct(product: Product) {
 function productHandle(product: Product) { return (product.name ?? product.id).trim().toLocaleLowerCase("es-ES").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""); }
 function sourceProductHandle(value: string | null | undefined, fallback: string) { return String(value || fallback).trim().replace(/^-+|-+$/g, ""); }
 const shopifyProductFields = `id handle status title descriptionHtml vendor productType templateSuffix tags seo{title description} media(first:50){nodes{id}} metafields(first:250){nodes{namespace key value}} variants(first:100){nodes{id sku barcode price compareAtPrice inventoryPolicy inventoryQuantity inventoryItem{id}}}`;
-function icecatShopifyQuery(force: boolean) { return force ? "barcode:*" : "barcode:* AND -metafields.custom.icecat:*"; }
+// La búsqueda de Shopify no filtra por metafields (`-metafields.custom.icecat:*` se ignora): se recorren todos los
+// productos con EAN y syncIcecatProduct salta, sin consultar Icecat, los que ya tienen datos cuando no se fuerza.
+function icecatShopifyQuery(_force: boolean) { return "barcode:*"; }
 async function icecatShopifyProductCount(force: boolean) {
   const result = await shopify<{ data: { productsCount: { count: number } } }>(`query($query:String!){productsCount(query:$query,limit:null){count}}`, { query: icecatShopifyQuery(force) });
   return result.data.productsCount.count;
@@ -550,12 +600,15 @@ async function syncIcecatProduct(product: IcecatProduct, force: boolean) {
   if (current.has("custom.icecat") && !force) return { action: "unchanged" as const, targetId: existing.id, message: "Ya tiene datos Icecat: sin cambios." };
   const ean = existing.variants.nodes.find((variant) => variant.barcode?.trim())?.barcode?.trim();
   if (!ean) return { action: "unchanged" as const, targetId: existing.id, message: "El producto de Shopify no tiene EAN: sin cambios." };
-  const data = await icecatData(ean);
-  if (!data) return { action: "unchanged" as const, targetId: existing.id, message: `Icecat no devolvió datos para el EAN ${ean}.` };
+  const { data, reason } = await icecatData(ean);
+  if (!data) return { action: "unchanged" as const, targetId: existing.id, message: reason ?? "", queriedIcecat: true };
   await setIcecatMetafield(existing.id, data);
   const bulletPoints = Array.isArray(data.bullet_points) ? data.bullet_points.length : 0;
   const specifications = record(data.specifications);
-  return { action: current.has("custom.icecat") ? "updated" as const : "created" as const, targetId: existing.id, message: `Datos Icecat guardados para el EAN ${ean}: ${bulletPoints} destacados y ${Object.keys(specifications).length} grupos de especificaciones.` };
+  const documents = record(data.documents);
+  const videoCount = Array.isArray(documents.youtube_videos) ? documents.youtube_videos.length : 0;
+  const documentsText = [documents.eu_energy_label ? "etiqueta energética" : "", documents.eu_product_fiche ? "ficha UE" : "", videoCount ? `${videoCount} vídeo${videoCount > 1 ? "s" : ""} de YouTube` : ""].filter(Boolean).join(", ").replace(/, ([^,]*)$/, " y $1");
+  return { action: current.has("custom.icecat") ? "updated" as const : "created" as const, targetId: existing.id, message: `Datos Icecat guardados para el EAN ${ean}: ${bulletPoints} destacados y ${Object.keys(specifications).length} grupos de especificaciones${documentsText ? `, con ${documentsText}` : ""}.`, queriedIcecat: true };
 }
 function productImageFilename(product: Record<string, unknown>, index: number, originalUrl: string) {
   const fallback = String(product.name ?? product.id ?? "product").toLocaleLowerCase("es-ES").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -784,6 +837,11 @@ export async function processMessage(message: { msg_id: number; message: { run_i
     await db.from("catalog_import_runs").update({ status: "queued", updated_at: new Date().toISOString() }).eq("id", runId).eq("worker_token", workerToken);
     await db.rpc("release_catalog_import_worker", { p_run_id: runId, p_worker_token: workerToken });
     await db.rpc("renew_import_queue_message", { p_queue_name: queueName, p_message_id: messageId, p_visibility_timeout: 0 });
+    // Sin tareas cada minuto: el trabajador se vuelve a llamar para el siguiente tramo. Si esta llamada se pierde,
+    // el vigilante de la base de datos (activo solo con ejecuciones en curso) lo retoma.
+    const worker = queueName === "icecat_import_jobs" ? "sync-icecat-imports" : queueName === "priority_import_jobs" ? "sync-priority-imports" : "sync-catalog-imports";
+    await fetch(`${env("SUPABASE_URL")}/functions/v1/${worker}`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${env("SUPABASE_ANON_KEY")}` }, body: "{}", signal: AbortSignal.timeout(10_000) })
+      .catch((error) => console.error(JSON.stringify({ level: "error", message: "Worker self-invocation failed", worker, error: String(error) })));
   };
   try {
     await heartbeat(null, null, "preparando ejecución", true);
@@ -848,9 +906,9 @@ export async function processMessage(message: { msg_id: number; message: { run_i
             action = result.action; outcome = result.action; targetId = result.targetId; messageText = result.message;
           } else {
             const result = await syncIcecatProduct(entity as IcecatProduct, run.filters.force === true);
-            action = result.action; targetId = result.targetId; outcome = result.action === "created" ? "created" : "updated"; messageText = result.message;
+            action = result.action; targetId = result.targetId; outcome = result.action; messageText = result.message;
             // Icecat limita a cinco consultas por segundo; mantenemos el intervalo del Python original.
-            await new Promise((resolve) => setTimeout(resolve, 200));
+            if ("queriedIcecat" in result) await new Promise((resolve) => setTimeout(resolve, 200));
           }
         }
         catch (error) { details = errorDetails(error, { entity_type: run.entity_type, source_entity_id: entity.id, source_entity_name: entity.name, operation: "catalog_sync" }); messageText = details.message as string; }
