@@ -11,7 +11,10 @@ export type ValueRule = {
 };
 // `label`: en filtro.mas_especificaciones, el «Dato» de «Dato valor»; en filtro.caracteristicas, el nombre de la
 // característica (y ahí decide la primera fuente con dato; un valor vacío en la tabla o el tramo = no se pone).
-export type FilterRule = ValueRule & { metafield: string; label: string; note: string };
+// `subfamilies`: códigos de subfamilia de MHD a los que se aplica la regla (vacío = toda la familia). `min` y `max`:
+// números válidos en la unidad de la fuente (vacío = sin límite); fuera de ese rango la fuente se ignora y se pasa a
+// la siguiente (p. ej. «1,45W» de MHD en una freidora de 1450 W, o «500L» en una picadora).
+export type FilterRule = ValueRule & { metafield: string; label: string; note: string; subfamilies?: string[]; min?: string; max?: string };
 export type FamilyProfile = {
   product: { singular: string; plural: string; distinctions: { name: string; sources: string[]; how_to_name: string }[] };
   title: { template: string; key_data: { name: string; sources: string[]; format: string }[]; examples: string[]; avoid: string[] };
@@ -35,6 +38,7 @@ export function familyProfileSchema() {
     filters: { type: "array", items: obj({
       metafield: str, label: str, sources: strings, method: { type: "string", enum: ["numero_exacto", "tramos", "tabla", "contiene", "texto"] }, format: str,
       ranges: { type: "array", items: obj({ from: str, to: str, value: str }) }, table: { type: "array", items: obj({ source: str, value: str }) }, note: str,
+      subfamilies: strings, min: str, max: str,
     }) },
     descriptions: obj({ short: str, long: str, highlight: strings, avoid: strings }),
     subfamily_exceptions: { type: "array", items: obj({ subfamily: str, changes: str }) },

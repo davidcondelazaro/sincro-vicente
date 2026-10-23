@@ -80,7 +80,7 @@ export function validateContent(content: ProductContent, brand: string, model: s
   if (content.meta_description.length < META_DESCRIPTION.min || content.meta_description.length > META_DESCRIPTION.max) errors.push(`La meta descripción tiene ${content.meta_description.length} caracteres (entre ${META_DESCRIPTION.min} y ${META_DESCRIPTION.max}).`);
   if (content.meta_description.trim() === content.short_description.trim()) errors.push("La meta descripción repite la descripción corta.");
   if (brand && !content.title.includes(brand)) errors.push(`El título no lleva la marca escrita exactamente «${brand}».`);
-  if (model && !content.title.includes(model)) errors.push(`El título no lleva el modelo exacto «${model}».`);
+  if (model && !content.title.toLowerCase().includes(model.toLowerCase())) errors.push(`El título no lleva el modelo exacto «${model}».`);
   if (/\|/.test(content.title)) errors.push("El título lleva « | ».");
   const titleWords = content.title.toLowerCase().split(/\s+/).filter((word) => word.length > 3);
   const repeated = titleWords.filter((word, index) => titleWords.indexOf(word) !== index);

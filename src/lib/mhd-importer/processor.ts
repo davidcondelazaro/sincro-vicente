@@ -7,13 +7,16 @@ import sharp from "sharp";
 import { classifyInStore, productDistinction, type Classification } from "./classification";
 import { brandAsWritten, writeContent, type ProductContent } from "./content";
 import type { ListingProduct } from "./family";
+import { cached } from "./cache";
 import { gatherProduct, type SourcesConfig } from "./gather";
-import { embeddableYoutubeVideos, icecatMetafield, type IcecatSummary } from "./icecat";
+import { embeddableYoutubeVideos, icecatMetafield, summarizeIcecat, type IcecatSummary } from "./icecat";
+import { checkIcecatIdentity, labelMatches, labelText } from "./identity";
 import { classifyImages, imageFilenames, KIND_ALT, normalizeEnergyLabel, orderImages, pdfFirstPageToPng, prepareImages, processImage, slugify, type ClassifiedImage, type ImageKind } from "./images";
 import type { FamilyProfile } from "./profile";
 import { classifyVideos, prepareVideos, type VideoKind } from "./videos";
+import { reviewsMetafield } from "./reviews";
 import { applyProfile, discardReason, firstNumber, sourceValues, type AppliedRules } from "./rules";
-import { fetchIcecatDocument, fetchMhdMedia } from "./sources";
+import { fetchIcecatByModel, fetchIcecatDocument, fetchMhdMedia } from "./sources";
 import { shopifyGraphql } from "./store-filters";
 
 // Decisiones de David (2026-10-23), provisionales donde se indica.
@@ -69,8 +72,9 @@ function weightKg(values: Map<string, string>) {
 }
 
 // Dirección de la ficha (decidido 2026-10-23): tipo + marca + modelo; si existe, color, y en último caso -2, -3…
-async function freeHandle(config: SourcesConfig, base: string, color: string | null) {
-  const exists = async (handle: string) => Boolean((await shopifyGraphql<{ productByIdentifier: { id: string } | null }>(config.shopify, `query($h: String!) { productByIdentifier(identifier: { handle: $h }) { id } }`, { h: handle })).productByIdentifier);
+// Una dirección que ya tiene este mismo producto (creado antes desde el importador) cuenta como libre.
+async function freeHandle(config: SourcesConfig, base: string, color: string | null, ownId: string | null) {
+  const exists = async (handle: string) => { const found = (await shopifyGraphql<{ productByIdentifier: { id: string } | null }>(config.shopify, `query($h: String!) { productByIdentifier(identifier: { handle: $h }) { id } }`, { h: handle })).productByIdentifier; return Boolean(found && found.id !== ownId); };
   const candidates = [base, ...(color ? [`${base}-${slugify(color)}`] : [])];
   for (const handle of candidates) if (!(await exists(handle))) return handle;
   for (let n = 2; n < 20; n += 1) if (!(await exists(`${base}-${n}`))) return `${base}-${n}`;
@@ -78,14 +82,22 @@ async function freeHandle(config: SourcesConfig, base: string, color: string | n
 }
 
 // Etiqueta energética (decidido 2026-10-23): SVG de MHD → PDF de Icecat → imagen de Icecat con tamaño suficiente.
-async function energyLabelFile(config: SourcesConfig, listing: Listing, icecat: IcecatSummary | null, warnings: string[]) {
+// Cada candidata se lee y se descarta si lleva otro modelo (el SVG de MHD sale de Icecat por EAN y puede venir mal).
+// La imagen no se puede leer: solo se usa si Icecat está comprobado como nuestro modelo.
+async function energyLabelFile(config: SourcesConfig, listing: Listing, icecat: IcecatSummary | null, models: (string | null)[], warnings: string[]) {
   if (listing.img_ficha_eficiencia) {
     const media = await fetchMhdMedia(listing.img_ficha_eficiencia);
-    return { ...(await normalizeEnergyLabel(media.bytes, media.contentType.includes("svg"))), source: "MHD (SVG oficial de EPREL)" };
+    const isSvg = media.contentType.includes("svg") || listing.img_ficha_eficiencia.endsWith(".svg");
+    const matches = labelMatches(await labelText(media.bytes, isSvg ? "svg" : "image"), models);
+    if (matches === false) warnings.push("La etiqueta de MHD es de otro modelo: no se usa.");
+    else return { ...(await normalizeEnergyLabel(media.bytes, isSvg)), source: "MHD (SVG oficial de EPREL)" };
   }
   if (icecat?.energyLabel) {
     const media = await fetchIcecatDocument(config.icecat, icecat.energyLabel.url);
-    if (icecat.energyLabel.contentType === "application/pdf" || media.contentType.includes("pdf")) return { ...(await normalizeEnergyLabel(await pdfFirstPageToPng(media.bytes), false)), source: "Icecat (PDF)" };
+    if (icecat.energyLabel.contentType === "application/pdf" || media.contentType.includes("pdf")) {
+      if (labelMatches(await labelText(media.bytes, "pdf"), models) === false) { warnings.push("La etiqueta de Icecat es de otro modelo: no se usa."); return null; }
+      return { ...(await normalizeEnergyLabel(await pdfFirstPageToPng(media.bytes), false)), source: "Icecat (PDF)" };
+    }
     const meta = await sharp(media.bytes).metadata();
     if ((meta.height ?? 0) < STORE_RULES.minIcecatLabelHeight) { warnings.push(`Etiqueta de baja calidad en Icecat (${meta.width}×${meta.height}): no se usa.`); return null; }
     return { ...(await normalizeEnergyLabel(media.bytes, false)), source: "Icecat (imagen)" };
@@ -93,19 +105,41 @@ async function energyLabelFile(config: SourcesConfig, listing: Listing, icecat: 
   return null;
 }
 
+// Icecat de nuestro modelo (identity.ts). Si el EAN lleva a otro producto, se busca por marca y modelo; si tampoco,
+// el producto sigue sin Icecat (ni ficha técnica, ni etiqueta, ni ficha UE, ni EPREL) y va al informe.
+async function verifiedIcecat(deps: { db: SupabaseClient; config: SourcesConfig; ai: Anthropic }, listing: Listing, icecat: IcecatSummary | null, warnings: string[]) {
+  if (!icecat) return { icecat: null, costUsd: 0, check: null };
+  const product = { title: listing.titulo ?? "", brand: listing.nombre_marca ?? "", ref: listing.ref_proved };
+  const check = await checkIcecatIdentity(deps.ai, product, icecat);
+  if (check.same) return { icecat, costUsd: check.costUsd, check };
+  warnings.push(`Icecat de otro modelo: el EAN lleva a «${icecat.title ?? icecat.modelName}» (${check.reason}). No se usa nada de esa ficha.`);
+  if (listing.ref_proved && listing.nombre_marca) {
+    const byModel = await cached(deps.db, "icecat", `modelo:${listing.nombre_marca}:${listing.ref_proved}`.toUpperCase(), 24 * 7, () => fetchIcecatByModel(deps.config.icecat, listing.nombre_marca!, listing.ref_proved!)).catch(() => null);
+    const found = summarizeIcecat(byModel?.payload ?? null, deps.config.icecat.language);
+    if (found) {
+      const recheck = await checkIcecatIdentity(deps.ai, product, found);
+      if (recheck.same) { warnings.push(`Icecat encontrado por marca y modelo: «${found.title}».`); return { icecat: found, costUsd: check.costUsd + recheck.costUsd, check: recheck }; }
+    }
+  }
+  warnings.push("Icecat no tiene nuestro modelo: ficha técnica solo con MHD y sin etiqueta de Icecat.");
+  return { icecat: null, costUsd: check.costUsd, check };
+}
+
 export async function processProduct(deps: { db: SupabaseClient; config: SourcesConfig; ai: Anthropic }, listing: Listing, profileRow: { profile: FamilyProfile | null; status: string } | null, subfamilyEans: string[]): Promise<ProcessResult> {
   const warnings: string[] = []; let cost = 0; const usage: Record<string, unknown> = {};
   const gathered = await gatherProduct(deps.db, deps.config, listing);
   warnings.push(...gathered.errors);
-  const reason = discardReason(listing, gathered.detail, gathered.icecat);
+  const identity = await verifiedIcecat(deps, listing, gathered.icecat, warnings);
+  cost += identity.costUsd;
+  const reason = discardReason(listing, gathered.detail, identity.icecat);
   if (reason) return { status: "discarded", reason, warnings };
   if (!profileRow?.profile) throw new Error(`La familia ${listing.nombre_familia ?? listing.cod_familia} todavía no tiene perfil: analízala primero.`);
   if (profileRow.status !== "reviewed") warnings.push("El perfil de la familia aún no está revisado.");
-  const profile = profileRow.profile; const icecat = gathered.icecat;
+  const profile = profileRow.profile; const icecat = identity.icecat;
 
   // Filtros por reglas (sin IA). La letra energética del listado de MHD completa la eficiencia si el perfil no la sacó.
   const values = sourceValues(gathered.detail, icecat, listing);
-  const applied = applyProfile(profile, values);
+  const applied = applyProfile(profile, values, listing.cod_subfamilia);
   if (!applied.metafields["features.eficiencia_energ_tica"] && listing.letra_eficiencia) {
     applied.metafields["features.eficiencia_energ_tica"] = `Nueva ${listing.letra_eficiencia.toUpperCase()}`;
     applied.origins["features.eficiencia_energ_tica"] = [{ value: applied.metafields["features.eficiencia_energ_tica"] as string, source: "mhd:letra_eficiencia" }];
@@ -126,11 +160,15 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   const ordered = orderImages(classified.classified);
   if (!ordered.keep.length) return { status: "discarded", reason: "Sin imagen válida (todas descartadas al revisarlas)", warnings };
   const brand = brandAsWritten(listing, icecat);
-  const base = slugify(`${profile.product.singular} ${brand} ${listing.ref_proved ?? listing.codigo}`);
+  // Tipo para la dirección y los archivos: lo que va delante de la marca en el título («Freidora de aire»), porque en
+  // familias amplias el nombre del perfil es genérico («pequeño electrodoméstico de preparación de alimentos»).
+  const brandAt = written.content.title.toLowerCase().indexOf(brand.toLowerCase());
+  const productType = (brandAt > 0 ? written.content.title.slice(0, brandAt).trim() : "") || profile.product.singular;
+  const base = slugify(`${productType} ${brand} ${listing.ref_proved ?? listing.codigo}`);
   const treated = await Promise.all(ordered.keep.map(async (image) => ({ image, file: await processImage(prepared.images.find((item) => item.url === image.url)!.bytes, image) })));
   // Si la principal de MHD queda pequeña tras tratarla (< 800 px), pasa a principal la frontal o tres cuartos sobre
   // blanco más grande, si la hay (decidido 2026-10-23).
-  const side = (entry: (typeof treated)[number]) => Math.min(entry.file.width, entry.file.height);
+  const side = (entry: (typeof treated)[number]) => Math.max(entry.file.width, entry.file.height); // el lado largo: un combi es estrecho por naturaleza
   if (treated[0] && side(treated[0]) < STORE_RULES.minMainImageSide) {
     const better = treated.filter((entry) => (entry.image.kind === "frontal" || entry.image.kind === "tres_cuartos") && entry.image.background === "blanco" && side(entry) >= STORE_RULES.minMainImageSide).sort((a, b) => side(b) - side(a))[0];
     if (better) { treated.splice(treated.indexOf(better), 1); treated.unshift(better); }
@@ -145,7 +183,7 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   }
 
   // Etiqueta energética como PNG en su metacampo, fuera de la galería.
-  const label = await energyLabelFile(deps.config, listing, icecat, warnings).catch((caught: Error) => { warnings.push(`Etiqueta energética: ${caught.message}`); return null; });
+  const label = await energyLabelFile(deps.config, listing, icecat, [listing.ref_proved, ...(identity.check?.same ? [icecat?.partCode ?? null, icecat?.modelName ?? null] : [])], warnings).catch((caught: Error) => { warnings.push(`Etiqueta energética: ${caught.message}`); return null; });
   const labelFilename = label ? `${slugify(`${brand} ${listing.ref_proved ?? listing.codigo}`)}-etiqueta-energetica.png` : null;
   if (label && labelFilename) media.push({ role: "energy_label", position: 0, filename: labelFilename, contentType: "image/png", width: label.width, height: label.height, bytes: label.bytes, meta: { source: label.source } });
 
@@ -166,9 +204,14 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   const distinction = productDistinction(profile, values);
   const classification = await classifyInStore(deps.config.shopify, { subfamilyEans: subfamilyEans.filter((ean) => ean !== listing.codigo_ean), distinction, distinctionNames: profile.product.distinctions.map((item) => item.name), vendor });
   warnings.push(...classification.notes);
-  const tags = [...classification.tags, ...(label || listing.img_ficha_eficiencia ? ["Energética"] : [])];
-  const handle = await freeHandle(deps.config, base, typeof applied.metafields["filtro.color"] === "string" ? applied.metafields["filtro.color"] as string : null);
+    // Sin etiqueta buena no va «Energética»: con esa etiqueta y el metacampo vacío, el tema abriría la última foto.
+  const tags = [...classification.tags, ...(label ? ["Energética"] : [])];
+  const { data: previousRun } = await deps.db.from("mhd_importer_product_runs").select("shopify_product_id").eq("codigo", listing.codigo).not("shopify_product_id", "is", null).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  const handle = await freeHandle(deps.config, base, typeof applied.metafields["filtro.color"] === "string" ? applied.metafields["filtro.color"] as string : null, previousRun?.shopify_product_id ?? null);
   const sellWithoutStock = STORE_RULES.sellOutOfStockBrands.includes(vendor) && STORE_RULES.sellOutOfStockLines.includes(listing.cod_linea ?? "");
+  // Opiniones que ya tenemos de este EAN (Trusted Shops) con el resumen de Elvi, para la sección «Opiniones».
+  const opinions = await reviewsMetafield(deps.db, deps.ai, listing.codigo_ean, written.content.title).catch((caught: Error) => { warnings.push(`Opiniones: ${caught.message}`); return { metafield: null, costUsd: 0 }; });
+  cost += opinions.costUsd;
   const technical = icecatMetafield(icecat, gathered.detail?.caracteristicas ?? [], youtube);
   const metafields: MetafieldInput[] = [
     { namespace: "custom", key: "referencia", type: "single_line_text_field", value: listing.ref_proved ?? "" },
@@ -179,10 +222,12 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
     ...(listing.opciones_entrega ? [{ namespace: "custom", key: "opciones_entrega", type: "json", value: json(listing.opciones_entrega) }] : []),
     ...(icecat?.eprelId ? [{ namespace: "custom", key: "eprel", type: "single_line_text_field", value: icecat.eprelId }] : []),
     ...(technical ? [{ namespace: "custom", key: "icecat", type: "json", value: json(technical) }] : []),
+    ...(opinions.metafield ? [{ namespace: "custom", key: "opiniones", type: "json", value: json(opinions.metafield) }] : []),
     ...(written.content.elvi_tip.text.trim() ? [{ namespace: "custom", key: "consejo_elvi", type: "multi_line_text_field", value: written.content.elvi_tip.text.trim() }] : []),
     ...Object.entries(applied.metafields).map(([key, value]) => { const [namespace, name] = key.split("."); return { namespace, key: name, type: LISTS.has(key) ? "list.single_line_text_field" : "single_line_text_field", value: Array.isArray(value) ? json(value) : value }; }),
   ];
   if (!icecat?.eprelId && (label || listing.letra_eficiencia)) warnings.push("Sin código EPREL en Icecat.");
+  if (!label && (listing.letra_eficiencia || listing.img_ficha_eficiencia)) warnings.push("Producto con clase energética y sin etiqueta válida: se publica sin etiqueta.");
 
   return {
     status: "ok", warnings, costUsd: cost, usage, media,

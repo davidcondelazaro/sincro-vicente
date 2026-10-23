@@ -68,7 +68,20 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
     if (previousError) throw previousError;
     existingId = previous?.shopify_product_id ?? null;
   }
-  const existing = existingId ? (await shopifyGraphql<{ product: { id: string; handle: string; status: string; variants: { nodes: { id: string }[] } } | null }>(deps.shopify, `query($id: ID!) { product(id: $id) { id handle status variants(first: 1) { nodes { id } } } }`, { id: existingId })).product : null;
+  // Si no lo creó el importador, se busca por EAN: es un producto que ya tenía la tienda y se REFRESCA (decidido
+  // 2026-10-23): se pisa el contenido (título, SEO, textos, fotos, filtros y metacampos) y se conserva lo de negocio
+  // (dirección, estado, precio y precio tachado, SKU, venta sin stock, existencias, disponibilidad y prioridad).
+  let refresh = false;
+  if (!existingId && shop.variant.barcode) {
+    const found = (await shopifyGraphql<{ productVariants: { nodes: { product: { id: string } }[] } }>(deps.shopify, `query($q: String!) { productVariants(first: 2, query: $q) { nodes { product { id } } } }`, { q: `barcode:${shop.variant.barcode}` })).productVariants.nodes;
+    if (found.length > 1) throw new Error(`Hay más de un producto en Shopify con el EAN ${shop.variant.barcode}: revísalo a mano.`);
+    if (found[0]) { existingId = found[0].product.id; refresh = true; }
+  }
+  type ExistingVariant = { id: string; price: string; compareAtPrice: string | null; sku: string | null; barcode: string | null; inventoryPolicy: string };
+  const existing = existingId ? (await shopifyGraphql<{ product: { id: string; handle: string; status: string; variants: { nodes: ExistingVariant[] } } | null }>(deps.shopify, `query($id: ID!) { product(id: $id) { id handle status variants(first: 2) { nodes { id price compareAtPrice sku barcode inventoryPolicy } } } }`, { id: existingId })).product : null;
+  // Un producto activo (publicado) nunca recibe lo de negocio del importador, lo haya creado él o no.
+  if (existing?.status === "ACTIVE") refresh = true;
+  if (refresh && existing && existing.variants.nodes.length !== 1) throw new Error("El producto que ya tiene la tienda tiene varias variantes: el refresco solo cubre productos de una variante.");
   const { data: media, error: mediaError } = await deps.db.from("mhd_importer_media").select("role,position,filename,content_type,bytes,meta").eq("run_id", runId).order("position");
   if (mediaError) throw mediaError;
   const bytesOf = (value: unknown) => new Uint8Array(Buffer.from(String(value).replace(/^\\x/, ""), "hex"));
@@ -109,24 +122,45 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
     ...(documentIds.length ? [{ namespace: "custom", key: "documentos", type: "list.file_reference", value: JSON.stringify(documentIds) }] : []),
     ...(videoIds.length ? [{ namespace: "custom", key: "videos", type: "list.file_reference", value: JSON.stringify(videoIds) }] : []),
   ];
+  const KEEP_ON_REFRESH = new Set(["custom.disponibilidad_con_stock", "custom.disponibilidad_sin_stock", "custom.prioridad"]);
+  // productSet deja el producto solo con los metacampos que se le pasan: en el refresco, los que se conservan se
+  // vuelven a enviar con su valor actual (comprobado 2026-10-23: omitirlos los borraba).
+  const keptValues = refresh && existing ? (await shopifyGraphql<{ product: { metafields: { nodes: { namespace: string; key: string; type: string; value: string }[] } } }>(deps.shopify, `query($id: ID!) { product(id: $id) { metafields(first: 100) { nodes { namespace key type value } } } }`, { id: existing.id })).product.metafields.nodes.filter((item) => KEEP_ON_REFRESH.has(`${item.namespace}.${item.key}`)) : [];
+  const finalMetafields = refresh ? [...metafields.filter((item) => !KEEP_ON_REFRESH.has(`${item.namespace}.${item.key}`)), ...keptValues] : metafields;
+  const current = existing?.variants.nodes[0];
+  const variant = refresh && current
+    ? { id: current.id, optionValues: [{ optionName: "Title", name: "Default Title" }], price: current.price, compareAtPrice: current.compareAtPrice, sku: current.sku ?? "", barcode: current.barcode ?? shop.variant.barcode, inventoryPolicy: current.inventoryPolicy,
+        inventoryItem: { tracked: true, ...(shop.variant.weightKg ? { measurement: { weight: { value: shop.variant.weightKg, unit: "KILOGRAMS" } } } : {}) } }
+    : { ...(current ? { id: current.id } : {}),
+        optionValues: [{ optionName: "Title", name: "Default Title" }], price: shop.variant.price, sku: shop.variant.sku, barcode: shop.variant.barcode, inventoryPolicy: shop.variant.inventoryPolicy,
+        inventoryItem: { tracked: true, ...(shop.variant.weightKg ? { measurement: { weight: { value: shop.variant.weightKg, unit: "KILOGRAMS" } } } : {}) },
+        inventoryQuantities: shop.inventory.map((item) => ({ locationId: locationId(item.location), name: "available", quantity: item.quantity })) };
+  // Un borrador aún puede cambiar de dirección; un producto activo (o refrescado) conserva la suya.
+  const handle = existing && (refresh || existing.status === "ACTIVE") ? existing.handle : shop.handle;
   const input = {
-    title: shop.title, handle: existing?.handle ?? shop.handle, status: existing?.status ?? "DRAFT", vendor: shop.vendor, productType: shop.productType ?? "", tags: shop.tags,
-    ...(shop.category ? { category: shop.category.id } : {}), descriptionHtml: shop.descriptionHtml, seo: shop.seo, metafields,
+    title: shop.title, handle, status: existing?.status ?? "DRAFT", vendor: shop.vendor, productType: shop.productType ?? "", tags: shop.tags,
+    ...(shop.category ? { category: shop.category.id } : {}), descriptionHtml: shop.descriptionHtml, seo: shop.seo, metafields: finalMetafields,
     files: galleryFiles,
     productOptions: [{ name: "Title", values: [{ name: "Default Title" }] }],
-    variants: [{
-      ...(existing?.variants.nodes[0] ? { id: existing.variants.nodes[0].id } : {}),
-      optionValues: [{ optionName: "Title", name: "Default Title" }], price: shop.variant.price, sku: shop.variant.sku, barcode: shop.variant.barcode, inventoryPolicy: shop.variant.inventoryPolicy,
-      inventoryItem: { tracked: true, ...(shop.variant.weightKg ? { measurement: { weight: { value: shop.variant.weightKg, unit: "KILOGRAMS" } } } : {}) },
-      inventoryQuantities: shop.inventory.map((item) => ({ locationId: locationId(item.location), name: "available", quantity: item.quantity })),
-    }],
+    variants: [variant],
   };
   const data = await shopifyGraphql<{ productSet: { product: { id: string; handle: string; status: string } | null; userErrors: UserError[] } }>(deps.shopify,
     `mutation($input: ProductSetInput!, $identifier: ProductSetIdentifiers) { productSet(input: $input, identifier: $identifier, synchronous: true) { product { id handle status } userErrors { field message } } }`, { input, identifier: existing ? { id: existing.id } : null });
   check(data.productSet.userErrors, existing ? "Shopify no actualizó el producto" : "Shopify no creó el producto");
   const created = data.productSet.product!;
+  // Al actualizar, productSet no borra los metacampos que ya no van (p. ej. la etiqueta, el EPREL o la ficha de Icecat
+  // de otro modelo): se borran aquí los que gestiona el importador y esta vez no llevan valor.
+  if (existing) {
+    const managed = [...shop.metafields.map((item) => `${item.namespace}.${item.key}`), "custom.etiqueta_energetica", "custom.eprel", "custom.icecat", "custom.documentos", "custom.videos", "custom.opiniones"];
+    const kept = new Set(finalMetafields.map((item) => `${item.namespace}.${item.key}`));
+    const stale = [...new Set(managed)].filter((name) => !kept.has(name)).map((name) => { const [namespace, key] = name.split("."); return { ownerId: created.id, namespace, key }; });
+    if (stale.length) {
+      const removed = await shopifyGraphql<{ metafieldsDelete: { userErrors: UserError[] } }>(deps.shopify, `mutation($metafields: [MetafieldIdentifierInput!]!) { metafieldsDelete(metafields: $metafields) { userErrors { field message } } }`, { metafields: stale });
+      check(removed.metafieldsDelete.userErrors, "Shopify no borró los metacampos que ya no van");
+    }
+  }
   const { error: saveError } = await deps.db.from("mhd_importer_product_runs").update({ shopify_product_id: created.id }).eq("id", runId);
   if (saveError) throw saveError;
   const host = deps.shopify.storeUrl.replace(/^https?:\/\//, "").replace(/\.myshopify\.com\/?$/, "");
-  return { id: created.id, handle: created.handle, status: created.status, updated: Boolean(existing), adminUrl: `https://admin.shopify.com/store/${host}/products/${created.id.split("/").pop()}`, files: { photos: photos.length, label: Boolean(labelId), documents: documentIds.length, productVideos: productVideos.length, brandVideos: videoIds.length } };
+  return { id: created.id, handle: created.handle, status: created.status, updated: Boolean(existing), refreshed: refresh, adminUrl: `https://admin.shopify.com/store/${host}/products/${created.id.split("/").pop()}`, files: { photos: photos.length, label: Boolean(labelId), documents: documentIds.length, productVideos: productVideos.length, brandVideos: videoIds.length } };
 }

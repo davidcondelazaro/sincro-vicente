@@ -22,6 +22,7 @@ Reglas de la tienda que el perfil debe respetar:
 
 Métodos de las reglas de valor (las aplica código, sin IA):
 - numero_exacto: se extrae el número de la fuente y se escribe con «format», que lleva {n} (p. ej. «{n} kg»). Decimales con coma.
+- subfamilies: si una regla solo vale para unas subfamilias, pon sus códigos de MHD (p. ej. ["C1010"]); vacío = toda la familia. min y max: números válidos en la unidad de la fuente (vacío = sin límite); fuera de ese rango la fuente se ignora y se pasa a la siguiente (sirve para descartar errores de MHD como «500L» en una picadora).
 - tramos: se extrae el número (en la unidad de la fuente: si la fuente está en mm y el tramo en cm, escribe los límites en mm) y se busca el tramo con from <= n < to. Los límites van como texto con punto decimal («10», «84.5»); vacío = sin límite.
 - tabla: el valor de la fuente se busca en «table» (sin distinguir mayúsculas ni tildes); si no está, se prueba la siguiente fuente.
 - contiene: como tabla, pero basta con que el valor de la fuente contenga el texto de la fila («inverter» → «Inverter»).

@@ -42,3 +42,6 @@ next-env.d.ts
 
 # Copia del proxy de Icecat con el token real, para subir a Pladisel
 pladisel/proxy-icecat.php
+
+# Datos privados (reseñas con nombres y correos de clientes): nunca al repositorio
+/privado/

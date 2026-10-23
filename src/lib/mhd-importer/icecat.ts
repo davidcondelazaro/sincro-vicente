@@ -5,7 +5,7 @@
 export type IcecatDocument = { type: string; description: string; url: string; language: string; contentType: string; sizeBytes: number | null };
 export type IcecatVideo = { url: string; language: string; description: string; contentType: string };
 export type IcecatSummary = {
-  icecatId: number | null; title: string | null; brand: string | null; category: string | null; series: string | null;
+  icecatId: number | null; title: string | null; brand: string | null; partCode: string | null; modelName: string | null; category: string | null; series: string | null;
   shortSummary: string | null; longSummary: string | null; bulletPoints: string[];
   specifications: Record<string, Record<string, string>>;
   gallery: { url: string; width: number | null; height: number | null; type: string | null; isMain: boolean }[];
@@ -65,6 +65,7 @@ export function summarizeIcecat(payload: Record<string, unknown> | null, languag
   const bullets = record(info.GeneratedBulletPoints).Values;
   return {
     icecatId: num(info.IcecatId), title: text(record(record(info.TitleInfo).GeneratedLocalTitle).Value) ?? text(info.Title), brand: text(info.Brand),
+    partCode: text(info.BrandPartCode), modelName: text(record(info.ProductNameInfo).ProductIntName),
     category: text(record(record(info.Category).Name).Value), series: text(record(info.ProductFamily).Value),
     shortSummary: text(summary.ShortSummaryDescription), longSummary: text(summary.LongSummaryDescription),
     bulletPoints: Array.isArray(bullets) ? bullets.filter((item): item is string => typeof item === "string") : [],

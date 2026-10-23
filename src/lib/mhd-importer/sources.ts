@@ -37,6 +37,15 @@ export async function fetchIcecatByEan(config: IcecatConfig, ean: string): Promi
   return response.ok ? { status: response.status, payload: body } : { status: response.status, payload: null };
 }
 
+// Icecat por marca y modelo: para buscar el modelo bueno cuando el EAN lleva en Icecat a otro producto.
+export async function fetchIcecatByModel(config: IcecatConfig, brand: string, model: string): Promise<FetchResult<Record<string, unknown>>> {
+  const query = new URLSearchParams({ UserName: config.username, Language: config.language, Brand: brand, ProductCode: model, app_key: config.appKey });
+  const response = await fetch(`${config.proxyUrl || "https://live.icecat.biz/api"}?${query}`, { headers: config.proxyUrl ? { "X-Proxy-Token": config.proxyToken ?? "" } : undefined, signal: AbortSignal.timeout(30_000) });
+  if (response.status === 401 || response.status === 403 || response.status === 429 || response.status >= 500) throw new Error(`Icecat no respondió a la búsqueda por modelo (${response.status}).`);
+  const body = await response.json().catch(() => null) as Record<string, unknown> | null;
+  return response.ok ? { status: response.status, payload: body } : { status: response.status, payload: null };
+}
+
 // Las fotos de MHD (cdn.mihogardigital.es) y sus etiquetas (S3) devuelven 403 sin cabeceras de navegador y Referer.
 export const MHD_MEDIA_HEADERS = { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36", Accept: "image/avif,image/webp,image/*,*/*;q=0.8", Referer: "https://www.mihogardigital.es/" };
 export async function fetchMhdMedia(url: string) {
