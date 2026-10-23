@@ -23,6 +23,9 @@ import { shopifyGraphql } from "./store-filters";
 export const STORE_RULES = {
   stockLocation: "Almacén MHD",                 // principal; Electrónica Vicente y Yois a 0
   zeroLocations: ["Electrónica Vicente", "Yois"],
+  // Identificadores de las ubicaciones en Shopify (electronica-vicente, comprobados 2026-10-23). Se usan si el nombre
+  // cambia o no aparece; si una ubicación se renombra o se crea otra, hay que actualizarlos aquí.
+  locationIds: { "Electrónica Vicente": "gid://shopify/Location/114068816204", "Almacén MHD": "gid://shopify/Location/127022137676", "Yois": "gid://shopify/Location/127022104908" } as Record<string, string>,
   priority: 20,                                 // pendiente del criterio que nos den
   availabilityInStock: "Recíbelo en 3/4 días laborables",     // provisional: pendiente del plazo exacto
   availabilityOutOfStock: "Recíbelo en 4/5 días laborables",  // provisional; solo se ve si se puede comprar sin stock

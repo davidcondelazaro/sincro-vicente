@@ -5,7 +5,7 @@
 // antes, lo ACTUALIZA en vez de crear otro, conservando su dirección y su estado. Ver docs/IMPORTADOR_PRODUCTOS_MHD.md.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createHash } from "node:crypto";
-import type { ProcessedProduct } from "./processor";
+import { STORE_RULES, type ProcessedProduct } from "./processor";
 import { fetchIcecatDocument, type IcecatConfig } from "./sources";
 import { shopifyGraphql, type ShopifyConfig } from "./store-filters";
 
@@ -88,7 +88,8 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
 
   // Ubicaciones por nombre.
   const locations = (await shopifyGraphql<{ locations: { nodes: { id: string; name: string }[] } }>(deps.shopify, `{ locations(first: 20) { nodes { id name } } }`)).locations.nodes;
-  const locationId = (name: string) => { const found = locations.find((location) => location.name === name); if (!found) throw new Error(`No existe la ubicación «${name}» en Shopify.`); return found.id; };
+  // Por nombre; si no aparece, el identificador fijo de STORE_RULES.locationIds (que también debe existir).
+  const locationId = (name: string) => { const found = locations.find((location) => location.name === name) ?? locations.find((location) => location.id === STORE_RULES.locationIds[name]); if (!found) throw new Error(`No existe la ubicación «${name}» en Shopify.`); return found.id; };
 
   // 1) Fotos de la galería, en su orden.
   const photos = (media ?? []).filter((item) => item.role === "image").sort((a, b) => a.position - b.position);
