@@ -1,14 +1,14 @@
-// Pieza del importador: el procesador redacta título, meta título, descripciones, meta descripción y el consejo de
-// Elvi de un producto con un modelo pequeño, en una sola llamada, siguiendo el perfil de su familia. El código valida
-// el resultado (y que no copie a MHD ni a Icecat) y, si falla, lo pide otra vez una sola vez con los errores. El
-// consejo de Elvi pasa además por una segunda llamada que lo revisa. Fuentes: solo MHD e Icecat. Decisiones del
+// Pieza del importador: el procesador redacta título, meta título, descripciones, meta descripción y la frase de
+// Elvi (la vendedora) de un producto con un modelo pequeño, siguiendo el perfil de su familia. El código valida el
+// formato (y que no copie a MHD ni a Icecat), un revisor de datos comprueba cada afirmación contra las fuentes y, si
+// algo falla, se pide otra vez con los errores (hasta 3 intentos). La frase de Elvi pasa además por su propia revisión. Fuentes: solo MHD e Icecat. Decisiones del
 // 2026-10-23 en docs/IMPORTADOR_PRODUCTOS_MHD.md.
 import type Anthropic from "@anthropic-ai/sdk";
 import { costUsd, PROCESSOR_MODEL, type Usage } from "./ai";
 import type { IcecatSummary } from "./icecat";
 import type { ListingProduct } from "./family";
 import type { FamilyProfile } from "./profile";
-import type { SourceValues } from "./rules";
+import { firstNumber, type SourceValues } from "./rules";
 import type { MhdProductDetail } from "./sources";
 
 export type ElviTip = { text: string; sources: { source: string; value: string }[] };
@@ -26,9 +26,10 @@ const schema = { type: "object", additionalProperties: false, required: ["title"
   elvi_tip: { type: "object", additionalProperties: false, required: ["text", "sources"], properties: { text: str, sources: { type: "array", items: { type: "object", additionalProperties: false, required: ["source", "value"], properties: { source: str, value: str } } } } },
 } };
 
-const SYSTEM = `Redactas fichas de producto para Electrónica Vicente, tienda de electrodomésticos de Burgos con tienda online. Escribes en español de España, de tú, con tono cercano y experto, como un buen dependiente que conoce el producto: frases cortas y claras, beneficios concretos («cabe en huecos de 60 cm») en vez de adjetivos («increíble», «revolucionaria»), sin exageraciones ni preguntas retóricas.
+const SYSTEM = `Redactas fichas de producto para Electrónica Vicente, tienda de electrodomésticos de Burgos con tienda online. Escribes en español de España, de tú, con tono cercano y experto, como un buen dependiente que conoce el producto: frases cortas y claras, datos concretos («368 L», «39 dB») en vez de adjetivos («increíble», «revolucionaria»), sin exageraciones ni preguntas retóricas.
 Reglas:
 - Usa SOLO los datos que te doy (MHD e Icecat). No inventes cifras, funciones, garantías ni compatibilidades. Si un dato no está, no lo menciones. No menciones lo que el producto NO tiene («no tiene tapa desmontable»).
+- Nombra las tecnologías y funciones tal como vienen en los datos y con su alcance exacto (si hay «No Frost» en el frigorífico y en el congelador, es No Frost en los dos; si solo en uno, solo en ese). NO expliques qué hacen ni qué consigues con ellas («para no descongelar a mano», «ahorra agua», «lava más rápido») salvo que esa explicación esté en los textos de referencia. No saques consecuencias ni comparaciones propias de los datos. Cada afirmación de la ficha tiene que poder señalarse en los datos: después la revisa otra IA y, si algo no está en los datos, la ficha se rechaza.
 - Saca los hechos de los textos y de las características y ESCRIBE DESDE CERO, en tu propio orden y con tus frases. No sigas el orden ni la redacción de los textos de MHD o Icecat: una secuencia de ${COPY_WORDS} palabras seguidas igual que la suya hace que se rechace la ficha.
 - No menciones nunca al proveedor ni otras tiendas (mihogardigital.es, MHD), ni el «Consejo del Experto» del proveedor.
 - Título: sigue la plantilla y los datos clave del perfil, unos 70 caracteres como máximo (nunca más de ${TITLE_MAX}). Marca escrita como la escribe la marca, el resto en minúscula normal salvo nombres propios, modelo exacto. Sin « | », sin repeticiones, sin compatibilidades ni códigos internos.
@@ -36,7 +37,7 @@ Reglas:
 - Descripción corta: 2 frases en texto plano (unos 200-250 caracteres, nunca más de ${SHORT_MAX}). La primera engancha: el beneficio principal o para quién es, con un dato real del producto (no un adjetivo). La segunda da los datos clave.
 - Meta descripción: distinta de la descripción corta, entre 140 y 155 caracteres (nunca menos de ${META_DESCRIPTION.min} ni más de ${META_DESCRIPTION.max}), con lo esencial en los primeros 120: tipo, marca, modelo, 2-3 datos clave y lo que diferencia al producto. Sin precio.
 - Descripción larga: HTML sencillo. NO repitas el nombre del producto como titular (la ficha ya lo tiene). Empieza con un párrafo de entrada (<p>, 2-3 frases) que vende: para quién es y qué la hace buena elección. Después, 3-4 apartados con <h2> y un <p> cada uno (puedes usar <strong> y una lista <ul><li> si ayuda). Sin <h1>, <h3> ni <h4>, sin frase de cierre de relleno, sin estilos, enlaces, imágenes ni tablas de especificaciones (la ficha técnica se muestra aparte). Incluye los datos que el perfil manda destacar.
-- Consejo de Elvi (elvi_tip): Elvi es la asistente con inteligencia artificial de la tienda. Un consejo práctico de 1-2 frases, de tú, sobre cómo usar, cuidar, elegir o colocar ESTE producto, que se deduzca de sus datos. En «sources» pon los datos en que se apoya, con la clave exacta de «datos_con_clave» y su valor. Prohibido: instalación eléctrica, de gas o de agua, seguridad, salud, cifras de ahorro, garantías, compatibilidades y cualquier cosa que no se deduzca de los datos. Si no hay un consejo útil y seguro, deja text vacío y sources vacío: es mejor nada que un consejo flojo.`;
+- Elvi (elvi_tip): Elvi es la vendedora con inteligencia artificial de la tienda. No da consejos de uso: en 1-2 frases, de tú, dice lo que diría una buena vendedora delante del producto: para quién es y las 2-3 características que más lo distinguen (las que el perfil manda destacar en esta categoría), con sus datos exactos. Ejemplo de tono: «Si buscas un combi grande sin gastarte de más, este te da 368 L con No Frost en la nevera y en el congelador, y con 39 dB apenas lo vas a oír». En «sources» pon los datos en que se apoya, con la clave exacta de «datos_con_clave» y su valor. Prohibido: instalación eléctrica, de gas o de agua, seguridad, salud, cifras de ahorro, garantías, compatibilidades, comparaciones con otros productos y cualquier cosa que no esté en los datos. Si no hay nada que destacar con datos, deja text vacío y sources vacío.`;
 
 const strip = (html: string | null | undefined, max = 2500) => (html ?? "").replace(/<span[^>]*display:\s*none[^>]*>.*?<\/span>/gi, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
 const words = (text: string) => text.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/<[^>]+>/g, " ").split(/[^a-z0-9ñ]+/).filter(Boolean);
@@ -102,9 +103,32 @@ export function validateContent(content: ProductContent, brand: string, model: s
 // Segunda opinión sobre el consejo de Elvi, de una llamada que no lo escribió: si duda, el consejo no se publica.
 const reviewSchema = { type: "object", additionalProperties: false, required: ["ok", "reason"], properties: { ok: { type: "boolean" }, reason: str } };
 export async function reviewElviTip(client: Anthropic, tip: ElviTip, productName: string, facts: unknown) {
-  const message = await client.messages.create({ model: PROCESSOR_MODEL, max_tokens: 1500, output_config: { effort: "low", format: { type: "json_schema", schema: reviewSchema } }, messages: [{ role: "user", content: `Revisa este consejo que se va a publicar en la ficha del producto «${productName}» de una tienda de electrodomésticos, firmado por su asistente de IA:\n«${tip.text}»\n\nDatos del producto (JSON):\n${JSON.stringify(facts)}\n\nResponde ok=true solo si: se deduce de los datos, es correcto para este producto, es útil para el cliente y no puede causar un problema (nada de instalación eléctrica, de gas o de agua, seguridad, salud, cifras de ahorro, garantías ni compatibilidades). En reason, una frase en español.` }] });
+  const message = await client.messages.create({ model: PROCESSOR_MODEL, max_tokens: 1500, output_config: { effort: "low", format: { type: "json_schema", schema: reviewSchema } }, messages: [{ role: "user", content: `Revisa esta frase que se va a publicar en la ficha del producto «${productName}» de una tienda de electrodomésticos, firmado por su asistente de IA:\n«${tip.text}»\n\nDatos del producto (JSON):\n${JSON.stringify(facts)}\n\nEs la frase de venta de la vendedora de la tienda. Si dos fuentes dan valores distintos para un dato (p. ej. 1400 rpm en MHD y 1351 rpm en Icecat), cualquiera de los dos vale. Responde ok=true solo si: cada dato que menciona está en los datos y con el mismo alcance, no explica tecnologías con afirmaciones que no estén en los datos, no exagera, vende con honestidad y no puede causar un problema (nada de instalación eléctrica, de gas o de agua, seguridad, salud, cifras de ahorro, garantías, compatibilidades ni comparaciones). En reason, una frase en español.` }] });
   const parsed = JSON.parse(message.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("")) as { ok: boolean; reason: string };
   return { ...parsed, usage: message.usage };
+}
+
+// Datos clave del título (los del perfil sin condición, p. ej. «Centrifugado»; no «Alto (solo combis)»): si la primera
+// fuente con dato trae una cifra, el título tiene que llevarla. Evita que la IA los quite al corregir otra cosa.
+export function missingKeyData(title: string, profile: FamilyProfile, values: SourceValues) {
+  const plain = title.replace(/\./g, "");
+  return profile.title.key_data.filter((item) => !item.name.includes("(")).flatMap((item) => {
+    const source = item.sources.find((key) => values.has(key.toLowerCase()));
+    const n = source ? firstNumber(values.get(source.toLowerCase())!) : null;
+    if (n === null) return [];
+    const text = String(n).replace(".", ",");
+    return new RegExp(`(^|[^0-9,])${text.replace(",", "[,.]")}([^0-9]|$)`).test(plain) ? [] : [`El título no lleva el dato clave «${item.name}» (${text}, de ${source}).`];
+  });
+}
+
+// Revisor de datos (decidido 2026-10-23, tras «No Frost para no descongelar a mano»): otra llamada compara cada
+// afirmación de los textos con los datos de origen y señala lo que no está en ellos o lo contradice.
+const factSchema = { type: "object", additionalProperties: false, required: ["problems"], properties: { problems: { type: "array", items: { type: "object", additionalProperties: false, required: ["field", "claim", "reason"], properties: { field: str, claim: str, reason: str } } } } };
+export async function factCheck(client: Anthropic, content: ProductContent, facts: unknown) {
+  const texts = { title: content.title, meta_title: content.meta_title, short_description: content.short_description, meta_description: content.meta_description, long_description: strip(content.long_description_html, 10_000), elvi: content.elvi_tip.text };
+  const message = await client.messages.create({ model: PROCESSOR_MODEL, max_tokens: 3000, output_config: { effort: "medium", format: { type: "json_schema", schema: factSchema } }, messages: [{ role: "user", content: `Eres el revisor de datos de una tienda de electrodomésticos. Comprueba cada afirmación de estos textos de una ficha de producto contra los datos de origen.\n\nTextos (JSON):\n${JSON.stringify(texts)}\n\nDatos de origen (JSON: características y textos de referencia del fabricante y del proveedor):\n${JSON.stringify(facts)}\n\nSeñala en «problems» cada afirmación que: no esté en los datos; los contradiga; cambie su alcance (p. ej. «No Frost en el congelador» si los datos dicen que también en la nevera); o explique qué hace una tecnología o qué se consigue con ella cuando esa explicación no está en los textos de referencia («para no descongelar a mano», «ahorra agua»). Si dos fuentes dan valores distintos para el mismo dato (p. ej. 1400 rpm en MHD y 1351 rpm en Icecat), cualquiera de los dos tiene respaldo: no lo señales. No señales el estilo, el tono ni frases genéricas sin datos («una buena elección para el día a día»). Si todo está bien, problems vacío. field: el campo; claim: la frase; reason: por qué, en una frase en español.` }] });
+  const parsed = JSON.parse(message.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("")) as { problems: { field: string; claim: string; reason: string }[] };
+  return { problems: parsed.problems, usage: message.usage };
 }
 
 export async function writeContent(client: Anthropic, input: { profile: FamilyProfile; listing: ListingProduct & { descripcion?: string | null }; detail: MhdProductDetail | null; icecat: IcecatSummary | null; metafields: Record<string, string | string[]>; values: SourceValues }) {
@@ -119,7 +143,9 @@ export async function writeContent(client: Anthropic, input: { profile: FamilyPr
   };
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: `Datos (JSON):\n${JSON.stringify(data)}\n\nRedacta la ficha.` }];
   const usage: Usage[] = []; let content: ProductContent | null = null; let errors: string[] = []; let attempts = 0;
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  const facts = { datos: data.datos_con_clave, textos_de_referencia: data.textos_de_referencia };
+  let unsupported: { field: string; claim: string; reason: string }[] = [];
+  for (let attempt = 0; attempt < 3; attempt += 1) {
     attempts += 1;
     // El sistema y los datos del producto son iguales en el reintento: se cachean.
     const message = await client.messages.create({ model: PROCESSOR_MODEL, max_tokens: 8000, system: SYSTEM, cache_control: { type: "ephemeral" }, output_config: { effort: "medium", format: { type: "json_schema", schema } }, messages });
@@ -127,7 +153,13 @@ export async function writeContent(client: Anthropic, input: { profile: FamilyPr
     if (message.stop_reason !== "end_turn") throw new Error(`La redacción terminó con ${message.stop_reason}.`);
     const text = message.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("");
     content = JSON.parse(text) as ProductContent;
-    errors = validateContent(content, brand, model, originals, values);
+    errors = [...validateContent(content, brand, model, originals, values), ...missingKeyData(content.title, profile, values)];
+    // Solo se revisan los datos de una ficha que ya cumple el formato (ahorra llamadas).
+    if (!errors.length) {
+      const checked = await factCheck(client, content, facts); usage.push(checked.usage);
+      unsupported = checked.problems;
+      errors = unsupported.map((item) => `Dato sin respaldo en «${item.field}»: «${item.claim}» (${item.reason}). Quítalo o dilo exactamente como en los datos.`);
+    }
     if (!errors.length) break;
     messages.push({ role: "assistant", content: text }, { role: "user", content: `Corrige estos problemas y devuelve la ficha completa:\n- ${errors.join("\n- ")}` });
   }
@@ -140,5 +172,7 @@ export async function writeContent(client: Anthropic, input: { profile: FamilyPr
   }
   errors = errors.filter((error) => !error.startsWith("El consejo de Elvi"));
   const total = usage.reduce((sum, item) => ({ input_tokens: sum.input_tokens + item.input_tokens, output_tokens: sum.output_tokens + item.output_tokens, cache_read_input_tokens: (sum.cache_read_input_tokens ?? 0) + (item.cache_read_input_tokens ?? 0), cache_creation_input_tokens: (sum.cache_creation_input_tokens ?? 0) + (item.cache_creation_input_tokens ?? 0) }), { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 });
-  return { content: content!, errors, elviReview, attempts, usage: total, costUsd: costUsd(PROCESSOR_MODEL, total) };
+  // Si tras los intentos quedan datos sin respaldo, la ficha no se puede guardar en Shopify hasta revisarla.
+  const blocked = errors.some((error) => error.startsWith("Dato sin respaldo"));
+  return { content: content!, errors, blocked, elviReview, attempts, usage: total, costUsd: costUsd(PROCESSOR_MODEL, total) };
 }

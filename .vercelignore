@@ -1,0 +1,10 @@
+# Lo que nunca se sube al desplegar desde la terminal (vercel deploy). Los despliegues desde GitHub ya solo llevan
+# lo que está en git; esto cubre además lo que está en la carpeta pero no en git.
+.env*
+privado/
+outputs/
+.claude/
+pladisel/proxy-icecat.php
+node_modules/
+.next/
+*.pem

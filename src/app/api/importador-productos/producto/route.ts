@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { anthropicKey } from "@/lib/mhd-importer/ai";
 import { processProduct } from "@/lib/mhd-importer/processor";
-import { createShopifyDraft } from "@/lib/mhd-importer/shopify-draft";
+import { createShopifyDraft, updateShopifyTexts } from "@/lib/mhd-importer/shopify-draft";
 import { errorResponse, importerSession, sourcesConfig } from "@/lib/mhd-importer/server";
 
 // Importador de productos MHD: prueba de un producto. POST { codigo } (código de MHD o EAN) monta la ficha con el perfil
@@ -30,6 +30,11 @@ export async function POST(request: Request) {
   const session = await importerSession();
   if (!session) return Response.json({ error: "Necesitas iniciar sesión." }, { status: 401 });
   const body = await request.json().catch(() => ({})) as { codigo?: string; action?: string; runId?: string };
+  if (body.action === "shopify-textos") {
+    if (!body.runId) return Response.json({ error: "Falta la prueba." }, { status: 400 });
+    try { return Response.json({ created: await updateShopifyTexts({ db: session.db, shopify: sourcesConfig().shopify }, body.runId) }); }
+    catch (caught) { return errorResponse(caught, "No se pudieron actualizar los textos en Shopify."); }
+  }
   if (body.action === "shopify") {
     if (!body.runId) return Response.json({ error: "Falta la prueba." }, { status: 400 });
     try { const config = sourcesConfig(); return Response.json({ created: await createShopifyDraft({ db: session.db, shopify: config.shopify, icecat: config.icecat }, body.runId) }); }

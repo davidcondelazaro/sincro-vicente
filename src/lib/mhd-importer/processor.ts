@@ -43,6 +43,7 @@ export type ProcessedProduct = {
   codigo: string; ean: string | null; model: string | null; brand: string;
   family: { code: string | null; name: string | null; subfamilyCode: string | null; subfamilyName: string | null; profileStatus: string };
   content: ProductContent; elviReview: { ok: boolean; reason: string } | null;
+  contentBlocked: boolean;         // el revisor de datos encontró afirmaciones sin respaldo: no se guarda en Shopify
   shopify: {
     title: string; handle: string; status: "DRAFT"; vendor: string; productType: string | null; tags: string[]; category: Classification["category"];
     descriptionHtml: string; seo: { title: string; description: string };
@@ -151,7 +152,8 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
 
   const written = await writeContent(deps.ai, { profile, listing, detail: gathered.detail, icecat, metafields: applied.metafields, values });
   warnings.push(...written.errors.map((error) => `Validación del texto: ${error}`));
-  if (written.elviReview && !written.elviReview.ok) warnings.push(`Consejo de Elvi descartado: ${written.elviReview.reason}`);
+  if (written.elviReview && !written.elviReview.ok) warnings.push(`Frase de Elvi descartada: ${written.elviReview.reason}`);
+  if (written.blocked) warnings.push("Ficha bloqueada: el revisor de datos encontró afirmaciones sin respaldo. Hay que rehacerla o revisarla antes de guardarla en Shopify.");
   cost += written.costUsd ?? 0; usage.content = written.usage; usage.contentAttempts = written.attempts;
 
   // Fotos: la IA dice qué vista es cada una; el código calcula el fondo, ordena y trata.
@@ -237,7 +239,7 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
     product: {
       codigo: listing.codigo, ean: listing.codigo_ean, model: listing.ref_proved, brand,
       family: { code: listing.cod_familia, name: listing.nombre_familia, subfamilyCode: listing.cod_subfamilia, subfamilyName: listing.nombre_subfamilia, profileStatus: profileRow.status },
-      content: written.content, elviReview: written.elviReview,
+      content: written.content, elviReview: written.elviReview, contentBlocked: written.blocked,
       shopify: {
         title: written.content.title, handle, status: "DRAFT", vendor, productType: classification.productType, tags, category: classification.category,
         descriptionHtml: written.content.long_description_html, seo: { title: written.content.meta_title, description: written.content.meta_description },

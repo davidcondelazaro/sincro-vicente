@@ -61,6 +61,7 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   if (error) throw error;
   if (run.status !== "ok" || !run.result) throw new Error("Esta prueba no tiene un producto montado.");
   const product = run.result as ProcessedProduct; const shop = product.shopify;
+  if (product.contentBlocked) throw new Error("La ficha tiene afirmaciones sin respaldo en los datos (ver avisos): rehazla antes de guardarla en Shopify.");
   // ¿Ya existe en Shopify? Primero la propia prueba; si no, cualquier prueba anterior del mismo código de MHD.
   let existingId = run.shopify_product_id as string | null;
   if (!existingId) {
@@ -164,4 +165,27 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   if (saveError) throw saveError;
   const host = deps.shopify.storeUrl.replace(/^https?:\/\//, "").replace(/\.myshopify\.com\/?$/, "");
   return { id: created.id, handle: created.handle, status: created.status, updated: Boolean(existing), refreshed: refresh, adminUrl: `https://admin.shopify.com/store/${host}/products/${created.id.split("/").pop()}`, files: { photos: photos.length, label: Boolean(labelId), documents: documentIds.length, productVideos: productVideos.length, brandVideos: videoIds.length } };
+}
+
+// Solo textos (decidido 2026-10-23): rehacer la redacción de un producto que ya está en Shopify sin tocar fotos,
+// etiqueta, documentos, vídeos, filtros ni nada de negocio. Escribe título, SEO, descripción larga, descripción corta
+// y la frase de Elvi (o la borra si esta vez no hay).
+export async function updateShopifyTexts(deps: { db: SupabaseClient; shopify: ShopifyConfig }, runId: string) {
+  const { data: run, error } = await deps.db.from("mhd_importer_product_runs").select("status,result,codigo").eq("id", runId).single();
+  if (error) throw error;
+  if (run.status !== "ok" || !run.result) throw new Error("Esta prueba no tiene un producto montado.");
+  const product = run.result as ProcessedProduct; const shop = product.shopify;
+  if (product.contentBlocked) throw new Error("La ficha tiene afirmaciones sin respaldo en los datos (ver avisos): rehazla antes de guardarla en Shopify.");
+  const { data: previous } = await deps.db.from("mhd_importer_product_runs").select("shopify_product_id").eq("codigo", run.codigo).not("shopify_product_id", "is", null).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  const productId = previous?.shopify_product_id as string | undefined;
+  if (!productId) throw new Error("Este producto todavía no está en Shopify: guárdalo entero primero.");
+  const updated = await shopifyGraphql<{ productUpdate: { product: { id: string; handle: string; status: string } | null; userErrors: UserError[] } }>(deps.shopify,
+    `mutation($p: ProductUpdateInput!) { productUpdate(product: $p) { product { id handle status } userErrors { field message } } }`, { p: { id: productId, title: shop.title, descriptionHtml: shop.descriptionHtml, seo: shop.seo } });
+  check(updated.productUpdate.userErrors, "Shopify no actualizó los textos");
+  const textFields = ["descripcion_corta", "consejo_elvi"];
+  const set = shop.metafields.filter((item) => item.namespace === "custom" && textFields.includes(item.key) && item.value !== "").map((item) => ({ ownerId: productId, ...item }));
+  if (set.length) check((await shopifyGraphql<{ metafieldsSet: { userErrors: UserError[] } }>(deps.shopify, `mutation($m: [MetafieldsSetInput!]!) { metafieldsSet(metafields: $m) { userErrors { field message } } }`, { m: set })).metafieldsSet.userErrors, "Shopify no guardó la descripción corta o la frase de Elvi");
+  const missing = textFields.filter((key) => !set.some((item) => item.key === key)).map((key) => ({ ownerId: productId, namespace: "custom", key }));
+  if (missing.length) check((await shopifyGraphql<{ metafieldsDelete: { userErrors: UserError[] } }>(deps.shopify, `mutation($m: [MetafieldIdentifierInput!]!) { metafieldsDelete(metafields: $m) { userErrors { field message } } }`, { m: missing })).metafieldsDelete.userErrors, "Shopify no borró la frase de Elvi anterior");
+  return { id: productId, handle: updated.productUpdate.product!.handle, status: updated.productUpdate.product!.status, textsOnly: true };
 }
