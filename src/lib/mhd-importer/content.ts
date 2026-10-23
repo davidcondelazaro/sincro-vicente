@@ -28,14 +28,14 @@ const schema = { type: "object", additionalProperties: false, required: ["title"
 
 const SYSTEM = `Redactas fichas de producto para Electrónica Vicente, tienda de electrodomésticos de Burgos con tienda online. Escribes en español de España, de tú, con tono cercano y experto, como un buen dependiente que conoce el producto: frases cortas y claras, beneficios concretos («cabe en huecos de 60 cm») en vez de adjetivos («increíble», «revolucionaria»), sin exageraciones ni preguntas retóricas.
 Reglas:
-- Usa SOLO los datos que te doy (MHD e Icecat). No inventes cifras, funciones, garantías ni compatibilidades. Si un dato no está, no lo menciones.
+- Usa SOLO los datos que te doy (MHD e Icecat). No inventes cifras, funciones, garantías ni compatibilidades. Si un dato no está, no lo menciones. No menciones lo que el producto NO tiene («no tiene tapa desmontable»).
 - Saca los hechos de los textos y de las características y ESCRIBE DESDE CERO, en tu propio orden y con tus frases. No sigas el orden ni la redacción de los textos de MHD o Icecat: una secuencia de ${COPY_WORDS} palabras seguidas igual que la suya hace que se rechace la ficha.
 - No menciones nunca al proveedor ni otras tiendas (mihogardigital.es, MHD), ni el «Consejo del Experto» del proveedor.
 - Título: sigue la plantilla y los datos clave del perfil, unos 70 caracteres como máximo (nunca más de ${TITLE_MAX}). Marca escrita como la escribe la marca, el resto en minúscula normal salvo nombres propios, modelo exacto. Sin « | », sin repeticiones, sin compatibilidades ni códigos internos.
 - Meta título: para Google, unos 60 caracteres (nunca más de ${META_TITLE_MAX}), con lo que la gente busca delante.
-- Descripción corta: 2-3 frases en texto plano (máx. ${SHORT_MAX} caracteres) con lo esencial del producto.
+- Descripción corta: 2 frases en texto plano (unos 200-250 caracteres, nunca más de ${SHORT_MAX}). La primera engancha: el beneficio principal o para quién es, con un dato real del producto (no un adjetivo). La segunda da los datos clave.
 - Meta descripción: distinta de la descripción corta, entre 140 y 155 caracteres (nunca menos de ${META_DESCRIPTION.min} ni más de ${META_DESCRIPTION.max}), con lo esencial en los primeros 120: tipo, marca, modelo, 2-3 datos clave y lo que diferencia al producto. Sin precio.
-- Descripción larga: HTML sencillo. Un <h3> con el nombre del producto y lo esencial, después 3-5 apartados con <h4> y un <p> cada uno (puedes usar <strong> y una lista <ul><li> si ayuda). Sin estilos, sin enlaces, sin imágenes y sin tablas de especificaciones (la ficha técnica se muestra aparte). Incluye los datos que el perfil manda destacar.
+- Descripción larga: HTML sencillo. NO repitas el nombre del producto como titular (la ficha ya lo tiene). Empieza con un párrafo de entrada (<p>, 2-3 frases) que vende: para quién es y qué la hace buena elección. Después, 3-4 apartados con <h2> y un <p> cada uno (puedes usar <strong> y una lista <ul><li> si ayuda). Sin <h1>, <h3> ni <h4>, sin frase de cierre de relleno, sin estilos, enlaces, imágenes ni tablas de especificaciones (la ficha técnica se muestra aparte). Incluye los datos que el perfil manda destacar.
 - Consejo de Elvi (elvi_tip): Elvi es la asistente con inteligencia artificial de la tienda. Un consejo práctico de 1-2 frases, de tú, sobre cómo usar, cuidar, elegir o colocar ESTE producto, que se deduzca de sus datos. En «sources» pon los datos en que se apoya, con la clave exacta de «datos_con_clave» y su valor. Prohibido: instalación eléctrica, de gas o de agua, seguridad, salud, cifras de ahorro, garantías, compatibilidades y cualquier cosa que no se deduzca de los datos. Si no hay un consejo útil y seguro, deja text vacío y sources vacío: es mejor nada que un consejo flojo.`;
 
 const strip = (html: string | null | undefined, max = 2500) => (html ?? "").replace(/<span[^>]*display:\s*none[^>]*>.*?<\/span>/gi, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
@@ -86,7 +86,11 @@ export function validateContent(content: ProductContent, brand: string, model: s
   const repeated = titleWords.filter((word, index) => titleWords.indexOf(word) !== index);
   if (repeated.length) errors.push(`El título repite «${[...new Set(repeated)].join("», «")}».`);
   for (const [field, value] of Object.entries(content)) if (typeof value === "string" && FORBIDDEN.some((pattern) => pattern.test(value))) errors.push(`«${field}» menciona al proveedor.`);
-  if (!/<h3>/.test(content.long_description_html)) errors.push("La descripción larga no empieza con un <h3>.");
+  // Estructura (decidida 2026-10-23): párrafo de entrada, apartados con <h2>, sin repetir el título.
+  const longHtml = content.long_description_html.trim();
+  if (!longHtml.startsWith("<p>")) errors.push("La descripción larga debe empezar con un párrafo de entrada (<p>), sin titular.");
+  if (!/<h2>/.test(longHtml)) errors.push("La descripción larga debe tener apartados con <h2>.");
+  if (/<h[1345][\s>]/.test(longHtml)) errors.push("La descripción larga solo puede usar <h2> como titulares.");
   for (const field of ["short_description", "meta_description", "long_description_html"] as const) {
     const copied = copiedSequences(content[field], originals);
     if (copied.length) errors.push(`«${field}» copia frases de MHD o Icecat: «${copied.slice(0, 2).join("», «")}». Redáctalo con tus palabras.`);

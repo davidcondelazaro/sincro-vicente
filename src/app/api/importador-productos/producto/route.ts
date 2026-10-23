@@ -6,7 +6,8 @@ import { errorResponse, importerSession, sourcesConfig } from "@/lib/mhd-importe
 
 // Importador de productos MHD: prueba de un producto. POST { codigo } (código de MHD o EAN) monta la ficha con el perfil
 // de su familia y la guarda en mhd_importer_product_runs, con las fotos tratadas y la etiqueta en mhd_importer_media,
-// sin tocar Shopify. POST { action: "shopify", runId } crea esa prueba en Shopify como BORRADOR (nunca publica).
+// sin tocar Shopify. POST { action: "shopify", runId } crea esa prueba en Shopify como BORRADOR (nunca publica) o,
+// si el producto ya existe, lo actualiza.
 // GET ?codigo= devuelve la última prueba de ese producto con la lista de sus archivos.
 
 export const runtime = "nodejs";

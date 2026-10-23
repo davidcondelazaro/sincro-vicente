@@ -98,13 +98,31 @@ Salieron al revisar las dudas del perfil de Lavadoras (G01); el analista las rec
 - [ ] **Nombres de archivo y alt de las fotos** (decidido 2026-10-23): tipo, marca, modelo y lo que muestra la foto (`lavadora-bosch-wan24272es-frontal.jpg`, `…-medidas.jpg`; si se repite la vista, `…-detalle-2.jpg`), como la dirección de la ficha. Alt: el título más lo que muestra la foto.
 - [ ] **Qué PDF se suben** (decidido 2026-10-23): **ficha de producto UE y manual de usuario** (en español o sin idioma), a `custom.documentos`. No se suben la etiqueta energética en PDF (ya va como imagen en `custom.etiqueta_energetica` y el EPREL enlaza a la oficial) ni el folleto (publicidad de la marca).
 - [ ] **Descripción como respaldo para todas las características** (decidido 2026-10-23): si la característica no viene como dato en MHD ni Icecat, se busca en la descripción (`texto:descripcion`) con una **lista cerrada de nombres** que fija el analista por familia (p. ej. Vapor: «vapor», «ironAssist», «SteamCare»; Autodosificador: «i-DOS», «AutoDose», «TwinDos»…). En la Bosch, «Vapor» no salió por falta de este respaldo.
-- [ ] **Formato de la descripción larga** (decidido 2026-10-23): un `<h3>` con el nombre del producto y lo esencial y 3-5 apartados con `<h4>` y un párrafo, como las mejores fichas actuales (p. ej. Bosch WGE03200EP).
+- [ ] **Formato de las descripciones** (decidido 2026-10-23, revisado tras ver la Bosch en Shopify): **corta**, 2 frases (~200-250 caracteres): una de enganche (beneficio principal o para quién es, con un dato real) y otra con los datos clave. **Larga**: sin repetir el título (la ficha ya lo tiene), **párrafo de entrada** de 2-3 frases que vende, y 3-4 apartados con **`<h2>`** (el nombre de la página es el `<h1>`), sin cierre de relleno. El código lo comprueba. Referencia: Mi Electro pone solo una línea de datos bajo el título y la descripción en un bloque aparte, sin repetir el nombre.
 - [ ] **Colecciones en el experimento** (Bosch WAN24272ES): se asigna a las actuales. Tipo de producto «Lavadoras Libre Instalación»; etiquetas Electrodomésticos, Lavado, Lavadoras, Lavadoras Libre Instalación, Energética; proveedor «BOSCH». Entra sola en Electrodomésticos, Lavadoras, Lavadoras Libre Instalación, Lavadoras Bosch, Lavadoras de 8 kg y la colección de marca **Bosch** (`bosch`: regla proveedor = BOSCH, `custom.es_marca`, logotipo en `custom.logotipo`). Categoría de Shopify: Washing Machines. **Las colecciones del masivo quedan por hacer** con el árbol nuevo de Vicente (incluido qué hacer con lo que no encaje).
 - [ ] **Productos de MHD que ya existen en la tienda (por EAN): por decidir** en el importador masivo (no afecta al experimento, que usa un producto nuevo). Relacionado con la tanda de refresco de los productos actuales.
 - [ ] **Canales de venta:** el producto se crea en borrador (no se ve en ningún canal); al activarlo se publica en **Tienda online y Shop** (los dos canales que quedan).
 - [ ] **Venta sin stock** (pauta recibida, pendiente de confirmar el alcance): no se vende sin stock salvo las marcas de los grupos **BSH (Balay, Bosch, Siemens)** y **Electrolux (AEG, Electrolux, Zanussi)**; fuera Ufesa (de B&B Trends desde 2018), Corberó (de Kurbin Lane con licencia), Junkers y Haeger. Por confirmar: si se limita a gran electrodoméstico (líneas Cocción, Frío y Congelación, Lavado y Secado) o incluye accesorios y pequeño electrodoméstico. En Shopify: «Seguir vendiendo cuando no hay stock» según la marca.
 - [ ] **Refresco de los productos actuales de la tienda** (tanda especial): pasan también por todo este proceso (filtros, categoría, colecciones, etiqueta energética, documentos, ficha técnica…), pero **conservando su información actual de descripciones e imágenes**. Se hace aparte del alta de productos nuevos.
 - [ ] **Actualizaciones de MHD** (detectadas con los mecanismos que ya hay: `source_hash` / `source_changed` y fechas de modificación por producto): solo se vuelve a procesar un producto si **cambian datos clave**, y solo lo que haga falta. **Precio y stock no cuentan** como datos clave: se actualizan por su lado, sin reprocesar. Pendiente: definir qué datos son clave (título, descripción, características, fotos, etiqueta, subfamilia, marca…) y qué se rehace en cada caso.
+
+## Mejoras de Icecat por aprovechar (análisis de 114 fichas al azar, 8 por línea de MHD, 2026-10-23)
+
+Por orden de prioridad:
+
+1. [ ] **Texto de marketing del fabricante** (`GeneralInfo.Description.LongDesc`, 48 %; `MiddleDesc`, 4 %) y **«Razones para comprar»** (`ReasonsToBuy`, título + texto + imagen, 6 %): pasarlos a la IA como hechos (hoy no se usan). Misma comprobación contra copia.
+2. [ ] **Información de seguridad** (multimedia «other digital assets»: «Safety Information» y «EU Declaration of Conformity» en PDF, 10 %): el reglamento europeo de seguridad de los productos (GPSR, en vigor desde diciembre de 2024) obliga a la tienda online a mostrar advertencias de seguridad y datos del fabricante. Añadirlos a `custom.documentos`. Enlaza con el pendiente de normativas.
+3. [ ] **Logo de la marca** (`GeneralInfo.BrandLogo`, 75 %): para crear las marcas nuevas de MHD con su logo.
+4. [ ] **Productos relacionados** (`ProductRelated`, 9 %: consumibles, accesorios, alternativas, servicios): venta cruzada cuando estén en el catálogo.
+5. [ ] **Insignias de tecnologías** (`FeatureLogos`, 25 %, con explicación): mostrarlas en la ficha (tema).
+6. Menores: fechas de lanzamiento y fin de vida (`ReleaseDate` 8 %, `EndOfLifeDate` 5 %) para novedades y descatalogados; garantía del fabricante (`WarrantyInfo`, 11 %); variantes de color (`Variants`, 4 %); contenido enriquecido HTML (`ProductStory`, 4 %).
+- **Reseñas:** Icecat trae análisis de expertos (nota, pros, contras, enlace a la publicación) solo en el 2 % de los productos.
+
+## Opiniones de clientes (decidido 2026-10-23)
+
+- **No** se usan opiniones de otras webs, ni copiadas ni resumidas: no hay acceso legal ni estable, y mostrar solo las buenas es práctica desleal según la ley de consumo (Directiva Ómnibus).
+- **A futuro:** resumen de Elvi tipo Amazon («Lo que más valoran / lo que menos») **a partir de nuestras propias reseñas verificadas**, con las buenas y las malas.
+- [ ] **David va a traer las reseñas que ya tenemos** (de la tienda anterior); de ahí partirá el resumen.
 
 ## Filtros de la tienda (metacampos `filtro.*`), estado 2026-10-23
 

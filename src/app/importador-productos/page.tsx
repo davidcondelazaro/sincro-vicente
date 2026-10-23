@@ -174,7 +174,7 @@ function RunView({ run }: { run: Run }) {
       <p className="mt-3 text-xs font-medium uppercase tracking-wide text-zinc-500">Descripción corta ({product.content.short_description.length})</p><p className="text-zinc-800">{product.content.short_description}</p>
       {product.content.elvi_tip.text ? <div className="mt-4 flex gap-3 rounded-xl border border-lime-200 bg-lime-50 p-4"><span aria-hidden="true" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-lime-300 font-semibold text-zinc-900">E</span><div><p className="text-sm font-semibold text-zinc-900">El consejo de Elvi, nuestra asistente IA</p><p className="mt-1 text-sm text-zinc-800">{product.content.elvi_tip.text}</p><p className="mt-1 text-xs text-zinc-500">Se apoya en: {product.content.elvi_tip.sources.map((item) => `${item.source} = ${item.value}`).join(" · ")}{product.elviReview ? ` · revisión: ${product.elviReview.reason}` : ""}</p></div></div> : <p className="mt-4 text-sm text-zinc-500">Sin consejo de Elvi{product.elviReview && !product.elviReview.ok ? ` (descartado: ${product.elviReview.reason.replace(/\.$/, "")})` : " (no había nada útil que decir)"}.</p>}
       <p className="mt-4 text-xs font-medium uppercase tracking-wide text-zinc-500">Descripción larga</p>
-      <iframe title="Descripción larga" sandbox="" srcDoc={`<style>body{font-family:system-ui,sans-serif;font-size:14px;line-height:1.5;color:#27272a;margin:0}h3{font-size:18px}h4{font-size:15px;margin-bottom:4px}</style>${shop.descriptionHtml}`} className="mt-1 h-[26rem] w-full rounded border border-zinc-100" />
+      <iframe title="Descripción larga" sandbox="" srcDoc={`<style>body{font-family:system-ui,sans-serif;font-size:14px;line-height:1.5;color:#27272a;margin:0}h2{font-size:16px;margin:14px 0 4px}</style>${shop.descriptionHtml}`} className="mt-1 h-[26rem] w-full rounded border border-zinc-100" />
     </Card>
     <Card title="Cómo saldría en Google">
       <p className="text-sm text-zinc-500">electronicavicente.com › products › {shop.handle}</p>
@@ -211,17 +211,17 @@ function RunView({ run }: { run: Run }) {
 }
 
 function ShopifyDraft({ run, onCreated }: { run: Run; onCreated: (id: string) => void }) {
-  const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null); const [created, setCreated] = useState<{ adminUrl: string; handle: string } | null>(null);
-  async function create() {
-    if (!window.confirm("Se creará el producto en Shopify como BORRADOR (no se publica) y se subirán sus fotos, etiqueta y documentos. ¿Seguir?")) return;
+  const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null); const [done, setDone] = useState<{ adminUrl: string; updated: boolean } | null>(null);
+  async function sync() {
+    if (!window.confirm("Se creará el producto en Shopify como BORRADOR (no se publica) o, si ya existe, se actualizará con esta prueba (textos, fotos, metacampos, precio y stock). ¿Seguir?")) return;
     setBusy(true); setError(null);
-    try { const response = await fetch("/api/importador-productos/producto", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "shopify", runId: run.id }) }); const body = await response.json(); if (!response.ok) throw new Error(body.error ?? "No se pudo crear el borrador."); setCreated(body.created); onCreated(body.created.id); }
-    catch (caught) { setError(caught instanceof Error ? caught.message : "No se pudo crear el borrador."); } finally { setBusy(false); }
+    try { const response = await fetch("/api/importador-productos/producto", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "shopify", runId: run.id }) }); const body = await response.json(); if (!response.ok) throw new Error(body.error ?? "No se pudo guardar en Shopify."); setDone(body.created); onCreated(body.created.id); }
+    catch (caught) { setError(caught instanceof Error ? caught.message : "No se pudo guardar en Shopify."); } finally { setBusy(false); }
   }
   const productId = run.shopify_product_id?.split("/").pop();
   return <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-6">
-    {run.shopify_product_id ? <p className="text-sm text-emerald-900">Creado en Shopify como borrador: <a className="font-medium underline" href={created?.adminUrl ?? `https://admin.shopify.com/store/electronica-vicente/products/${productId}`} target="_blank" rel="noreferrer">abrir en el admin</a>.</p>
-      : <><p className="text-sm text-zinc-700">Cuando la ficha esté bien, créala en Shopify como borrador. No se publica en ningún canal.</p><button type="button" disabled={busy} onClick={() => void create()} className="mt-3 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{busy ? "Creando en Shopify…" : "Crear borrador en Shopify"}</button></>}
+    <p className="text-sm text-zinc-700">{run.shopify_product_id ? <>Esta prueba ya está en Shopify: <a className="font-medium text-emerald-800 underline" href={done?.adminUrl ?? `https://admin.shopify.com/store/electronica-vicente/products/${productId}`} target="_blank" rel="noreferrer">abrir en el admin</a>{done ? (done.updated ? " (actualizado)." : " (creado como borrador).") : "."}</> : "Cuando la ficha esté bien, guárdala en Shopify: si el producto no existe se crea como borrador (no se publica); si ya existe, se actualiza."}</p>
+    <button type="button" disabled={busy} onClick={() => void sync()} className="mt-3 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{busy ? "Guardando en Shopify…" : run.shopify_product_id ? "Volver a guardar en Shopify" : "Guardar en Shopify"}</button>
     {error && <p className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
   </div>;
 }

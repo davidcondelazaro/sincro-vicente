@@ -1,8 +1,10 @@
 // Pieza del importador: crea en Shopify, en BORRADOR, el producto que montó el procesador (una prueba guardada en
 // mhd_importer_product_runs). Sube las fotos ya tratadas, la etiqueta energética en PNG y los PDF con su nombre
 // normalizado y los vídeos, y lo crea todo de una vez con `productSet`: textos, SEO, colecciones (tipo, etiquetas, proveedor),
-// categoría, variante, stock por ubicación y metacampos. Nunca publica. Ver docs/IMPORTADOR_PRODUCTOS_MHD.md.
+// categoría, variante, stock por ubicación y metacampos. Nunca publica. Si el producto (mismo código de MHD) ya se creó
+// antes, lo ACTUALIZA en vez de crear otro, conservando su dirección y su estado. Ver docs/IMPORTADOR_PRODUCTOS_MHD.md.
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { createHash } from "node:crypto";
 import type { ProcessedProduct } from "./processor";
 import { fetchIcecatDocument, type IcecatConfig } from "./sources";
 import { shopifyGraphql, type ShopifyConfig } from "./store-filters";
@@ -40,12 +42,33 @@ async function createFiles(config: ShopifyConfig, files: { originalSource: strin
   return data.fileCreate.files.map((file) => file.id);
 }
 
+// Archivos que se enlazan desde metacampos (etiqueta, PDF, vídeos de marca): se suben una sola vez. La huella del
+// contenido se guarda en mhd_importer_shopify_files; si ya está, se reutiliza el archivo de Shopify.
+async function uploadOnce(deps: { db: SupabaseClient; shopify: ShopifyConfig }, file: Upload & { kind: string; alt?: string; sourceUrl?: string | null }) {
+  const hash = createHash("sha1").update(file.bytes).digest("hex");
+  const { data: known, error } = await deps.db.from("mhd_importer_shopify_files").select("shopify_file_id").eq("hash", hash).maybeSingle();
+  if (error) throw error;
+  if (known) return known.shopify_file_id as string;
+  const [url] = await stagedUpload(deps.shopify, [file]);
+  const [id] = await createFiles(deps.shopify, [{ originalSource: url, filename: file.filename, contentType: file.resource, ...(file.alt ? { alt: file.alt } : {}) }]);
+  const { error: saveError } = await deps.db.from("mhd_importer_shopify_files").insert({ hash, shopify_file_id: id, filename: file.filename, kind: file.kind, source_url: file.sourceUrl ?? null });
+  if (saveError) throw saveError;
+  return id;
+}
+
 export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: ShopifyConfig; icecat: IcecatConfig }, runId: string) {
   const { data: run, error } = await deps.db.from("mhd_importer_product_runs").select("id,status,result,shopify_product_id").eq("id", runId).single();
   if (error) throw error;
   if (run.status !== "ok" || !run.result) throw new Error("Esta prueba no tiene un producto montado.");
-  if (run.shopify_product_id) throw new Error(`Esta prueba ya se creó en Shopify (${run.shopify_product_id}).`);
   const product = run.result as ProcessedProduct; const shop = product.shopify;
+  // ¿Ya existe en Shopify? Primero la propia prueba; si no, cualquier prueba anterior del mismo código de MHD.
+  let existingId = run.shopify_product_id as string | null;
+  if (!existingId) {
+    const { data: previous, error: previousError } = await deps.db.from("mhd_importer_product_runs").select("shopify_product_id").eq("codigo", product.codigo).not("shopify_product_id", "is", null).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (previousError) throw previousError;
+    existingId = previous?.shopify_product_id ?? null;
+  }
+  const existing = existingId ? (await shopifyGraphql<{ product: { id: string; handle: string; status: string; variants: { nodes: { id: string }[] } } | null }>(deps.shopify, `query($id: ID!) { product(id: $id) { id handle status variants(first: 1) { nodes { id } } } }`, { id: existingId })).product : null;
   const { data: media, error: mediaError } = await deps.db.from("mhd_importer_media").select("role,position,filename,content_type,bytes,meta").eq("run_id", runId).order("position");
   if (mediaError) throw mediaError;
   const bytesOf = (value: unknown) => new Uint8Array(Buffer.from(String(value).replace(/^\\x/, ""), "hex"));
@@ -60,13 +83,9 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   // 2) Etiqueta energética y PDF, como archivos para sus metacampos.
   const label = (media ?? []).find((item) => item.role === "energy_label");
   const pdfs = await Promise.all(product.documents.map(async (document) => ({ document, bytes: (await fetchIcecatDocument(deps.icecat, document.url)).bytes })));
-  const fileUploads: Upload[] = [
-    ...(label ? [{ filename: label.filename, mimeType: "image/png", bytes: bytesOf(label.bytes), resource: "IMAGE" as const }] : []),
-    ...pdfs.map((item) => ({ filename: item.document.filename, mimeType: "application/pdf", bytes: item.bytes, resource: "FILE" as const })),
-  ];
-  const fileUrls = await stagedUpload(deps.shopify, fileUploads);
-  const fileIds = await createFiles(deps.shopify, fileUploads.map((file, index) => ({ originalSource: fileUrls[index], filename: file.filename, contentType: file.resource === "IMAGE" ? "IMAGE" as const : "FILE" as const, ...(file.resource === "IMAGE" ? { alt: `Etiqueta energética ${shop.title}` } : {}) })));
-  const labelId = label ? fileIds[0] : null; const documentIds = fileIds.slice(label ? 1 : 0);
+  const labelId = label ? await uploadOnce(deps, { filename: label.filename, mimeType: "image/png", bytes: bytesOf(label.bytes), resource: "IMAGE", kind: "etiqueta_energetica", alt: `Etiqueta energética ${shop.title}` }) : null;
+  const documentIds: string[] = [];
+  for (const item of pdfs) documentIds.push(await uploadOnce(deps, { filename: item.document.filename, mimeType: "application/pdf", bytes: item.bytes, resource: "FILE", kind: "documento", sourceUrl: item.document.url }));
 
   // 3) Vídeos (decidido 2026-10-23): el del producto, en la galería después de las fotos del producto; los de marca,
   // en `custom.videos`. Cada vídeo se sube una sola vez: si su huella ya está en mhd_importer_shopify_files, se reutiliza.
@@ -76,22 +95,14 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   const brandVideos = videos.filter((item) => !productVideos.includes(item));
   const productVideoUrls = await stagedUpload(deps.shopify, productVideos.map((item) => ({ filename: item.filename, mimeType: "video/mp4", bytes: bytesOf(item.bytes), resource: "VIDEO" as const })));
   const videoIds: string[] = [];
-  for (const item of brandVideos) {
-    const { data: known } = await deps.db.from("mhd_importer_shopify_files").select("shopify_file_id").eq("hash", meta(item).hash).maybeSingle();
-    if (known) { videoIds.push(known.shopify_file_id); continue; }
-    const [url] = await stagedUpload(deps.shopify, [{ filename: item.filename, mimeType: "video/mp4", bytes: bytesOf(item.bytes), resource: "VIDEO" }]);
-    const [id] = await createFiles(deps.shopify, [{ originalSource: url, filename: item.filename, contentType: "VIDEO", alt: meta(item).description || item.filename }]);
-    const { error: fileError } = await deps.db.from("mhd_importer_shopify_files").insert({ hash: meta(item).hash, shopify_file_id: id, filename: item.filename, kind: "video_marca", source_url: meta(item).sourceUrl ?? null });
-    if (fileError) throw fileError;
-    videoIds.push(id);
-  }
+  for (const item of brandVideos) videoIds.push(await uploadOnce(deps, { filename: item.filename, mimeType: "video/mp4", bytes: bytesOf(item.bytes), resource: "VIDEO", kind: "video_marca", alt: meta(item).description || item.filename, sourceUrl: meta(item).sourceUrl ?? null }));
   const PRODUCT_VIEWS = new Set(["frontal", "tres_cuartos", "abierto", "lateral", "trasera"]);
   const photoFiles = photos.map((item, index) => ({ originalSource: photoUrls[index], alt: String(meta(item).alt ?? shop.title), filename: item.filename, contentType: "IMAGE" }));
   const productViews = photos.findIndex((item) => !PRODUCT_VIEWS.has(meta(item).kind));
   const videoFiles = productVideos.map((item, index) => ({ originalSource: productVideoUrls[index], alt: `${shop.title}, vídeo`, filename: item.filename, contentType: "VIDEO" }));
   const galleryFiles = [...photoFiles.slice(0, productViews < 0 ? photoFiles.length : productViews), ...videoFiles, ...photoFiles.slice(productViews < 0 ? photoFiles.length : productViews)];
 
-  // 4) Producto entero de una vez, en borrador.
+  // 4) Producto entero de una vez: en borrador si es nuevo; si ya existía, se actualiza (las fotos se sustituyen).
   const metafields = [
     ...shop.metafields.filter((item) => item.value !== ""),
     ...(labelId ? [{ namespace: "custom", key: "etiqueta_energetica", type: "file_reference", value: labelId }] : []),
@@ -99,22 +110,23 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
     ...(videoIds.length ? [{ namespace: "custom", key: "videos", type: "list.file_reference", value: JSON.stringify(videoIds) }] : []),
   ];
   const input = {
-    title: shop.title, handle: shop.handle, status: "DRAFT", vendor: shop.vendor, productType: shop.productType ?? "", tags: shop.tags,
+    title: shop.title, handle: existing?.handle ?? shop.handle, status: existing?.status ?? "DRAFT", vendor: shop.vendor, productType: shop.productType ?? "", tags: shop.tags,
     ...(shop.category ? { category: shop.category.id } : {}), descriptionHtml: shop.descriptionHtml, seo: shop.seo, metafields,
     files: galleryFiles,
     productOptions: [{ name: "Title", values: [{ name: "Default Title" }] }],
     variants: [{
+      ...(existing?.variants.nodes[0] ? { id: existing.variants.nodes[0].id } : {}),
       optionValues: [{ optionName: "Title", name: "Default Title" }], price: shop.variant.price, sku: shop.variant.sku, barcode: shop.variant.barcode, inventoryPolicy: shop.variant.inventoryPolicy,
       inventoryItem: { tracked: true, ...(shop.variant.weightKg ? { measurement: { weight: { value: shop.variant.weightKg, unit: "KILOGRAMS" } } } : {}) },
       inventoryQuantities: shop.inventory.map((item) => ({ locationId: locationId(item.location), name: "available", quantity: item.quantity })),
     }],
   };
   const data = await shopifyGraphql<{ productSet: { product: { id: string; handle: string; status: string } | null; userErrors: UserError[] } }>(deps.shopify,
-    `mutation($input: ProductSetInput!) { productSet(input: $input, synchronous: true) { product { id handle status } userErrors { field message } } }`, { input });
-  check(data.productSet.userErrors, "Shopify no creó el producto");
+    `mutation($input: ProductSetInput!, $identifier: ProductSetIdentifiers) { productSet(input: $input, identifier: $identifier, synchronous: true) { product { id handle status } userErrors { field message } } }`, { input, identifier: existing ? { id: existing.id } : null });
+  check(data.productSet.userErrors, existing ? "Shopify no actualizó el producto" : "Shopify no creó el producto");
   const created = data.productSet.product!;
   const { error: saveError } = await deps.db.from("mhd_importer_product_runs").update({ shopify_product_id: created.id }).eq("id", runId);
   if (saveError) throw saveError;
   const host = deps.shopify.storeUrl.replace(/^https?:\/\//, "").replace(/\.myshopify\.com\/?$/, "");
-  return { id: created.id, handle: created.handle, status: created.status, adminUrl: `https://admin.shopify.com/store/${host}/products/${created.id.split("/").pop()}`, files: { photos: photos.length, label: Boolean(labelId), documents: documentIds.length, productVideos: productVideos.length, brandVideos: videoIds.length } };
+  return { id: created.id, handle: created.handle, status: created.status, updated: Boolean(existing), adminUrl: `https://admin.shopify.com/store/${host}/products/${created.id.split("/").pop()}`, files: { photos: photos.length, label: Boolean(labelId), documents: documentIds.length, productVideos: productVideos.length, brandVideos: videoIds.length } };
 }
