@@ -2,43 +2,60 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
-type Section = "home" | "customer" | "customers" | "catalog" | "priorities" | "icecat" | "supabase" | "mhdImport" | "mhdCatalog" | "prices" | "stock" | "orders" | "chatbotStats" | "chatbotConversations" | "chatbotImprovements" | "chatbotSupport" | "chatbotErrors" | "chatbotSyncs" | "chatbotDiscounts" | "chatbotSettings" | "chatbotPrivacy" | "stockAlerts" | "priceAlerts" | "quotes";
+type Section = "home" | "customer" | "customers" | "catalog" | "priorities" | "icecat" | "supabase" | "mhdImport" | "mhdCatalog" | "prices" | "stock" | "orders" | "productImporter" | "chatbotStats" | "chatbotConversations" | "chatbotImprovements" | "chatbotSupport" | "chatbotErrors" | "chatbotSyncs" | "chatbotDiscounts" | "chatbotSettings" | "chatbotPrivacy" | "stockAlerts" | "priceAlerts" | "quotes";
 type IconName = "home" | "database" | "users" | "catalog" | "price" | "stock" | "sort" | "icecat" | "orders" | "bell" | "tag" | "shield" | "quote" | "spark" | "ticket" | "chart" | "chat" | "support" | "alert" | "sync" | "settings" | "export";
 
-const navigation: { section: Section; href: string; label: string; icon: IconName }[] = [
-  { section: "home", href: "/", label: "Inicio", icon: "home" },
-  { section: "chatbotStats", href: "/chatbot/estadisticas", label: "Estadísticas", icon: "chart" },
-  { section: "chatbotConversations", href: "/chatbot/conversaciones", label: "Conversaciones", icon: "chat" },
-  { section: "chatbotImprovements", href: "/chatbot/mejoras", label: "Mejoras", icon: "spark" },
-  { section: "chatbotSupport", href: "/chatbot/soporte", label: "Soporte", icon: "support" },
-  { section: "chatbotErrors", href: "/chatbot/errores", label: "Errores del widget", icon: "alert" },
-  { section: "chatbotDiscounts", href: "/chatbot/cupones", label: "Cupones descuento", icon: "ticket" },
-  { section: "chatbotSyncs", href: "/chatbot/sincronizaciones", label: "Sincronizaciones", icon: "sync" },
-  { section: "chatbotSettings", href: "/chatbot/configuracion", label: "Configuración", icon: "settings" },
-  { section: "chatbotPrivacy", href: "/chatbot/datos-clientes", label: "Datos de clientes", icon: "shield" },
-  { section: "quotes", href: "/tienda/presupuestos", label: "Presupuestos", icon: "quote" },
-  { section: "stockAlerts", href: "/tienda/avisos-stock", label: "Avisos de stock", icon: "bell" },
-  { section: "priceAlerts", href: "/tienda/avisos-precio", label: "Avisos de precio", icon: "tag" },
-  { section: "mhdImport", href: "/importar-datos-mhd", label: "Importar de MHD", icon: "database" },
-  { section: "mhdCatalog", href: "/importacion-catalogo-mhd", label: "Catálogo MHD", icon: "catalog" },
-  { section: "orders", href: "/pedidos-mhd", label: "Pedidos MHD", icon: "orders" },
-  { section: "supabase", href: "/importar-datos-sql-server", label: "Importar de SQL Server", icon: "database" },
-  { section: "customers", href: "/importacion-clientes", label: "Importación de clientes", icon: "users" },
-  { section: "catalog", href: "/importacion-catalogo", label: "Importación catálogo", icon: "catalog" },
-  { section: "prices", href: "/importacion-precios", label: "Importación de precios", icon: "price" },
-  { section: "stock", href: "/importacion-stock", label: "Importación de stock", icon: "stock" },
-  { section: "priorities", href: "/ordenacion-productos", label: "Ordenación de productos", icon: "sort" },
-  { section: "icecat", href: "/importacion-icecat", label: "Importación Icecat", icon: "icecat" },
+type NavEntry = { section: Section; href: string; label: string; icon: IconName };
+// Apartados del menú: cada uno se pliega y despliega; el del apartado activo siempre se abre.
+const navigation: { label: string | null; entries: NavEntry[] }[] = [
+  { label: null, entries: [{ section: "home", href: "/", label: "Inicio", icon: "home" }] },
+  { label: "Chatbot IA", entries: [
+    { section: "chatbotStats", href: "/chatbot/estadisticas", label: "Estadísticas", icon: "chart" },
+    { section: "chatbotConversations", href: "/chatbot/conversaciones", label: "Conversaciones", icon: "chat" },
+    { section: "chatbotImprovements", href: "/chatbot/mejoras", label: "Mejoras", icon: "spark" },
+    { section: "chatbotSupport", href: "/chatbot/soporte", label: "Soporte", icon: "support" },
+    { section: "chatbotErrors", href: "/chatbot/errores", label: "Errores del widget", icon: "alert" },
+    { section: "chatbotDiscounts", href: "/chatbot/cupones", label: "Cupones descuento", icon: "ticket" },
+    { section: "chatbotSyncs", href: "/chatbot/sincronizaciones", label: "Sincronizaciones", icon: "sync" },
+    { section: "chatbotSettings", href: "/chatbot/configuracion", label: "Configuración", icon: "settings" },
+    { section: "chatbotPrivacy", href: "/chatbot/datos-clientes", label: "Datos de clientes", icon: "shield" },
+  ] },
+  { label: "Tienda", entries: [
+    { section: "quotes", href: "/tienda/presupuestos", label: "Presupuestos", icon: "quote" },
+    { section: "stockAlerts", href: "/tienda/avisos-stock", label: "Avisos de stock", icon: "bell" },
+    { section: "priceAlerts", href: "/tienda/avisos-precio", label: "Avisos de precio", icon: "tag" },
+  ] },
+  { label: "MHD", entries: [
+    { section: "mhdImport", href: "/importar-datos-mhd", label: "Importar de MHD", icon: "database" },
+    { section: "mhdCatalog", href: "/importacion-catalogo-mhd", label: "Catálogo MHD", icon: "catalog" },
+    { section: "productImporter", href: "/importador-productos", label: "Importador de productos", icon: "spark" },
+    { section: "orders", href: "/pedidos-mhd", label: "Pedidos MHD", icon: "orders" },
+  ] },
+  { label: "Pladisel", entries: [
+    { section: "supabase", href: "/importar-datos-sql-server", label: "Importar de SQL Server", icon: "database" },
+    { section: "customers", href: "/importacion-clientes", label: "Importación de clientes", icon: "users" },
+    { section: "catalog", href: "/importacion-catalogo", label: "Importación catálogo", icon: "catalog" },
+    { section: "prices", href: "/importacion-precios", label: "Importación de precios", icon: "price" },
+    { section: "stock", href: "/importacion-stock", label: "Importación de stock", icon: "stock" },
+    { section: "priorities", href: "/ordenacion-productos", label: "Ordenación de productos", icon: "sort" },
+    { section: "icecat", href: "/importacion-icecat", label: "Importación Icecat", icon: "icecat" },
+  ] },
 ];
 
-const groupLabels: Partial<Record<Section, string>> = { mhdImport: "MHD", supabase: "Pladisel", chatbotStats: "Chatbot IA", quotes: "Tienda" };
+// Apartados plegados, recordados en este navegador (si el almacenamiento no está disponible, todo abierto).
+const COLLAPSED_KEY = "menu-apartados-plegados";
+function readCollapsed() { try { return localStorage.getItem(COLLAPSED_KEY) ?? "[]"; } catch { return "[]"; } }
+function saveCollapsed(labels: string[]) { try { localStorage.setItem(COLLAPSED_KEY, JSON.stringify(labels)); } catch { /* sin almacenamiento */ } window.dispatchEvent(new Event(COLLAPSED_KEY)); }
+function subscribeCollapsed(callback: () => void) { window.addEventListener(COLLAPSED_KEY, callback); return () => window.removeEventListener(COLLAPSED_KEY, callback); }
 
 export function AppSidebar({ active, userEmail }: { active: Section; userEmail: string | null }) {
   const [open, setOpen] = useState(false);
   const itemClass = (section: Section) => `flex min-w-0 items-center gap-3 rounded-lg px-3 py-2 text-sm ${active === section ? "bg-emerald-50 font-semibold text-emerald-900" : "text-zinc-600 hover:bg-zinc-50"}`;
   const close = () => setOpen(false);
+  const collapsed = JSON.parse(useSyncExternalStore(subscribeCollapsed, readCollapsed, () => "[]")) as string[];
+  const toggle = (label: string) => saveCollapsed(collapsed.includes(label) ? collapsed.filter((item) => item !== label) : [...collapsed, label]);
 
   return <>
     <title>{pageTitle(active)}</title>
@@ -51,7 +68,19 @@ export function AppSidebar({ active, userEmail }: { active: Section; userEmail: 
     <aside className={`fixed inset-y-0 right-0 z-50 flex w-72 min-w-0 flex-col overflow-hidden border-l border-zinc-200 bg-white px-5 pt-5 shadow-xl transition-transform lg:right-auto lg:left-0 lg:w-60 lg:border-b-0 lg:border-l-0 lg:border-r lg:shadow-none ${open ? "translate-x-0" : "translate-x-full lg:translate-x-0"}`}>
       <div className="hidden min-w-0 px-3 lg:block"><Link href="/" className="block" aria-label="Ir al inicio"><Image src="/electronica-vicente.svg" alt="Electrónica Vicente" width={2124} height={462} priority className="h-auto w-full max-w-[13rem]" /><AppLabels className="mt-3 flex" /></Link></div>
       <div className="flex items-center justify-between lg:hidden"><p className="text-sm font-semibold text-zinc-900">MENÚ</p><button type="button" onClick={close} className="grid h-11 w-11 place-items-center rounded-lg text-3xl leading-none text-zinc-600 hover:bg-zinc-100" aria-label="Cerrar menú">×</button></div>
-      <nav className="-mx-1 mt-5 flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-y-auto px-1 lg:mt-6" aria-label="Módulos de la aplicación">{navigation.map((entry) => <div key={entry.section}>{(entry.section === "quotes" || entry.section === "mhdImport" || entry.section === "supabase") && <div className="my-3 border-t border-zinc-200" />}{groupLabels[entry.section] && <p className="mt-4 mb-1 px-3 text-xs font-medium text-zinc-400">{groupLabels[entry.section]}</p>}<a onClick={close} href={entry.href} className={itemClass(entry.section)}><Icon name={entry.icon} /><span className="min-w-0 truncate">{entry.label}</span></a></div>)}</nav>
+      <nav className="-mx-1 mt-5 flex min-h-0 min-w-0 flex-1 flex-col gap-1 overflow-y-auto px-1 lg:mt-6" aria-label="Módulos de la aplicación">{navigation.map((group) => {
+        const containsActive = group.entries.some((entry) => entry.section === active);
+        const expanded = !group.label || containsActive || !collapsed.includes(group.label);
+        const links = group.entries.map((entry) => <a key={entry.section} onClick={close} href={entry.href} className={itemClass(entry.section)}><Icon name={entry.icon} /><span className="min-w-0 truncate">{entry.label}</span></a>);
+        if (!group.label) return <div key="inicio" className="flex flex-col gap-1">{links}</div>;
+        const id = `menu-${group.label.toLowerCase().replaceAll(" ", "-")}`;
+        return <div key={group.label} className="mt-3">
+          <button type="button" onClick={() => toggle(group.label!)} disabled={containsActive} aria-expanded={expanded} aria-controls={id} className="flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-left text-xs font-medium tracking-wide text-zinc-500 uppercase hover:bg-zinc-50 disabled:cursor-default disabled:hover:bg-transparent enabled:cursor-pointer">
+            <span>{group.label}</span>{!containsActive && <svg viewBox="0 0 24 24" className={`h-4 w-4 transition-transform ${expanded ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>}
+          </button>
+          {expanded && <div id={id} className="mt-1 flex flex-col gap-1">{links}</div>}
+        </div>;
+      })}</nav>
       <UserMenu email={userEmail} />
     </aside>
   </>;
@@ -62,12 +91,12 @@ function AppLabels({ className }: { className: string }) {
   return <span className={`${className} flex-wrap gap-1.5`}><span className={label}>Conector</span><span className={label}>Utilidades</span></span>;
 }
 
-// Título de la pestaña: "Apartado · Grupo · Utilidades Electrónica Vicente" (el grupo es la última etiqueta del menú antes del apartado).
+// Título de la pestaña: "Apartado · Grupo · Utilidades Electrónica Vicente".
 function pageTitle(section: Section) {
-  const index = navigation.findIndex((entry) => entry.section === section);
-  if (index <= 0) return "Utilidades Electrónica Vicente";
-  const group = navigation.slice(0, index + 1).map((entry) => groupLabels[entry.section]).filter(Boolean).at(-1);
-  return [navigation[index].label, group, "Utilidades Electrónica Vicente"].filter(Boolean).join(" · ");
+  const group = navigation.find((item) => item.entries.some((entry) => entry.section === section));
+  const entry = group?.entries.find((item) => item.section === section);
+  if (!entry || section === "home") return "Utilidades Electrónica Vicente";
+  return [entry.label, group?.label, "Utilidades Electrónica Vicente"].filter(Boolean).join(" · ");
 }
 
 function UserMenu({ email }: { email: string | null }) {
