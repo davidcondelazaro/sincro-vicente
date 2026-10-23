@@ -21,7 +21,12 @@ export function sourceValues(detail: MhdProductDetail | null, icecat: IcecatSumm
   if (listing?.nombre_subfamilia) values.set("mhd:subfamilia", listing.nombre_subfamilia.trim());
   const text = [listing?.descripcion, listing?.descripcion_ampliada, icecat?.longSummary, ...(icecat?.bulletPoints ?? [])].filter(Boolean).join(" ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
   if (text) values.set("texto:descripcion", text);
-  for (const feature of detail?.caracteristicas ?? []) if (feature.nombre && feature.valor) values.set(`mhd:${feature.nombre}`.toLowerCase(), feature.valor.trim());
+  // MHD repite a veces una característica («Color» ×2, «Compatible» ×5): se juntan los valores en vez de quedarse el último.
+  for (const feature of detail?.caracteristicas ?? []) {
+    if (!feature.nombre || !feature.valor) continue;
+    const key = `mhd:${feature.nombre}`.toLowerCase(); const value = feature.valor.trim(); const current = values.get(key);
+    values.set(key, current && !current.split(", ").includes(value) ? `${current}, ${value}` : value);
+  }
   for (const [group, features] of Object.entries(icecat?.specifications ?? {})) for (const [name, value] of Object.entries(features)) values.set(`icecat:${group}|${name}`.toLowerCase(), value.trim());
   return values;
 }
@@ -31,12 +36,40 @@ export function firstNumber(text: string) {
   const match = text.match(/\d{1,3}(?:\.\d{3})+(?!\d)|\d+(?:[.,]\d+)?/);
   if (!match) return null;
   const raw = match[0];
+  // Coma de miles de MHD («1,600W», «4,000 lúmenes», «2,000 VA»): coma + 3 cifras, sin 0 delante, y una unidad que no
+  // se escribe con decimales así. «0,489 kWh» o «1,5 L» siguen siendo decimales.
+  const after = text.slice((match.index ?? 0) + raw.length);
+  if (/^[1-9]\d{0,2},\d{3}$/.test(raw) && THOUSANDS_UNITS.test(after)) return Number(raw.replace(",", ""));
   return Number(/^\d{1,3}(\.\d{3})+$/.test(raw) ? raw.replaceAll(".", "") : raw.replace(",", "."));
 }
+const THOUSANDS_UNITS = /^\s*(w|va|lm|l[uú]menes|mah|dpi|ppp|rpm|mbps|tazas|horas|h)(?![\p{L}])/iu;
 const formatNumber = (n: number) => String(Math.round(n * 100) / 100).replace(".", ",");
 const normalize = (text: string) => text.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-export function applyValueRule(rule: Pick<ValueRule, "sources" | "method" | "ranges" | "table"> & { format?: string; min?: string; max?: string }, values: SourceValues): AppliedValue | null {
+// «contiene» (decidido 2026-10-23, tras los perfiles de todas las familias): el texto de MHD dice a menudo lo que el
+// producto NO tiene («sin grill», «no incluye convección», «Pantalla táctil: No», «prescinde de autoenfoque»). Una
+// coincidencia solo cuenta si va por palabra entera («ipl» no casa con «múltiples»), no lleva una negación delante en
+// la misma frase y no va seguida de «: no».
+const NEGATION_BEFORE = /(?:^|[^\p{L}])(no|sin|ni|carece de|prescinde de|prescindir de|excepto|salvo)(?:[^\p{L}].{0,40})?$/u;
+const NEGATION_AFTER = /^\s*(?:[:=-]\s*)?(?:no|n\/a)(?![\p{L}])/u;
+export function containsPositive(text: string, needle: string) {
+  const haystack = normalize(text); const target = normalize(needle);
+  if (!target) return false;
+  const left = /^[\p{L}\d]/u.test(target) ? "(?<![\\p{L}\\d])" : ""; const right = /[\p{L}\d]$/u.test(target) ? "(?![\\p{L}\\d])" : "";
+  for (const match of haystack.matchAll(new RegExp(`${left}${escape(target)}${right}`, "gu"))) {
+    const start = match.index ?? 0;
+    const sentence = haystack.slice(Math.max(0, start - 60), start).split(/[.;!?\n]|\s-\s/).pop() ?? "";
+    if (NEGATION_BEFORE.test(sentence)) continue;
+    if (NEGATION_AFTER.test(haystack.slice(start + match[0].length, start + match[0].length + 12))) continue;
+    return true;
+  }
+  return false;
+}
+
+// `emptyIsSkip`: en los filtros que no son características, una fila o tramo con valor vacío («»: «valor que no vale»)
+// no escribe nada y deja paso a la siguiente fuente. En características, «» significa «no se pone» y decide.
+export function applyValueRule(rule: Pick<ValueRule, "sources" | "method" | "ranges" | "table"> & { format?: string; min?: string; max?: string }, values: SourceValues, emptyIsSkip = false): AppliedValue | null {
   const bound = (text?: string) => (text?.trim() ? Number(text.replace(",", ".")) : null);
   const min = bound(rule.min); const max = bound(rule.max);
   for (const source of rule.sources) {
@@ -44,8 +77,8 @@ export function applyValueRule(rule: Pick<ValueRule, "sources" | "method" | "ran
     if (!raw) continue;
     if (rule.method === "texto") return { value: raw, source };
     if (rule.method === "tabla" || rule.method === "contiene") {
-      const row = rule.table.find((item) => (rule.method === "tabla" ? normalize(raw) === normalize(item.source) : normalize(raw).includes(normalize(item.source))));
-      if (row) return { value: row.value, source };
+      const row = rule.table.find((item) => (rule.method === "tabla" ? normalize(raw) === normalize(item.source) : containsPositive(raw, item.source)));
+      if (row && !(emptyIsSkip && !row.value.trim())) return { value: row.value, source };
       continue;
     }
     const n = firstNumber(raw);
@@ -53,7 +86,7 @@ export function applyValueRule(rule: Pick<ValueRule, "sources" | "method" | "ran
     if (rule.method === "numero_exacto") return { value: (rule.format ?? "{n}").replace("{n}", formatNumber(n)), source };
     const limit = (text: string) => (text.trim() === "" ? null : Number(text.replace(",", ".")));
     const range = rule.ranges.find((item) => { const from = limit(item.from); const to = limit(item.to); return (from === null || n >= from) && (to === null || n < to); });
-    if (range) return { value: range.value, source };
+    if (range && !(emptyIsSkip && !range.value.trim())) return { value: range.value, source };
   }
   return null;
 }
@@ -66,8 +99,14 @@ export function applyProfile(profile: FamilyProfile, values: SourceValues, subfa
     if (LISTS.has(key)) { const list = (metafields[key] ??= []) as string[]; if (!list.includes(applied.value)) list.push(applied.value); }
     else metafields[key] ??= applied.value;
   };
+  const applies = (rule: FilterRule) => !rule.subfamilies?.length || Boolean(subfamily && rule.subfamilies.includes(subfamily));
+  // El texto solo es respaldo: si una regla de la misma característica tiene dato en MHD o Icecat (aunque sea «No»),
+  // la regla que solo mira la descripción no se aplica.
+  const textOnly = (rule: FilterRule) => rule.sources.length > 0 && rule.sources.every((source) => source.toLowerCase().startsWith("texto:"));
+  const decided = new Set(profile.filters.filter((rule) => applies(rule) && !textOnly(rule) && rule.sources.some((source) => !source.toLowerCase().startsWith("texto:") && values.has(source.toLowerCase()))).map((rule) => `${rule.metafield}|${rule.label}`));
   for (const rule of profile.filters) {
-    if (rule.subfamilies?.length && !(subfamily && rule.subfamilies.includes(subfamily))) continue;
+    if (!applies(rule)) continue;
+    if (textOnly(rule) && decided.has(`${rule.metafield}|${rule.label}`)) continue;
     // Características: la primera fuente con dato decide (así MHD manda sobre Icecat); un valor vacío = no se pone.
     if (rule.metafield === "filtro.caracteristicas") {
       const first = rule.sources.find((source) => values.has(source.toLowerCase()));
@@ -75,7 +114,7 @@ export function applyProfile(profile: FamilyProfile, values: SourceValues, subfa
       if (applied?.value) add(rule.metafield, applied);
       continue;
     }
-    const applied = rule.metafield === "filtro.color" ? combinedColor(rule, values) : applyValueRule(rule, values);
+    const applied = rule.metafield === "filtro.color" ? combinedColor(rule, values) : applyValueRule(rule, values, true);
     if (!applied) { missing.push(rule.label ? `${rule.metafield} (${rule.label})` : rule.metafield); continue; }
     // Más especificaciones: siempre «Dato valor».
     add(rule.metafield, rule.label && !applied.value.toLowerCase().startsWith(rule.label.toLowerCase()) ? { ...applied, value: `${rule.label} ${applied.value}` } : applied);
@@ -88,13 +127,13 @@ export function applyProfile(profile: FamilyProfile, values: SourceValues, subfa
 // Color (decidido 2026-10-23): si una fuente posterior trae dos colores y uno es el de la primera («Negro» en MHD,
 // «Negro, Acero inoxidable» en Icecat), manda la combinada («Acero inoxidable y negro»); si no, la primera, como siempre.
 function combinedColor(rule: FilterRule, values: SourceValues): AppliedValue | null {
-  const first = applyValueRule(rule, values);
+  const first = applyValueRule(rule, values, true);
   if (!first) return null;
   const base = normalize(values.get(first.source.toLowerCase()) ?? "");
   for (const source of rule.sources.slice(rule.sources.indexOf(first.source) + 1)) {
     const raw = values.get(source.toLowerCase());
     if (!raw || !raw.includes(",") || !raw.split(",").some((part) => normalize(part) === base)) continue;
-    const combined = applyValueRule({ ...rule, sources: [source] }, values);
+    const combined = applyValueRule({ ...rule, sources: [source] }, values, true);
     if (combined) return combined;
   }
   return first;

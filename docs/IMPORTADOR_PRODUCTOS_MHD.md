@@ -153,6 +153,8 @@ Por orden de prioridad:
 
 - **Ubicaciones de Shopify (identificadores fijos, 2026-10-23):** Electrónica Vicente `gid://shopify/Location/114068816204`, Almacén MHD `gid://shopify/Location/127022137676`, Yois `gid://shopify/Location/127022104908`. Guardados en `STORE_RULES.locationIds` (`src/lib/mhd-importer/processor.ts`); el importador busca por nombre y, si no lo encuentra, por estos identificadores. Si se renombra o se crea una ubicación, actualizarlos ahí.
 
+- [ ] **Perfiles de todas las familias (2026-10-23):** 130 familias hechas como borrador con subagentes de Claude Code (Opus 5.5, razonamiento alto) más las 3 revisadas; 1.248 reglas y 205 dudas con recomendación. Hallazgos, cambios de código por prioridad y decisiones generales en `docs/IMPORTADOR_PERFILES_HALLAZGOS.md`.
+
 ## Filtros de la tienda (metacampos `filtro.*`), estado 2026-10-23
 
 Leído de Shopify (definiciones y valores de los 4.804 productos) y del historial del tema (`theme-enterprise-vicente`, sesiones del 03 y 04-10, `docs/landings-filtros.md`, `backups/metacampos-features-2026-10-03/`).

@@ -34,14 +34,20 @@ export function selectSample(listing: ListingProduct[], size: number, include: s
   const eligible = listing.filter((product) => product.imagen && product.codigo_ean);
   const chosen = new Map<string, ListingProduct>();
   for (const codigo of include) { const product = listing.find((item) => item.codigo === codigo); if (product) chosen.set(codigo, product); }
-  const sorted = [...eligible].sort((a, b) => Number((b.stock ?? 0) > 0) - Number((a.stock ?? 0) > 0) || (a.pvp ?? 0) - (b.pvp ?? 0));
-  const seen = (key: (item: ListingProduct) => string | null, product: ListingProduct) => [...chosen.values()].some((item) => key(item) === key(product));
-  // 1) una por subfamilia, 2) una por marca, 3) el resto repartido por precio.
-  for (const product of sorted) if (chosen.size < size && !seen((item) => item.cod_subfamilia, product)) chosen.set(product.codigo, product);
-  for (const product of sorted) if (chosen.size < size && !seen((item) => item.nombre_marca, product)) chosen.set(product.codigo, product);
-  const rest = sorted.filter((product) => !chosen.has(product.codigo));
-  const step = rest.length / Math.max(1, size - chosen.size);
-  for (let index = 0; chosen.size < size && index < rest.length; index += Math.max(1, step)) chosen.set(rest[Math.floor(index)].codigo, rest[Math.floor(index)]);
+  // Repartida por precio (decidido 2026-10-23: antes cogía siempre el más barato y la gama media y alta quedaba sin ver).
+  // Con stock primero; de cada grupo, el de precio mediano.
+  const byPrice = [...eligible].sort((a, b) => Number((b.stock ?? 0) > 0) - Number((a.stock ?? 0) > 0) || (a.pvp ?? 0) - (b.pvp ?? 0));
+  const median = (items: ListingProduct[]) => { const sorted = [...items].sort((a, b) => (a.pvp ?? 0) - (b.pvp ?? 0)); return sorted[Math.floor(sorted.length / 2)]; };
+  const groups = (key: (item: ListingProduct) => string | null) => { const map = new Map<string, ListingProduct[]>(); for (const product of byPrice) { const value = key(product) ?? ""; (map.get(value) ?? map.set(value, []).get(value)!).push(product); } return [...map.values()].sort((a, b) => b.length - a.length); };
+  const add = (product: ListingProduct | undefined) => { if (product && chosen.size < size) chosen.set(product.codigo, product); };
+  // 1) Una por subfamilia (la mediana), de la más grande a la más pequeña, hasta la mitad de la muestra.
+  for (const items of groups((item) => item.cod_subfamilia)) if (chosen.size < Math.ceil(size / 2)) add(median(items.filter((item) => !chosen.has(item.codigo))));
+  // 2) Las marcas que más pesan, una cada una, hasta tres cuartos.
+  for (const items of groups((item) => item.nombre_marca)) if (chosen.size < Math.ceil((size * 3) / 4) && !items.some((item) => chosen.has(item.codigo))) add(median(items));
+  // 3) El resto, en escalones iguales de precio de la más barata a la más cara (incluidas las dos puntas).
+  const rest = [...eligible].filter((product) => !chosen.has(product.codigo)).sort((a, b) => (a.pvp ?? 0) - (b.pvp ?? 0));
+  const slots = size - chosen.size;
+  for (let index = 0; index < slots && rest.length; index += 1) add(rest[Math.round((index * (rest.length - 1)) / Math.max(1, slots - 1))]);
   return [...chosen.values()];
 }
 

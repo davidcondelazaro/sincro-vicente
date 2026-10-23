@@ -112,21 +112,27 @@ export async function reviewElviTip(client: Anthropic, tip: ElviTip, productName
 
 // Datos clave del título (los del perfil sin condición, p. ej. «Centrifugado»; no «Alto (solo combis)»): si la primera
 // fuente con dato trae una cifra, el título tiene que llevarla. Evita que la IA los quite al corregir otra cosa.
-export function missingKeyData(title: string, profile: FamilyProfile, values: SourceValues, subfamilyName?: string | null) {
-  // «(solo frigoríficos combi)»: se exige si todas sus palabras largas están en el nombre de la subfamilia.
+export function missingKeyData(title: string, profile: FamilyProfile, values: SourceValues, subfamilyName?: string | null, subfamilyCode?: string | null) {
+  // «(solo …)»: se exige en la subfamilia que nombra. Mejor con su código de MHD («(solo C1010)»); si no, por palabras:
+  // todas las palabras largas tienen que estar enteras (sin plural) en el nombre de la subfamilia, para que «plancha» no
+  // case con «Tabla de planchar» ni «aspirador» con «Robot aspirador» cuando la subfamilia es otra.
   const applies = (name: string) => {
-    const only = /\(solo ([^)]*)\)/i.exec(name)?.[1];
     if (!name.includes("(")) return true;
+    const only = /\(solo ([^)]*)\)/i.exec(name)?.[1];
     if (!only || !subfamilyName) return false;
-    return only.toLowerCase().split(/\s+/).filter((word) => word.length > 4).every((word) => subfamilyName.toLowerCase().includes(word.slice(0, 5)));
+    const code = /\b([A-Z0-9]{5})\b/.exec(only)?.[1];
+    if (code) return code === subfamilyCode;
+    const singular = (word: string) => word.replace(/(es|s)$/, "");
+    const words = subfamilyName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").split(/[^a-z0-9]+/).map(singular);
+    return only.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").split(/[^a-z0-9]+/).filter((word) => word.length > 4).every((word) => words.some((item) => item === singular(word) || item.startsWith(singular(word)) && item.length - singular(word).length <= 3 && !/ar$|ado$/.test(item.slice(singular(word).length))));
   };
   const inTitle = numbersIn(title);
   return profile.title.key_data.filter((item) => applies(item.name)).flatMap((item) => {
     const source = item.sources.find((key) => values.has(key.toLowerCase()));
-    const fact = source ? numbersIn(values.get(source.toLowerCase())!)[0] : undefined;
-    if (!fact) return [];
-    // Misma cifra, con unidad equivalente si la hay (2030 mm = 203 cm).
-    const ok = inTitle.some((item_) => (fact.unit && item_.unit === fact.unit ? Math.abs(item_.base - fact.base) <= 0.011 * fact.base : Math.abs(item_.n - fact.n) <= 0.011 * fact.n));
+    const facts = source ? numbersIn(values.get(source.toLowerCase())!) : [];
+    if (!facts.length) return [];
+    // Vale cualquiera de las cifras del dato («39,6 cm (15.6")» → 39,6 cm o 15,6"), con unidad equivalente si la hay.
+    const ok = facts.some((fact) => inTitle.some((item_) => (fact.unit && item_.unit === fact.unit ? Math.abs(item_.base - fact.base) <= 0.011 * fact.base : Math.abs(item_.n - fact.n) <= 0.011 * fact.n)));
     return ok ? [] : [`El título no lleva el dato clave «${item.name}» (${values.get(source!.toLowerCase())}, de ${source}).`];
   });
 }
@@ -160,13 +166,13 @@ export async function writeContent(client: Anthropic, input: { profile: FamilyPr
   for (let attempt = 0; attempt < 3; attempt += 1) {
     attempts += 1;
     // El sistema y los datos del producto son iguales en el reintento: se cachean.
-    const message = await client.messages.create({ model: PROCESSOR_MODEL, max_tokens: 8000, system: SYSTEM, cache_control: { type: "ephemeral" }, output_config: { effort: "medium", format: { type: "json_schema", schema } }, messages });
+    const message = await client.messages.create({ model: PROCESSOR_MODEL, max_tokens: 16000, system: SYSTEM, cache_control: { type: "ephemeral" }, output_config: { effort: "medium", format: { type: "json_schema", schema } }, messages });
     usage.push(message.usage);
     if (message.stop_reason !== "end_turn") throw new Error(`La redacción terminó con ${message.stop_reason}.`);
     const text = message.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("");
     content = JSON.parse(text) as ProductContent;
     const texts = { title: content.title, meta_title: content.meta_title, short_description: content.short_description, meta_description: content.meta_description, long_description_html: content.long_description_html, elvi: content.elvi_tip.text };
-    errors = [...validateContent(content, brand, model, originals, values), ...missingKeyData(content.title, profile, values, listing.nombre_subfamilia), ...unsupportedNumbers(texts, values).map((problem) => `Cifra sin respaldo: ${problem} Usa solo cifras de datos_con_clave.`)];
+    errors = [...validateContent(content, brand, model, originals, values), ...missingKeyData(content.title, profile, values, listing.nombre_subfamilia, listing.cod_subfamilia), ...unsupportedNumbers(texts, values, [brand, model, listing.nombre_marca, icecat?.partCode, icecat?.modelName]).map((problem) => `Cifra sin respaldo: ${problem} Usa solo cifras de datos_con_clave.`)];
     // Solo se revisan los datos de una ficha que ya cumple el formato (ahorra llamadas).
     if (!errors.length) {
       const checked = await factCheck(client, content, facts); usage.push(checked.usage);
