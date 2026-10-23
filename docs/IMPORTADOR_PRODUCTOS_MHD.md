@@ -153,6 +153,8 @@ Por orden de prioridad:
 
 - **Ubicaciones de Shopify (identificadores fijos, 2026-10-23):** Electrónica Vicente `gid://shopify/Location/114068816204`, Almacén MHD `gid://shopify/Location/127022137676`, Yois `gid://shopify/Location/127022104908`. Guardados en `STORE_RULES.locationIds` (`src/lib/mhd-importer/processor.ts`); el importador busca por nombre y, si no lo encuentra, por estos identificadores. Si se renombra o se crea una ubicación, actualizarlos ahí.
 
+- [ ] **Filtros a partir de MHD (decidido por David, 2026-10-23, IMPORTANTE):** las características de la ficha de MHD son los filtros que MHD ha decidido para cada subfamilia (los de su web). Los filtros de la tienda se deciden **solo a partir de MHD**: cada perfil traduce los campos de MHD de su subfamilia; Icecat solo rellena el mismo campo cuando MHD no lo trae o corrige valores absurdos; el texto, en último lugar. **Los productos que hay ahora en Shopify no cuentan** para estas decisiones (ni sus valores ni sus tramos heredados de PrestaShop). Paso siguiente: descargar las fichas de todo el catálogo de MHD (importación «Fichas de detalle», ver `docs/IMPORTACION_FICHAS_MHD_Y_HUELLAS.md`), montar el mapa de campos por subfamilia y decidir con él si bastan los 25 filtros actuales o se rediseñan; después, reorientar los perfiles.
+
 - [ ] **Perfiles de todas las familias (2026-10-23):** 130 familias hechas como borrador con subagentes de Claude Code (Opus 5.5, razonamiento alto) más las 3 revisadas; 1.248 reglas y 205 dudas con recomendación. Hallazgos, cambios de código por prioridad y decisiones generales en `docs/IMPORTADOR_PERFILES_HALLAZGOS.md`.
 
 ## Filtros de la tienda (metacampos `filtro.*`), estado 2026-10-23

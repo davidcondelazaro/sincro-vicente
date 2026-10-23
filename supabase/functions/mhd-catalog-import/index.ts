@@ -56,11 +56,71 @@ async function fetchPage(entity: string, part: number, page: number) {
   throw Object.assign(new Error(lastError), { attempts: 3 });
 }
 
+// Fichas de detalle: una petición por producto (/products/:codigo), así que van de pocas en pocas (DETAIL_CONCURRENCY
+// a la vez) y con un tope de tiempo por tanda para no pasar de la reserva de 90 s. Las que no se llegan a pedir siguen
+// pendientes para la tanda siguiente; las que fallan se apuntan con el motivo y se reintentan en la próxima importación.
+const DETAIL_BATCH = 60, DETAIL_CONCURRENCY = 2, DETAIL_BUDGET_MS = 55_000;
+
+async function fetchDetail(codigo: string) {
+  const url = mhdUrl(`products/${encodeURIComponent(codigo)}`, 1, 1).replace(/\?.*$/, "");
+  const authorization = `Basic ${btoa(`${env("MHD_API_USER")}:${env("MHD_API_PASS")}`)}`;
+  let lastError = "";
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const response = await fetch(url, { headers: { Accept: "application/json", Authorization: authorization }, signal: AbortSignal.timeout(20_000) });
+      if (response.status === 404) return { error: "MHD no tiene la ficha (404)" };
+      const body = await response.json().catch(() => null) as { success?: boolean; data?: Record<string, unknown> } | null;
+      if (response.ok && body?.success && body.data) return { row: { ...body.data, codigo: String(body.data.codigo ?? codigo) } };
+      lastError = `HTTP ${response.status}`;
+      // Con 4xx que no sean de saturación no tiene sentido insistir.
+      if (response.status < 500 && response.status !== 429) break;
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+    }
+    if (attempt < 3) await sleep(1_500 * attempt * attempt);
+  }
+  return { error: lastError };
+}
+
+async function detailsStep(runId: string, leaseToken: string) {
+  const started = Date.now();
+  const { data: batch, error } = await db.rpc("mhd_import_detail_batch", { p_run_id: runId, p_lease_token: leaseToken, p_limit: DETAIL_BATCH });
+  if (error) throw error;
+  if (!batch) return;
+  const codes = [...(batch as { codes: string[] }).codes];
+  const rows: Record<string, unknown>[] = [], failed: { codigo: string; error: string }[] = [];
+  await Promise.all(Array.from({ length: DETAIL_CONCURRENCY }, async () => {
+    while (codes.length && Date.now() - started < DETAIL_BUDGET_MS) {
+      const codigo = codes.shift()!;
+      const result = await fetchDetail(codigo);
+      if (result.row) rows.push(result.row); else failed.push({ codigo, error: result.error ?? "sin motivo" });
+    }
+  }));
+  // Si no ha salido ninguna y no es porque MHD no las tenga, MHD está caído o saturado: cuenta como tanda fallida
+  // (tres seguidas paran la importación) y no se apunta nada.
+  if (!rows.length && failed.some((item) => !item.error.includes("404"))) throw new Error(`MHD no devolvió ninguna ficha de la tanda: ${failed[0].error}`);
+  const { data, error: ingestError } = await db.rpc("mhd_import_ingest_details", {
+    p_run_id: runId, p_lease_token: leaseToken, p_rows: rows, p_failed: failed, p_duration_ms: Date.now() - started,
+  });
+  if (ingestError) throw ingestError;
+  console.log(JSON.stringify({ run: runId, entity: "details", ok: rows.length, failed: failed.length, ms: Date.now() - started, result: data }));
+}
+
 async function step(runId: string) {
   const { data: claim, error: claimError } = await db.rpc("mhd_import_claim", { p_run_id: runId });
   if (claimError) throw claimError;
   if (!claim) { console.log(JSON.stringify({ run: runId, step: "sin trabajo" })); return; }
   const { lease_token, entity, part, page, failures } = claim as Claim;
+  if (entity === "details") {
+    // Un fallo de la base en una tanda: se libera la reserva y el vigilante la retoma.
+    try { await detailsStep(runId, lease_token); }
+    catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await db.rpc("mhd_import_page_failed", { p_run_id: runId, p_lease_token: lease_token, p_entity: entity, p_part: part, p_page: page, p_attempts: 1, p_duration_ms: 0, p_error: message });
+      console.error(JSON.stringify({ run: runId, entity, error: message }));
+    }
+    return;
+  }
   // Si la página anterior falló, espera antes de reintentarla (10 s, 20 s).
   if (failures > 0) await sleep(10_000 * failures);
   const started = Date.now();

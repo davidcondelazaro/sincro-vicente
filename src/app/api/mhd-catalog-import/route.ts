@@ -7,7 +7,7 @@ import { createClient as createSupabaseClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const kinds = new Set(["full", "categories", "brands", "products", "prices", "stock"]);
+const kinds = new Set(["full", "categories", "brands", "products", "prices", "stock", "details", "details_all"]);
 
 async function session() {
   const supabase = await createSupabaseClient();

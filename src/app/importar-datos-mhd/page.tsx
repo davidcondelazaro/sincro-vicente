@@ -15,16 +15,18 @@ type Run = {
   page_errors: PageError[];
 };
 
-const labels: Record<string, string> = { categories: "Categorías", brands: "Marcas", products: "Productos", prices: "Precios", stock: "Stock" };
-const kindLabels: Record<string, string> = { full: "Completa", ...labels };
-const pageSizes: Record<string, number> = { categories: 1000, brands: 1000, products: 1000, prices: 5000, stock: 5000 };
+const labels: Record<string, string> = { categories: "Categorías", brands: "Marcas", products: "Productos", prices: "Precios", stock: "Stock", details: "Fichas de detalle" };
+const kindLabels: Record<string, string> = { full: "Completa", ...labels, details_all: "Todas las fichas" };
+const pageSizes: Record<string, number> = { categories: 1000, brands: 1000, products: 1000, prices: 5000, stock: 5000, details: 60 };
 const launchers = [
-  { kind: "full", detail: "Categorías, marcas, productos, precios y stock." },
+  { kind: "full", detail: "Categorías, marcas, productos, precios, stock y las fichas nuevas o cambiadas." },
   { kind: "categories", detail: "Los tres niveles: líneas, familias y subfamilias." },
   { kind: "brands", detail: "Listado de marcas." },
   { kind: "products", detail: "Catálogo de productos." },
   { kind: "prices", detail: "Todos los precios (/prices)." },
   { kind: "stock", detail: "Todo el stock (/stocks)." },
+  { kind: "details", detail: "Fichas (características y fotos) que faltan o que MHD ha modificado. Una petición por producto, de 2 en 2." },
+  { kind: "details_all", detail: "Todas las fichas otra vez, aunque no hayan cambiado. Tarda horas." },
 ];
 const STALL_MS = 60_000;
 
@@ -72,7 +74,7 @@ export default function MhdImportPage() {
     <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
       <h2 className="text-xl font-semibold">Lanzar importación</h2>
       <p className="mt-1 text-sm text-zinc-600">{active ? "Hay una importación en curso o detenida: termina, reanúdala o descártala antes de lanzar otra." : "Todas son manuales. Solo puede haber una a la vez."}</p>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{launchers.map(({ kind, detail }) => <button key={kind} onClick={() => act({ action: "start", kind })} disabled={Boolean(active) || busy} className={`rounded-xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${kind === "full" ? "border-emerald-700 bg-emerald-700 text-white hover:bg-emerald-800" : "border-zinc-200 bg-white hover:border-emerald-600"}`}><span className="block font-semibold">{kind === "full" ? "Importación completa" : labels[kind]}</span><span className={`mt-1 block text-sm ${kind === "full" ? "text-emerald-50" : "text-zinc-600"}`}>{detail}</span></button>)}</div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{launchers.map(({ kind, detail }) => <button key={kind} onClick={() => act({ action: "start", kind })} disabled={Boolean(active) || busy} className={`rounded-xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${kind === "full" ? "border-emerald-700 bg-emerald-700 text-white hover:bg-emerald-800" : "border-zinc-200 bg-white hover:border-emerald-600"}`}><span className="block font-semibold">{kind === "full" ? "Importación completa" : kindLabels[kind]}</span><span className={`mt-1 block text-sm ${kind === "full" ? "text-emerald-50" : "text-zinc-600"}`}>{detail}</span></button>)}</div>
     </section>
 
     {active && <ActiveRun run={active} now={serverNow} busy={busy} act={act} />}
@@ -127,7 +129,7 @@ function ActiveRun({ run, now, busy, act }: { run: Run; now: number; busy: boole
       return <div key={entity} className={`rounded-lg border p-3 ${isCurrent ? "border-emerald-200 bg-emerald-50/40" : "border-zinc-100"}`}>
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 text-sm"><span className="font-semibold text-zinc-900">{labels[entity]}{index < entityIndex ? " ✓" : ""}</span><span className="text-zinc-600">{entityDone.toLocaleString("es-ES")} / {entityTotal ? entityTotal.toLocaleString("es-ES") : "…"} · {percent}%</span></div>
         <div className="mt-2"><Bar percent={percent} small /></div>
-        {isCurrent && <p className="mt-2 text-sm text-zinc-600">{entity === "categories" ? `Nivel ${(run.cursor.part ?? 0) + 1} de 3` : `Página ${run.cursor.page ?? 1}${totalPages ? ` de ${totalPages}` : ""}`}{rate ? ` · ${Math.round(rate).toLocaleString("es-ES")} registros/s` : ""}{remaining !== null ? ` · quedan ~${formatDuration(remaining)}` : ""}{run.cursor.failures ? ` · reintento ${run.cursor.failures} de 2` : ""}</p>}
+        {isCurrent && <p className="mt-2 text-sm text-zinc-600">{entity === "categories" ? `Nivel ${(run.cursor.part ?? 0) + 1} de 3` : `${entity === "details" ? "Tanda" : "Página"} ${run.cursor.page ?? 1}${totalPages ? ` de ${totalPages}` : ""}`}{rate ? ` · ${Math.round(rate).toLocaleString("es-ES")} registros/s` : ""}{remaining !== null ? ` · quedan ~${formatDuration(remaining)}` : ""}{run.cursor.failures ? ` · reintento ${run.cursor.failures} de 2` : ""}</p>}
       </div>;
     })}</div>
 
