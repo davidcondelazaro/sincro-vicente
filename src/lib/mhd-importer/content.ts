@@ -120,8 +120,8 @@ export function missingKeyData(title: string, profile: FamilyProfile, values: So
     if (!name.includes("(")) return true;
     const only = /\(solo ([^)]*)\)/i.exec(name)?.[1];
     if (!only || !subfamilyName) return false;
-    const code = /\b([A-Z0-9]{5})\b/.exec(only)?.[1];
-    if (code) return code === subfamilyCode;
+    const codes = only.match(/\b[A-Z0-9]{5}\b/g);
+    if (codes?.length) return Boolean(subfamilyCode && codes.includes(subfamilyCode));
     const singular = (word: string) => word.replace(/(es|s)$/, "");
     const words = subfamilyName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").split(/[^a-z0-9]+/).map(singular);
     return only.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").split(/[^a-z0-9]+/).filter((word) => word.length > 4).every((word) => words.some((item) => item === singular(word) || item.startsWith(singular(word)) && item.length - singular(word).length <= 3 && !/ar$|ado$/.test(item.slice(singular(word).length))));
@@ -150,7 +150,10 @@ export async function factCheck(client: Anthropic, content: ProductContent, fact
 export async function writeContent(client: Anthropic, input: { profile: FamilyProfile; listing: ListingProduct & { descripcion?: string | null }; detail: MhdProductDetail | null; icecat: IcecatSummary | null; metafields: Record<string, string | string[]>; values: SourceValues }) {
   const { profile, listing, icecat, metafields } = input;
   // Hoja de datos única (facts.ts): la redacción y las revisiones solo ven un valor por dato.
-  const values = buildFactSheet(profile, input.values);
+  const values = buildFactSheet(profile, input.values, listing.cod_subfamilia);
+  // Los valores de los filtros ya calculados también son datos de la ficha (p. ej. «2000 W» sacado de un «2W» de MHD, o
+  // «Mueble de 50 cm» sacado del texto): sin ellos, esas cifras no se podrían escribir.
+  for (const [key, value] of Object.entries(metafields)) values.set(`filtro:${key}`, Array.isArray(value) ? value.join(", ") : value);
   const brand = brandAsWritten(listing, icecat); const model = listing.ref_proved ?? "";
   const originals = [strip(listing.descripcion, 100_000), listing.descripcion_ampliada ?? "", icecat?.longSummary ?? "", icecat?.shortSummary ?? "", ...(icecat?.bulletPoints ?? [])].filter(Boolean);
   const data = {

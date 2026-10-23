@@ -17,20 +17,38 @@ const DEFAULT_GROUPS = [
 ];
 type Group = { sources: string[]; min: number | null; max: number | null };
 const bound = (text?: string) => (text?.trim() ? Number(text.replace(",", ".")) : null);
-function competingGroups(profile: FamilyProfile): Group[] {
+// Las reglas de otras subfamilias no cuentan (su min/max no debe quitar datos de este producto).
+function competingGroups(profile: FamilyProfile, subfamily?: string | null): Group[] {
   const groups: Group[] = [...DEFAULT_GROUPS, ...profile.title.key_data.map((item) => item.sources)].map((sources) => ({ sources, min: null, max: null }));
-  for (const rule of profile.filters) if (rule.metafield !== "filtro.caracteristicas" && (rule.method === "numero_exacto" || rule.method === "tramos")) groups.push({ sources: rule.sources, min: bound(rule.min), max: bound(rule.max) });
+  for (const rule of profile.filters) {
+    if (rule.subfamilies?.length && !(subfamily && rule.subfamilies.includes(subfamily))) continue;
+    if (rule.metafield !== "filtro.caracteristicas" && (rule.method === "numero_exacto" || rule.method === "tramos")) groups.push({ sources: rule.sources, min: bound(rule.min), max: bound(rule.max) });
+  }
   return groups.map((group) => ({ ...group, sources: group.sources.map((source) => source.toLowerCase()).filter((source) => !source.startsWith("texto:")) }));
 }
 
-export function buildFactSheet(profile: FamilyProfile, values: SourceValues): SourceValues {
+export function buildFactSheet(profile: FamilyProfile, values: SourceValues, subfamily?: string | null): SourceValues {
   const losers = new Set<string>();
   // Por orden (medidas primero, luego el perfil): una fuente que ya perdió en un grupo no puede ganar en otro, para que
   // dos grupos con el orden cambiado no se anulen entre sí (p. ej. el alto en H01). Una fuente con una cifra fuera de los
   // límites de la regla (`min`/`max`, p. ej. «2W» de MHD por 2000 W) no gana y sale de la hoja.
-  for (const group of competingGroups(profile)) {
-    const valid = (source: string) => { const n = firstNumber(values.get(source) ?? ""); return n === null || ((group.min === null || n >= group.min) && (group.max === null || n <= group.max)); };
-    for (const source of group.sources) if (values.has(source) && !valid(source)) losers.add(source);
+  const groups = competingGroups(profile, subfamily);
+  // Primero se quitan las fuentes con cifras fuera de límites en cualquier grupo; después se eligen las ganadoras (si no,
+  // una fuente podía ganar en un grupo, caer luego por el límite de otro y dejar el dato sin ninguna fuente).
+  // Una fuente cae si tiene límites en alguna regla y no cumple los de ninguna: dos reglas que parten la misma fuente
+  // por rangos (p. ej. GB por un lado y TB por otro) no la anulan entre sí.
+  const bounded = new Map<string, boolean>(); // fuente → ¿cumple alguna regla con límites?
+  for (const group of groups) {
+    if (group.min === null && group.max === null) continue;
+    for (const source of group.sources) {
+      const n = firstNumber(values.get(source) ?? "");
+      if (!values.has(source) || n === null) continue;
+      const ok = (group.min === null || n >= group.min) && (group.max === null || n <= group.max);
+      bounded.set(source, (bounded.get(source) ?? false) || ok);
+    }
+  }
+  for (const [source, ok] of bounded) if (!ok) losers.add(source);
+  for (const group of groups) {
     const winner = group.sources.find((source) => values.has(source) && !losers.has(source));
     if (winner) for (const source of group.sources) if (source !== winner) losers.add(source);
   }
@@ -43,7 +61,7 @@ const UNITS: Record<string, [string, number]> = {
   mm: ["m", 0.001], cm: ["m", 0.01], m: ["m", 1], km: ["m", 1000], g: ["kg", 0.001], kg: ["kg", 1], ml: ["l", 0.001], l: ["l", 1], litros: ["l", 1],
   w: ["w", 1], kw: ["w", 1000], kwh: ["kwh", 1], wh: ["kwh", 0.001], rpm: ["rpm", 1], db: ["db", 1], "°c": ["c", 1], "ºc": ["c", 1],
   min: ["min", 1], minutos: ["min", 1], h: ["min", 60], horas: ["min", 60], v: ["v", 1], hz: ["hz", 1], "%": ["%", 1], "\"": ["in", 1], pulgadas: ["in", 1],
-  mb: ["gb", 0.001], gb: ["gb", 1], tb: ["gb", 1000], "mb/s": ["mb/s", 1], "gb/s": ["mb/s", 1000], mbps: ["mbps", 1], gbps: ["mbps", 1000],
+  mb: ["gb", 0.001], gb: ["gb", 1], tb: ["gb", 1000], "mb/s": ["mb/s", 1], "gb/s": ["mb/s", 1000], mbps: ["mbps", 1], gbps: ["mbps", 1000], "mbit/s": ["mbps", 1], "gbit/s": ["mbps", 1000],
   mp: ["mp", 1], mah: ["mah", 1], dpi: ["dpi", 1], ppp: ["dpi", 1], va: ["va", 1], kva: ["va", 1000], lm: ["lm", 1], "lúmenes": ["lm", 1],
   bar: ["bar", 1], "l/min": ["l/min", 1], "l/h": ["l/h", 1], "m³/h": ["m3/h", 1], "m3/h": ["m3/h", 1], "m²": ["m2", 1], m2: ["m2", 1], "l/día": ["l/dia", 1], hojas: ["hojas", 1],
 };
