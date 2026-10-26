@@ -6,1492 +6,1498 @@ begin;
 delete from public.store_collection_equivalences;
 delete from public.store_mhd_subfamily_map;
 delete from public.store_collections;
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('frio','Frío',null,'apartado',null,'frio',true,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('lavado','Lavado',null,'apartado',null,'lavado',true,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('cocina','Cocina',null,'apartado',null,'cocina',true,'{}',2,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('clima','Clima',null,'apartado',null,'clima',true,'{}',3,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('television','Televisión',null,'apartado',null,'television',true,'{}',4,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('pequeno-electro','Pequeño electro','Pequeño electrodoméstico','apartado',null,'pequeno-electro',true,'{}',5,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('tecnologia','Tecnología',null,'apartado',null,'tecnologia',true,'{}',6,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('frigorificos-y-congeladores','Frigoríficos y congeladores',null,'grupo','frio','frio',true,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-de-frio','Accesorios de frío',null,'grupo','frio','frio',false,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('lavadoras-secadoras-y-lavavajillas','Lavadoras, secadoras y lavavajillas',null,'grupo','lavado','lavado',true,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-de-lavado','Accesorios de lavado',null,'grupo','lavado','lavado',false,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('electrodomesticos-de-cocina','Electrodomésticos de cocina',null,'grupo','cocina','cocina',true,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-de-cocina','Accesorios de cocina',null,'grupo','cocina','cocina',false,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('climatizacion','Climatización',null,'grupo','clima','clima',true,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-de-clima','Accesorios de clima',null,'grupo','clima','clima',false,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('televisores-proyectores-y-sonido','Televisores, proyectores y sonido',null,'grupo','television','television',true,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('informatica','Informática',null,'grupo','tecnologia','tecnologia',true,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('receptores-antenas-y-pantallas-profesionales','Receptores, antenas y pantallas profesionales',null,'grupo','television','television',false,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('limpieza-y-plancha','Limpieza y plancha',null,'grupo','pequeno-electro','pequeno-electro',true,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('cuidado-personal-y-salud','Cuidado personal y salud',null,'grupo','pequeno-electro','pequeno-electro',true,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('pequeno-electro-de-cocina','Pequeño electro de cocina',null,'grupo','pequeno-electro','pequeno-electro',true,'{}',2,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('hogar','Hogar',null,'grupo','pequeno-electro','pequeno-electro',false,'{}',3,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('jardin-y-bricolaje','Jardín y bricolaje',null,'grupo','pequeno-electro','pequeno-electro',false,'{}',4,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('muebles-gaming','Muebles gaming',null,'grupo','pequeno-electro','pequeno-electro',false,'{}',5,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-de-television','Accesorios de televisión',null,'grupo','television','television',false,'{}',2,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('foto-y-video','Foto y vídeo',null,'grupo','tecnologia','tecnologia',false,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-de-pequeno-electro','Accesorios de pequeño electro',null,'grupo','pequeno-electro','pequeno-electro',false,'{}',6,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('audio','Audio',null,'grupo','tecnologia','tecnologia',true,'{}',2,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('telefonia','Telefonía',null,'grupo','tecnologia','tecnologia',true,'{}',3,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('gaming','Gaming',null,'grupo','tecnologia','tecnologia',true,'{}',4,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('movilidad','Movilidad',null,'grupo','tecnologia','tecnologia',true,'{}',5,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('hogar-inteligente-y-relojes','Hogar inteligente y relojes',null,'grupo','tecnologia','tecnologia',true,'{}',6,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-y-componentes','Accesorios y componentes',null,'grupo','tecnologia','tecnologia',false,'{}',7,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('frigorificos-combi','Frigoríficos combi',null,'familia','frigorificos-y-congeladores','frio',true,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('frigorificos-americanos-y-side-by-side','Frigoríficos americanos y side by side',null,'familia','frigorificos-y-congeladores','frio',true,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('frigorificos-de-2-puertas','Frigoríficos de 2 puertas',null,'familia','frigorificos-y-congeladores','frio',true,'{}',2,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('frigorificos-de-1-puerta','Frigoríficos de 1 puerta',null,'familia','frigorificos-y-congeladores','frio',true,'{}',3,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('arcones-congeladores','Arcones congeladores',null,'familia','frigorificos-y-congeladores','frio',true,'{}',4,'Revisar si se prefiere «Arcones congeladores».');
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('congeladores-verticales','Congeladores verticales',null,'familia','frigorificos-y-congeladores','frio',true,'{}',5,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('vinotecas','Vinotecas',null,'familia','frigorificos-y-congeladores','frio',true,'{}',6,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('frigorificos-cerveceros','Frigoríficos cerveceros',null,'familia','frigorificos-y-congeladores','frio',false,'{}',7,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('enfriadores-de-botellas','Enfriadores de botellas',null,'familia','frigorificos-y-congeladores','frio',false,'{}',8,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-frigorificos-y-congeladores','Accesorios para frigoríficos y congeladores',null,'familia','accesorios-de-frio','frio',false,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('lavadoras','Lavadoras',null,'familia','lavadoras-secadoras-y-lavavajillas','lavado',true,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('lavadoras-secadoras','Lavadoras secadoras',null,'familia','lavadoras-secadoras-y-lavavajillas','lavado',true,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('lavavajillas','Lavavajillas',null,'familia','lavadoras-secadoras-y-lavavajillas','lavado',true,'{}',2,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('secadoras','Secadoras',null,'familia','lavadoras-secadoras-y-lavavajillas','lavado',true,'{}',3,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('centrifugadoras','Centrifugadoras',null,'familia','lavadoras-secadoras-y-lavavajillas','lavado',true,'{}',4,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-lavadoras','Accesorios para lavadoras',null,'familia','accesorios-de-lavado','lavado',false,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-lavavajillas','Accesorios para lavavajillas',null,'familia','accesorios-de-lavado','lavado',false,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-secadoras','Accesorios para secadoras',null,'familia','accesorios-de-lavado','lavado',false,'{}',2,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('cestas-para-cubiertos','Cestas para cubiertos',null,'familia','accesorios-de-lavado','lavado',false,'{}',3,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('productos-de-limpieza-para-electrodomesticos','Productos de limpieza para electrodomésticos',null,'familia','accesorios-de-lavado','lavado',false,'{}',4,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('hornos','Hornos',null,'familia','electrodomesticos-de-cocina','cocina',true,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('hornos-compactos','Hornos compactos',null,'familia','electrodomesticos-de-cocina','cocina',true,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('microondas','Microondas',null,'familia','electrodomesticos-de-cocina','cocina',true,'{}',2,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('microondas-integrables','Microondas integrables',null,'familia','electrodomesticos-de-cocina','cocina',true,'{}',3,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('placas-de-induccion','Placas de inducción',null,'familia','electrodomesticos-de-cocina','cocina',true,'{}',4,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('placas-vitroceramicas','Placas vitrocerámicas',null,'familia','electrodomesticos-de-cocina','cocina',true,'{}',5,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('placas-de-gas','Placas de gas',null,'familia','electrodomesticos-de-cocina','cocina',true,'{}',6,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('campanas-extractoras','Campanas extractoras',null,'familia','electrodomesticos-de-cocina','cocina',true,'{}',7,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('fregaderos','Fregaderos',null,'familia','electrodomesticos-de-cocina','cocina',true,'{}',8,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('grifos-de-cocina','Grifos de cocina',null,'familia','electrodomesticos-de-cocina','cocina',true,'{}',9,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('cocinas-de-gas-y-electricas','Cocinas de gas y eléctricas',null,'familia','electrodomesticos-de-cocina','cocina',true,'{}',10,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('hornos-de-gas','Hornos de gas',null,'familia','electrodomesticos-de-cocina','cocina',false,'{}',11,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('hornos-polivalentes','Hornos polivalentes',null,'familia','electrodomesticos-de-cocina','cocina',false,'{}',12,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('hornos-de-sobremesa','Hornos de sobremesa',null,'familia','electrodomesticos-de-cocina','cocina',false,'{}',13,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('placas-polivalentes','Placas polivalentes',null,'familia','electrodomesticos-de-cocina','cocina',false,'{}',14,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('placas-mixtas','Placas mixtas',null,'familia','electrodomesticos-de-cocina','cocina',false,'{}',15,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('teppanyaki','Teppanyaki',null,'familia','electrodomesticos-de-cocina','cocina',false,'{}',16,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('modulos-de-integracion','Módulos de integración',null,'familia','electrodomesticos-de-cocina','cocina',false,'{}',17,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('cajones-calientaplatos','Cajones calientaplatos',null,'familia','electrodomesticos-de-cocina','cocina',false,'{}',18,'«Módulo de calentamiento»: cajones calientaplatos (revisar con los productos).');
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('cafeteras-integrables','Cafeteras integrables',null,'familia','electrodomesticos-de-cocina','cocina',false,'{}',19,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('conjuntos-de-horno-y-placa','Conjuntos de horno y placa',null,'familia','electrodomesticos-de-cocina','cocina',false,'{}',20,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('extractores-de-cocina-y-bano','Extractores de cocina y baño',null,'familia','electrodomesticos-de-cocina','cocina',false,'{}',21,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('packs-de-fregadero-y-grifo','Packs de fregadero y grifo',null,'familia','electrodomesticos-de-cocina','cocina',false,'{}',22,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('grifos-de-bano','Grifos de baño',null,'familia','electrodomesticos-de-cocina','cocina',false,'{}',23,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('trituradores-de-residuos-para-fregadero','Trituradores de residuos para fregadero',null,'familia','electrodomesticos-de-cocina','cocina',false,'{}',24,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('barbacoas-de-gas','Barbacoas de gas',null,'familia','electrodomesticos-de-cocina','cocina',false,'{}',25,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('hornillos','Hornillos',null,'familia','electrodomesticos-de-cocina','cocina',false,'{}',26,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-hornos','Accesorios para hornos',null,'familia','accesorios-de-cocina','cocina',false,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-microondas','Accesorios para microondas',null,'familia','accesorios-de-cocina','cocina',false,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-placas','Accesorios para placas',null,'familia','accesorios-de-cocina','cocina',false,'{}',2,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('cubreencimeras','Cubreencimeras',null,'familia','accesorios-de-cocina','cocina',false,'{}',3,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-campanas','Accesorios para campanas',null,'familia','accesorios-de-cocina','cocina',false,'{}',4,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-fregaderos-y-grifos','Accesorios para fregaderos y grifos',null,'familia','accesorios-de-cocina','cocina',false,'{}',5,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('aire-acondicionado','Aire acondicionado',null,'familia','climatizacion','clima',true,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('aire-acondicionado-portatil','Aire acondicionado portátil',null,'familia','climatizacion','clima',true,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('ventiladores','Ventiladores',null,'familia','climatizacion','clima',true,'{}',2,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('climatizadores-evaporativos','Climatizadores evaporativos',null,'familia','climatizacion','clima',true,'{}',3,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('deshumidificadores','Deshumidificadores',null,'familia','climatizacion','clima',true,'{}',4,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('radiadores-de-aceite','Radiadores de aceite',null,'familia','climatizacion','clima',true,'{}',5,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('emisores-termicos','Emisores térmicos',null,'familia','climatizacion','clima',true,'{}',6,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('calentadores-de-gas','Calentadores de gas',null,'familia','climatizacion','clima',true,'{}',7,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('calderas-de-gas','Calderas de gas',null,'familia','climatizacion','clima',true,'{}',8,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('termos-electricos','Termos eléctricos',null,'familia','climatizacion','clima',true,'{}',9,'Termos de agua caliente eléctricos.');
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('purificadores-de-aire','Purificadores de aire',null,'familia','climatizacion','clima',false,'{}',10,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('jarras-purificadoras-de-agua','Jarras purificadoras de agua',null,'familia','climatizacion','clima',false,'{}',11,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('dispensadores-de-agua','Dispensadores de agua',null,'familia','climatizacion','clima',false,'{}',12,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('ambientadores','Ambientadores',null,'familia','climatizacion','clima',false,'{}',13,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('termoventiladores','Termoventiladores',null,'familia','climatizacion','clima',false,'{}',14,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('estufas','Estufas',null,'familia','climatizacion','clima',false,'{}',15,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('calefactores-electricos','Calefactores eléctricos',null,'familia','climatizacion','clima',false,'{}',16,'Radiadores, toalleros, calientacamas… van a su colección por la decisión 7.');
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('braseros-electricos','Braseros eléctricos',null,'familia','climatizacion','clima',false,'{}',17,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('convectores','Convectores',null,'familia','climatizacion','clima',false,'{}',18,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('paneles-radiantes','Paneles radiantes',null,'familia','climatizacion','clima',false,'{}',19,'MHD: «Placa eléctrica a radiación».');
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('toalleros-electricos','Toalleros eléctricos',null,'familia','climatizacion','clima',false,'{}',20,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('termos-solares','Termos solares',null,'familia','climatizacion','clima',false,'{}',21,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('captadores-solares','Captadores solares',null,'familia','climatizacion','clima',false,'{}',22,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('grupos-solares','Grupos solares',null,'familia','climatizacion','clima',false,'{}',23,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('kits-solares','Kits solares',null,'familia','climatizacion','clima',false,'{}',24,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('calderas-mixtas','Calderas mixtas',null,'familia','climatizacion','clima',false,'{}',25,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('programadores-horarios','Programadores horarios',null,'familia','climatizacion','clima',false,'{}',26,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('estaciones-meteorologicas','Estaciones meteorológicas',null,'familia','climatizacion','clima',false,'{}',27,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-calentadores','Accesorios para calentadores',null,'familia','accesorios-de-clima','clima',false,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-calderas','Accesorios para calderas',null,'familia','accesorios-de-clima','clima',false,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-termos','Accesorios para termos',null,'familia','accesorios-de-clima','clima',false,'{}',2,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-aire-acondicionado','Accesorios para aire acondicionado',null,'familia','accesorios-de-clima','clima',false,'{}',3,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-de-climatizacion','Accesorios de climatización',null,'familia','accesorios-de-clima','clima',false,'{}',4,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-ventiladores','Accesorios para ventiladores',null,'familia','accesorios-de-clima','clima',false,'{}',5,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-radiadores-y-emisores','Accesorios para radiadores y emisores',null,'familia','accesorios-de-clima','clima',false,'{}',6,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-purificadores','Accesorios para purificadores',null,'familia','accesorios-de-clima','clima',false,'{}',7,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('televisores','Televisores',null,'familia','televisores-proyectores-y-sonido','television',true,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('proyectores','Proyectores',null,'familia','televisores-proyectores-y-sonido','television',true,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('barras-de-sonido','Barras de sonido',null,'familia','televisores-proyectores-y-sonido','television',true,'{}',2,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('monitores','Monitores',null,'familia','informatica','tecnologia',true,'{television}',0,'Decisión 5: su sitio pasa a Tecnología › Informática y sale en el menú; también se ve desde Televisión.');
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('videowalls','Videowalls',null,'familia','receptores-antenas-y-pantallas-profesionales','television',false,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('pantallas-tactiles','Pantallas táctiles',null,'familia','receptores-antenas-y-pantallas-profesionales','television',false,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('pantallas-de-proyeccion','Pantallas de proyección',null,'familia','receptores-antenas-y-pantallas-profesionales','television',false,'{}',2,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('tv-box-y-sticks-de-tv','TV Box y sticks de TV',null,'familia','receptores-antenas-y-pantallas-profesionales','television',false,'{}',3,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('receptores-de-satelite','Receptores de satélite',null,'familia','receptores-antenas-y-pantallas-profesionales','television',false,'{}',4,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('receptores-tdt-y-satelite','Receptores TDT y satélite',null,'familia','receptores-antenas-y-pantallas-profesionales','television',false,'{}',5,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('reproductores-de-dvd-y-blu-ray','Reproductores de DVD y Blu-ray',null,'familia','receptores-antenas-y-pantallas-profesionales','television',false,'{}',6,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('gafas-de-realidad-virtual','Gafas de realidad virtual',null,'familia','receptores-antenas-y-pantallas-profesionales','television',false,'{}',7,'MHD lo llama «Visor personal»: son gafas de realidad virtual (revisar con los productos).');
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('antenas-de-tv-portatiles','Antenas de TV portátiles',null,'familia','receptores-antenas-y-pantallas-profesionales','television',false,'{}',8,'Las antenas de red (Ubiquiti) van a redes por la decisión 7.');
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('antenas-de-tv-fijas','Antenas de TV fijas',null,'familia','receptores-antenas-y-pantallas-profesionales','television',false,'{}',9,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('antenas-parabolicas','Antenas parabólicas',null,'familia','receptores-antenas-y-pantallas-profesionales','television',false,'{}',10,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('robots-aspiradores','Robots aspiradores',null,'familia','limpieza-y-plancha','pequeno-electro',true,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('aspiradores','Aspiradores',null,'familia','limpieza-y-plancha','pequeno-electro',true,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('hidrolimpiadoras','Hidrolimpiadoras',null,'familia','limpieza-y-plancha','pequeno-electro',true,'{}',2,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('centros-de-planchado-y-planchas-verticales','Centros de planchado y planchas verticales',null,'familia','limpieza-y-plancha','pequeno-electro',true,'{}',3,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('planchas-de-ropa','Planchas de ropa',null,'familia','limpieza-y-plancha','pequeno-electro',true,'{}',4,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('secadores-de-pelo','Secadores de pelo',null,'familia','cuidado-personal-y-salud','pequeno-electro',true,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('planchas-de-pelo','Planchas de pelo',null,'familia','cuidado-personal-y-salud','pequeno-electro',true,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('depiladoras','Depiladoras',null,'familia','cuidado-personal-y-salud','pequeno-electro',true,'{}',2,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('afeitadoras','Afeitadoras',null,'familia','cuidado-personal-y-salud','pequeno-electro',true,'{}',3,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('cepillos-de-dientes-electricos','Cepillos de dientes eléctricos',null,'familia','cuidado-personal-y-salud','pequeno-electro',true,'{}',4,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('tensiometros','Tensiómetros',null,'familia','cuidado-personal-y-salud','pequeno-electro',true,'{}',5,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('mantas-electricas','Mantas eléctricas',null,'familia','cuidado-personal-y-salud','pequeno-electro',true,'{}',6,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('vigilabebes','Vigilabebés',null,'familia','cuidado-personal-y-salud','pequeno-electro',true,'{}',7,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('cafeteras','Cafeteras',null,'familia','pequeno-electro-de-cocina','pequeno-electro',true,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('hervidores-de-agua','Hervidores de agua',null,'familia','pequeno-electro-de-cocina','pequeno-electro',true,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('robots-de-cocina','Robots de cocina',null,'familia','pequeno-electro-de-cocina','pequeno-electro',true,'{}',2,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('batidoras','Batidoras',null,'familia','pequeno-electro-de-cocina','pequeno-electro',true,'{}',3,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('freidoras','Freidoras',null,'familia','pequeno-electro-de-cocina','pequeno-electro',true,'{}',4,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('vaporetas','Vaporetas',null,'familia','limpieza-y-plancha','pequeno-electro',false,'{}',5,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('fregonas-electricas','Fregonas eléctricas',null,'familia','limpieza-y-plancha','pequeno-electro',false,'{}',6,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('planchadoras','Planchadoras',null,'familia','limpieza-y-plancha','pequeno-electro',false,'{}',7,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('tablas-de-planchar','Tablas de planchar',null,'familia','limpieza-y-plancha','pequeno-electro',false,'{}',8,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('quitapelusas','Quitapelusas',null,'familia','limpieza-y-plancha','pequeno-electro',false,'{}',9,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('limpiacristales','Limpiacristales',null,'familia','limpieza-y-plancha','pequeno-electro',false,'{}',10,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('moldeadores-y-rizadores-de-pelo','Moldeadores y rizadores de pelo',null,'familia','cuidado-personal-y-salud','pequeno-electro',false,'{}',8,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('recortadoras-de-bikini','Recortadoras de bikini',null,'familia','cuidado-personal-y-salud','pequeno-electro',false,'{}',9,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('cortapelos','Cortapelos',null,'familia','cuidado-personal-y-salud','pequeno-electro',false,'{}',10,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('recortadoras-de-barba','Recortadoras de barba',null,'familia','cuidado-personal-y-salud','pequeno-electro',false,'{}',11,'MHD: «Barberos».');
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('recortadoras-de-nariz-y-orejas','Recortadoras de nariz y orejas',null,'familia','cuidado-personal-y-salud','pequeno-electro',false,'{}',12,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('irrigadores-dentales','Irrigadores dentales',null,'familia','cuidado-personal-y-salud','pequeno-electro',false,'{}',13,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('limpiadores-faciales','Limpiadores faciales',null,'familia','cuidado-personal-y-salud','pequeno-electro',false,'{}',14,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('sets-de-manicura-y-pedicura','Sets de manicura y pedicura',null,'familia','cuidado-personal-y-salud','pequeno-electro',false,'{}',15,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('masajeadores-anticeluliticos','Masajeadores anticelulíticos',null,'familia','cuidado-personal-y-salud','pequeno-electro',false,'{}',16,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('hidromasaje-de-pies','Hidromasaje de pies',null,'familia','cuidado-personal-y-salud','pequeno-electro',false,'{}',17,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('salud-sexual','Salud sexual',null,'familia','cuidado-personal-y-salud','pequeno-electro',false,'{}',18,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('fitness-y-salud','Fitness y salud',null,'familia','cuidado-personal-y-salud','pequeno-electro',false,'{}',19,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('almohadillas-electricas','Almohadillas eléctricas',null,'familia','cuidado-personal-y-salud','pequeno-electro',false,'{}',20,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('calientacamas','Calientacamas',null,'familia','cuidado-personal-y-salud','pequeno-electro',false,'{}',21,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('calientapies','Calientapiés',null,'familia','cuidado-personal-y-salud','pequeno-electro',false,'{}',22,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('termometros','Termómetros',null,'familia','cuidado-personal-y-salud','pequeno-electro',false,'{}',23,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('humidificadores','Humidificadores',null,'familia','cuidado-personal-y-salud','pequeno-electro',false,'{}',24,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('esterilizadores-de-biberones','Esterilizadores de biberones',null,'familia','cuidado-personal-y-salud','pequeno-electro',false,'{}',25,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('biberones','Biberones',null,'familia','cuidado-personal-y-salud','pequeno-electro',false,'{}',26,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('calientabiberones','Calientabiberones',null,'familia','cuidado-personal-y-salud','pequeno-electro',false,'{}',27,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('chupetes','Chupetes',null,'familia','cuidado-personal-y-salud','pequeno-electro',false,'{}',28,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('sacaleches','Sacaleches',null,'familia','cuidado-personal-y-salud','pequeno-electro',false,'{}',29,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('cuidado-del-pecho','Cuidado del pecho',null,'familia','cuidado-personal-y-salud','pequeno-electro',false,'{}',30,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('vasos-para-bebe','Vasos para bebé',null,'familia','cuidado-personal-y-salud','pequeno-electro',false,'{}',31,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('vajilla-infantil','Vajilla infantil',null,'familia','cuidado-personal-y-salud','pequeno-electro',false,'{}',32,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('sets-para-bebe','Sets para bebé',null,'familia','cuidado-personal-y-salud','pequeno-electro',false,'{}',33,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('espejos-de-bano','Espejos de baño',null,'familia','cuidado-personal-y-salud','pequeno-electro',false,'{}',34,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('matamosquitos-electricos','Matamosquitos eléctricos',null,'familia','cuidado-personal-y-salud','pequeno-electro',false,'{}',35,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('molinillos-de-cafe','Molinillos de café',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',5,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('calientaleches','Calientaleches',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',6,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('espumadores-de-leche','Espumadores de leche',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',7,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('amasadoras','Amasadoras',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',8,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('picadoras','Picadoras',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',9,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('licuadoras','Licuadoras',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',10,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('exprimidores','Exprimidores',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',11,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('fondues-y-fuentes-de-chocolate','Fondues y fuentes de chocolate',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',12,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('hornos-para-pizza','Hornos para pizza',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',13,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('planchas-de-asar-y-grills-electricos','Planchas de asar y grills eléctricos',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',14,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('tostadoras','Tostadoras',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',15,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('panificadoras','Panificadoras',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',16,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('sandwicheras','Sandwicheras',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',17,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('cortafiambres','Cortafiambres',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',18,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('maquinas-de-perritos-calientes','Máquinas de perritos calientes',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',19,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('palomiteras-y-maquinas-de-algodon-de-azucar','Palomiteras y máquinas de algodón de azúcar',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',20,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('yogurteras','Yogurteras',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',21,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('gofreras-y-creperas','Gofreras y creperas',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',22,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('heladeras','Heladeras',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',23,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('coccion-al-vapor-y-a-baja-temperatura','Cocción al vapor y a baja temperatura',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',24,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('arroceras','Arroceras',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',25,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('cuecehuevos','Cuecehuevos',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',26,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('envasadoras-al-vacio','Envasadoras al vacío',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',27,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('molinillos-electricos-de-sal-y-pimienta','Molinillos eléctricos de sal y pimienta',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',28,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('picadoras-de-hielo','Picadoras de hielo',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',29,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('pasapures-electricos','Pasapurés eléctricos',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',30,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('cuchillos-electricos','Cuchillos eléctricos',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',31,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('afiladores-electricos','Afiladores eléctricos',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',32,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('abrelatas-electricos','Abrelatas eléctricos',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',33,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('encendedores-electricos','Encendedores eléctricos',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',34,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('basculas','Básculas',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',35,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('baterias-de-cocina','Baterías de cocina',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',36,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('ollas-cacerolas-y-cazos','Ollas, cacerolas y cazos',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',37,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('paelleras','Paelleras',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',38,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('planchas-de-asar-y-parrillas','Planchas de asar y parrillas',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',39,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('sartenes','Sartenes',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',40,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('woks','Woks',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',41,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('sets-de-cocina','Sets de cocina',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',42,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('fiambreras','Fiambreras',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',43,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('termos','Termos',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',44,'Termos de servicio (menaje), no termos eléctricos.');
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('teteras','Teteras',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',45,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('utensilios-de-cocina','Utensilios de cocina',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',46,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('carros-de-la-compra','Carros de la compra',null,'familia','hogar','pequeno-electro',false,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('complementos-de-cocina','Complementos de cocina',null,'familia','pequeno-electro-de-cocina','pequeno-electro',false,'{}',47,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('maquinas-de-coser','Máquinas de coser',null,'familia','hogar','pequeno-electro',false,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('toalleros-de-bano','Toalleros de baño',null,'familia','hogar','pequeno-electro',false,'{}',2,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('dosificadores-de-jabon','Dosificadores de jabón',null,'familia','hogar','pequeno-electro',false,'{}',3,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('herramientas-electricas','Herramientas eléctricas',null,'familia','jardin-y-bricolaje','pequeno-electro',false,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('robots-cortacesped','Robots cortacésped',null,'familia','jardin-y-bricolaje','pequeno-electro',false,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('cortacespedes','Cortacéspedes',null,'familia','jardin-y-bricolaje','pequeno-electro',false,'{}',2,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('bombas-de-agua','Bombas de agua',null,'familia','jardin-y-bricolaje','pequeno-electro',false,'{}',3,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('desbrozadoras','Desbrozadoras',null,'familia','jardin-y-bricolaje','pequeno-electro',false,'{}',4,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('cortasetos','Cortasetos',null,'familia','jardin-y-bricolaje','pequeno-electro',false,'{}',5,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('sopladores','Sopladores',null,'familia','jardin-y-bricolaje','pequeno-electro',false,'{}',6,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('linternas','Linternas',null,'familia','jardin-y-bricolaje','pequeno-electro',false,'{}',7,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('motosierras','Motosierras',null,'familia','jardin-y-bricolaje','pequeno-electro',false,'{}',8,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('tijeras-de-podar','Tijeras de podar',null,'familia','jardin-y-bricolaje','pequeno-electro',false,'{}',9,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('podadoras-electricas','Podadoras eléctricas',null,'familia','jardin-y-bricolaje','pequeno-electro',false,'{}',10,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('muebles-de-tv','Muebles de TV',null,'familia','hogar','pequeno-electro',false,'{}',4,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('sillas-gaming','Sillas gaming',null,'familia','muebles-gaming','pequeno-electro',false,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('mesas-gaming','Mesas gaming',null,'familia','muebles-gaming','pequeno-electro',false,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('colchones','Colchones',null,'familia','hogar','pequeno-electro',false,'{}',5,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('canapes','Canapés',null,'familia','hogar','pequeno-electro',false,'{}',6,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('patas-de-canape-y-somieres','Patas de canapé y somieres',null,'familia','hogar','pequeno-electro',false,'{}',7,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('soportes-de-tv-y-monitor','Soportes de TV y monitor',null,'familia','accesorios-de-television','television',false,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('mandos-a-distancia','Mandos a distancia',null,'familia','accesorios-de-television','television',false,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-tv','Accesorios para TV',null,'familia','accesorios-de-television','television',false,'{}',2,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-proyectores','Accesorios para proyectores',null,'familia','accesorios-de-television','television',false,'{}',3,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('objetivos','Objetivos',null,'familia','foto-y-video','tecnologia',false,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('lentes-y-filtros-fotograficos','Lentes y filtros fotográficos',null,'familia','foto-y-video','tecnologia',false,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('flashes','Flashes',null,'familia','foto-y-video','tecnologia',false,'{}',2,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-camaras','Accesorios para cámaras',null,'familia','foto-y-video','tecnologia',false,'{}',3,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-cafeteras','Accesorios para cafeteras',null,'familia','accesorios-de-pequeno-electro','pequeno-electro',false,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-depiladoras','Accesorios para depiladoras',null,'familia','accesorios-de-pequeno-electro','pequeno-electro',false,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-afeitadoras','Accesorios para afeitadoras',null,'familia','accesorios-de-pequeno-electro','pequeno-electro',false,'{}',2,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('cabezales-y-accesorios-dentales','Cabezales y accesorios dentales',null,'familia','accesorios-de-pequeno-electro','pequeno-electro',false,'{}',3,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-aspiradores','Accesorios para aspiradores',null,'familia','accesorios-de-pequeno-electro','pequeno-electro',false,'{}',4,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-planchas','Accesorios para planchas',null,'familia','accesorios-de-pequeno-electro','pequeno-electro',false,'{}',5,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('fundas-para-tablas-de-planchar','Fundas para tablas de planchar',null,'familia','accesorios-de-pequeno-electro','pequeno-electro',false,'{}',6,'MHD: «Accesorios para mesas de planchar»; casi todo son fundas (revisar).');
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-hidrolimpiadoras','Accesorios para hidrolimpiadoras',null,'familia','accesorios-de-pequeno-electro','pequeno-electro',false,'{}',7,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('limpieza-para-electronica','Limpieza para electrónica',null,'familia','accesorios-de-pequeno-electro','pequeno-electro',false,'{}',8,'MHD: «Mantenimiento y limpieza»: kits de limpieza y aire comprimido para electrónica.');
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-barbacoas','Accesorios para barbacoas',null,'familia','accesorios-de-pequeno-electro','pequeno-electro',false,'{}',9,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-robots-y-batidoras','Accesorios para robots y batidoras',null,'familia','accesorios-de-pequeno-electro','pequeno-electro',false,'{}',10,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-de-menaje','Accesorios de menaje',null,'familia','accesorios-de-pequeno-electro','pequeno-electro',false,'{}',11,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-de-salud-y-bienestar','Accesorios de salud y bienestar',null,'familia','accesorios-de-pequeno-electro','pequeno-electro',false,'{}',12,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-de-costura','Accesorios de costura',null,'familia','accesorios-de-pequeno-electro','pequeno-electro',false,'{}',13,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('auriculares','Auriculares',null,'familia','audio','tecnologia',true,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('altavoces','Altavoces',null,'familia','audio','tecnologia',true,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('smartphones','Smartphones',null,'familia','telefonia','tecnologia',true,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('telefonos-inalambricos','Teléfonos inalámbricos',null,'familia','telefonia','tecnologia',true,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('portatiles','Portátiles',null,'familia','informatica','tecnologia',true,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('ordenadores-de-sobremesa','Ordenadores de sobremesa',null,'familia','informatica','tecnologia',true,'{}',2,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('tablets','Tablets',null,'familia','informatica','tecnologia',true,'{}',3,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('impresoras','Impresoras',null,'familia','informatica','tecnologia',true,'{}',4,'Las impresoras de tickets van a TPV por la decisión 7.');
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('consolas','Consolas',null,'familia','gaming','tecnologia',true,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('bicicletas-electricas','Bicicletas eléctricas',null,'familia','movilidad','tecnologia',true,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('patinetes-electricos','Patinetes eléctricos',null,'familia','movilidad','tecnologia',true,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('altavoces-inteligentes','Altavoces inteligentes',null,'familia','hogar-inteligente-y-relojes','tecnologia',true,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('smartwatches','Smartwatches',null,'familia','hogar-inteligente-y-relojes','tecnologia',true,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('videovigilancia','Videovigilancia',null,'familia','hogar-inteligente-y-relojes','tecnologia',true,'{}',2,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('packs-de-altavoces','Packs de altavoces',null,'familia','audio','tecnologia',false,'{}',2,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('home-cinema','Home cinema',null,'familia','audio','tecnologia',false,'{}',3,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('equipos-de-musica','Equipos de música',null,'familia','audio','tecnologia',false,'{}',4,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('receptores-av','Receptores AV',null,'familia','audio','tecnologia',false,'{}',5,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('amplificadores','Amplificadores',null,'familia','audio','tecnologia',false,'{}',6,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('reproductores-de-audio-hi-fi','Reproductores de audio hi-fi',null,'familia','audio','tecnologia',false,'{}',7,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('tocadiscos','Tocadiscos',null,'familia','audio','tecnologia',false,'{}',8,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('mesas-de-mezclas','Mesas de mezclas',null,'familia','audio','tecnologia',false,'{}',9,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('radios','Radios',null,'familia','audio','tecnologia',false,'{}',10,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('radios-cd-y-radiocasetes','Radios CD y radiocasetes',null,'familia','audio','tecnologia',false,'{}',11,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('reproductores-mp3-y-mp4','Reproductores MP3 y MP4',null,'familia','audio','tecnologia',false,'{}',12,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('transmisores-fm','Transmisores FM',null,'familia','audio','tecnologia',false,'{}',13,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('radiodespertadores','Radiodespertadores',null,'familia','audio','tecnologia',false,'{}',14,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('despertadores','Despertadores',null,'familia','audio','tecnologia',false,'{}',15,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('radios-y-multimedia-para-coche','Radios y multimedia para coche',null,'familia','audio','tecnologia',false,'{}',16,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('senalizacion-para-coche','Señalización para coche',null,'familia','audio','tecnologia',false,'{}',17,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('microfonos','Micrófonos',null,'familia','audio','tecnologia',false,'{}',18,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('megafonos','Megáfonos',null,'familia','audio','tecnologia',false,'{}',19,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('smartphones-reacondicionados','Smartphones reacondicionados',null,'familia','telefonia','tecnologia',false,'{}',2,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('telefonos-fijos','Teléfonos fijos',null,'familia','telefonia','tecnologia',false,'{}',3,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('telefonos-voip','Teléfonos VoIP',null,'familia','telefonia','tecnologia',false,'{}',4,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('walkie-talkies','Walkie-talkies',null,'familia','telefonia','tecnologia',false,'{}',5,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('portatiles-reacondicionados','Portátiles reacondicionados',null,'familia','informatica','tecnologia',false,'{}',5,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('discos-duros-externos','Discos duros externos',null,'familia','informatica','tecnologia',false,'{}',6,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('tarjetas-de-memoria','Tarjetas de memoria',null,'familia','informatica','tecnologia',false,'{}',7,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('lectores-de-tarjetas','Lectores de tarjetas',null,'familia','informatica','tecnologia',false,'{}',8,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('memorias-usb','Memorias USB',null,'familia','informatica','tecnologia',false,'{}',9,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('grabadoras-de-cd-dvd-y-blu-ray','Grabadoras de CD, DVD y Blu-ray',null,'familia','informatica','tecnologia',false,'{}',10,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('pda','PDA',null,'familia','informatica','tecnologia',false,'{}',11,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('tpv','TPV',null,'familia','informatica','tecnologia',false,'{}',12,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('ebooks','eBooks',null,'familia','informatica','tecnologia',false,'{}',13,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('plotters','Plotters',null,'familia','informatica','tecnologia',false,'{}',14,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('ratones','Ratones',null,'familia','informatica','tecnologia',false,'{}',15,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('teclados','Teclados',null,'familia','informatica','tecnologia',false,'{}',16,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('packs-de-teclado-y-raton','Packs de teclado y ratón',null,'familia','informatica','tecnologia',false,'{}',17,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('escaneres','Escáneres',null,'familia','informatica','tecnologia',false,'{}',18,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('lectores-de-dni-electronico','Lectores de DNI electrónico',null,'familia','informatica','tecnologia',false,'{}',19,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('contadores-y-detectores-de-billetes','Contadores y detectores de billetes',null,'familia','informatica','tecnologia',false,'{}',20,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('lectores-de-codigo-de-barras','Lectores de código de barras',null,'familia','informatica','tecnologia',false,'{}',21,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('grabadoras-de-voz','Grabadoras de voz',null,'familia','informatica','tecnologia',false,'{}',22,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('destructoras-de-papel','Destructoras de papel',null,'familia','informatica','tecnologia',false,'{}',23,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('sai','SAI',null,'familia','informatica','tecnologia',false,'{}',24,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('software','Software',null,'familia','informatica','tecnologia',false,'{}',25,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('adaptadores-plc','Adaptadores PLC',null,'familia','informatica','tecnologia',false,'{}',26,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('repetidores-y-sistemas-wifi-mesh','Repetidores y sistemas wifi mesh',null,'familia','informatica','tecnologia',false,'{}',27,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('routers','Routers',null,'familia','informatica','tecnologia',false,'{}',28,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('modems','Módems',null,'familia','informatica','tecnologia',false,'{}',29,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('switches-y-hubs','Switches y hubs',null,'familia','informatica','tecnologia',false,'{}',30,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('servidores-y-nas','Servidores y NAS',null,'familia','informatica','tecnologia',false,'{}',31,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('adaptadores-bluetooth','Adaptadores Bluetooth',null,'familia','informatica','tecnologia',false,'{}',32,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('calculadoras','Calculadoras',null,'familia','informatica','tecnologia',false,'{}',33,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('videojuegos','Videojuegos',null,'familia','gaming','tecnologia',false,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('robotica-educativa','Robótica educativa',null,'familia','gaming','tecnologia',false,'{}',2,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('joysticks','Joysticks',null,'familia','gaming','tecnologia',false,'{}',3,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('volantes-gaming','Volantes gaming',null,'familia','gaming','tecnologia',false,'{}',4,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('motos-electricas','Motos eléctricas',null,'familia','movilidad','tecnologia',false,'{}',2,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('aire-libre','Aire libre',null,'familia','movilidad','tecnologia',false,'{}',3,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('relojes-gps-deportivos','Relojes GPS deportivos',null,'familia','movilidad','tecnologia',false,'{}',4,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('navegadores-gps','Navegadores GPS',null,'familia','movilidad','tecnologia',false,'{}',5,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('localizadores-gps','Localizadores GPS',null,'familia','movilidad','tecnologia',false,'{}',6,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('anillos-inteligentes','Anillos inteligentes',null,'familia','hogar-inteligente-y-relojes','tecnologia',false,'{}',3,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('pulseras-de-actividad','Pulseras de actividad',null,'familia','hogar-inteligente-y-relojes','tecnologia',false,'{}',4,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('sensores-y-cerraduras-inteligentes','Sensores y cerraduras inteligentes',null,'familia','hogar-inteligente-y-relojes','tecnologia',false,'{}',5,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('comederos-y-bebederos-para-mascotas','Comederos y bebederos para mascotas',null,'familia','hogar-inteligente-y-relojes','tecnologia',false,'{}',6,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('iluminacion-inteligente','Iluminación inteligente',null,'familia','hogar-inteligente-y-relojes','tecnologia',false,'{}',7,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('enchufes-inteligentes','Enchufes inteligentes',null,'familia','hogar-inteligente-y-relojes','tecnologia',false,'{}',8,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('camaras-de-fotos','Cámaras de fotos',null,'familia','foto-y-video','tecnologia',false,'{}',4,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('videocamaras','Videocámaras',null,'familia','foto-y-video','tecnologia',false,'{}',5,'MHD mete aquí grabadores de vigilancia y cámaras de videoconferencia: por la decisión 7 van a Videovigilancia y Webcams.');
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('camaras-deportivas','Cámaras deportivas',null,'familia','foto-y-video','tecnologia',false,'{}',6,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('webcams','Webcams',null,'familia','foto-y-video','tecnologia',false,'{}',7,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('prismaticos','Prismáticos',null,'familia','foto-y-video','tecnologia',false,'{}',8,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('marcos-digitales','Marcos digitales',null,'familia','foto-y-video','tecnologia',false,'{}',9,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-de-audio','Accesorios de audio',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',0,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('cables','Cables',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',1,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('distribuidores-hdmi','Distribuidores HDMI',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',2,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('adaptadores','Adaptadores',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',3,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('cargadores','Cargadores',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',4,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('regletas','Regletas',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',5,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('pilas','Pilas',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',6,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('baterias-externas-powerbank','Baterías externas (powerbank)',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',7,'Casi todo son baterías externas (powerbank).');
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('armarios-rack-y-accesorios-de-red','Armarios rack y accesorios de red',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',8,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-impresoras','Accesorios para impresoras',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',9,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-plotters','Accesorios para plotters',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',10,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('fundas-y-accesorios-para-tablets','Fundas y accesorios para tablets',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',11,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-ebooks','Accesorios para eBooks',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',12,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-consolas','Accesorios para consolas',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',13,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('ventiladores-y-refrigeracion-para-pc','Ventiladores y refrigeración para PC',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',14,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('punteros','Punteros',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',15,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('papel-fotografico','Papel fotográfico',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',16,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('toner','Tóner',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',17,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('cintas-para-impresora','Cintas para impresora',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',18,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('cartuchos-de-tinta','Cartuchos de tinta',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',19,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('discos-virgenes','Discos vírgenes',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',20,'MHD mete aquí SSD y discos duros: por la decisión 7 van a «Discos duros internos y SSD»; aquí quedan los discos vírgenes.');
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('cafes-e-infusiones','Cafés e infusiones',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',21,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('filtros-de-agua','Filtros de agua',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',22,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('filtros-para-aspiradores','Filtros para aspiradores',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',23,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('bolsas-para-aspiradores','Bolsas para aspiradores',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',24,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('bolsas-y-rollos-para-envasar-al-vacio','Bolsas y rollos para envasar al vacío',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',25,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('memoria-ram','Memoria RAM',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',26,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('discos-duros-internos-y-ssd','Discos duros internos y SSD',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',27,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('placas-base','Placas base',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',28,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('grabadoras-internas','Grabadoras internas',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',29,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('fuentes-de-alimentacion','Fuentes de alimentación',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',30,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('procesadores','Procesadores',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',31,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('grabadoras-externas','Grabadoras externas',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',32,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('tarjetas-de-red','Tarjetas de red',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',33,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('sintonizadoras-de-tv-para-pc','Sintonizadoras de TV para PC',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',34,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('tarjetas-de-sonido','Tarjetas de sonido',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',35,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('tarjetas-graficas','Tarjetas gráficas',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',36,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('disqueteras','Disqueteras',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',37,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('cajas-de-ordenador','Cajas de ordenador',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',38,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('cajas-para-discos-duros','Cajas para discos duros',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',39,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('antenas-y-adaptadores-wifi','Antenas y adaptadores wifi',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',40,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-antenas-de-tv','Accesorios para antenas de TV',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',41,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('manos-libres','Manos libres',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',42,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-moviles','Accesorios para móviles',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',43,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('protectores-de-pantalla','Protectores de pantalla',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',44,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('correas-y-accesorios-para-smartwatch','Correas y accesorios para smartwatch',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',45,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-de-movilidad-urbana','Accesorios de movilidad urbana',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',46,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('accesorios-para-gps-y-coche','Accesorios para GPS y coche',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',47,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('fundas-para-moviles','Fundas para móviles',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',48,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('fundas-y-maletines-para-portatiles','Fundas y maletines para portátiles',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',49,null);
-insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) values ('mochilas-para-portatiles','Mochilas para portátiles',null,'familia','accesorios-y-componentes','tecnologia',false,'{}',50,null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('H0101','Frigoríficos Combinados','frigorificos-combi',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('H0110','Frigorificos Americanos y Side By Side','frigorificos-americanos-y-side-by-side',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('H0115','Frigoríficos 2 Puertas','frigorificos-de-2-puertas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('H0120','Frigoríficos 1 Puerta','frigorificos-de-1-puerta',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('H4001','Congelador Horizontal','arcones-congeladores','Revisar si se prefiere «Arcones congeladores».');
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('H4010','Congelador Vertical','congeladores-verticales',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('H5001','Vinotecas y Armarios Bodega','vinotecas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('H5010','Frigoríficos Cerveceros','frigorificos-cerveceros',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('H5015','Enfriador de botellas','enfriadores-de-botellas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S5510','Accesorios para Frigoríficos y Congeladores','accesorios-para-frigorificos-y-congeladores',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('G0101','Lavadora','lavadoras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('G2001','Lavasecadora','lavadoras-secadoras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('G4001','Lavavajillas','lavavajillas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('G6001','Secadora de ropa','secadoras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('G9010','Centrifugadora de ropa','centrifugadoras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S5001','Accesorios para Lavadoras','accesorios-para-lavadoras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S5010','Accesorios para Lavavajillas','accesorios-para-lavavajillas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S5020','Accesorios para Secadoras','accesorios-para-secadoras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S5080','Accesorios Portacubiertos','cestas-para-cubiertos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S5090','Accesorios Productos Limpieza','productos-de-limpieza-para-electrodomesticos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('I0101','Horno Independiente','hornos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('I0110','Horno Compacto','hornos-compactos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('I1001','Microondas','microondas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('I1010','Microondas Integrable','microondas-integrables',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('I2001','Placa de Inducción','placas-de-induccion',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('I2010','Placa Vitrocerámica','placas-vitroceramicas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('I2020','Placa a Gas','placas-de-gas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('I7501','Campana Extractora','campanas-extractoras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('I8001','Fregadero de cocina','fregaderos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('I8501','Grifo de Cocina','grifos-de-cocina',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('I9001','Cocina a Gas o Electrica','cocinas-de-gas-y-electricas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('I0115','Horno a Gas','hornos-de-gas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('I0120','Horno Polivalente','hornos-polivalentes',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('I0130','Horno Sin Instalación o Sobremesa','hornos-de-sobremesa',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('I2050','Placa Polivalente','placas-polivalentes',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('I2060','Placas de Cocción Mixtas','placas-mixtas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('I6001','Teppanyaki','teppanyaki',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('I6005','Módulos de integración','modulos-de-integracion',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('I6010','Modulo de Calentamiento','cajones-calientaplatos','«Módulo de calentamiento»: cajones calientaplatos (revisar con los productos).');
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('I6501','Cafetera de Integración','cafeteras-integrables',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('I7001','Conjunto de Cocción (Horno y Placa)','conjuntos-de-horno-y-placa',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('I7510','Extractor de cocina o baño','extractores-de-cocina-y-bano',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('I8010','Pack de Fregadero y Grifo (KIT)','packs-de-fregadero-y-grifo',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('I8510','Grifo de Baño','grifos-de-bano',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('I8701','Triturador de alimentos para fregaderos','trituradores-de-residuos-para-fregadero',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('I9005','Barbacoa a Gas','barbacoas-de-gas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('I9010','Hornillo de Cocina','hornillos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S6001','Accesorios para Hornos','accesorios-para-hornos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S6005','Accesorios para Microondas','accesorios-para-microondas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S6010','Accesorios para Placas','accesorios-para-placas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S6060','Cubre Encimeras','cubreencimeras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S6070','Accesorios para Campanas','accesorios-para-campanas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S6201','Accesorios para Fregaderos y Grifos','accesorios-para-fregaderos-y-grifos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('K0101','Aire Acondicionado de Instalación','aire-acondicionado',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('K0110','Aire Acondicionado Portátil','aire-acondicionado-portatil',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('K1001','Ventilador de Aire','ventiladores',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('K1501','Climatizadores','climatizadores-evaporativos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('K2501','Deshumidificador','deshumidificadores',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('K3501','Radiador de Aceite','radiadores-de-aceite',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('K5501','Emisor Térmico eléctrico','emisores-termicos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('K8001','Calentador a Gas','calentadores-de-gas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('K8501','Caldera a Gas','calderas-de-gas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('K9001','Termo de Agua Caliente','termos-electricos','Termos de agua caliente eléctricos.');
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C0501','Purificador Aire Ionizador Ozonificador','purificadores-de-aire',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C0520','Jarra Purificadora de Agua','jarras-purificadoras-de-agua',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C0560','Dispensador de Agua','dispensadores-de-agua',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C0570','Ambientador de Aire','ambientadores',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('K2001','Termoventiladores','termoventiladores',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('K3001','Estufas','estufas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('K4001','Calefactores eléctricos','calefactores-electricos','Radiadores, toalleros, calientacamas… van a su colección por la decisión 7.');
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('K4201','Braseros Eléctricos','braseros-electricos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('K4501','Convector Mural eléctrico','convectores',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('K5001','Placa Eléctrica a Radiación','paneles-radiantes','MHD: «Placa eléctrica a radiación».');
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('K6501','Secatoallas eléctrico','toalleros-electricos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('K7101','Termos de Energía Solar y Térmica','termos-solares',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('K7115','Captadores Solares','captadores-solares',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('K7120','Grupo Solar','grupos-solares',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('K7140','Pack Solar (KIT)','kits-solares',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('K8510','Caldera Mixta Agua y Calefacción','calderas-mixtas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('K9510','Reloj Programador','programadores-horarios',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('K9520','Estaciones Meteorológicas','estaciones-meteorologicas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S9010','Accesorios para Calentadores','accesorios-para-calentadores',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S9015','Accesorios para Calderas','accesorios-para-calderas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S9018','Accesorios para Termos de Agua Caliente','accesorios-para-termos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S9020','Accesorios para Aire Acondicionado','accesorios-para-aire-acondicionado',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S9025','Accesorios para Climatización','accesorios-de-climatizacion',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S9028','Accesorios para Ventiladores','accesorios-para-ventiladores',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S9030','Accesorios para Radiadores y Emisores','accesorios-para-radiadores-y-emisores',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S9040','Accesorios para Purificadores','accesorios-para-purificadores',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('10101','Televisor (TV)','televisores',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('10501','Proyector de Imagen','proyectores',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('21501','Barras de Sonido TV','barras-de-sonido',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('10601','Monitores y Pantallas','monitores','Decisión 5: su sitio pasa a Tecnología › Informática y sale en el menú; también se ve desde Televisión.');
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('10610','Video Wall','videowalls',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('10620','Pantalla Táctil','pantallas-tactiles',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('10630','Pantalla de Proyección','pantallas-de-proyeccion',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('10701','Reproductores TDT e Internet TV set-top box','tv-box-y-sticks-de-tv',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('10710','Receptor Satélite','receptores-de-satelite',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('10715','Receptor Combo TDT y Satélite','receptores-tdt-y-satelite',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('10801','Reproductor o Grabador DVD y BluRay','reproductores-de-dvd-y-blu-ray',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('10901','Visor Personal','gafas-de-realidad-virtual','MHD lo llama «Visor personal»: son gafas de realidad virtual (revisar con los productos).');
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('11501','Antena Portátil TV','antenas-de-tv-portatiles','Las antenas de red (Ubiquiti) van a redes por la decisión 7.');
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('11510','Antena Fija TV','antenas-de-tv-fijas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('11515','Antena Parabólica TV','antenas-parabolicas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('A0101','Robot Aspirador','robots-aspiradores',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('A0115','Aspirador','aspiradores',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('A1001','Hidrolimpiadora','hidrolimpiadoras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('A2001','Centro de Planchado y Planchado Vertical','centros-de-planchado-y-planchas-verticales',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('A2010','Plancha de ropa','planchas-de-ropa',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B0101','Secador de Pelo','secadores-de-pelo',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B0110','Plancha de Pelo','planchas-de-pelo',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B0501','Depiladoras','depiladoras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B0510','Afeitadora','afeitadoras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B1001','Cepillo Dental','cepillos-de-dientes-electricos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B1530','Tensiómetro','tensiometros',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B1580','Manta Eléctrica','mantas-electricas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B2001','Vigilabebés','vigilabebes',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C0101','Cafeteras','cafeteras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C0150','Hervidor de Agua','hervidores-de-agua',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1001','Robot de Cocina','robots-de-cocina',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1002','Batidora eléctrica','batidoras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1010','Freidoras','freidoras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('A0190','Vaporeta','vaporetas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('A0510','Fregona Eléctrica','fregonas-electricas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('A2020','Planchadora Horizontal','planchadoras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('A2030','Mesa de Planchar','tablas-de-planchar',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('A2040','Quitapelusas','quitapelusas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('A4001','Limpia Cristales Eléctrico','limpiacristales',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B0120','Moldeador Rizador de Pelo','moldeadores-y-rizadores-de-pelo',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B0505','Recortador de Bikini','recortadoras-de-bikini',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B0515','Cortapelos','cortapelos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B0520','Barberos','recortadoras-de-barba','MHD: «Barberos».');
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B0530','Recortador de Nariz y Oídos','recortadoras-de-nariz-y-orejas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B1010','Irrigadores','irrigadores-dentales',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B1501','Limpieza Facial','limpiadores-faciales',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B1510','Set de Manicura y Pedicura','sets-de-manicura-y-pedicura',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B1520','Masaje Anticelulíticos','masajeadores-anticeluliticos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B1525','Hidromasaje','hidromasaje-de-pies',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B1528','Salud Sexual','salud-sexual',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B1540','Fitness Salud','fitness-y-salud',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B1575','Almohadillas Eléctricas','almohadillas-electricas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B1585','Calientacamas y Cubrecamas','calientacamas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B1590','Calientapiés','calientapies',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B2005','Termómetro','termometros',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B2010','Humidificador','humidificadores',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B2015','Esterilizador','esterilizadores-de-biberones',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B2050','Biberones','biberones',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B2055','Calienta Biberones','calientabiberones',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B2060','Chupetes','chupetes',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B2070','Extractor de Leche materna','sacaleches',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B2072','Cuidado Del Pecho y Pezones','cuidado-del-pecho',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B2080','Vaso para Bebé','vasos-para-bebe',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B2085','Hora de Comer (Bebes)','vajilla-infantil',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B2090','Set Básico para Bebes','sets-para-bebe',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B9001','Espejos de Baño','espejos-de-bano',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('B9501','Mata Insectos Eléctrico','matamosquitos-electricos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C0130','Molinillos de Café','molinillos-de-cafe',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C0135','Calienta leches y Multibebidas','calientaleches',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C0140','Batidor de Leche','espumadores-de-leche',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1005','Amasadoras eléctrica','amasadoras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1007','Picadora eléctrica','picadoras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1008','Licuadora eléctrica','licuadoras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1009','Exprimidor eléctrico','exprimidores',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1015','Fondues eléctricas y fuentes de chocolate','fondues-y-fuentes-de-chocolate',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1018','Pizzeras eléctricas','hornos-para-pizza',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1020','Plancha de Asados y Grill eléctricos','planchas-de-asar-y-grills-electricos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1021','Tostadoras eléctricas','tostadoras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1022','Panificadoras eléctricas','panificadoras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1023','Sandwichera eléctrica','sandwicheras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1025','Cortafiambres eléctrico','cortafiambres',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1030','Perritos Calientes','maquinas-de-perritos-calientes',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1035','Palomitero eléctrico y Maquina Algodon Azucar','palomiteras-y-maquinas-de-algodon-de-azucar',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1045','Yogurtera eléctrica','yogurteras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1050','Gofreras y Creperas eléctricas','gofreras-y-creperas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1055','Heladera eléctrica','heladeras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1060','Cocina Al Vapor y Baja Temperatura','coccion-al-vapor-y-a-baja-temperatura',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1065','Hervidor de Arroz eléctrico','arroceras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1070','Cuece Huevos eléctrico','cuecehuevos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1072','Envasadora de Vacío','envasadoras-al-vacio',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1075','Molinillo Sal y Pimienta eléctricos','molinillos-electricos-de-sal-y-pimienta',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1076','Triturador de Hielo eléctrico','picadoras-de-hielo',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1077','Pasapurés eléctrico','pasapures-electricos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1080','Cuchillos de Cocina Eléctricos','cuchillos-electricos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1085','Afilador Eléctrico','afiladores-electricos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1090','Abrelatas Eléctricos','abrelatas-electricos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C1095','Encendedor Eléctrico','encendedores-electricos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C2001','Básculas','basculas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C3001','Batería de Cocina','baterias-de-cocina',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C3005','Ollas, Cacerolas y Cazos','ollas-cacerolas-y-cazos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C3010','Paelleras','paelleras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C3020','Plancha de Asados y Grill menaje','planchas-de-asar-y-parrillas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C3030','Sartén','sartenes',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C3040','Wok Menaje','woks',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C3050','Set de Cocina','sets-de-cocina',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C3060','Fiambrera','fiambreras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C3085','Termos de Servicio Menaje','termos','Termos de servicio (menaje), no termos eléctricos.');
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C3087','Tetera Menaje','teteras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C3090','Utensilio de Cocina','utensilios-de-cocina',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C5001','Carritos de la Compra','carros-de-la-compra',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C5010','Complemento para la Cocina','complementos-de-cocina',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C6001','Maquina de Coser eléctrica','maquinas-de-coser',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C6505','Toallero de Baño','toalleros-de-bano',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('C6510','Dosificador de Jabón','dosificadores-de-jabon',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('L0101','Herramienta Eléctrica','herramientas-electricas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('L5001','Robot Cortacésped','robots-cortacesped',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('L5002','Cortacésped','cortacespedes',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('L5020','Electrobombas','bombas-de-agua',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('L5025','Desbrozadoras','desbrozadoras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('L5030','Cortasetos','cortasetos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('L5035','Sopladores','sopladores',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('L5040','Hidrolimpiadoras','hidrolimpiadoras','Se une a A1001 (decisión 2026-10-26): MHD tiene las hidrolimpiadoras en dos subfamilias; los dos códigos apuntan a la misma colección.');
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('L5090','Linterna','linternas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('L6001','Motosierras','motosierras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('L6015','Tijeras de Poda','tijeras-de-podar',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('L6017','Minimotosierra de Poda','podadoras-electricas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('M0101','Muebles TV','muebles-de-tv',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('M2001','Silla Gamer','sillas-gaming',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('M2050','Mesa Gaming','mesas-gaming',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('M6001','Colchones','colchones',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('M6005','Canapé','canapes',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('M6090','Patas de Canapé y Tapiflex','patas-de-canape-y-somieres',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S0101','Soportes','soportes-de-tv-y-monitor',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S0301','Mando a Distancia','mandos-a-distancia',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S0601','Accesorio para TV','accesorios-para-tv',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S0701','Accesorio para Proyectores','accesorios-para-proyectores',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S0901','Objetivos para cámaras','objetivos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S0910','Lentes y Filtros para cámaras','lentes-y-filtros-fotograficos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S0915','Antorchas y Flashes para cámaras','flashes',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S0920','Accesorios genéricos para Cámaras','accesorios-para-camaras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S6501','Accesorios para Cafeteras','accesorios-para-cafeteras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S6701','Accesorios para Depiladoras','accesorios-para-depiladoras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S6710','Accesorios para Afeitadoras','accesorios-para-afeitadoras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S6901','Accesorios para Dentales','cabezales-y-accesorios-dentales',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S7001','Accesorios para Aspirador','accesorios-para-aspiradores',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S7010','Accesorios para Planchas','accesorios-para-planchas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S7015','Accesorios para Mesas de Planchar','fundas-para-tablas-de-planchar','MHD: «Accesorios para mesas de planchar»; casi todo son fundas (revisar).');
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S7090','Accesorios para Limpieza Alta Presión','accesorios-para-hidrolimpiadoras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S7095','Mantenimiento y Limpieza','limpieza-para-electronica','MHD: «Mantenimiento y limpieza»: kits de limpieza y aire comprimido para electrónica.');
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S7501','Accesorios para Grill Barbacoa','accesorios-para-barbacoas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S7510','Accesorios para Elaboración de Alimentos','accesorios-para-robots-y-batidoras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S8501','Accesorio para Menaje','accesorios-de-menaje',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S8801','Accesorios para Salud y Bienestar','accesorios-de-salud-y-bienestar',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S9101','Accesorios para Costura','accesorios-de-costura',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('20110','Auriculares','auriculares',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('21001','Altavoces HiFi','altavoces',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('30101','Teléfono Móvil Smartphone','smartphones',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('30120','Teléfono Inalámbrico Dect','telefonos-inalambricos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('40101','Pc Portátil','portatiles',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('40110','Pc Sobremesa','ordenadores-de-sobremesa',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('41001','Tablet','tablets',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('43001','Impresora','impresoras','Las impresoras de tickets van a TPV por la decisión 7.');
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('50101','Consola de Videojuegos','consolas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('60501','Bicicletas Eléctricas (eBike)','bicicletas-electricas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('61001','Patinetes y Scooter Eléctricos','patinetes-electricos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('70101','Asistentes Domóticos','altavoces-inteligentes',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('70501','Relojes inteligentes Smartwatch','smartwatches',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('75015','Video Vigilancia Domótica','videovigilancia',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('21010','Packs altavoces HiFi (KIT)','packs-de-altavoces',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('21510','Home Cinema','home-cinema',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('22001','Sistema HiFi Compacto','equipos-de-musica',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('23001','Receptor Audio Video HiFi Hi End','receptores-av',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('23010','Amplificador HiFi Hi End','amplificadores',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('23018','Reproductor Audio HiFi Hi End','reproductores-de-audio-hi-fi',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('23030','Giradiscos HiFi Hi End','tocadiscos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('23501','Mesas de mezclas','mesas-de-mezclas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('24001','Radio','radios',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('24010','Radio CD y Radio Cassette','radios-cd-y-radiocasetes',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('24020','Reproductor Multimedia','reproductores-mp3-y-mp4',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('24075','Transmisor FM','transmisores-fm',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('25001','Radio Relojes Despertadores','radiodespertadores',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('25010','Reloj Despertador analógico','despertadores',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('26001','Radio y Sistemas Multimedia para Coche','radios-y-multimedia-para-coche',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('26005','Elementos Señalización Coche','senalizacion-para-coche',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('27001','Micrófono','microfonos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('27010','Megáfonos','megafonos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('30110','Teléfono Móvil Reacondicionado','smartphones-reacondicionados',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('30130','Teléfono Sobremesa','telefonos-fijos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('30150','Teléfono Por Internet (VoIP)','telefonos-voip',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('38001','Walkie Talkie','walkie-talkies',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('40102','Pc Portátil Reacondicionado','portatiles-reacondicionados',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('40501','Disco Duro Portátil','discos-duros-externos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('40801','Tarjeta de Memoria','tarjetas-de-memoria',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('40810','Multilector de Tarjetas','lectores-de-tarjetas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('40815','Memoria USB','memorias-usb',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('40910','Unidad CD, DVD o Blu-Ray para PC','grabadoras-de-cd-dvd-y-blu-ray',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('41010','PDA','pda',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('41015','TPV','tpv',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('42001','Libro Electrónico (eBook)','ebooks',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('43060','Plóter','plotters',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('43501','Ratones','ratones',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('43515','Teclados','teclados',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('43520','Pack Teclado + Ratón (KIT)','packs-de-teclado-y-raton',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('44501','Escáner','escaneres',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('44510','Lector Digital de DNI','lectores-de-dni-electronico',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('44520','Lector de Monedas y Billetes','contadores-y-detectores-de-billetes',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('44525','Lector de Código de Barras','lectores-de-codigo-de-barras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('45001','Grabadora de Voz','grabadoras-de-voz',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('45501','Destructora de Papel','destructoras-de-papel',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('46001','Alimentación Ininterrumpida (SAI)','sai',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('48001','Programas Software','software',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('48501','Repartidor Red Eléctrica PLC','adaptadores-plc',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('48505','Wifi Links','repetidores-y-sistemas-wifi-mesh',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('48510','Rúter','routers',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('48515','Modem Informático','modems',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('48520','Hub Switch','switches-y-hubs',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('48560','Servidores Informáticos','servidores-y-nas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('48590','Adaptador Bluetooth USB','adaptadores-bluetooth',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('49010','Calculadoras','calculadoras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('50150','Videojuegos','videojuegos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('51001','Juguetes Robots y Robótica','robotica-educativa',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('51010','Joystick','joysticks',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('51020','Volante Gaming','volantes-gaming',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('60101','Motos Eléctricas','motos-electricas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('64001','Aire Libre (Outdoor)','aire-libre',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('65001','GPS Deportivos','relojes-gps-deportivos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('65010','Navegadores GPS','navegadores-gps',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('65030','Localizadores GPS','localizadores-gps',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('70510','Anillos inteligentes','anillos-inteligentes',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('70520','Pulseras de Actividad','pulseras-de-actividad',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('75010','Seguridad Domótica','sensores-y-cerraduras-inteligentes',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('76010','Comederos y bebederos Mascotas','comederos-y-bebederos-para-mascotas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('79001','Iluminación Domótica Smart Home','iluminacion-inteligente',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('79010','Energía Domótica Smart Home','enchufes-inteligentes',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('90101','Cámara Fotográfica','camaras-de-fotos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('90501','Videocámaras','videocamaras','MHD mete aquí grabadores de vigilancia y cámaras de videoconferencia: por la decisión 7 van a Videovigilancia y Webcams.');
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('91001','Cámara Deportiva y Acción','camaras-deportivas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('92501','WebCam','webcams',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('94010','Prismáticos','prismaticos',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('99001','Marco Digital de Fotografía','marcos-digitales',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S1001','Accesorio para Audio e HiFi','accesorios-de-audio',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S1501','Cables','cables',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S1505','Distribuidor HDMI','distribuidores-hdmi',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S1515','Adaptador de Conexiones','adaptadores',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S1520','Cargador de Corriente','cargadores',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S1525','Regletas Smart de Corriente','regletas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S2001','Pilas','pilas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S2005','Baterías de Energía','baterias-externas-powerbank','Casi todo son baterías externas (powerbank).');
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S2501','Accesorios Informáticos y Videojuegos','armarios-rack-y-accesorios-de-red',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S2515','Accesorio para Impresoras','accesorios-para-impresoras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S2518','Accesorios para Plóter','accesorios-para-plotters',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S2520','Accesorio para Tablet y PDA','fundas-y-accesorios-para-tablets',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S2530','Accesorio para Libros Electrónicos','accesorios-para-ebooks',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S2540','Accesorios para Consolas de Videojuegos','accesorios-para-consolas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S2570','Refrigerador para Pc Portátil','ventiladores-y-refrigeracion-para-pc',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S2590','Accesorio Puntero','punteros',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S2801','Papel Fotográfico','papel-fotografico',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S2810','Tóner para Impresoras','toner',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S2815','Cinta para Impresora Matricial','cintas-para-impresora',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S2820','Cartucho para Impresoras','cartuchos-de-tinta',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S2825','Discos CD y Blu Ray','discos-virgenes','MHD mete aquí SSD y discos duros: por la decisión 7 van a «Discos duros internos y SSD»; aquí quedan los discos vírgenes.');
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S2850','Cafés y Tés','cafes-e-infusiones',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S2870','Filtro de Agua','filtros-de-agua',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S2873','Filtro de Aspirador','filtros-para-aspiradores',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S2875','Bolsas de Aspirador','bolsas-para-aspiradores',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S2880','Consumibles para Maquina de Vacío','bolsas-y-rollos-para-envasar-al-vacio',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S3001','Ampliaciones de Memoria','memoria-ram',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S3005','Disco Duro Integración','discos-duros-internos-y-ssd',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S3010','Placa Base de Integración para PC','placas-base',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S3012','Grabadora Pc para integración','grabadoras-internas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S3015','Fuente de Alimentación PC','fuentes-de-alimentacion',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S3020','Procesador Pc de Integración','procesadores',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S3025','Grabadora Externa para PC','grabadoras-externas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S3030','Tarjeta de Red para PC','tarjetas-de-red',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S3035','Tarjeta Sintonizadora para PC','sintonizadoras-de-tv-para-pc',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S3040','Tarjeta de Sonido para PC','tarjetas-de-sonido',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S3050','Tarjeta Grafica para PC','tarjetas-graficas',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S3080','Disquetera para Pc','disqueteras',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S3085','Caja de CPU PC','cajas-de-ordenador',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S3090','Caja para Discos Duros','cajas-para-discos-duros',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S3201','Antenas y Accesorio Wifi PC','antenas-y-adaptadores-wifi',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S3301','Accesorio para Antenas TV','accesorios-para-antenas-de-tv',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S3501','Manos Libres para Teléfono Móvil','manos-libres',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S3505','Accesorio para telefonos y SmartPhones','accesorios-para-moviles',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S3510','Protector de Pantalla para Tablet y PDA','protectores-de-pantalla',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S3605','Accesorios Relojes Smartwatch, anillos y Pulseras inteligentes','correas-y-accesorios-para-smartwatch',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S3701','Accesorios de movilidad urbana, Cascos de Bici y Moto','accesorios-de-movilidad-urbana',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S3705','Accesorios para Navegadores GPS','accesorios-para-gps-y-coche',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S4001','Fundas para Teléfonos Móviles y Audio','fundas-para-moviles',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S4050','Bolsas, Fundas, Bolsos y Maletines para PC','fundas-y-maletines-para-portatiles',null);
-insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) values ('S4060','Mochila Transporte para PC','mochilas-para-portatiles',null);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('accesorios-campanas','accesorios-para-campanas','familia','alta','Por sus productos: 21 de 156 están en MHD; accesorios-para-campanas 20, accesorios-para-hornos 1',156,21,68);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('accesorios-combis','accesorios-para-frigorificos-y-congeladores','familia','baja','Sin productos de MHD; propuesta a mano',3,0,6);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('accesorios-congeladores','accesorios-para-frigorificos-y-congeladores','familia','baja','Sin productos de MHD; propuesta a mano',1,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('accesorios-conservadores','accesorios-para-frigorificos-y-congeladores','familia','baja','Sin productos de MHD; propuesta a mano',3,0,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('accesorios-fregaderos','accesorios-para-fregaderos-y-grifos','familia','media','Por sus productos: 1 de 20 están en MHD; accesorios-para-fregaderos-y-grifos 1',20,1,33);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('accesorios-hornos','accesorios-para-hornos','familia','media','Por sus productos: 1 de 28 están en MHD; accesorios-para-hornos 1',28,1,25);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('accesorios-informatica','discos-duros-externos','familia','media','Por sus productos: 1 de 3 están en MHD; discos-duros-externos 1',3,1,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('accesorios-lavadoras','lavadoras','familia','baja','Sin productos de MHD; por el nombre',2,0,5);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('accesorios-lavavajillas','accesorios-para-lavavajillas','familia','media','Por sus productos: 1 de 1 están en MHD; accesorios-para-lavavajillas 1',1,1,9);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('accesorios-microondas','microondas','familia','baja','Sin productos de MHD; por el nombre',1,0,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('accesorios-movilidad','accesorios-de-movilidad-urbana','familia','media','Por sus productos: 2 de 9 están en MHD; accesorios-de-movilidad-urbana 2',9,2,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('accesorios-patines-electricos','accesorios-de-movilidad-urbana','familia','baja','Sin productos de MHD; propuesta a mano',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('accesorios-placas','accesorios-para-placas','familia','baja','Sin productos de MHD; propuesta a mano',1,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('accesorios-televisores','soportes-de-tv-y-monitor','familia','media','Por sus productos: 59 de 93 están en MHD; soportes-de-tv-y-monitor 46, mandos-a-distancia 8, tv-box-y-sticks-de-tv 2',93,59,10);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('aeg','aeg','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',56,20,497);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('afeitadoras-corporales','afeitadoras','familia','baja','Sin productos de MHD; por el nombre',1,0,2);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('agfaphoto','agfaphoto','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',25,13,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('aires-acondicionados','aire-acondicionado','familia','baja','Sin productos de MHD; propuesta a mano',6,0,235);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('aires-acondicionados-orbegozo','aire-acondicionado','familia','baja','Sin productos de MHD; propuesta a mano',1,0,2);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('aiwa','aiwa','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',62,35,4);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('alessi','alessi','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',2,0,5);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('almohadillas-electricas','almohadillas-electricas','misma','alta','La colección se reutiliza en el árbol nuevo',12,11,6);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('altavoces-portatiles','altavoces','familia','alta','Por sus productos: 25 de 79 están en MHD; altavoces 23, amplificadores 2',79,25,11);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('alza','alza','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',6,0,92);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('apple','apple','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('ariel','ariel','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('ariete','ariete','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',28,5,2);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('arroceras','arroceras','misma','alta','La colección se reutiliza en el árbol nuevo',3,2,3);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('aspes','aspes','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',178,71,14);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('aspiracion-limpieza','aspiradores','familia','alta','Por sus productos: 21 de 39 están en MHD; aspiradores 17, vaporetas 2, hidrolimpiadoras 1',39,21,110);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('aspiradoras','aspiradores','familia','alta','Por sus productos: 5 de 6 están en MHD; aspiradores 5',6,5,68);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('aspiradoras-cecotec','aspiradores','familia','baja','Sin productos de MHD; propuesta a mano',3,0,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('aspiradoras-de-mano','aspiradores','familia','alta','Por sus productos: 4 de 4 están en MHD; aspiradores 4',4,4,18);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('aspiradoras-escoba-cecotec','aspiradores','familia','baja','Sin productos de MHD; propuesta a mano',2,0,8);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('aspiradoras-orbegozo','aspiradores','familia','media','Por sus productos: 2 de 2 están en MHD; aspiradores 2',2,2,2);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('aspiradoras-sin-cable','aspiradores','familia','alta','Por sus productos: 8 de 21 están en MHD; aspiradores 8',21,8,78);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('audio','audio','misma','alta','La colección se reutiliza en el árbol nuevo',62,26,30);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('audio-e-imagen','audio','grupo','media','Por sus productos: 218 de 503 están en MHD; auriculares 54, radios 51, altavoces 29',503,218,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('audio-portatil','audio','grupo','alta','Por sus productos: 92 de 204 están en MHD; radios 51, altavoces 23, radiodespertadores 8',204,92,11);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('auriculares','auriculares','misma','alta','La colección se reutiliza en el árbol nuevo',133,55,14);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('auriculares-deportivos','auriculares','familia','baja','Sin productos de MHD; por el nombre',1,0,4);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('auriculares-diadema','auriculares','familia','alta','Por sus productos: 10 de 26 están en MHD; auriculares 10',26,10,23);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('auriculares-internos','auriculares','familia','alta','Por sus productos: 45 de 106 están en MHD; auriculares 44, cables 1',106,45,18);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('balay','balay','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',200,126,96);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('barbacoa-electrica','planchas-de-asar-y-grills-electricos','familia','baja','Sin productos de MHD; propuesta a mano',1,0,5);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('barbacoas-de-gas','barbacoas-de-gas','misma','alta','La colección se reutiliza en el árbol nuevo',2,0,5);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('barberos','cortapelos','familia','media','Por sus productos: 1 de 9 están en MHD; cortapelos 1',9,1,3);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('barra-de-sonido','barras-de-sonido','familia','alta','Por sus productos: 10 de 44 están en MHD; barras-de-sonido 10',44,10,126);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('barra-de-sonido-panasonic','barras-de-sonido','familia','baja','Sin productos de MHD; propuesta a mano',2,0,5);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('barras-de-sonido-dvds','barras-de-sonido','familia','alta','Por sus productos: 11 de 46 están en MHD; barras-de-sonido 10, reproductores-de-dvd-y-blu-ray 1',46,11,43);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('barras-de-sonido-tcl','barras-de-sonido','familia','baja','Sin productos de MHD; por el nombre',4,0,164);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('basculas-de-bano','basculas','familia','alta','Por sus productos: 6 de 16 están en MHD; basculas 6',16,6,7);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('basculas-de-cocina','basculas','familia','alta','Por sus productos: 4 de 13 están en MHD; basculas 4',13,4,11);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('baterias-de-cocina','baterias-de-cocina','misma','alta','La colección se reutiliza en el árbol nuevo',2,1,3);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('baterias-portatiles','accesorios-y-componentes','grupo','media','Por sus productos: 2 de 9 están en MHD; baterias-externas-powerbank 1, accesorios-para-moviles 1',9,2,7);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('batidoras','batidoras','misma','alta','La colección se reutiliza en el árbol nuevo',39,21,699);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('batidoras-amasadoras','amasadoras','familia','media','Por sus productos: 1 de 2 están en MHD; amasadoras 1',2,1,21);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('batidoras-cecotec','pequeno-electro-de-cocina','grupo','media','Por sus productos: 2 de 4 están en MHD; batidoras 1, licuadoras 1',4,2,12);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('batidoras-de-varillas','amasadoras','familia','alta','Por sus productos: 3 de 6 están en MHD; amasadoras 3',6,3,54);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('batidoras-de-vaso','batidoras','familia','alta','Por sus productos: 14 de 22 están en MHD; batidoras 14',22,14,35);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('batidoras-de-vaso-orbegozo','batidoras','familia','alta','Por sus productos: 4 de 7 están en MHD; batidoras 4',7,4,11);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('batidoras-de-vaso-smeg','batidoras','familia','media','Por sus productos: 2 de 3 están en MHD; batidoras 2',3,2,2);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('batidoras-ufesa','batidoras','familia','alta','Por sus productos: 3 de 5 están en MHD; batidoras 3',5,3,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('beko','beko','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',112,69,8);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('berghoff','berghoff','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',1,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('beurer','beurer','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',9,4,2);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('bicicleta-estatica','fitness-y-salud','familia','baja','Sin productos de MHD; propuesta a mano',1,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('bienestar-corporal','cuidado-personal-y-salud','grupo','alta','Por sus productos: 19 de 27 están en MHD; almohadillas-electricas 9, calientacamas 6, mantas-electricas 2',27,19,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('black-decker','black-decker','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',4,4,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('bluray-reproductor','reproductores-de-dvd-y-blu-ray','familia','baja','Sin productos de MHD; propuesta a mano',1,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('bosch','bosch','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',98,53,14);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('bose','bose','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',40,14,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('bra','bra','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',45,37,30);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('bra-cacerolas-y-cazos','ollas-cacerolas-y-cazos','familia','alta','Por sus productos: 12 de 12 están en MHD; ollas-cacerolas-y-cazos 12',12,12,19);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('bra-ollas-a-presion','ollas-cacerolas-y-cazos','familia','media','Por sus productos: 1 de 1 están en MHD; ollas-cacerolas-y-cazos 1',1,1,4);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('braun','braun','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',40,20,14);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('bricolaje','herramientas-electricas','familia','media','Por sus productos: 1 de 3 están en MHD; herramientas-electricas 1',3,1,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('brita','brita','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cables','cables','misma','alta','La colección se reutiliza en el árbol nuevo',3,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cables-hdmi','cables','familia','media','Por sus productos: 3 de 5 están en MHD; cables 2, accesorios-de-audio 1',5,3,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cables-usb','cables','familia','baja','Vacía; por el nombre',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cacerolas-y-cazos','ollas-cacerolas-y-cazos','familia','alta','Por sus productos: 21 de 32 están en MHD; ollas-cacerolas-y-cazos 21',32,21,12);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cafetera-superautomatica','cafeteras','familia','alta','Por sus productos: 4 de 9 están en MHD; cafeteras 4',9,4,24);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cafeteras','cafeteras','misma','alta','La colección se reutiliza en el árbol nuevo',83,44,237);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cafeteras-cecotec','cafeteras','familia','media','Por sus productos: 2 de 6 están en MHD; cafeteras 2',6,2,5);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cafeteras-de-capsulas','cafeteras','familia','alta','Por sus productos: 4 de 6 están en MHD; cafeteras 4',6,4,49);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cafeteras-de-embolo','cafeteras','familia','baja','Sin productos de MHD; por el nombre',2,0,42);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cafeteras-de-goteo','cafeteras','familia','alta','Por sus productos: 7 de 18 están en MHD; cafeteras 7',18,7,35);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cafeteras-express','cafeteras','familia','alta','Por sus productos: 12 de 21 están en MHD; cafeteras 12',21,12,8);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cafeteras-integrables','cafeteras-integrables','misma','alta','La colección se reutiliza en el árbol nuevo',3,0,84);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cafeteras-italianas','cafeteras','familia','alta','Por sus productos: 16 de 25 están en MHD; cafeteras 16',25,16,21);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cafeteras-krups','cafeteras','familia','alta','Por sus productos: 5 de 7 están en MHD; cafeteras 5',7,5,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cafeteras-moka','cafeteras','familia','media','Por sus productos: 1 de 2 están en MHD; cafeteras 1',2,1,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cafeteras-monix','cafeteras','familia','media','Por sus productos: 2 de 3 están en MHD; cafeteras 2',3,2,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cafeteras-orbegozo','cafeteras','familia','alta','Por sus productos: 20 de 33 están en MHD; cafeteras 20',33,20,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cafeteras-smeg','cafeteras','familia','alta','Por sus productos: 3 de 7 están en MHD; cafeteras 3',7,3,173);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cafeteras-ufesa','cafeteras','familia','alta','Por sus productos: 3 de 7 están en MHD; cafeteras 3',7,3,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('calderas','calderas-de-gas','familia','baja','Sin productos de MHD; propuesta a mano',2,0,6);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('calefaccion-y-ventilacion','climatizacion','grupo','alta','Por sus productos: 70 de 196 están en MHD; estufas 15, radiadores-de-aceite 15, termoventiladores 14',196,70,2);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('calefactores','climatizacion','grupo','alta','Por sus productos: 22 de 49 están en MHD; termoventiladores 13, calefactores-electricos 9',49,22,39);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('calentadores','calentadores-de-gas','familia','baja','Sin productos de MHD; propuesta a mano',9,0,33);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('calienta-platos','cajones-calientaplatos','familia','baja','Sin productos de MHD; propuesta a mano',7,0,16);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('calientacamas','calientacamas','misma','alta','La colección se reutiliza en el árbol nuevo',11,8,4);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('camaras-compactas','camaras-de-fotos','familia','alta','Por sus productos: 19 de 35 están en MHD; camaras-de-fotos 19',35,19,18);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('camaras-de-fotos','camaras-de-fotos','misma','alta','La colección se reutiliza en el árbol nuevo',52,31,9);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('camaras-instantaneas','camaras-de-fotos','familia','alta','Por sus productos: 12 de 17 están en MHD; camaras-de-fotos 10, impresoras 1, papel-fotografico 1',17,12,26);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('campanas-convencionales','campanas-extractoras','familia','media','Por sus productos: 12 de 25 están en MHD; campanas-extractoras 9, extractores-de-cocina-y-bano 3',25,12,28);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('campanas-decorativas','campanas-extractoras','familia','alta','Por sus productos: 68 de 275 están en MHD; campanas-extractoras 68',275,68,273);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('campanas-extractoras','campanas-extractoras','misma','alta','La colección se reutiliza en el árbol nuevo',631,144,484);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('campanas-extractoras-aeg','campanas-extractoras','familia','media','Por sus productos: 1 de 3 están en MHD; campanas-extractoras 1',3,1,3);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('campanas-extractoras-balay','campanas-extractoras','familia','alta','Por sus productos: 20 de 47 están en MHD; campanas-extractoras 20',47,20,24);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('campanas-extractoras-beko','campanas-extractoras','familia','media','Por sus productos: 1 de 6 están en MHD; campanas-extractoras 1',6,1,2);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('campanas-extractoras-bosch','campanas-extractoras','familia','media','Por sus productos: 2 de 9 están en MHD; campanas-extractoras 2',9,2,26);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('campanas-extractoras-cata','campanas-extractoras','familia','alta','Por sus productos: 25 de 161 están en MHD; campanas-extractoras 22, extractores-de-cocina-y-bano 3',161,25,57);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('campanas-extractoras-electrolux','campanas-extractoras','familia','baja','Sin productos de MHD; por el nombre',1,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('campanas-extractoras-mepamsa','campanas-extractoras','familia','alta','Por sus productos: 17 de 105 están en MHD; campanas-extractoras 17',105,17,104);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('campanas-extractoras-smeg','campanas-extractoras','familia','baja','Sin productos de MHD; por el nombre',2,0,58);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('campanas-extractoras-teka','campanas-extractoras','familia','alta','Por sus productos: 38 de 106 están en MHD; campanas-extractoras 38',106,38,23);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('campanas-grupo-filtrantes','campanas-extractoras','familia','alta','Por sus productos: 14 de 76 están en MHD; campanas-extractoras 14',76,14,1278);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('campanas-integrables','campanas-extractoras','familia','alta','Por sus productos: 6 de 12 están en MHD; campanas-extractoras 6',12,6,271);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('campanas-integrables-balay','campanas-extractoras','familia','alta','Por sus productos: 3 de 5 están en MHD; campanas-extractoras 3',5,3,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('campanas-isla-cata','campanas-extractoras','familia','baja','Sin productos de MHD; propuesta a mano',9,0,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('campanas-islas','campanas-extractoras','familia','media','Por sus productos: 1 de 23 están en MHD; campanas-extractoras 1',23,1,117);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('campanas-sobremesa','campanas-extractoras','familia','baja','Sin productos de MHD; propuesta a mano',1,0,49);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('campanas-telescopicas','campanas-extractoras','familia','alta','Por sus productos: 22 de 63 están en MHD; campanas-extractoras 22',63,22,83);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('candy','candy','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cata','cata','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',384,61,34);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cecotec','cecotec','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',62,21,20);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cecotec-basculas-de-bano','basculas','familia','media','Por sus productos: 1 de 1 están en MHD; basculas 1',1,1,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cecotec-conga','robots-aspiradores','familia','baja','Sin productos de MHD; propuesta a mano',1,0,37);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('centro-de-planchado','centros-de-planchado-y-planchas-verticales','familia','alta','Por sus productos: 4 de 9 están en MHD; centros-de-planchado-y-planchas-verticales 4',9,4,15);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cepillos-de-dientes-electricos','cepillos-de-dientes-electricos','misma','alta','La colección se reutiliza en el árbol nuevo',31,13,234);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cepillos-dentales-oral-b','cepillos-de-dientes-electricos','familia','media','Por sus productos: 13 de 31 están en MHD; cepillos-de-dientes-electricos 10, cabezales-y-accesorios-dentales 3',31,13,6);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cintas-de-correr','fitness-y-salud','familia','baja','Sin productos de MHD; propuesta a mano',1,0,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('climatizacion','climatizacion','misma','alta','La colección se reutiliza en el árbol nuevo',289,94,66);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('climatizador','climatizadores-evaporativos','familia','baja','Sin productos de MHD; propuesta a mano',7,0,121);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cocina','cocina','misma','alta','La colección se reutiliza en el árbol nuevo',1349,450,23);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cocina-creativa','pequeno-electro-de-cocina','grupo','alta','Por sus productos: 4 de 9 están en MHD; palomiteras-y-maquinas-de-algodon-de-azucar 2, fondues-y-fuentes-de-chocolate 1, maquinas-de-perritos-calientes 1',9,4,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cocina-pequeno-electrodomestico','pequeno-electro-de-cocina','grupo','alta','Antiguo grupo de cocina de pequeño electrodoméstico',109,66,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cocinas','cocinas-de-gas-y-electricas','familia','alta','Por sus productos: 14 de 28 están en MHD; cocinas-de-gas-y-electricas 14',28,14,37);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cocinas-beko','cocinas-de-gas-y-electricas','familia','media','Por sus productos: 1 de 3 están en MHD; cocinas-de-gas-y-electricas 1',3,1,18);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cocinas-electricas','cocinas-de-gas-y-electricas','familia','baja','Sin productos de MHD; propuesta a mano',1,0,3);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cocinas-gas','cocinas-de-gas-y-electricas','familia','alta','Por sus productos: 11 de 19 están en MHD; cocinas-de-gas-y-electricas 11',19,11,469);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cocinas-gas-y-electricas','cocinas-de-gas-y-electricas','familia','alta','Por sus productos: 3 de 4 están en MHD; cocinas-de-gas-y-electricas 3',4,3,364);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cocinas-induccion','cocinas-de-gas-y-electricas','familia','baja','Sin productos de MHD; propuesta a mano',1,0,14);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cocinas-smeg','cocinas-de-gas-y-electricas','familia','baja','Sin productos de MHD; propuesta a mano',1,0,11);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cocinas-vitroceramicas','cocinas-de-gas-y-electricas','familia','baja','Sin productos de MHD; propuesta a mano',3,0,107);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cocinas-vitrokitchen','cocinas-de-gas-y-electricas','familia','alta','Por sus productos: 3 de 6 están en MHD; cocinas-de-gas-y-electricas 3',6,3,4);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cointra','cointra','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',28,3,4);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('combis','frigorificos-combi','familia','alta','Por sus productos: 83 de 270 están en MHD; frigorificos-combi 83',270,83,1015);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('combis-aeg','frigorificos-combi','familia','baja','Sin productos de MHD; propuesta a mano',7,0,3);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('combis-balay','frigorificos-combi','familia','alta','Por sus productos: 23 de 34 están en MHD; frigorificos-combi 23',34,23,22);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('combis-beko','frigorificos-combi','familia','alta','Por sus productos: 11 de 15 están en MHD; frigorificos-combi 11',15,11,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('combis-bosch','frigorificos-combi','familia','alta','Por sus productos: 14 de 18 están en MHD; frigorificos-combi 14',18,14,18);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('combis-de-170-a-184-cm','frigorificos-combi','familia','alta','Por sus productos: 20 de 37 están en MHD; frigorificos-combi 20',37,20,7103);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('combis-de-185-a-199-cm','frigorificos-combi','familia','alta','Por sus productos: 36 de 114 están en MHD; frigorificos-combi 36',114,36,5542);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('combis-integrables','frigorificos-combi','familia','alta','Por sus productos: 16 de 31 están en MHD; frigorificos-combi 16',31,16,3729);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('combis-lg','frigorificos-combi','familia','alta','Por sus productos: 5 de 48 están en MHD; frigorificos-combi 5',48,5,3);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('combis-libre-instalacion','frigorificos-combi','familia','alta','Por sus productos: 67 de 236 están en MHD; frigorificos-combi 67',236,67,288);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('combis-smeg','frigorificos-combi','familia','media','Por sus productos: 2 de 4 están en MHD; frigorificos-combi 2',4,2,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('combis-teka','frigorificos-combi','familia','alta','Por sus productos: 4 de 26 están en MHD; frigorificos-combi 4',26,4,3);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('congeladores','congeladores-verticales','familia','media','Por sus productos: 24 de 74 están en MHD; congeladores-verticales 19, arcones-congeladores 5',74,24,438);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('congeladores-arcon','arcones-congeladores','familia','alta','Por sus productos: 5 de 28 están en MHD; arcones-congeladores 5',28,5,1214);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('congeladores-beko','congeladores-verticales','familia','alta','Por sus productos: 6 de 9 están en MHD; congeladores-verticales 6',9,6,28);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('congeladores-bosch','congeladores-verticales','familia','media','Por sus productos: 2 de 2 están en MHD; congeladores-verticales 2',2,2,7);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('congeladores-integrables','congeladores-verticales','familia','media','Por sus productos: 2 de 3 están en MHD; congeladores-verticales 2',3,2,68);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('congeladores-lg','congeladores-verticales','familia','media','Por sus productos: 2 de 3 están en MHD; congeladores-verticales 2',3,2,17);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('congeladores-libre-instalacion','congeladores-verticales','familia','alta','Por sus productos: 17 de 42 están en MHD; congeladores-verticales 17',42,17,64);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('congeladores-pequenos','congeladores-verticales','familia','alta','Por sus productos: 3 de 7 están en MHD; congeladores-verticales 3',7,3,506);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('conjuntos-de-horno-y-placa','conjuntos-de-horno-y-placa','misma','alta','La colección se reutiliza en el árbol nuevo',2,2,168);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('conjuntos-fregaderos-y-grifos','packs-de-fregadero-y-grifo','familia','media','Por sus productos: 2 de 4 están en MHD; packs-de-fregadero-y-grifo 2',4,2,12);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('conservadores','frigorificos-de-1-puerta','familia','alta','Por sus productos: 15 de 39 están en MHD; frigorificos-de-1-puerta 15',39,15,184);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('conservadores-integrables','frigorificos-de-1-puerta','familia','media','Por sus productos: 2 de 3 están en MHD; frigorificos-de-1-puerta 2',3,2,4);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('conservadores-libre-instalacion','frigorificos-de-1-puerta','familia','alta','Por sus productos: 13 de 33 están en MHD; frigorificos-de-1-puerta 13',33,13,7);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('conservadores-teka','frigorificos-de-1-puerta','familia','media','Por sus productos: 1 de 7 están en MHD; frigorificos-de-1-puerta 1',7,1,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('consolas','consolas','misma','alta','La colección se reutiliza en el árbol nuevo',1,0,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('convectores','convectores','misma','alta','La colección se reutiliza en el árbol nuevo',6,3,4);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cortafiambres','cortafiambres','misma','alta','La colección se reutiliza en el árbol nuevo',5,3,6);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cortapelos','cortapelos','misma','alta','La colección se reutiliza en el árbol nuevo',23,18,13);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cuidado-del-bebe','cuidado-personal-y-salud','grupo','baja','Sin productos de MHD; propuesta a mano',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('cuidado-personal','cuidado-personal-y-salud','grupo','alta','Por sus productos: 92 de 176 están en MHD; secadores-de-pelo 24, cortapelos 21, cepillos-de-dientes-electricos 10',176,92,5);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('daga','daga','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',1,1,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('dailysafe','dailysafe','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',2,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('delonghi','delonghi','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',11,8,3);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('denon','denon','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',18,7,2);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('denver','denver','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',1,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('depiladoras','depiladoras','misma','alta','La colección se reutiliza en el árbol nuevo',7,3,41);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('deporte-indoor','fitness-y-salud','familia','baja','Sin productos de MHD; propuesta a mano',2,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('desayuno','pequeno-electro-de-cocina','grupo','alta','Por sus productos: 62 de 101 están en MHD; tostadoras 20, exprimidores 15, hervidores-de-agua 13',101,62,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('deshumidificadores','deshumidificadores','misma','alta','La colección se reutiliza en el árbol nuevo',12,2,52);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('di4','di4','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('discman','radios-cd-y-radiocasetes','familia','baja','Sin productos de MHD; propuesta a mano',2,0,48);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('duux','duux','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',3,0,3);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('dvd','reproductores-de-dvd-y-blu-ray','familia','media','Por sus productos: 1 de 1 están en MHD; reproductores-de-dvd-y-blu-ray 1',1,1,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('dvd-reproductor','reproductores-de-dvd-y-blu-ray','familia','media','Por sus productos: 1 de 1 están en MHD; reproductores-de-dvd-y-blu-ray 1',1,1,2);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('ebooks','ebooks','misma','alta','La colección se reutiliza en el árbol nuevo',14,12,238);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('edesa','edesa','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',5,0,4);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('elbe','elbe','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',12,9,9);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('electrodomesticos','electrodomesticos','misma','alta','Landing de gama blanca (plantilla propia): se mantiene',2656,878,2201);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('electrodomesticos-aeg','aeg','marca','alta','Página de electrodomésticos de una marca: a la página de la marca',53,19,6);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('electrodomesticos-aspes','aspes','marca','alta','Página de electrodomésticos de una marca: a la página de la marca',168,67,4);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('electrodomesticos-beko','beko','marca','alta','Página de electrodomésticos de una marca: a la página de la marca',112,69,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('electrodomesticos-cata','cata','marca','alta','Página de electrodomésticos de una marca: a la página de la marca',383,60,2);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('electrodomesticos-cecotec','cecotec','marca','alta','Página de electrodomésticos de una marca: a la página de la marca',9,6,6);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('electrodomesticos-electrolux','electrolux','marca','alta','Página de electrodomésticos de una marca: a la página de la marca',17,7,2);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('electrodomesticos-haier','haier','marca','alta','Página de electrodomésticos de una marca: a la página de la marca',5,3,15);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('electrodomesticos-hisense','hisense','marca','alta','Página de electrodomésticos de una marca: a la página de la marca',180,24,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('electrodomesticos-integrables','lavado','apartado','media','Por sus productos: 54 de 109 están en MHD; lavavajillas 25, frigorificos-combi 16, lavadoras 5',109,54,113);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('electrodomesticos-lg','lg','marca','alta','Página de electrodomésticos de una marca: a la página de la marca',193,36,3);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('electrodomesticos-mepamsa','mepamsa','marca','alta','Página de electrodomésticos de una marca: a la página de la marca',145,40,2);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('electrodomesticos-samsung','samsung','marca','alta','Página de electrodomésticos de una marca: a la página de la marca',104,1,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('electrodomesticos-smeg','smeg','marca','alta','Página de electrodomésticos de una marca: a la página de la marca',21,6,6);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('electrodomesticos-tcl','tcl','marca','alta','Página de electrodomésticos de una marca: a la página de la marca',1,1,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('electrodomesticos-teka','teka','marca','alta','Página de electrodomésticos de una marca: a la página de la marca',651,206,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('electrodomesticos-whirlpool','whirlpool','marca','alta','Página de electrodomésticos de una marca: a la página de la marca',69,28,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('electrodomesticos-wonder','wonder','marca','alta','Página de electrodomésticos de una marca: a la página de la marca',4,2,64);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('electrolux','electrolux','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',17,7,3);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('eltax','eltax','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('emisores-termicos','emisores-termicos','misma','alta','La colección se reutiliza en el árbol nuevo',24,13,23);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('emisores-termicos-cointra','emisores-termicos','familia','baja','Sin productos de MHD; por el nombre',5,0,12);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('emisores-termicos-orbegozo','emisores-termicos','familia','alta','Por sus productos: 13 de 19 están en MHD; emisores-termicos 12, calefactores-electricos 1',19,13,29);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('energy-sistem','energy-sistem','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',1,1,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('envasador-al-vacio','envasadoras-al-vacio','familia','baja','Sin productos de MHD; propuesta a mano',2,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('envasadoras-al-vacio','envasadoras-al-vacio','misma','alta','La colección se reutiliza en el árbol nuevo',7,6,21);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('equipo-de-sonido','equipos-de-musica','familia','alta','Por sus productos: 5 de 17 están en MHD; equipos-de-musica 5',17,5,93);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('equipos-de-proteccion','cuidado-personal-y-salud','grupo','baja','Sin productos de MHD; propuesta a mano',2,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('espumadoras-de-leche','espumadores-de-leche','familia','media','Por sus productos: 1 de 1 están en MHD; espumadores-de-leche 1',1,1,37);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('estetica','cuidado-personal-y-salud','grupo','baja','Sin productos de MHD; propuesta a mano',2,0,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('estimuladores','salud-sexual','familia','media','Por sus productos: 2 de 7 están en MHD; salud-sexual 2',7,2,69);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('estufa-de-gas-llama-azul','estufas','familia','alta','Por sus productos: 3 de 4 están en MHD; estufas 3',4,3,81);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('estufas','estufas','misma','alta','La colección se reutiliza en el árbol nuevo',22,15,16);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('exprimidores','exprimidores','misma','alta','La colección se reutiliza en el árbol nuevo',22,15,4);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('exprimidores-smeg','exprimidores','familia','alta','Por sus productos: 3 de 3 están en MHD; exprimidores 3',3,3,4);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('fagor','fagor','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('farma','cuidado-personal-y-salud','grupo','baja','Sin productos de MHD; propuesta a mano',4,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('fissler','fissler','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',2,0,15);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('flux-s','flux-s','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('fonestar','fonestar','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',21,15,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('fotografia-y-video','camaras-de-fotos','familia','alta','Por sus productos: 34 de 58 están en MHD; camaras-de-fotos 29, impresoras 3, camaras-deportivas 1',58,34,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('franke','franke','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',2,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('fregaderos','fregaderos','misma','alta','La colección se reutiliza en el árbol nuevo',168,77,24);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('fregaderos-bajo-encimera','fregaderos','familia','alta','Por sus productos: 25 de 37 están en MHD; fregaderos 25',37,25,89);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('fregaderos-bajo-encimera-teka','fregaderos','familia','alta','Por sus productos: 13 de 23 están en MHD; fregaderos 13',23,13,109);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('fregaderos-cata','fregaderos','familia','alta','Por sus productos: 8 de 22 están en MHD; fregaderos 8',22,8,100);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('fregaderos-especiales','fregaderos','familia','baja','Sin productos de MHD; por el nombre',2,0,29);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('fregaderos-mepamsa','fregaderos','familia','alta','Por sus productos: 15 de 17 están en MHD; fregaderos 15',17,15,83);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('fregaderos-sinteticos','fregaderos','familia','alta','Por sus productos: 19 de 23 están en MHD; fregaderos 19',23,19,15);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('fregaderos-sobre-encimera','fregaderos','familia','alta','Por sus productos: 30 de 81 están en MHD; fregaderos 30',81,30,13);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('fregaderos-teka','fregaderos','familia','alta','Por sus productos: 53 de 109 están en MHD; fregaderos 51, packs-de-fregadero-y-grifo 2',109,53,28);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('fregaderos-y-grifos','fregaderos','familia','media','Por sus productos: 102 de 243 están en MHD; fregaderos 74, grifos-de-cocina 25, packs-de-fregadero-y-grifo 2',243,102,67);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('freidora-sin-aceite','freidoras','familia','alta','Por sus productos: 9 de 18 están en MHD; freidoras 8, accesorios-para-robots-y-batidoras 1',18,9,57);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('freidoras-de-aceite','freidoras','familia','alta','Por sus productos: 5 de 8 están en MHD; freidoras 5',8,5,18);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('frigorificos','frigorificos-y-congeladores','grupo','alta','Por sus productos: 37 de 125 están en MHD; frigorificos-de-2-puertas 18, frigorificos-de-1-puerta 11, frigorificos-americanos-y-side-by-side 8',125,37,1991);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('frigorificos-4-puertas','frigorificos-americanos-y-side-by-side','familia','media','Por sus productos: 1 de 35 están en MHD; frigorificos-americanos-y-side-by-side 1',35,1,374);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('frigorificos-55-cm-ancho','frigorificos-y-congeladores','grupo','alta','Por sus productos: 27 de 65 están en MHD; frigorificos-de-1-puerta 11, frigorificos-combi 10, congeladores-verticales 3',65,27,3967);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('frigorificos-60-cm-ancho','frigorificos-y-congeladores','grupo','alta','Por sus productos: 105 de 335 están en MHD; frigorificos-combi 60, congeladores-verticales 15, frigorificos-de-1-puerta 15',335,105,948);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('frigorificos-70-cm-ancho','frigorificos-combi','familia','alta','Por sus productos: 11 de 28 están en MHD; frigorificos-combi 10, arcones-congeladores 1',28,11,1058);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('frigorificos-americanos','frigorificos-americanos-y-side-by-side','familia','alta','Por sus productos: 8 de 46 están en MHD; frigorificos-americanos-y-side-by-side 8',46,8,998);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('frigorificos-americanos-blancos','frigorificos-americanos-y-side-by-side','familia','alta','Por sus productos: 3 de 10 están en MHD; frigorificos-americanos-y-side-by-side 3',10,3,177);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('frigorificos-americanos-con-dispensador-de-agua','frigorificos-americanos-y-side-by-side','familia','media','Por sus productos: 1 de 18 están en MHD; frigorificos-americanos-y-side-by-side 1',18,1,102);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('frigorificos-americanos-lg','frigorificos-americanos-y-side-by-side','familia','media','Por sus productos: 1 de 26 están en MHD; frigorificos-americanos-y-side-by-side 1',26,1,155);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('frigorificos-americanos-teka','frigorificos-americanos-y-side-by-side','familia','baja','Sin productos de MHD; propuesta a mano',6,0,55);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('frigorificos-beko','frigorificos-y-congeladores','grupo','alta','Por sus productos: 31 de 38 están en MHD; frigorificos-de-1-puerta 13, frigorificos-combi 11, congeladores-verticales 6',38,31,62);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('frigorificos-con-dispensador-de-agua','frigorificos-americanos-y-side-by-side','familia','media','Por sus productos: 1 de 10 están en MHD; frigorificos-americanos-y-side-by-side 1',10,1,3);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('frigorificos-dos-puertas','frigorificos-de-2-puertas','familia','alta','Por sus productos: 19 de 54 están en MHD; frigorificos-de-2-puertas 18, frigorificos-de-1-puerta 1',54,19,552);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('frigorificos-haier','frigorificos-y-congeladores','grupo','baja','Sin productos de MHD; propuesta a mano',2,0,11);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('frigorificos-integrables','frigorificos-de-1-puerta','familia','media','Por sus productos: 2 de 2 están en MHD; frigorificos-de-1-puerta 2',2,2,199);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('frigorificos-integrables-bajo-encimera','frigorificos-de-1-puerta','familia','media','Por sus productos: 1 de 2 están en MHD; frigorificos-de-1-puerta 1',2,1,935);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('frigorificos-lg','frigorificos-y-congeladores','grupo','alta','Por sus productos: 11 de 102 están en MHD; frigorificos-combi 5, congeladores-verticales 2, frigorificos-de-2-puertas 2',102,11,73);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('frigorificos-smeg','frigorificos-combi','familia','media','Por sus productos: 2 de 4 están en MHD; frigorificos-combi 2',4,2,84);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('frigorificos-teka','frigorificos-y-congeladores','grupo','alta','Por sus productos: 12 de 62 están en MHD; frigorificos-combi 4, vinotecas 3, frigorificos-de-1-puerta 2',62,12,92);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('frigorificos-una-puerta','frigorificos-de-1-puerta','familia','alta','Por sus productos: 7 de 21 están en MHD; frigorificos-de-1-puerta 7',21,7,106);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('frigorificos-whirlpool','frigorificos-combi','familia','media','Por sus productos: 1 de 12 están en MHD; frigorificos-combi 1',12,1,9);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('frigorificos-y-congeladores','frigorificos-y-congeladores','misma','alta','La colección se reutiliza en el árbol nuevo',562,166,906);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('fujifilm','fujifilm','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',20,14,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('garantia3','garantia3','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',9,0,22);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('garantias','garantias','misma','alta','Colección comercial o de servicio',9,0,48);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('garmin','garmin','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',59,32,145);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('gestion-de-residuos','accesorios-de-cocina','grupo','baja','Sin productos de MHD; propuesta a mano',1,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('gps','navegadores-gps','familia','media','Por sus productos: 14 de 18 están en MHD; navegadores-gps 9, radios-y-multimedia-para-coche 2, relojes-gps-deportivos 2',18,14,5);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('grifos-cano-alto','grifos-de-cocina','familia','alta','Por sus productos: 15 de 42 están en MHD; grifos-de-cocina 15',42,15,9);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('grifos-cano-alto-extraible','grifos-de-cocina','familia','alta','Por sus productos: 6 de 18 están en MHD; grifos-de-cocina 6',18,6,5);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('grifos-cano-bajo','grifos-de-cocina','familia','alta','Por sus productos: 4 de 11 están en MHD; grifos-de-cocina 4',11,4,2);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('grifos-cano-bajo-extraible','grifos-de-cocina','familia','baja','Sin productos de MHD; propuesta a mano',4,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('grifos-cata','grifos-de-cocina','familia','alta','Por sus productos: 4 de 11 están en MHD; grifos-de-cocina 4',11,4,3);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('grifos-de-cocina','grifos-de-cocina','misma','alta','La colección se reutiliza en el árbol nuevo',75,25,32);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('grifos-de-cocina-abatibles','grifos-de-cocina','familia','alta','Por sus productos: 3 de 3 están en MHD; grifos-de-cocina 3',3,3,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('grifos-teka','grifos-de-cocina','familia','alta','Por sus productos: 21 de 63 están en MHD; grifos-de-cocina 21',63,21,15);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('grundig','grundig','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',1,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('haier','haier','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',5,3,4);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hama','hama','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',2,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('help-flash','help-flash','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',1,0,3);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hervidores-de-agua','hervidores-de-agua','misma','alta','La colección se reutiliza en el árbol nuevo',26,14,19);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hervidores-de-agua-smeg','hervidores-de-agua','familia','alta','Por sus productos: 7 de 10 están en MHD; hervidores-de-agua 6, calientaleches 1',10,7,7);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hidrolimpiadoras','hidrolimpiadoras','misma','alta','La colección se reutiliza en el árbol nuevo',1,1,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hisense','hisense','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',214,28,118);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('home-mejores-precios','home-mejores-precios','misma','alta','Colección comercial o de servicio',8,6,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('home-para-el-dia-a-dia','home-para-el-dia-a-dia','misma','alta','Colección comercial o de servicio',6,2,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hoover','hoover','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hornillo-de-gas-vitrokitchen','hornillos','familia','alta','Por sus productos: 8 de 11 están en MHD; hornillos 7, soportes-de-tv-y-monitor 1',11,8,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hornillos-de-gas','hornillos','familia','alta','Por sus productos: 16 de 19 están en MHD; hornillos 15, soportes-de-tv-y-monitor 1',19,16,2212);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hornillos-de-gas-orbegozo','hornillos','familia','alta','Por sus productos: 7 de 7 están en MHD; hornillos 7',7,7,8);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('horno-y-placa-induccion','conjuntos-de-horno-y-placa','familia','media','Por sus productos: 1 de 1 están en MHD; conjuntos-de-horno-y-placa 1',1,1,120);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('horno-y-placa-vitroceramica','conjuntos-de-horno-y-placa','familia','media','Por sus productos: 1 de 1 están en MHD; conjuntos-de-horno-y-placa 1',1,1,16);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hornos','hornos','misma','alta','La colección se reutiliza en el árbol nuevo',213,78,674);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hornos-aeg','hornos','familia','media','Por sus productos: 1 de 3 están en MHD; hornos 1',3,1,22);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hornos-aspes','hornos','familia','alta','Por sus productos: 14 de 19 están en MHD; hornos 12, hornos-compactos 2',19,14,150);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hornos-bajo-consumo','hornos','familia','alta','Por sus productos: 29 de 77 están en MHD; hornos 27, hornos-compactos 2',77,29,2645);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hornos-balay','hornos','familia','media','Por sus productos: 18 de 22 están en MHD; hornos 14, hornos-compactos 2, microondas-integrables 2',22,18,61);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hornos-beko','hornos','familia','media','Por sus productos: 7 de 11 están en MHD; hornos 5, hornos-compactos 2',11,7,24);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hornos-bosch','hornos','familia','alta','Por sus productos: 5 de 8 están en MHD; hornos 5',8,5,75);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hornos-cata','hornos','familia','baja','Sin productos de MHD; por el nombre',19,0,43);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hornos-compactos-45','hornos-compactos','familia','media','Por sus productos: 13 de 31 están en MHD; hornos-compactos 9, hornos 2, microondas-integrables 2',31,13,2723);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hornos-convencionales','hornos','familia','alta','Por sus productos: 7 de 14 están en MHD; hornos 6, hornos-compactos 1',14,7,21);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hornos-electrolux','hornos','familia','media','Por sus productos: 1 de 4 están en MHD; hornos 1',4,1,6);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hornos-gas','hornos','familia','baja','Sin productos de MHD; por el nombre',2,0,74);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hornos-microondas','microondas-integrables','familia','media','Por sus productos: 2 de 5 están en MHD; microondas-integrables 2',5,2,170);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hornos-multifuncion','hornos','familia','alta','Por sus productos: 68 de 163 están en MHD; hornos 60, hornos-compactos 8',163,68,379);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hornos-piroliticos','hornos','familia','alta','Por sus productos: 11 de 39 están en MHD; hornos 11',39,11,17);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hornos-polivalentes','hornos-polivalentes','misma','alta','La colección se reutiliza en el árbol nuevo',1,0,2808);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hornos-smeg','hornos','familia','media','Por sus productos: 1 de 3 están en MHD; hornos 1',3,1,8);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hornos-sobremesa','hornos-de-sobremesa','familia','alta','Por sus productos: 10 de 15 están en MHD; hornos-de-sobremesa 10',15,10,96);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hornos-sobremesa-orbegozo','hornos-de-sobremesa','familia','alta','Por sus productos: 5 de 9 están en MHD; hornos-de-sobremesa 5',9,5,6);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hornos-teka','hornos','familia','media','Por sus productos: 14 de 58 están en MHD; hornos 11, hornos-compactos 3',58,14,84);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hornos-whirlpool','hornos','familia','media','Por sus productos: 2 de 5 están en MHD; hornos 2',5,2,6);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hornos-y-placas-samsung','hornos','familia','baja','Sin productos de MHD; por el nombre',9,0,19);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('humidificadores','humidificadores','misma','alta','La colección se reutiliza en el árbol nuevo',5,3,9);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('hyundai','hyundai','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',10,6,3);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('impresora-portatil','impresoras','familia','media','Por sus productos: 2 de 2 están en MHD; impresoras 2',2,2,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('indesit','indesit','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',1,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('informatica','informatica','misma','alta','La colección se reutiliza en el árbol nuevo',35,10,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('irobot','irobot','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',2,1,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('irrigadores-dentales','irrigadores-dentales','misma','alta','La colección se reutiliza en el árbol nuevo',2,0,21);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('jarras-dispensadores-de-agua','jarras-purificadoras-de-agua','familia','media','Propuesta a mano (los productos estaban repartidos)',4,2,4);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('jata','jata','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',103,80,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('jata-basculas-de-bano','basculas','familia','media','Por sus productos: 2 de 4 están en MHD; basculas 2',4,2,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('jata-batidoras','batidoras','familia','alta','Por sus productos: 10 de 11 están en MHD; batidoras 9, accesorios-para-robots-y-batidoras 1',11,10,3);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('jata-cafeteras','cafeteras','familia','media','Por sus productos: 2 de 3 están en MHD; cafeteras 2',3,2,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('jata-cocina','pequeno-electro','apartado','media','Por sus productos: 18 de 26 están en MHD; planchas-de-asar-y-grills-electricos 5, hornos-de-sobremesa 4, hornillos 3',26,18,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('jata-exprimidores','exprimidores','familia','alta','Por sus productos: 3 de 4 están en MHD; exprimidores 3',4,3,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('jata-pequeno-electrodomestico','jata','marca','alta','Página de electrodomésticos de una marca: a la página de la marca',83,64,3);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('jata-plancha','planchas-de-ropa','familia','alta','Por sus productos: 7 de 7 están en MHD; planchas-de-ropa 7',7,7,12);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('jata-planchas-de-asar','planchas-de-asar-y-grills-electricos','familia','alta','Por sus productos: 4 de 6 están en MHD; planchas-de-asar-y-grills-electricos 4',6,4,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('jata-preparador-de-alimentos','batidoras','familia','media','Por sus productos: 20 de 25 están en MHD; batidoras 14, bolsas-y-rollos-para-envasar-al-vacio 2, envasadoras-al-vacio 2',25,20,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('jata-secadores-de-pelo','secadores-de-pelo','familia','alta','Por sus productos: 4 de 5 están en MHD; secadores-de-pelo 4',5,4,3);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('jbl','jbl','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',57,7,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('jlab','jlab','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('kingston','kingston','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('kitchenaid','kitchenaid','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',1,0,19);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('kodak','kodak','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',13,7,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('krups','krups','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',7,5,2);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('ksix','ksix','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',26,5,2);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('kuhn-rikon','kuhn-rikon','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',3,0,168);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lauson','lauson','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',4,1,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavado','lavado','misma','alta','La colección se reutiliza en el árbol nuevo',327,83,31);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras','lavadoras','misma','alta','La colección se reutiliza en el árbol nuevo',211,57,4444);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-10-kg','lavadoras','familia','alta','Por sus productos: 7 de 23 están en MHD; lavadoras 7',23,7,252);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-6-kg','lavadoras','familia','alta','Por sus productos: 5 de 13 están en MHD; lavadoras 5',13,5,30);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-7-kg','lavadoras','familia','alta','Por sus productos: 8 de 36 están en MHD; lavadoras 8',36,8,30);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-8-kg','lavadoras','familia','alta','Por sus productos: 16 de 52 están en MHD; lavadoras 16',52,16,141);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-9-kg','lavadoras','familia','alta','Por sus productos: 14 de 62 están en MHD; lavadoras 14',62,14,122);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-aeg','lavadoras','familia','alta','Por sus productos: 5 de 12 están en MHD; lavadoras 5',12,5,80);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-aspes','lavadoras','familia','alta','Por sus productos: 4 de 22 están en MHD; lavadoras 4',22,4,143);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-balay','lavadoras','familia','alta','Por sus productos: 4 de 9 están en MHD; lavadoras 4',9,4,62);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-beko','lavadoras','familia','alta','Por sus productos: 5 de 11 están en MHD; lavadoras 5',11,5,83);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-bosch','lavadoras','familia','alta','Por sus productos: 5 de 8 están en MHD; lavadoras 5',8,5,124);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-carga-superior','lavadoras','familia','alta','Por sus productos: 8 de 16 están en MHD; lavadoras 8',16,8,276);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-con-wifi','lavadoras','familia','alta','Por sus productos: 6 de 43 están en MHD; lavadoras 6',43,6,234);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-de-fondo-reducido','lavadoras','familia','alta','Por sus productos: 3 de 10 están en MHD; lavadoras 3',10,3,12630);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-electrolux','lavadoras','familia','media','Por sus productos: 2 de 3 están en MHD; lavadoras 2',3,2,9);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-integrables','lavadoras','familia','alta','Por sus productos: 5 de 16 están en MHD; lavadoras 5',16,5,4598);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-lg','lavadoras','familia','alta','Por sus productos: 8 de 32 están en MHD; lavadoras 8',32,8,142);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-libre-instalacion','lavadoras','familia','alta','Por sus productos: 44 de 177 están en MHD; lavadoras 44',177,44,432);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-libre-instalacion-aeg','lavadoras','familia','alta','Por sus productos: 3 de 8 están en MHD; lavadoras 3',8,3,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-libre-instalacion-beko','lavadoras','familia','alta','Por sus productos: 3 de 9 están en MHD; lavadoras 3',9,3,6);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-libre-instalacion-lg','lavadoras','familia','alta','Por sus productos: 8 de 32 están en MHD; lavadoras 8',32,8,3);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-samsung','lavadoras','familia','baja','Sin productos de MHD; por el nombre',19,0,10);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-secadoras','lavadoras-secadoras','misma','alta','La colección se reutiliza en el árbol nuevo',52,12,3612);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-secadoras-aeg','lavadoras-secadoras','familia','media','Por sus productos: 2 de 3 están en MHD; lavadoras-secadoras 2',3,2,19);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-secadoras-bosch','lavadoras-secadoras','familia','media','Por sus productos: 1 de 1 están en MHD; lavadoras-secadoras 1',1,1,14);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-secadoras-integrables','lavadoras-secadoras','familia','media','Por sus productos: 1 de 2 están en MHD; lavadoras-secadoras 1',2,1,209);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-secadoras-lg','lavadoras-secadoras','familia','alta','Por sus productos: 3 de 21 están en MHD; lavadoras-secadoras 3',21,3,38);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-secadoras-libre-instalacion','lavadoras-secadoras','familia','alta','Por sus productos: 11 de 50 están en MHD; lavadoras-secadoras 11',50,11,99);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-secadoras-whirlpool','lavadoras-secadoras','familia','baja','Sin productos de MHD; por el nombre',2,0,16);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-teka','lavadoras','familia','media','Por sus productos: 1 de 20 están en MHD; lavadoras 1',20,1,19);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavadoras-whirlpool','lavadoras','familia','alta','Por sus productos: 7 de 14 están en MHD; lavadoras 7',14,7,16);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas','lavavajillas','misma','alta','La colección se reutiliza en el árbol nuevo',175,77,854);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas-3-bandejas','lavavajillas','familia','alta','Por sus productos: 28 de 74 están en MHD; lavavajillas 28',74,28,1379);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas-45-cm-integrables','lavavajillas','familia','alta','Por sus productos: 5 de 10 están en MHD; lavavajillas 5',10,5,955);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas-45-cm-libre-instalacion','lavavajillas','familia','alta','Por sus productos: 6 de 18 están en MHD; lavavajillas 6',18,6,994);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas-45cm-aeg','lavavajillas','familia','media','Por sus productos: 2 de 2 están en MHD; lavavajillas 2',2,2,5);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas-45cm-whirlpool','lavavajillas','familia','media','Por sus productos: 1 de 2 están en MHD; lavavajillas 1',2,1,10);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas-60-cm','lavavajillas','familia','alta','Por sus productos: 66 de 143 están en MHD; lavavajillas 66',143,66,81);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas-aeg','lavavajillas','familia','alta','Por sus productos: 6 de 12 están en MHD; lavavajillas 6',12,6,51);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas-balay','lavavajillas','familia','alta','Por sus productos: 13 de 21 están en MHD; lavavajillas 13',21,13,48);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas-beko','lavavajillas','familia','alta','Por sus productos: 9 de 14 están en MHD; lavavajillas 9',14,9,142);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas-bosch','lavavajillas','familia','alta','Por sus productos: 6 de 17 están en MHD; lavavajillas 6',17,6,79);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas-bosch-45cm','lavavajillas','familia','baja','Sin productos de MHD; por el nombre',3,0,313);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas-compactos','lavavajillas','familia','baja','Sin productos de MHD; por el nombre',1,0,2814);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas-hisense','lavavajillas','familia','media','Por sus productos: 2 de 18 están en MHD; lavavajillas 2',18,2,44);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas-inox','lavavajillas','familia','alta','Por sus productos: 31 de 67 están en MHD; lavavajillas 31',67,31,59);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas-integrables','lavavajillas','familia','alta','Por sus productos: 20 de 41 están en MHD; lavavajillas 20',41,20,1657);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas-integrables-aeg','lavavajillas','familia','media','Por sus productos: 1 de 4 están en MHD; lavavajillas 1',4,1,97);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas-integrables-balay','lavavajillas','familia','alta','Por sus productos: 4 de 7 están en MHD; lavavajillas 4',7,4,17);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas-integrables-beko','lavavajillas','familia','alta','Por sus productos: 3 de 3 están en MHD; lavavajillas 3',3,3,10);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas-integrables-bosch','lavavajillas','familia','alta','Por sus productos: 3 de 4 están en MHD; lavavajillas 3',4,3,19);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas-integrables-teka','lavavajillas','familia','alta','Por sus productos: 4 de 5 están en MHD; lavavajillas 4',5,4,15);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas-integrables-whirlpool','lavavajillas','familia','media','Por sus productos: 2 de 3 están en MHD; lavavajillas 2',3,2,4);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas-lg','lavavajillas','familia','alta','Por sus productos: 4 de 15 están en MHD; lavavajillas 4',15,4,102);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas-libre-instalacion','lavavajillas','familia','alta','Por sus productos: 45 de 104 están en MHD; lavavajillas 45',104,45,70);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas-negros','lavavajillas','familia','baja','Sin productos de MHD; por el nombre',2,0,50);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas-pequenos','lavavajillas','familia','alta','Por sus productos: 10 de 30 están en MHD; lavavajillas 10',30,10,854);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas-samsung','lavavajillas','familia','baja','Sin productos de MHD; por el nombre',9,0,4);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas-teka','lavavajillas','familia','alta','Por sus productos: 11 de 19 están en MHD; lavavajillas 11',19,11,19);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas-teka-45cm','lavavajillas','familia','alta','Por sus productos: 5 de 6 están en MHD; lavavajillas 5',6,5,22);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lavavajillas-whirlpool','lavavajillas','familia','alta','Por sus productos: 12 de 17 están en MHD; lavavajillas 12',17,12,9);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lenovo','lenovo','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',3,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('lg','lg','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',293,56,297);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('licuadoras','licuadoras','misma','alta','La colección se reutiliza en el árbol nuevo',4,3,8);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('liebherr','liebherr','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('magic-vac','magic-vac','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('magna','magna','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',1,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('magnat','magnat','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('mando-smart-tv','mandos-a-distancia','familia','baja','Sin productos de MHD; propuesta a mano',3,0,5);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('mando-universal','mandos-a-distancia','familia','alta','Por sus productos: 8 de 8 están en MHD; mandos-a-distancia 8',8,8,2);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('maquinas-de-afeitar','afeitadoras','familia','alta','Por sus productos: 12 de 21 están en MHD; afeitadoras 10, cortapelos 2',21,12,71);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('masaje','cuidado-personal-y-salud','grupo','baja','Sin productos de MHD; propuesta a mano',1,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('maxell','maxell','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('menaje-de-cocina','pequeno-electro-de-cocina','grupo','alta','Por sus productos: 55 de 105 están en MHD; ollas-cacerolas-y-cazos 27, sartenes 16, planchas-de-asar-y-parrillas 7',105,55,30);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('mepamsa','mepamsa','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',145,40,19);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('micel','micel','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',1,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('microondas','microondas','misma','alta','La colección se reutiliza en el árbol nuevo',180,85,376);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('microondas-aeg','microondas-integrables','familia','media','Por sus productos: 1 de 1 están en MHD; microondas-integrables 1',1,1,4);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('microondas-aspes','microondas','familia','media','Por sus productos: 10 de 18 están en MHD; microondas 7, microondas-integrables 3',18,10,23);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('microondas-balay','microondas-integrables','familia','alta','Por sus productos: 12 de 14 están en MHD; microondas-integrables 10, microondas 2',14,12,25);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('microondas-beko','microondas-integrables','familia','alta','Por sus productos: 4 de 5 están en MHD; microondas-integrables 4',5,4,13);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('microondas-bosch','microondas-integrables','familia','media','Por sus productos: 4 de 4 están en MHD; microondas-integrables 3, microondas 1',4,4,11);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('microondas-cata','microondas','familia','media','Por sus productos: 1 de 7 están en MHD; microondas 1',7,1,5);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('microondas-cecotec','microondas','familia','media','Por sus productos: 6 de 9 están en MHD; microondas 4, microondas-integrables 2',9,6,24);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('microondas-electrolux','microondas-integrables','familia','media','Por sus productos: 2 de 2 están en MHD; microondas-integrables 2',2,2,4);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('microondas-fondo-30-cm','microondas-integrables','familia','alta','Por sus productos: 10 de 18 están en MHD; microondas-integrables 10',18,10,4339);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('microondas-integrable-25-litros','microondas-integrables','familia','alta','Por sus productos: 17 de 24 están en MHD; microondas-integrables 17',24,17,797);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('microondas-integrables','microondas-integrables','misma','alta','La colección se reutiliza en el árbol nuevo',86,44,1757);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('microondas-integrables-aeg','microondas-integrables','familia','media','Por sus productos: 1 de 1 están en MHD; microondas-integrables 1',1,1,2);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('microondas-integrables-balay','microondas-integrables','familia','alta','Por sus productos: 10 de 12 están en MHD; microondas-integrables 10',12,10,10);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('microondas-integrables-beko','microondas-integrables','familia','alta','Por sus productos: 4 de 4 están en MHD; microondas-integrables 4',4,4,44);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('microondas-integrables-blancos','microondas-integrables','familia','alta','Por sus productos: 6 de 16 están en MHD; microondas-integrables 6',16,6,812);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('microondas-integrables-bosch','microondas-integrables','familia','alta','Por sus productos: 3 de 3 están en MHD; microondas-integrables 3',3,3,12);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('microondas-integrables-cata','microondas','familia','media','Por sus productos: 1 de 7 están en MHD; microondas 1',7,1,11);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('microondas-integrables-cecotec','microondas-integrables','familia','media','Por sus productos: 2 de 3 están en MHD; microondas-integrables 2',3,2,8);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('microondas-integrables-electrolux','microondas-integrables','familia','media','Por sus productos: 2 de 2 están en MHD; microondas-integrables 2',2,2,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('microondas-integrables-orbegozo','microondas-integrables','familia','alta','Por sus productos: 3 de 4 están en MHD; microondas-integrables 3',4,3,8);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('microondas-integrables-whirlpool','microondas-integrables','familia','alta','Por sus productos: 3 de 3 están en MHD; microondas-integrables 3',3,3,36);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('microondas-lg','electrodomesticos-de-cocina','grupo','media','Por sus productos: 2 de 8 están en MHD; microondas 1, microondas-integrables 1',8,2,27);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('microondas-libre-instalacion','microondas','familia','alta','Por sus productos: 41 de 93 están en MHD; microondas 41',93,41,45);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('microondas-orbegozo','microondas','familia','alta','Por sus productos: 17 de 26 están en MHD; microondas 14, microondas-integrables 3',26,17,8);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('microondas-teka','electrodomesticos-de-cocina','grupo','alta','Por sus productos: 10 de 40 están en MHD; microondas-integrables 5, microondas 5',40,10,28);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('microondas-whirlpool','microondas-integrables','familia','alta','Por sus productos: 3 de 7 están en MHD; microondas-integrables 3',7,3,7);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('modulos-de-almacenamiento','modulos-de-integracion','familia','baja','Sin productos de MHD; propuesta a mano',9,0,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('moldeadores-de-pelo','moldeadores-y-rizadores-de-pelo','familia','alta','Por sus productos: 7 de 10 están en MHD; moldeadores-y-rizadores-de-pelo 7',10,7,3);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('molinillos-de-cafe','molinillos-de-cafe','misma','alta','La colección se reutiliza en el árbol nuevo',4,3,24);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('monitor','monitores','familia','baja','Sin productos de MHD; propuesta a mano',3,0,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('monitores-tv','monitores','familia','baja','Sin productos de MHD; por el nombre',7,0,27);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('monix','monix','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',4,3,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('motorola','motorola','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',29,17,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('moulinex','moulinex','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',14,10,13);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('movilidad','movilidad','misma','alta','La colección se reutiliza en el árbol nuevo',39,24,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('muse','muse','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',75,24,8);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('nariceros','recortadoras-de-nariz-y-orejas','familia','media','Por sus productos: 3 de 6 están en MHD; recortadoras-de-nariz-y-orejas 2, cortapelos 1',6,3,8);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('neveras-2-metros','frigorificos-combi','familia','alta','Por sus productos: 26 de 115 están en MHD; frigorificos-combi 26',115,26,2832);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('nevir','nevir','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',18,4,8);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('new-pol','new-pol','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('nimo','nimo','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('ninja','ninja','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',2,1,4);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('nintendo','nintendo','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',1,0,2);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('nodor','nodor','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',3,0,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('nokia','nokia','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',6,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('novedades','novedades','misma','alta','Colección comercial o de servicio',3,2,3);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('ofertas','ofertas','misma','alta','Colección comercial o de servicio',302,141,549);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('ofertas-electrodomesticos','ofertas','marca','alta','Página de electrodomésticos de una marca: a la página de la marca',81,49,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('ollas-electricas','ollas-cacerolas-y-cazos','familia','alta','Por sus productos: 3 de 5 están en MHD; ollas-cacerolas-y-cazos 3',5,3,26);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('ollas-express','ollas-cacerolas-y-cazos','familia','alta','Por sus productos: 6 de 17 están en MHD; ollas-cacerolas-y-cazos 6',17,6,142);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('ollas-gm','ollas-gm','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',1,0,3);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('one-for-all','one-for-all','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',23,14,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('onkyo','onkyo','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',1,0,3);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('oral-b','oral-b','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',34,13,214);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('orbegozo','orbegozo','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',365,213,4);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('otsein','otsein','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('paelleras-y-parrillas','planchas-de-asar-y-parrillas','familia','media','Por sus productos: 4 de 6 están en MHD; planchas-de-asar-y-parrillas 3, paelleras 1',6,4,15);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('panasonic','panasonic','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',25,4,5);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('patines-electricos','patinetes-electricos','familia','baja','Sin productos de MHD; propuesta a mano',4,0,13);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('pebbly','pebbly','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',1,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('pequeno-electrodomestico','pequeno-electro','apartado','alta','Antiguo apartado de pequeño electrodoméstico',628,358,660);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('pequeno-electrodomestico-smeg','smeg','marca','alta','Página de electrodomésticos de una marca: a la página de la marca',32,19,2);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('philips','philips','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',36,27,4);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('picadoras-electricas','picadoras','familia','media','Por sus productos: 2 de 6 están en MHD; picadoras 2',6,2,27);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('pioneer','pioneer','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-de-cocina','electrodomesticos-de-cocina','grupo','alta','Por sus productos: 127 de 283 están en MHD; placas-de-induccion 54, placas-de-gas 30, placas-vitroceramicas 23',283,127,36);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-de-cocina-aeg','placas-de-induccion','familia','media','Por sus productos: 2 de 6 están en MHD; placas-de-induccion 2',6,2,7);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-de-cocina-balay','electrodomesticos-de-cocina','grupo','alta','Por sus productos: 26 de 35 están en MHD; placas-de-induccion 12, placas-de-gas 8, placas-vitroceramicas 5',35,26,9);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-de-cocina-beko','placas-de-induccion','familia','media','Por sus productos: 8 de 11 están en MHD; placas-de-induccion 5, modulos-de-integracion 3',11,8,17);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-de-cocina-bosch','placas-de-induccion','familia','media','Por sus productos: 8 de 13 están en MHD; placas-de-induccion 6, placas-vitroceramicas 1, placas-de-gas 1',13,8,9);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-de-cocina-cata','electrodomesticos-de-cocina','grupo','alta','Por sus productos: 16 de 50 están en MHD; placas-de-gas 7, placas-de-induccion 4, placas-vitroceramicas 3',50,16,13);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-de-cocina-electrolux','placas-de-induccion','familia','media','Por sus productos: 2 de 5 están en MHD; placas-de-induccion 2',5,2,3);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-de-cocina-smeg','placas-de-gas','familia','media','Por sus productos: 1 de 6 están en MHD; placas-de-gas 1',6,1,17);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-de-cocina-teka','electrodomesticos-de-cocina','grupo','alta','Por sus productos: 39 de 92 están en MHD; placas-vitroceramicas 10, modulos-de-integracion 9, placas-de-induccion 8',92,39,94);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-de-cocina-whirlpool','placas-de-induccion','familia','media','Por sus productos: 2 de 8 están en MHD; placas-de-induccion 2',8,2,7);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-de-induccion-80-cm','placas-de-induccion','familia','media','Por sus productos: 2 de 8 están en MHD; placas-de-induccion 2',8,2,808);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-de-induccion-90-cm','placas-de-induccion','familia','baja','Sin productos de MHD; por el nombre',6,0,1064);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-de-induccion-blancas','placas-de-induccion','familia','alta','Por sus productos: 3 de 7 están en MHD; placas-de-induccion 3',7,3,723);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-de-induccion-de-70-cm','placas-de-induccion','familia','alta','Por sus productos: 4 de 4 están en MHD; placas-de-induccion 4',4,4,1113);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-electricas-portatiles','hornillos','familia','media','Por sus productos: 3 de 5 están en MHD; hornillos 2, placas-de-induccion 1',5,3,244);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-gas','placas-de-gas','familia','alta','Por sus productos: 29 de 84 están en MHD; placas-de-gas 29',84,29,608);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-gas-y-electricas','placas-mixtas','familia','baja','Sin productos de MHD; propuesta a mano',2,0,269);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-induccion','placas-de-induccion','familia','alta','Por sus productos: 51 de 118 están en MHD; placas-de-induccion 51',118,51,760);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-induccion-aeg','placas-de-induccion','familia','media','Por sus productos: 2 de 5 están en MHD; placas-de-induccion 2',5,2,38);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-induccion-balay','placas-de-induccion','familia','alta','Por sus productos: 12 de 17 están en MHD; placas-de-induccion 12',17,12,171);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-induccion-beko','placas-de-induccion','familia','alta','Por sus productos: 5 de 5 están en MHD; placas-de-induccion 5',5,5,160);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-induccion-bosch','placas-de-induccion','familia','alta','Por sus productos: 6 de 7 están en MHD; placas-de-induccion 6',7,6,82);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-induccion-cata','placas-de-induccion','familia','media','Por sus productos: 2 de 17 están en MHD; placas-de-induccion 2',17,2,202);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-induccion-con-extraccion','placas-de-induccion','familia','alta','Por sus productos: 3 de 3 están en MHD; placas-de-induccion 3',3,3,228);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-induccion-electrolux','placas-de-induccion','familia','media','Por sus productos: 2 de 3 están en MHD; placas-de-induccion 2',3,2,25);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-induccion-teka','placas-de-induccion','familia','alta','Por sus productos: 8 de 30 están en MHD; placas-de-induccion 8',30,8,284);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-induccion-whirlpool','placas-de-induccion','familia','media','Por sus productos: 2 de 6 están en MHD; placas-de-induccion 2',6,2,81);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-modulares','modulos-de-integracion','familia','alta','Por sus productos: 17 de 33 están en MHD; modulos-de-integracion 15, placas-vitroceramicas 1, cajones-calientaplatos 1',33,17,199);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-polivalentes','placas-polivalentes','misma','alta','La colección se reutiliza en el árbol nuevo',6,5,40);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('placas-vitroceramica','placas-vitroceramicas','familia','alta','Por sus productos: 22 de 36 están en MHD; placas-vitroceramicas 22',36,22,497);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('plancha','planchas-de-ropa','familia','alta','Por sus productos: 23 de 32 están en MHD; planchas-de-ropa 23',32,23,46);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('plancha-vertical','centros-de-planchado-y-planchas-verticales','familia','baja','Sin productos de MHD; propuesta a mano',4,0,4);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('planchado-secado-costura','planchas-de-ropa','familia','media','Por sus productos: 36 de 57 están en MHD; planchas-de-ropa 23, tablas-de-planchar 8, centros-de-planchado-y-planchas-verticales 4',57,36,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('planchas-de-asar','planchas-de-asar-y-grills-electricos','familia','alta','Por sus productos: 5 de 12 están en MHD; planchas-de-asar-y-grills-electricos 5',12,5,4);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('planchas-de-pelo','planchas-de-pelo','misma','alta','La colección se reutiliza en el árbol nuevo',7,3,14);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('pocketbook','pocketbook','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',14,12,49);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('polk','polk','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',6,5,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('preparador-de-alimentos','batidoras','familia','media','Por sus productos: 54 de 100 están en MHD; batidoras 33, basculas 4, envasadoras-al-vacio 4',100,54,2);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('promociones','promociones','misma','alta','Colección comercial o de servicio',11,0,850);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('pulseras-de-actividad','pulseras-de-actividad','misma','alta','La colección se reutiliza en el árbol nuevo',7,0,11);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('purificadores','purificadores-de-aire','familia','baja','Sin productos de MHD; propuesta a mano',1,0,12);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('pyrex','pyrex','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',1,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('qubo','qubo','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',18,0,4);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('quitapelusas','quitapelusas','misma','alta','La colección se reutiliza en el árbol nuevo',4,1,4);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('radiador-toallero','toalleros-electricos','familia','media','Por sus productos: 1 de 1 están en MHD; toalleros-electricos 1',1,1,4);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('radiadores','radiadores-de-aceite','familia','media','Por sus productos: 19 de 40 están en MHD; radiadores-de-aceite 15, calefactores-electricos 2, paneles-radiantes 2',40,19,72);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('radiocassettes','radios','familia','media','Por sus productos: 1 de 3 están en MHD; radios 1',3,1,93);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('radios-cd','radios-cd-y-radiocasetes','familia','media','Por sus productos: 3 de 10 están en MHD; radios-cd-y-radiocasetes 2, reproductores-de-audio-hi-fi 1',10,3,96);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('radios-despertadores','radiodespertadores','familia','media','Por sus productos: 13 de 33 están en MHD; radiodespertadores 8, radios 4, camaras-deportivas 1',33,13,35);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('radios-portatiles','radios','familia','alta','Por sus productos: 46 de 71 están en MHD; radios 46',71,46,486);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('receptores-av','receptores-av','misma','alta','La colección se reutiliza en el árbol nuevo',6,3,31);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('reloj-despertador','despertadores','familia','baja','Sin productos de MHD; propuesta a mano',1,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('reproductor-mp3-mp4','audio','grupo','alta','Por sus productos: 4 de 5 están en MHD; reproductores-de-audio-hi-fi 2, reproductores-mp3-y-mp4 2',5,4,16);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('ritter','ritter','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('robots-aspiradores','robots-aspiradores','misma','alta','La colección se reutiliza en el árbol nuevo',5,1,7);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('rowenta','rowenta','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',65,26,14);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('russell-hobbs','russell-hobbs','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',4,3,3);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('sage','sage','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',1,0,6);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('samsung','samsung','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',203,7,29);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('sandwicheras','sandwicheras','misma','alta','La colección se reutiliza en el árbol nuevo',12,6,5);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('sangean','sangean','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',39,18,8);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('sartenes-bra','sartenes','familia','media','Por sus productos: 17 de 20 están en MHD; sartenes 13, planchas-de-asar-y-parrillas 4',20,17,216);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('sartenes-y-woks','sartenes','familia','alta','Por sus productos: 20 de 34 están en MHD; sartenes 16, planchas-de-asar-y-parrillas 4',34,20,21);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('sartenes-y-woks-tefal','sartenes','familia','alta','Por sus productos: 3 de 13 están en MHD; sartenes 3',13,3,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('satisfyer','satisfyer','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',7,2,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('secadora-integrable','secadoras','familia','baja','Sin productos de MHD; propuesta a mano',1,0,1204);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('secadoras','secadoras','misma','alta','La colección se reutiliza en el árbol nuevo',64,14,13009);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('secadoras-aeg','secadoras','familia','baja','Sin productos de MHD; por el nombre',2,0,63);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('secadoras-balay','secadoras','familia','media','Por sus productos: 2 de 2 están en MHD; secadoras 2',2,2,29);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('secadoras-beko','secadoras','familia','baja','Sin productos de MHD; por el nombre',7,0,141);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('secadoras-bosch','secadoras','familia','alta','Por sus productos: 3 de 3 están en MHD; secadoras 3',3,3,32);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('secadoras-condensacion','secadoras','familia','alta','Por sus productos: 14 de 63 están en MHD; secadoras 14',63,14,725);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('secadoras-lg','secadoras','familia','alta','Por sus productos: 4 de 11 están en MHD; secadoras 4',11,4,33);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('secadoras-whirlpool','secadoras','familia','media','Por sus productos: 1 de 1 están en MHD; secadoras 1',1,1,17);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('secadores-de-pelo','secadores-de-pelo','misma','alta','La colección se reutiliza en el árbol nuevo',36,24,15);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('sennheiser','sennheiser','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',8,7,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('servicios','servicios','misma','alta','Colección comercial o de servicio',12,0,55);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('shark','shark','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',2,0,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('sharp','sharp','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('siemens','siemens','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',65,33,19);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('smart-home','hogar-inteligente-y-relojes','grupo','baja','Sin productos de MHD; propuesta a mano',3,0,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('smartbot','smartbot','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('smartphones','smartphones','misma','alta','La colección se reutiliza en el árbol nuevo',59,0,33);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('smartwatchs','smartwatches','familia','alta','Por sus productos: 20 de 59 están en MHD; smartwatches 20',59,20,435);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('smeg','smeg','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',53,25,134);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('sony','sony','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',11,11,2);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('soportes','soportes-de-tv-y-monitor','familia','alta','Por sus productos: 46 de 69 están en MHD; soportes-de-tv-y-monitor 46',69,46,29);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('sunstech','sunstech','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',36,25,5);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('svan','svan','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',125,67,34);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('svan-electrodomesticos','svan','marca','alta','Página de electrodomésticos de una marca: a la página de la marca',120,64,4);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tabla-de-planchar','tablas-de-planchar','familia','alta','Por sus productos: 8 de 8 están en MHD; tablas-de-planchar 8',8,8,2);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tablets','tablets','misma','alta','La colección se reutiliza en el árbol nuevo',14,0,24);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tablets-samsung','tablets','familia','baja','Sin productos de MHD; por el nombre',11,0,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tangent','tangent','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tcl','tcl','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',31,2,573);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tcl-55-pulgadas','televisores','familia','baja','Sin productos de MHD; propuesta a mano',5,0,27);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tdt','receptores-tdt-y-satelite','familia','baja','Sin productos de MHD; propuesta a mano',1,0,261);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tefal','tefal','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',26,5,13);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('teka','teka','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',676,208,69);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('telefonia-e-informatica','tecnologia','apartado','alta','Antiguo apartado de telefonía e informática',245,53,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('telefonos','smartwatches','familia','media','Por sus productos: 31 de 182 están en MHD; smartwatches 20, telefonos-inalambricos 8, telefonos-fijos 3',182,31,19);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('telefonos-fijos','telefonos-fijos','misma','alta','La colección se reutiliza en el árbol nuevo',9,7,19);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('telefonos-inalambricos','telefonos-inalambricos','misma','alta','La colección se reutiliza en el árbol nuevo',10,4,35);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('telefonos-moviles','smartphones','familia','baja','Sin productos de MHD; propuesta a mano',38,0,68);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisor-98-pulgadas','televisores','familia','baja','Sin productos de MHD; propuesta a mano',3,0,93);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisores','televisores','misma','alta','La colección se reutiliza en el árbol nuevo',246,74,592);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisores-led-24-pulgadas','televisores','familia','media','Por sus productos: 1 de 3 están en MHD; televisores 1',3,1,27);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisores-led-32-pulgadas','televisores','familia','alta','Por sus productos: 4 de 17 están en MHD; televisores 4',17,4,45);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisores-led-40-43-pulgadas','televisores','familia','media','Por sus productos: 1 de 23 están en MHD; televisores 1',23,1,376);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisores-led-50-55-pulgadas','televisores','familia','media','Por sus productos: 1 de 34 están en MHD; televisores 1',34,1,74);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisores-led-60-65-pulgadas','televisores','familia','media','Por sus productos: 1 de 19 están en MHD; televisores 1',19,1,92);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisores-led-70','televisores','familia','alta','Por sus productos: 3 de 19 están en MHD; televisores 3',19,3,156);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisores-lg','televisores','familia','alta','Por sus productos: 7 de 51 están en MHD; televisores 7',51,7,725);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisores-lg-24-pulgadas','televisores','familia','baja','Sin productos de MHD; por el nombre',3,0,135);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisores-lg-32-pulgadas','televisores','familia','media','Por sus productos: 2 de 5 están en MHD; televisores 2',5,2,187);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisores-lg-43-pulgadas','televisores','familia','media','Por sus productos: 1 de 6 están en MHD; televisores 1',6,1,157);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisores-lg-50-pulgadas','televisores','familia','baja','Sin productos de MHD; por el nombre',4,0,51);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisores-lg-55-pulgadas','televisores','familia','media','Por sus productos: 2 de 9 están en MHD; televisores 2',9,2,149);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisores-lg-65-pulgadas','televisores','familia','baja','Sin productos de MHD; por el nombre',9,0,121);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisores-lg-75-pulgadas','televisores','familia','baja','Sin productos de MHD; por el nombre',2,0,164);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisores-lg-de-86-pulgadas','televisores','familia','baja','Sin productos de MHD; por el nombre',3,0,49);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisores-oled-48-pulgadas','televisores','familia','baja','Sin productos de MHD; por el nombre',2,0,148);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisores-oled-55-pulgadas','televisores','familia','media','Por sus productos: 1 de 4 están en MHD; televisores 1',4,1,239);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisores-oled-65-pulgadas','televisores','familia','baja','Sin productos de MHD; por el nombre',3,0,226);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisores-oled-77-pulgadas','televisores','familia','baja','Sin productos de MHD; por el nombre',2,0,465);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisores-panasonic','televisores','familia','baja','Sin productos de MHD; por el nombre',3,0,188);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisores-samsung','televisores','familia','baja','Sin productos de MHD; por el nombre',35,0,586);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisores-samsung-55','televisores','familia','baja','Sin productos de MHD; por el nombre',8,0,24);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisores-samsung-65','televisores','familia','baja','Sin productos de MHD; por el nombre',7,0,8);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisores-samsung-mas70','televisores','familia','baja','Sin productos de MHD; por el nombre',3,0,11);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisores-tcl','televisores','familia','media','Por sus productos: 1 de 23 están en MHD; televisores 1',23,1,1837);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisores-tcl-32-pulgadas','televisores','familia','baja','Sin productos de MHD; por el nombre',2,0,38);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisores-tcl-40-pulgadas','televisores','familia','baja','Sin productos de MHD; por el nombre',1,0,109);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('televisores-tcl-50-pulgadas','televisores','familia','baja','Sin productos de MHD; por el nombre',1,0,164);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tensiometros','tensiometros','misma','alta','La colección se reutiliza en el árbol nuevo',1,0,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('termometros','termometros','misma','alta','La colección se reutiliza en el árbol nuevo',2,0,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('termos','termos','misma','alta','La colección se reutiliza en el árbol nuevo',3,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('termos-electricos','termos-electricos','misma','alta','La colección se reutiliza en el árbol nuevo',51,10,149);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('termos-electricos-cointra','termos-electricos','familia','alta','Por sus productos: 3 de 12 están en MHD; termos-electricos 3',12,3,8);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('termos-electricos-de-150-litros','termos-electricos','familia','baja','Sin productos de MHD; por el nombre',2,0,6);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('termos-electricos-de-50-litros','termos-electricos','familia','alta','Por sus productos: 3 de 13 están en MHD; termos-electricos 3',13,3,12);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('termos-electricos-de-80-litros','termos-electricos','familia','alta','Por sus productos: 3 de 14 están en MHD; termos-electricos 3',14,3,77);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('termos-electricos-edesa','termos-electricos','familia','baja','Sin productos de MHD; por el nombre',5,0,163);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('termos-electricos-orbegozo','termos-electricos','familia','baja','Sin productos de MHD; por el nombre',4,0,2);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('termos-electricos-teka','termos-electricos','familia','media','Por sus productos: 2 de 16 están en MHD; termos-electricos 2',16,2,20);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('teteras','teteras','misma','alta','La colección se reutiliza en el árbol nuevo',7,1,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tm-electron','tm-electron','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tocadiscos','tocadiscos','misma','alta','La colección se reutiliza en el árbol nuevo',31,12,74);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('torres-de-sonido','altavoces','familia','alta','Por sus productos: 6 de 8 están en MHD; altavoces 6',8,6,31);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('toshiba','toshiba','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',1,1,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tostadoras','tostadoras','misma','alta','La colección se reutiliza en el árbol nuevo',32,20,73);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tostadoras-grill','planchas-de-asar-y-grills-electricos','familia','alta','Por sus productos: 3 de 6 están en MHD; planchas-de-asar-y-grills-electricos 3',6,3,4);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tostadoras-orbegozo','tostadoras','familia','alta','Por sus productos: 5 de 7 están en MHD; tostadoras 5',7,5,2);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tostadoras-smeg','tostadoras','familia','alta','Por sus productos: 4 de 8 están en MHD; tostadoras 4',8,4,60);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tostadoras-ufesa','tostadoras','familia','media','Por sus productos: 2 de 5 están en MHD; tostadoras 2',5,2,2);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('trevi','trevi','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',1,0,6);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('turboair','turboair','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tv-24-pulgadas','televisores','familia','media','Por sus productos: 1 de 6 están en MHD; televisores 1',6,1,62);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tv-32-pulgadas','televisores','familia','alta','Por sus productos: 4 de 17 están en MHD; televisores 4',17,4,24);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tv-40-pulgadas','televisores','familia','baja','Sin productos de MHD; propuesta a mano',4,0,16);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tv-43-pulgadas','televisores','familia','media','Por sus productos: 1 de 20 están en MHD; televisores 1',20,1,48);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tv-50-pulgadas','televisores','familia','baja','Sin productos de MHD; propuesta a mano',16,0,34);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tv-55-pulgadas','televisores','familia','media','Por sus productos: 2 de 29 están en MHD; televisores 2',29,2,23);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tv-65-pulgadas','televisores','familia','media','Por sus productos: 1 de 26 están en MHD; televisores 1',26,1,63);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tv-75-pulgadas','televisores','familia','media','Por sus productos: 2 de 11 están en MHD; televisores 2',11,2,58);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tv-85-pulgadas','televisores','familia','baja','Sin productos de MHD; propuesta a mano',5,0,66);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tv-86-pulgadas','televisores','familia','baja','Sin productos de MHD; propuesta a mano',3,0,38);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tv-led','televisores','familia','alta','Por sus productos: 12 de 116 están en MHD; televisores 12',116,12,172);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tv-led-tcl','televisores','familia','media','Por sus productos: 1 de 15 están en MHD; televisores 1',15,1,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tv-mini-led','televisores','familia','baja','Sin productos de MHD; propuesta a mano',16,0,761);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('tv-oled','televisores','familia','alta','Por sus productos: 3 de 14 están en MHD; televisores 3',14,3,436);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('ufesa','ufesa','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',111,33,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('ultimas-unidades','ultimas-unidades','misma','alta','Colección comercial o de servicio',506,214,170);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('unimade','unimade','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('utensilios-electricos-de-cocina','utensilios-de-cocina','familia','media','Por sus productos: 3 de 5 están en MHD; utensilios-de-cocina 2, picadoras 1',5,3,13);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('vaporeras-electricas','coccion-al-vapor-y-a-baja-temperatura','familia','media','Por sus productos: 3 de 3 están en MHD; coccion-al-vapor-y-a-baja-temperatura 2, arroceras 1',3,3,21);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('vaporetas-limpiadoras-a-vapor-fregonas','vaporetas','familia','media','Por sus productos: 2 de 2 están en MHD; vaporetas 2',2,2,7);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('varta','varta','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('ventiladores','ventiladores','misma','alta','La colección se reutiliza en el árbol nuevo',54,6,84);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('veritas','veritas','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('videocamaras','videocamaras','misma','alta','La colección se reutiliza en el árbol nuevo',4,1,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('videocamaras-deportivas','camaras-deportivas','familia','media','Por sus productos: 1 de 4 están en MHD; camaras-deportivas 1',4,1,1);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('vinotecas','vinotecas','misma','alta','La colección se reutiliza en el árbol nuevo',19,6,113);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('vinotecas-cata','vinotecas','familia','baja','Sin productos de MHD; por el nombre',3,0,13);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('vinotecas-integrables','vinotecas','familia','alta','Por sus productos: 3 de 7 están en MHD; vinotecas 3',7,3,363);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('vinotecas-libre-instalacion','vinotecas','familia','alta','Por sus productos: 3 de 12 están en MHD; vinotecas 3',12,3,40);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('vinotecas-menos-de-10-botellas','vinotecas','familia','baja','Sin productos de MHD; por el nombre',3,0,207);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('vinotecas-teka','vinotecas','familia','alta','Por sus productos: 3 de 6 están en MHD; vinotecas 3',6,3,58);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('vitrex','vitrex','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',5,0,12);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('vitrokitchen','vitrokitchen','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',26,14,34);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('vogels','vogels','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',40,27,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('wahl','wahl','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',4,4,2);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('walkie-talkies','walkie-talkies','misma','alta','La colección se reutiliza en el árbol nuevo',8,8,8);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('whirlpool','whirlpool','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',69,28,11);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('wide','wide','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',10,0,11);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('wonder','wonder','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',4,2,4);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('xiaomi','xiaomi','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',66,12,7);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('zanussi','zanussi','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
-insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) values ('zeeclo','zeeclo','marca','alta','Página de marca: se mantiene (si se retira, a /pages/marcas)',0,0,0);
+insert into public.store_collections (handle,title,page_title,level,parent_handle,apartado_handle,in_menu,also_in,position,note) select r->>0,r->>1,r->>2,r->>3,r->>4,r->>5,(r->>6)::boolean,array(select jsonb_array_elements_text(r->7)),(r->>8)::int,r->>9 from jsonb_array_elements('[
+["frio","Frío",null,"apartado",null,"frio",true,[],0,null],
+["lavado","Lavado",null,"apartado",null,"lavado",true,[],1,null],
+["cocina","Cocina",null,"apartado",null,"cocina",true,[],2,null],
+["clima","Clima",null,"apartado",null,"clima",true,[],3,null],
+["television","Televisión",null,"apartado",null,"television",true,[],4,null],
+["pequeno-electro","Pequeño electro","Pequeño electrodoméstico","apartado",null,"pequeno-electro",true,[],5,null],
+["tecnologia","Tecnología",null,"apartado",null,"tecnologia",true,[],6,null],
+["frigorificos-y-congeladores","Frigoríficos y congeladores",null,"grupo","frio","frio",true,[],0,null],
+["accesorios-de-frio","Accesorios de frío",null,"grupo","frio","frio",false,[],1,null],
+["lavadoras-secadoras-y-lavavajillas","Lavadoras, secadoras y lavavajillas",null,"grupo","lavado","lavado",true,[],0,null],
+["accesorios-de-lavado","Accesorios de lavado",null,"grupo","lavado","lavado",false,[],1,null],
+["electrodomesticos-de-cocina","Electrodomésticos de cocina",null,"grupo","cocina","cocina",true,[],0,null],
+["accesorios-de-cocina","Accesorios de cocina",null,"grupo","cocina","cocina",false,[],1,null],
+["climatizacion","Climatización",null,"grupo","clima","clima",true,[],0,null],
+["accesorios-de-clima","Accesorios de clima",null,"grupo","clima","clima",false,[],1,null],
+["televisores-proyectores-y-sonido","Televisores, proyectores y sonido",null,"grupo","television","television",true,[],0,null],
+["receptores-antenas-y-pantallas-profesionales","Receptores, antenas y pantallas profesionales",null,"grupo","television","television",false,[],1,null],
+["limpieza-y-plancha","Limpieza y plancha",null,"grupo","pequeno-electro","pequeno-electro",true,[],0,null],
+["cuidado-personal-y-salud","Cuidado personal y salud",null,"grupo","pequeno-electro","pequeno-electro",true,[],1,null],
+["pequeno-electro-de-cocina","Pequeño electro de cocina",null,"grupo","pequeno-electro","pequeno-electro",true,[],2,null],
+["hogar","Hogar",null,"grupo","pequeno-electro","pequeno-electro",false,[],3,null],
+["jardin-y-bricolaje","Jardín y bricolaje",null,"grupo","pequeno-electro","pequeno-electro",false,[],4,null],
+["muebles-gaming","Muebles gaming",null,"grupo","pequeno-electro","pequeno-electro",false,[],5,null],
+["accesorios-de-television","Accesorios de televisión",null,"grupo","television","television",false,[],2,null],
+["foto-y-video","Foto y vídeo",null,"grupo","tecnologia","tecnologia",false,[],6,null],
+["accesorios-de-pequeno-electro","Accesorios de pequeño electro",null,"grupo","pequeno-electro","pequeno-electro",false,[],6,null],
+["audio","Audio",null,"grupo","tecnologia","tecnologia",true,[],0,null],
+["telefonia","Telefonía",null,"grupo","tecnologia","tecnologia",true,[],1,null],
+["informatica","Informática",null,"grupo","tecnologia","tecnologia",true,[],2,null],
+["gaming","Gaming",null,"grupo","tecnologia","tecnologia",true,[],3,null],
+["movilidad","Movilidad",null,"grupo","tecnologia","tecnologia",true,[],4,null],
+["hogar-inteligente-y-relojes","Hogar inteligente y relojes",null,"grupo","tecnologia","tecnologia",true,[],5,null],
+["accesorios-y-componentes","Accesorios y componentes",null,"grupo","tecnologia","tecnologia",false,[],7,null],
+["frigorificos-combi","Frigoríficos combi",null,"familia","frigorificos-y-congeladores","frio",true,[],0,null],
+["frigorificos-americanos-y-side-by-side","Frigoríficos americanos y side by side",null,"familia","frigorificos-y-congeladores","frio",true,[],1,null],
+["frigorificos-de-2-puertas","Frigoríficos de 2 puertas",null,"familia","frigorificos-y-congeladores","frio",true,[],2,null],
+["frigorificos-de-1-puerta","Frigoríficos de 1 puerta",null,"familia","frigorificos-y-congeladores","frio",true,[],3,null],
+["arcones-congeladores","Arcones congeladores",null,"familia","frigorificos-y-congeladores","frio",true,[],4,"Revisar si se prefiere «Arcones congeladores»."],
+["congeladores-verticales","Congeladores verticales",null,"familia","frigorificos-y-congeladores","frio",true,[],5,null],
+["vinotecas","Vinotecas",null,"familia","frigorificos-y-congeladores","frio",true,[],6,null],
+["frigorificos-cerveceros","Frigoríficos cerveceros",null,"familia","frigorificos-y-congeladores","frio",false,[],7,null],
+["enfriadores-de-botellas","Enfriadores de botellas",null,"familia","frigorificos-y-congeladores","frio",false,[],8,null],
+["accesorios-para-frigorificos-y-congeladores","Accesorios para frigoríficos y congeladores",null,"familia","accesorios-de-frio","frio",false,[],0,null],
+["lavadoras","Lavadoras",null,"familia","lavadoras-secadoras-y-lavavajillas","lavado",true,[],0,null],
+["lavadoras-secadoras","Lavadoras secadoras",null,"familia","lavadoras-secadoras-y-lavavajillas","lavado",true,[],1,null],
+["lavavajillas","Lavavajillas",null,"familia","lavadoras-secadoras-y-lavavajillas","lavado",true,[],2,null],
+["secadoras","Secadoras",null,"familia","lavadoras-secadoras-y-lavavajillas","lavado",true,[],3,null],
+["centrifugadoras","Centrifugadoras",null,"familia","lavadoras-secadoras-y-lavavajillas","lavado",true,[],4,null],
+["accesorios-para-lavadoras","Accesorios para lavadoras",null,"familia","accesorios-de-lavado","lavado",false,[],0,null],
+["accesorios-para-lavavajillas","Accesorios para lavavajillas",null,"familia","accesorios-de-lavado","lavado",false,[],1,null],
+["accesorios-para-secadoras","Accesorios para secadoras",null,"familia","accesorios-de-lavado","lavado",false,[],2,null],
+["cestas-para-cubiertos","Cestas para cubiertos",null,"familia","accesorios-de-lavado","lavado",false,[],3,null],
+["productos-de-limpieza-para-electrodomesticos","Productos de limpieza para electrodomésticos",null,"familia","accesorios-de-lavado","lavado",false,[],4,null],
+["hornos","Hornos",null,"familia","electrodomesticos-de-cocina","cocina",true,[],0,null],
+["hornos-compactos","Hornos compactos",null,"familia","electrodomesticos-de-cocina","cocina",true,[],1,null],
+["microondas","Microondas",null,"familia","electrodomesticos-de-cocina","cocina",true,[],2,null],
+["microondas-integrables","Microondas integrables",null,"familia","electrodomesticos-de-cocina","cocina",true,[],3,null],
+["placas-de-induccion","Placas de inducción",null,"familia","electrodomesticos-de-cocina","cocina",true,[],4,null],
+["placas-vitroceramicas","Placas vitrocerámicas",null,"familia","electrodomesticos-de-cocina","cocina",true,[],5,null],
+["placas-de-gas","Placas de gas",null,"familia","electrodomesticos-de-cocina","cocina",true,[],6,null],
+["campanas-extractoras","Campanas extractoras",null,"familia","electrodomesticos-de-cocina","cocina",true,[],7,null],
+["fregaderos","Fregaderos",null,"familia","electrodomesticos-de-cocina","cocina",true,[],8,null],
+["grifos-de-cocina","Grifos de cocina",null,"familia","electrodomesticos-de-cocina","cocina",true,[],9,null],
+["cocinas-de-gas-y-electricas","Cocinas de gas y eléctricas",null,"familia","electrodomesticos-de-cocina","cocina",true,[],10,null],
+["hornos-de-gas","Hornos de gas",null,"familia","electrodomesticos-de-cocina","cocina",false,[],11,null],
+["hornos-polivalentes","Hornos polivalentes",null,"familia","electrodomesticos-de-cocina","cocina",false,[],12,null],
+["hornos-de-sobremesa","Hornos de sobremesa",null,"familia","electrodomesticos-de-cocina","cocina",false,[],13,null],
+["placas-polivalentes","Placas polivalentes",null,"familia","electrodomesticos-de-cocina","cocina",false,[],14,null],
+["placas-mixtas","Placas mixtas",null,"familia","electrodomesticos-de-cocina","cocina",false,[],15,null],
+["teppanyaki","Teppanyaki",null,"familia","electrodomesticos-de-cocina","cocina",false,[],16,null],
+["modulos-de-integracion","Módulos de integración",null,"familia","electrodomesticos-de-cocina","cocina",false,[],17,null],
+["cajones-calientaplatos","Cajones calientaplatos",null,"familia","electrodomesticos-de-cocina","cocina",false,[],18,"«Módulo de calentamiento»: cajones calientaplatos (revisar con los productos)."],
+["cafeteras-integrables","Cafeteras integrables",null,"familia","electrodomesticos-de-cocina","cocina",false,[],19,null],
+["conjuntos-de-horno-y-placa","Conjuntos de horno y placa",null,"familia","electrodomesticos-de-cocina","cocina",false,[],20,null],
+["extractores-de-cocina-y-bano","Extractores de cocina y baño",null,"familia","electrodomesticos-de-cocina","cocina",false,[],21,null],
+["packs-de-fregadero-y-grifo","Packs de fregadero y grifo",null,"familia","electrodomesticos-de-cocina","cocina",false,[],22,null],
+["grifos-de-bano","Grifos de baño",null,"familia","electrodomesticos-de-cocina","cocina",false,[],23,null],
+["trituradores-de-residuos-para-fregadero","Trituradores de residuos para fregadero",null,"familia","electrodomesticos-de-cocina","cocina",false,[],24,null],
+["barbacoas-de-gas","Barbacoas de gas",null,"familia","electrodomesticos-de-cocina","cocina",false,[],25,null],
+["hornillos","Hornillos",null,"familia","electrodomesticos-de-cocina","cocina",false,[],26,null],
+["accesorios-para-hornos","Accesorios para hornos",null,"familia","accesorios-de-cocina","cocina",false,[],0,null],
+["accesorios-para-microondas","Accesorios para microondas",null,"familia","accesorios-de-cocina","cocina",false,[],1,null],
+["accesorios-para-placas","Accesorios para placas",null,"familia","accesorios-de-cocina","cocina",false,[],2,null],
+["cubreencimeras","Cubreencimeras",null,"familia","accesorios-de-cocina","cocina",false,[],3,null],
+["accesorios-para-campanas","Accesorios para campanas",null,"familia","accesorios-de-cocina","cocina",false,[],4,null],
+["accesorios-para-fregaderos-y-grifos","Accesorios para fregaderos y grifos",null,"familia","accesorios-de-cocina","cocina",false,[],5,null],
+["aire-acondicionado","Aire acondicionado",null,"familia","climatizacion","clima",true,[],0,null],
+["aire-acondicionado-portatil","Aire acondicionado portátil",null,"familia","climatizacion","clima",true,[],1,null],
+["ventiladores","Ventiladores",null,"familia","climatizacion","clima",true,[],2,null],
+["climatizadores-evaporativos","Climatizadores evaporativos",null,"familia","climatizacion","clima",true,[],3,null],
+["deshumidificadores","Deshumidificadores",null,"familia","climatizacion","clima",true,[],4,null],
+["radiadores-de-aceite","Radiadores de aceite",null,"familia","climatizacion","clima",true,[],5,null],
+["emisores-termicos","Emisores térmicos",null,"familia","climatizacion","clima",true,[],6,null],
+["calentadores-de-gas","Calentadores de gas",null,"familia","climatizacion","clima",true,[],7,null],
+["calderas-de-gas","Calderas de gas",null,"familia","climatizacion","clima",true,[],8,null],
+["termos-electricos","Termos eléctricos",null,"familia","climatizacion","clima",true,[],9,"Termos de agua caliente eléctricos."],
+["purificadores-de-aire","Purificadores de aire",null,"familia","climatizacion","clima",false,[],10,null],
+["jarras-purificadoras-de-agua","Jarras purificadoras de agua",null,"familia","climatizacion","clima",false,[],11,null],
+["dispensadores-de-agua","Dispensadores de agua",null,"familia","climatizacion","clima",false,[],12,null],
+["ambientadores","Ambientadores",null,"familia","climatizacion","clima",false,[],13,null],
+["termoventiladores","Termoventiladores",null,"familia","climatizacion","clima",false,[],14,null],
+["estufas","Estufas",null,"familia","climatizacion","clima",false,[],15,null],
+["calefactores-electricos","Calefactores eléctricos",null,"familia","climatizacion","clima",false,[],16,"Radiadores, toalleros, calientacamas… van a su colección por la decisión 7."],
+["braseros-electricos","Braseros eléctricos",null,"familia","climatizacion","clima",false,[],17,null],
+["convectores","Convectores",null,"familia","climatizacion","clima",false,[],18,null],
+["paneles-radiantes","Paneles radiantes",null,"familia","climatizacion","clima",false,[],19,"MHD: «Placa eléctrica a radiación»."],
+["toalleros-electricos","Toalleros eléctricos",null,"familia","climatizacion","clima",false,[],20,null],
+["termos-solares","Termos solares",null,"familia","climatizacion","clima",false,[],21,null],
+["captadores-solares","Captadores solares",null,"familia","climatizacion","clima",false,[],22,null],
+["grupos-solares","Grupos solares",null,"familia","climatizacion","clima",false,[],23,null],
+["kits-solares","Kits solares",null,"familia","climatizacion","clima",false,[],24,null],
+["calderas-mixtas","Calderas mixtas",null,"familia","climatizacion","clima",false,[],25,null],
+["programadores-horarios","Programadores horarios",null,"familia","climatizacion","clima",false,[],26,null],
+["estaciones-meteorologicas","Estaciones meteorológicas",null,"familia","climatizacion","clima",false,[],27,null],
+["accesorios-para-calentadores","Accesorios para calentadores",null,"familia","accesorios-de-clima","clima",false,[],0,null],
+["accesorios-para-calderas","Accesorios para calderas",null,"familia","accesorios-de-clima","clima",false,[],1,null],
+["accesorios-para-termos","Accesorios para termos",null,"familia","accesorios-de-clima","clima",false,[],2,null],
+["accesorios-para-aire-acondicionado","Accesorios para aire acondicionado",null,"familia","accesorios-de-clima","clima",false,[],3,null],
+["accesorios-de-climatizacion","Accesorios de climatización",null,"familia","accesorios-de-clima","clima",false,[],4,null],
+["accesorios-para-ventiladores","Accesorios para ventiladores",null,"familia","accesorios-de-clima","clima",false,[],5,null],
+["accesorios-para-radiadores-y-emisores","Accesorios para radiadores y emisores",null,"familia","accesorios-de-clima","clima",false,[],6,null],
+["accesorios-para-purificadores","Accesorios para purificadores",null,"familia","accesorios-de-clima","clima",false,[],7,null],
+["televisores","Televisores",null,"familia","televisores-proyectores-y-sonido","television",true,[],0,null],
+["proyectores","Proyectores",null,"familia","televisores-proyectores-y-sonido","television",true,[],1,null],
+["barras-de-sonido","Barras de sonido",null,"familia","televisores-proyectores-y-sonido","television",true,[],2,null],
+["videowalls","Videowalls",null,"familia","receptores-antenas-y-pantallas-profesionales","television",false,[],0,null],
+["pantallas-tactiles","Pantallas táctiles",null,"familia","receptores-antenas-y-pantallas-profesionales","television",false,[],1,null],
+["pantallas-de-proyeccion","Pantallas de proyección",null,"familia","receptores-antenas-y-pantallas-profesionales","television",false,[],2,null],
+["tv-box-y-sticks-de-tv","TV Box y sticks de TV",null,"familia","receptores-antenas-y-pantallas-profesionales","television",false,[],3,null],
+["receptores-de-satelite","Receptores de satélite",null,"familia","receptores-antenas-y-pantallas-profesionales","television",false,[],4,null],
+["receptores-tdt-y-satelite","Receptores TDT y satélite",null,"familia","receptores-antenas-y-pantallas-profesionales","television",false,[],5,null],
+["reproductores-de-dvd-y-blu-ray","Reproductores de DVD y Blu-ray",null,"familia","receptores-antenas-y-pantallas-profesionales","television",false,[],6,null],
+["gafas-de-realidad-virtual","Gafas de realidad virtual",null,"familia","receptores-antenas-y-pantallas-profesionales","television",false,[],7,"MHD lo llama «Visor personal»: son gafas de realidad virtual (revisar con los productos)."],
+["antenas-de-tv-portatiles","Antenas de TV portátiles",null,"familia","receptores-antenas-y-pantallas-profesionales","television",false,[],8,"Las antenas de red (Ubiquiti) van a redes por la decisión 7."],
+["antenas-de-tv-fijas","Antenas de TV fijas",null,"familia","receptores-antenas-y-pantallas-profesionales","television",false,[],9,null],
+["antenas-parabolicas","Antenas parabólicas",null,"familia","receptores-antenas-y-pantallas-profesionales","television",false,[],10,null],
+["robots-aspiradores","Robots aspiradores",null,"familia","limpieza-y-plancha","pequeno-electro",true,[],0,null],
+["aspiradores","Aspiradores",null,"familia","limpieza-y-plancha","pequeno-electro",true,[],1,null],
+["hidrolimpiadoras","Hidrolimpiadoras",null,"familia","limpieza-y-plancha","pequeno-electro",true,[],2,null],
+["centros-de-planchado-y-planchas-verticales","Centros de planchado y planchas verticales",null,"familia","limpieza-y-plancha","pequeno-electro",true,[],3,null],
+["planchas-de-ropa","Planchas de ropa",null,"familia","limpieza-y-plancha","pequeno-electro",true,[],4,null],
+["secadores-de-pelo","Secadores de pelo",null,"familia","cuidado-personal-y-salud","pequeno-electro",true,[],0,null],
+["planchas-de-pelo","Planchas de pelo",null,"familia","cuidado-personal-y-salud","pequeno-electro",true,[],1,null],
+["depiladoras","Depiladoras",null,"familia","cuidado-personal-y-salud","pequeno-electro",true,[],2,null],
+["afeitadoras","Afeitadoras",null,"familia","cuidado-personal-y-salud","pequeno-electro",true,[],3,null],
+["cepillos-de-dientes-electricos","Cepillos de dientes eléctricos",null,"familia","cuidado-personal-y-salud","pequeno-electro",true,[],4,null],
+["tensiometros","Tensiómetros",null,"familia","cuidado-personal-y-salud","pequeno-electro",true,[],5,null],
+["mantas-electricas","Mantas eléctricas",null,"familia","cuidado-personal-y-salud","pequeno-electro",true,[],6,null],
+["vigilabebes","Vigilabebés",null,"familia","cuidado-personal-y-salud","pequeno-electro",true,[],7,null],
+["cafeteras","Cafeteras",null,"familia","pequeno-electro-de-cocina","pequeno-electro",true,[],0,null],
+["hervidores-de-agua","Hervidores de agua",null,"familia","pequeno-electro-de-cocina","pequeno-electro",true,[],1,null],
+["robots-de-cocina","Robots de cocina",null,"familia","pequeno-electro-de-cocina","pequeno-electro",true,[],2,null],
+["batidoras","Batidoras",null,"familia","pequeno-electro-de-cocina","pequeno-electro",true,[],3,null],
+["freidoras","Freidoras",null,"familia","pequeno-electro-de-cocina","pequeno-electro",true,[],4,null],
+["vaporetas","Vaporetas",null,"familia","limpieza-y-plancha","pequeno-electro",false,[],5,null],
+["fregonas-electricas","Fregonas eléctricas",null,"familia","limpieza-y-plancha","pequeno-electro",false,[],6,null],
+["planchadoras","Planchadoras",null,"familia","limpieza-y-plancha","pequeno-electro",false,[],7,null],
+["tablas-de-planchar","Tablas de planchar",null,"familia","limpieza-y-plancha","pequeno-electro",false,[],8,null],
+["quitapelusas","Quitapelusas",null,"familia","limpieza-y-plancha","pequeno-electro",false,[],9,null],
+["limpiacristales","Limpiacristales",null,"familia","limpieza-y-plancha","pequeno-electro",false,[],10,null],
+["moldeadores-y-rizadores-de-pelo","Moldeadores y rizadores de pelo",null,"familia","cuidado-personal-y-salud","pequeno-electro",false,[],8,null],
+["recortadoras-de-bikini","Recortadoras de bikini",null,"familia","cuidado-personal-y-salud","pequeno-electro",false,[],9,null],
+["cortapelos","Cortapelos",null,"familia","cuidado-personal-y-salud","pequeno-electro",false,[],10,null],
+["recortadoras-de-barba","Recortadoras de barba",null,"familia","cuidado-personal-y-salud","pequeno-electro",false,[],11,"MHD: «Barberos»."],
+["recortadoras-de-nariz-y-orejas","Recortadoras de nariz y orejas",null,"familia","cuidado-personal-y-salud","pequeno-electro",false,[],12,null],
+["irrigadores-dentales","Irrigadores dentales",null,"familia","cuidado-personal-y-salud","pequeno-electro",false,[],13,null],
+["limpiadores-faciales","Limpiadores faciales",null,"familia","cuidado-personal-y-salud","pequeno-electro",false,[],14,null],
+["sets-de-manicura-y-pedicura","Sets de manicura y pedicura",null,"familia","cuidado-personal-y-salud","pequeno-electro",false,[],15,null],
+["masajeadores-anticeluliticos","Masajeadores anticelulíticos",null,"familia","cuidado-personal-y-salud","pequeno-electro",false,[],16,null],
+["hidromasaje-de-pies","Hidromasaje de pies",null,"familia","cuidado-personal-y-salud","pequeno-electro",false,[],17,null],
+["salud-sexual","Salud sexual",null,"familia","cuidado-personal-y-salud","pequeno-electro",false,[],18,null],
+["fitness-y-salud","Fitness y salud",null,"familia","cuidado-personal-y-salud","pequeno-electro",false,[],19,null],
+["almohadillas-electricas","Almohadillas eléctricas",null,"familia","cuidado-personal-y-salud","pequeno-electro",false,[],20,null],
+["calientacamas","Calientacamas",null,"familia","cuidado-personal-y-salud","pequeno-electro",false,[],21,null],
+["calientapies","Calientapiés",null,"familia","cuidado-personal-y-salud","pequeno-electro",false,[],22,null],
+["termometros","Termómetros",null,"familia","cuidado-personal-y-salud","pequeno-electro",false,[],23,null],
+["humidificadores","Humidificadores",null,"familia","cuidado-personal-y-salud","pequeno-electro",false,[],24,null],
+["esterilizadores-de-biberones","Esterilizadores de biberones",null,"familia","cuidado-personal-y-salud","pequeno-electro",false,[],25,null],
+["biberones","Biberones",null,"familia","cuidado-personal-y-salud","pequeno-electro",false,[],26,null],
+["calientabiberones","Calientabiberones",null,"familia","cuidado-personal-y-salud","pequeno-electro",false,[],27,null],
+["chupetes","Chupetes",null,"familia","cuidado-personal-y-salud","pequeno-electro",false,[],28,null],
+["sacaleches","Sacaleches",null,"familia","cuidado-personal-y-salud","pequeno-electro",false,[],29,null],
+["cuidado-del-pecho","Cuidado del pecho",null,"familia","cuidado-personal-y-salud","pequeno-electro",false,[],30,null],
+["vasos-para-bebe","Vasos para bebé",null,"familia","cuidado-personal-y-salud","pequeno-electro",false,[],31,null],
+["vajilla-infantil","Vajilla infantil",null,"familia","cuidado-personal-y-salud","pequeno-electro",false,[],32,null],
+["sets-para-bebe","Sets para bebé",null,"familia","cuidado-personal-y-salud","pequeno-electro",false,[],33,null],
+["espejos-de-bano","Espejos de baño",null,"familia","cuidado-personal-y-salud","pequeno-electro",false,[],34,null],
+["matamosquitos-electricos","Matamosquitos eléctricos",null,"familia","cuidado-personal-y-salud","pequeno-electro",false,[],35,null],
+["molinillos-de-cafe","Molinillos de café",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],5,null],
+["calientaleches","Calientaleches",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],6,null],
+["espumadores-de-leche","Espumadores de leche",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],7,null],
+["amasadoras","Amasadoras",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],8,null],
+["picadoras","Picadoras",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],9,null],
+["licuadoras","Licuadoras",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],10,null],
+["exprimidores","Exprimidores",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],11,null],
+["fondues-y-fuentes-de-chocolate","Fondues y fuentes de chocolate",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],12,null],
+["hornos-para-pizza","Hornos para pizza",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],13,null],
+["planchas-de-asar-y-grills-electricos","Planchas de asar y grills eléctricos",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],14,null],
+["tostadoras","Tostadoras",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],15,null],
+["panificadoras","Panificadoras",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],16,null],
+["sandwicheras","Sandwicheras",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],17,null],
+["cortafiambres","Cortafiambres",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],18,null],
+["maquinas-de-perritos-calientes","Máquinas de perritos calientes",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],19,null],
+["palomiteras-y-maquinas-de-algodon-de-azucar","Palomiteras y máquinas de algodón de azúcar",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],20,null],
+["yogurteras","Yogurteras",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],21,null],
+["gofreras-y-creperas","Gofreras y creperas",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],22,null],
+["heladeras","Heladeras",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],23,null],
+["coccion-al-vapor-y-a-baja-temperatura","Cocción al vapor y a baja temperatura",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],24,null],
+["arroceras","Arroceras",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],25,null],
+["cuecehuevos","Cuecehuevos",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],26,null],
+["envasadoras-al-vacio","Envasadoras al vacío",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],27,null],
+["molinillos-electricos-de-sal-y-pimienta","Molinillos eléctricos de sal y pimienta",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],28,null],
+["picadoras-de-hielo","Picadoras de hielo",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],29,null],
+["pasapures-electricos","Pasapurés eléctricos",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],30,null],
+["cuchillos-electricos","Cuchillos eléctricos",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],31,null],
+["afiladores-electricos","Afiladores eléctricos",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],32,null],
+["abrelatas-electricos","Abrelatas eléctricos",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],33,null],
+["encendedores-electricos","Encendedores eléctricos",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],34,null],
+["basculas","Básculas",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],35,null],
+["baterias-de-cocina","Baterías de cocina",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],36,null],
+["ollas-cacerolas-y-cazos","Ollas, cacerolas y cazos",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],37,null],
+["paelleras","Paelleras",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],38,null],
+["planchas-de-asar-y-parrillas","Planchas de asar y parrillas",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],39,null],
+["sartenes","Sartenes",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],40,null],
+["woks","Woks",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],41,null],
+["sets-de-cocina","Sets de cocina",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],42,null],
+["fiambreras","Fiambreras",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],43,null],
+["termos","Termos",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],44,"Termos de servicio (menaje), no termos eléctricos."],
+["teteras","Teteras",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],45,null],
+["utensilios-de-cocina","Utensilios de cocina",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],46,null],
+["carros-de-la-compra","Carros de la compra",null,"familia","hogar","pequeno-electro",false,[],0,null],
+["complementos-de-cocina","Complementos de cocina",null,"familia","pequeno-electro-de-cocina","pequeno-electro",false,[],47,null],
+["maquinas-de-coser","Máquinas de coser",null,"familia","hogar","pequeno-electro",false,[],1,null],
+["toalleros-de-bano","Toalleros de baño",null,"familia","hogar","pequeno-electro",false,[],2,null],
+["dosificadores-de-jabon","Dosificadores de jabón",null,"familia","hogar","pequeno-electro",false,[],3,null],
+["herramientas-electricas","Herramientas eléctricas",null,"familia","jardin-y-bricolaje","pequeno-electro",false,[],0,null],
+["robots-cortacesped","Robots cortacésped",null,"familia","jardin-y-bricolaje","pequeno-electro",false,[],1,null],
+["cortacespedes","Cortacéspedes",null,"familia","jardin-y-bricolaje","pequeno-electro",false,[],2,null],
+["bombas-de-agua","Bombas de agua",null,"familia","jardin-y-bricolaje","pequeno-electro",false,[],3,null],
+["desbrozadoras","Desbrozadoras",null,"familia","jardin-y-bricolaje","pequeno-electro",false,[],4,null],
+["cortasetos","Cortasetos",null,"familia","jardin-y-bricolaje","pequeno-electro",false,[],5,null],
+["sopladores","Sopladores",null,"familia","jardin-y-bricolaje","pequeno-electro",false,[],6,null],
+["linternas","Linternas",null,"familia","jardin-y-bricolaje","pequeno-electro",false,[],7,null],
+["motosierras","Motosierras",null,"familia","jardin-y-bricolaje","pequeno-electro",false,[],8,null],
+["tijeras-de-podar","Tijeras de podar",null,"familia","jardin-y-bricolaje","pequeno-electro",false,[],9,null],
+["podadoras-electricas","Podadoras eléctricas",null,"familia","jardin-y-bricolaje","pequeno-electro",false,[],10,null],
+["muebles-de-tv","Muebles de TV",null,"familia","hogar","pequeno-electro",false,[],4,null],
+["sillas-gaming","Sillas gaming",null,"familia","muebles-gaming","pequeno-electro",false,[],0,null],
+["mesas-gaming","Mesas gaming",null,"familia","muebles-gaming","pequeno-electro",false,[],1,null],
+["colchones","Colchones",null,"familia","hogar","pequeno-electro",false,[],5,null],
+["canapes","Canapés",null,"familia","hogar","pequeno-electro",false,[],6,null],
+["patas-de-canape-y-somieres","Patas de canapé y somieres",null,"familia","hogar","pequeno-electro",false,[],7,null],
+["soportes-de-tv-y-monitor","Soportes de TV y monitor",null,"familia","accesorios-de-television","television",false,[],0,null],
+["mandos-a-distancia","Mandos a distancia",null,"familia","accesorios-de-television","television",false,[],1,null],
+["accesorios-para-tv","Accesorios para TV",null,"familia","accesorios-de-television","television",false,[],2,null],
+["accesorios-para-proyectores","Accesorios para proyectores",null,"familia","accesorios-de-television","television",false,[],3,null],
+["objetivos","Objetivos",null,"familia","foto-y-video","tecnologia",false,[],0,null],
+["lentes-y-filtros-fotograficos","Lentes y filtros fotográficos",null,"familia","foto-y-video","tecnologia",false,[],1,null],
+["flashes","Flashes",null,"familia","foto-y-video","tecnologia",false,[],2,null],
+["accesorios-para-camaras","Accesorios para cámaras",null,"familia","foto-y-video","tecnologia",false,[],3,null],
+["accesorios-para-cafeteras","Accesorios para cafeteras",null,"familia","accesorios-de-pequeno-electro","pequeno-electro",false,[],0,null],
+["accesorios-para-depiladoras","Accesorios para depiladoras",null,"familia","accesorios-de-pequeno-electro","pequeno-electro",false,[],1,null],
+["accesorios-para-afeitadoras","Accesorios para afeitadoras",null,"familia","accesorios-de-pequeno-electro","pequeno-electro",false,[],2,null],
+["cabezales-y-accesorios-dentales","Cabezales y accesorios dentales",null,"familia","accesorios-de-pequeno-electro","pequeno-electro",false,[],3,null],
+["accesorios-para-aspiradores","Accesorios para aspiradores",null,"familia","accesorios-de-pequeno-electro","pequeno-electro",false,[],4,null],
+["accesorios-para-planchas","Accesorios para planchas",null,"familia","accesorios-de-pequeno-electro","pequeno-electro",false,[],5,null],
+["fundas-para-tablas-de-planchar","Fundas para tablas de planchar",null,"familia","accesorios-de-pequeno-electro","pequeno-electro",false,[],6,"MHD: «Accesorios para mesas de planchar»; casi todo son fundas (revisar)."],
+["accesorios-para-hidrolimpiadoras","Accesorios para hidrolimpiadoras",null,"familia","accesorios-de-pequeno-electro","pequeno-electro",false,[],7,null],
+["limpieza-para-electronica","Limpieza para electrónica",null,"familia","accesorios-de-pequeno-electro","pequeno-electro",false,[],8,"MHD: «Mantenimiento y limpieza»: kits de limpieza y aire comprimido para electrónica."],
+["accesorios-para-barbacoas","Accesorios para barbacoas",null,"familia","accesorios-de-pequeno-electro","pequeno-electro",false,[],9,null],
+["accesorios-para-robots-y-batidoras","Accesorios para robots y batidoras",null,"familia","accesorios-de-pequeno-electro","pequeno-electro",false,[],10,null],
+["accesorios-de-menaje","Accesorios de menaje",null,"familia","accesorios-de-pequeno-electro","pequeno-electro",false,[],11,null],
+["accesorios-de-salud-y-bienestar","Accesorios de salud y bienestar",null,"familia","accesorios-de-pequeno-electro","pequeno-electro",false,[],12,null],
+["accesorios-de-costura","Accesorios de costura",null,"familia","accesorios-de-pequeno-electro","pequeno-electro",false,[],13,null],
+["auriculares","Auriculares",null,"familia","audio","tecnologia",true,[],0,null],
+["altavoces","Altavoces",null,"familia","audio","tecnologia",true,[],1,null],
+["smartphones","Smartphones",null,"familia","telefonia","tecnologia",true,[],0,null],
+["telefonos-inalambricos","Teléfonos inalámbricos",null,"familia","telefonia","tecnologia",true,[],1,null],
+["portatiles","Portátiles",null,"familia","informatica","tecnologia",true,[],0,null],
+["monitores","Monitores",null,"familia","informatica","tecnologia",true,["television"],1,"Decisión 5: su sitio pasa a Tecnología › Informática y sale en el menú; también se ve desde Televisión."],
+["ordenadores-de-sobremesa","Ordenadores de sobremesa",null,"familia","informatica","tecnologia",true,[],2,null],
+["tablets","Tablets",null,"familia","informatica","tecnologia",true,[],3,null],
+["impresoras","Impresoras",null,"familia","informatica","tecnologia",true,[],4,"Las impresoras de tickets van a TPV por la decisión 7."],
+["consolas","Consolas",null,"familia","gaming","tecnologia",true,[],0,null],
+["bicicletas-electricas","Bicicletas eléctricas",null,"familia","movilidad","tecnologia",true,[],0,null],
+["patinetes-electricos","Patinetes eléctricos",null,"familia","movilidad","tecnologia",true,[],1,null],
+["altavoces-inteligentes","Altavoces inteligentes",null,"familia","hogar-inteligente-y-relojes","tecnologia",true,[],0,null],
+["smartwatches","Smartwatches",null,"familia","hogar-inteligente-y-relojes","tecnologia",true,[],1,null],
+["videovigilancia","Videovigilancia",null,"familia","hogar-inteligente-y-relojes","tecnologia",true,[],2,null],
+["packs-de-altavoces","Packs de altavoces",null,"familia","audio","tecnologia",false,[],2,null],
+["home-cinema","Home cinema",null,"familia","audio","tecnologia",false,[],3,null],
+["equipos-de-musica","Equipos de música",null,"familia","audio","tecnologia",false,[],4,null],
+["receptores-av","Receptores AV",null,"familia","audio","tecnologia",false,[],5,null],
+["amplificadores","Amplificadores",null,"familia","audio","tecnologia",false,[],6,null],
+["reproductores-de-audio-hi-fi","Reproductores de audio hi-fi",null,"familia","audio","tecnologia",false,[],7,null],
+["tocadiscos","Tocadiscos",null,"familia","audio","tecnologia",false,[],8,null],
+["mesas-de-mezclas","Mesas de mezclas",null,"familia","audio","tecnologia",false,[],9,null],
+["radios","Radios",null,"familia","audio","tecnologia",false,[],10,null],
+["radios-cd-y-radiocasetes","Radios CD y radiocasetes",null,"familia","audio","tecnologia",false,[],11,null],
+["reproductores-mp3-y-mp4","Reproductores MP3 y MP4",null,"familia","audio","tecnologia",false,[],12,null],
+["transmisores-fm","Transmisores FM",null,"familia","audio","tecnologia",false,[],13,null],
+["radiodespertadores","Radiodespertadores",null,"familia","audio","tecnologia",false,[],14,null],
+["despertadores","Despertadores",null,"familia","audio","tecnologia",false,[],15,null],
+["radios-y-multimedia-para-coche","Radios y multimedia para coche",null,"familia","audio","tecnologia",false,[],16,null],
+["senalizacion-para-coche","Señalización para coche",null,"familia","audio","tecnologia",false,[],17,null],
+["microfonos","Micrófonos",null,"familia","audio","tecnologia",false,[],18,null],
+["megafonos","Megáfonos",null,"familia","audio","tecnologia",false,[],19,null],
+["smartphones-reacondicionados","Smartphones reacondicionados",null,"familia","telefonia","tecnologia",false,[],2,null],
+["telefonos-fijos","Teléfonos fijos",null,"familia","telefonia","tecnologia",false,[],3,null],
+["telefonos-voip","Teléfonos VoIP",null,"familia","telefonia","tecnologia",false,[],4,null],
+["walkie-talkies","Walkie-talkies",null,"familia","telefonia","tecnologia",false,[],5,null],
+["portatiles-reacondicionados","Portátiles reacondicionados",null,"familia","informatica","tecnologia",false,[],5,null],
+["discos-duros-externos","Discos duros externos",null,"familia","informatica","tecnologia",false,[],6,null],
+["tarjetas-de-memoria","Tarjetas de memoria",null,"familia","informatica","tecnologia",false,[],7,null],
+["lectores-de-tarjetas","Lectores de tarjetas",null,"familia","informatica","tecnologia",false,[],8,null],
+["memorias-usb","Memorias USB",null,"familia","informatica","tecnologia",false,[],9,null],
+["grabadoras-de-cd-dvd-y-blu-ray","Grabadoras de CD, DVD y Blu-ray",null,"familia","informatica","tecnologia",false,[],10,null],
+["pda","PDA",null,"familia","informatica","tecnologia",false,[],11,null],
+["tpv","TPV",null,"familia","informatica","tecnologia",false,[],12,null],
+["ebooks","eBooks",null,"familia","informatica","tecnologia",false,[],13,null],
+["plotters","Plotters",null,"familia","informatica","tecnologia",false,[],14,null],
+["ratones","Ratones",null,"familia","informatica","tecnologia",false,[],15,null],
+["teclados","Teclados",null,"familia","informatica","tecnologia",false,[],16,null],
+["packs-de-teclado-y-raton","Packs de teclado y ratón",null,"familia","informatica","tecnologia",false,[],17,null],
+["escaneres","Escáneres",null,"familia","informatica","tecnologia",false,[],18,null],
+["lectores-de-dni-electronico","Lectores de DNI electrónico",null,"familia","informatica","tecnologia",false,[],19,null],
+["contadores-y-detectores-de-billetes","Contadores y detectores de billetes",null,"familia","informatica","tecnologia",false,[],20,null],
+["lectores-de-codigo-de-barras","Lectores de código de barras",null,"familia","informatica","tecnologia",false,[],21,null],
+["grabadoras-de-voz","Grabadoras de voz",null,"familia","informatica","tecnologia",false,[],22,null],
+["destructoras-de-papel","Destructoras de papel",null,"familia","informatica","tecnologia",false,[],23,null],
+["sai","SAI",null,"familia","informatica","tecnologia",false,[],24,null],
+["software","Software",null,"familia","informatica","tecnologia",false,[],25,null],
+["adaptadores-plc","Adaptadores PLC",null,"familia","informatica","tecnologia",false,[],26,null],
+["repetidores-y-sistemas-wifi-mesh","Repetidores y sistemas wifi mesh",null,"familia","informatica","tecnologia",false,[],27,null],
+["routers","Routers",null,"familia","informatica","tecnologia",false,[],28,null],
+["modems","Módems",null,"familia","informatica","tecnologia",false,[],29,null],
+["switches-y-hubs","Switches y hubs",null,"familia","informatica","tecnologia",false,[],30,null],
+["servidores-y-nas","Servidores y NAS",null,"familia","informatica","tecnologia",false,[],31,null],
+["adaptadores-bluetooth","Adaptadores Bluetooth",null,"familia","informatica","tecnologia",false,[],32,null],
+["calculadoras","Calculadoras",null,"familia","informatica","tecnologia",false,[],33,null],
+["videojuegos","Videojuegos",null,"familia","gaming","tecnologia",false,[],1,null],
+["robotica-educativa","Robótica educativa",null,"familia","gaming","tecnologia",false,[],2,null],
+["joysticks","Joysticks",null,"familia","gaming","tecnologia",false,[],3,null],
+["volantes-gaming","Volantes gaming",null,"familia","gaming","tecnologia",false,[],4,null],
+["motos-electricas","Motos eléctricas",null,"familia","movilidad","tecnologia",false,[],2,null],
+["aire-libre","Aire libre",null,"familia","movilidad","tecnologia",false,[],3,null],
+["relojes-gps-deportivos","Relojes GPS deportivos",null,"familia","movilidad","tecnologia",false,[],4,null],
+["navegadores-gps","Navegadores GPS",null,"familia","movilidad","tecnologia",false,[],5,null],
+["localizadores-gps","Localizadores GPS",null,"familia","movilidad","tecnologia",false,[],6,null],
+["anillos-inteligentes","Anillos inteligentes",null,"familia","hogar-inteligente-y-relojes","tecnologia",false,[],3,null],
+["pulseras-de-actividad","Pulseras de actividad",null,"familia","hogar-inteligente-y-relojes","tecnologia",false,[],4,null],
+["sensores-y-cerraduras-inteligentes","Sensores y cerraduras inteligentes",null,"familia","hogar-inteligente-y-relojes","tecnologia",false,[],5,null],
+["comederos-y-bebederos-para-mascotas","Comederos y bebederos para mascotas",null,"familia","hogar-inteligente-y-relojes","tecnologia",false,[],6,null],
+["iluminacion-inteligente","Iluminación inteligente",null,"familia","hogar-inteligente-y-relojes","tecnologia",false,[],7,null],
+["enchufes-inteligentes","Enchufes inteligentes",null,"familia","hogar-inteligente-y-relojes","tecnologia",false,[],8,null],
+["camaras-de-fotos","Cámaras de fotos",null,"familia","foto-y-video","tecnologia",false,[],4,null],
+["videocamaras","Videocámaras",null,"familia","foto-y-video","tecnologia",false,[],5,"MHD mete aquí grabadores de vigilancia y cámaras de videoconferencia: por la decisión 7 van a Videovigilancia y Webcams."],
+["camaras-deportivas","Cámaras deportivas",null,"familia","foto-y-video","tecnologia",false,[],6,null],
+["webcams","Webcams",null,"familia","foto-y-video","tecnologia",false,[],7,null],
+["prismaticos","Prismáticos",null,"familia","foto-y-video","tecnologia",false,[],8,null],
+["marcos-digitales","Marcos digitales",null,"familia","foto-y-video","tecnologia",false,[],9,null],
+["accesorios-de-audio","Accesorios de audio",null,"familia","accesorios-y-componentes","tecnologia",false,[],0,null],
+["cables","Cables",null,"familia","accesorios-y-componentes","tecnologia",false,[],1,null],
+["distribuidores-hdmi","Distribuidores HDMI",null,"familia","accesorios-y-componentes","tecnologia",false,[],2,null],
+["adaptadores","Adaptadores",null,"familia","accesorios-y-componentes","tecnologia",false,[],3,null],
+["cargadores","Cargadores",null,"familia","accesorios-y-componentes","tecnologia",false,[],4,null],
+["regletas","Regletas",null,"familia","accesorios-y-componentes","tecnologia",false,[],5,null],
+["pilas","Pilas",null,"familia","accesorios-y-componentes","tecnologia",false,[],6,null],
+["baterias-externas-powerbank","Baterías externas (powerbank)",null,"familia","accesorios-y-componentes","tecnologia",false,[],7,"Casi todo son baterías externas (powerbank)."],
+["armarios-rack-y-accesorios-de-red","Armarios rack y accesorios de red",null,"familia","accesorios-y-componentes","tecnologia",false,[],8,null],
+["accesorios-para-impresoras","Accesorios para impresoras",null,"familia","accesorios-y-componentes","tecnologia",false,[],9,null],
+["accesorios-para-plotters","Accesorios para plotters",null,"familia","accesorios-y-componentes","tecnologia",false,[],10,null],
+["fundas-y-accesorios-para-tablets","Fundas y accesorios para tablets",null,"familia","accesorios-y-componentes","tecnologia",false,[],11,null],
+["accesorios-para-ebooks","Accesorios para eBooks",null,"familia","accesorios-y-componentes","tecnologia",false,[],12,null],
+["accesorios-para-consolas","Accesorios para consolas",null,"familia","accesorios-y-componentes","tecnologia",false,[],13,null],
+["ventiladores-y-refrigeracion-para-pc","Ventiladores y refrigeración para PC",null,"familia","accesorios-y-componentes","tecnologia",false,[],14,null],
+["punteros","Punteros",null,"familia","accesorios-y-componentes","tecnologia",false,[],15,null],
+["papel-fotografico","Papel fotográfico",null,"familia","accesorios-y-componentes","tecnologia",false,[],16,null],
+["toner","Tóner",null,"familia","accesorios-y-componentes","tecnologia",false,[],17,null],
+["cintas-para-impresora","Cintas para impresora",null,"familia","accesorios-y-componentes","tecnologia",false,[],18,null],
+["cartuchos-de-tinta","Cartuchos de tinta",null,"familia","accesorios-y-componentes","tecnologia",false,[],19,null],
+["discos-virgenes","Discos vírgenes",null,"familia","accesorios-y-componentes","tecnologia",false,[],20,"MHD mete aquí SSD y discos duros: por la decisión 7 van a «Discos duros internos y SSD»; aquí quedan los discos vírgenes."],
+["cafes-e-infusiones","Cafés e infusiones",null,"familia","accesorios-y-componentes","tecnologia",false,[],21,null],
+["filtros-de-agua","Filtros de agua",null,"familia","accesorios-y-componentes","tecnologia",false,[],22,null],
+["filtros-para-aspiradores","Filtros para aspiradores",null,"familia","accesorios-y-componentes","tecnologia",false,[],23,null],
+["bolsas-para-aspiradores","Bolsas para aspiradores",null,"familia","accesorios-y-componentes","tecnologia",false,[],24,null],
+["bolsas-y-rollos-para-envasar-al-vacio","Bolsas y rollos para envasar al vacío",null,"familia","accesorios-y-componentes","tecnologia",false,[],25,null],
+["memoria-ram","Memoria RAM",null,"familia","accesorios-y-componentes","tecnologia",false,[],26,null],
+["discos-duros-internos-y-ssd","Discos duros internos y SSD",null,"familia","accesorios-y-componentes","tecnologia",false,[],27,null],
+["placas-base","Placas base",null,"familia","accesorios-y-componentes","tecnologia",false,[],28,null],
+["grabadoras-internas","Grabadoras internas",null,"familia","accesorios-y-componentes","tecnologia",false,[],29,null],
+["fuentes-de-alimentacion","Fuentes de alimentación",null,"familia","accesorios-y-componentes","tecnologia",false,[],30,null],
+["procesadores","Procesadores",null,"familia","accesorios-y-componentes","tecnologia",false,[],31,null],
+["grabadoras-externas","Grabadoras externas",null,"familia","accesorios-y-componentes","tecnologia",false,[],32,null],
+["tarjetas-de-red","Tarjetas de red",null,"familia","accesorios-y-componentes","tecnologia",false,[],33,null],
+["sintonizadoras-de-tv-para-pc","Sintonizadoras de TV para PC",null,"familia","accesorios-y-componentes","tecnologia",false,[],34,null],
+["tarjetas-de-sonido","Tarjetas de sonido",null,"familia","accesorios-y-componentes","tecnologia",false,[],35,null],
+["tarjetas-graficas","Tarjetas gráficas",null,"familia","accesorios-y-componentes","tecnologia",false,[],36,null],
+["disqueteras","Disqueteras",null,"familia","accesorios-y-componentes","tecnologia",false,[],37,null],
+["cajas-de-ordenador","Cajas de ordenador",null,"familia","accesorios-y-componentes","tecnologia",false,[],38,null],
+["cajas-para-discos-duros","Cajas para discos duros",null,"familia","accesorios-y-componentes","tecnologia",false,[],39,null],
+["antenas-y-adaptadores-wifi","Antenas y adaptadores wifi",null,"familia","accesorios-y-componentes","tecnologia",false,[],40,null],
+["accesorios-para-antenas-de-tv","Accesorios para antenas de TV",null,"familia","accesorios-y-componentes","tecnologia",false,[],41,null],
+["manos-libres","Manos libres",null,"familia","accesorios-y-componentes","tecnologia",false,[],42,null],
+["accesorios-para-moviles","Accesorios para móviles",null,"familia","accesorios-y-componentes","tecnologia",false,[],43,null],
+["protectores-de-pantalla","Protectores de pantalla",null,"familia","accesorios-y-componentes","tecnologia",false,[],44,null],
+["correas-y-accesorios-para-smartwatch","Correas y accesorios para smartwatch",null,"familia","accesorios-y-componentes","tecnologia",false,[],45,null],
+["accesorios-de-movilidad-urbana","Accesorios de movilidad urbana",null,"familia","accesorios-y-componentes","tecnologia",false,[],46,null],
+["accesorios-para-gps-y-coche","Accesorios para GPS y coche",null,"familia","accesorios-y-componentes","tecnologia",false,[],47,null],
+["fundas-para-moviles","Fundas para móviles",null,"familia","accesorios-y-componentes","tecnologia",false,[],48,null],
+["fundas-y-maletines-para-portatiles","Fundas y maletines para portátiles",null,"familia","accesorios-y-componentes","tecnologia",false,[],49,null],
+["mochilas-para-portatiles","Mochilas para portátiles",null,"familia","accesorios-y-componentes","tecnologia",false,[],50,null]
+]'::jsonb) r;
+insert into public.store_mhd_subfamily_map (mhd_subfamily_code,mhd_subfamily_name,collection_handle,note) select r->>0,r->>1,r->>2,r->>3 from jsonb_array_elements('[
+["H0101","Frigoríficos Combinados","frigorificos-combi",null],
+["H0110","Frigorificos Americanos y Side By Side","frigorificos-americanos-y-side-by-side",null],
+["H0115","Frigoríficos 2 Puertas","frigorificos-de-2-puertas",null],
+["H0120","Frigoríficos 1 Puerta","frigorificos-de-1-puerta",null],
+["H4001","Congelador Horizontal","arcones-congeladores",null],
+["H4010","Congelador Vertical","congeladores-verticales",null],
+["H5001","Vinotecas y Armarios Bodega","vinotecas",null],
+["H5010","Frigoríficos Cerveceros","frigorificos-cerveceros",null],
+["H5015","Enfriador de botellas","enfriadores-de-botellas",null],
+["S5510","Accesorios para Frigoríficos y Congeladores","accesorios-para-frigorificos-y-congeladores",null],
+["G0101","Lavadora","lavadoras",null],
+["G2001","Lavasecadora","lavadoras-secadoras",null],
+["G4001","Lavavajillas","lavavajillas",null],
+["G6001","Secadora de ropa","secadoras",null],
+["G9010","Centrifugadora de ropa","centrifugadoras",null],
+["S5001","Accesorios para Lavadoras","accesorios-para-lavadoras",null],
+["S5010","Accesorios para Lavavajillas","accesorios-para-lavavajillas",null],
+["S5020","Accesorios para Secadoras","accesorios-para-secadoras",null],
+["S5080","Accesorios Portacubiertos","cestas-para-cubiertos",null],
+["S5090","Accesorios Productos Limpieza","productos-de-limpieza-para-electrodomesticos",null],
+["I0101","Horno Independiente","hornos",null],
+["I0110","Horno Compacto","hornos-compactos",null],
+["I1001","Microondas","microondas",null],
+["I1010","Microondas Integrable","microondas-integrables",null],
+["I2001","Placa de Inducción","placas-de-induccion",null],
+["I2010","Placa Vitrocerámica","placas-vitroceramicas",null],
+["I2020","Placa a Gas","placas-de-gas",null],
+["I7501","Campana Extractora","campanas-extractoras",null],
+["I8001","Fregadero de cocina","fregaderos",null],
+["I8501","Grifo de Cocina","grifos-de-cocina",null],
+["I9001","Cocina a Gas o Electrica","cocinas-de-gas-y-electricas",null],
+["I0115","Horno a Gas","hornos-de-gas",null],
+["I0120","Horno Polivalente","hornos-polivalentes",null],
+["I0130","Horno Sin Instalación o Sobremesa","hornos-de-sobremesa",null],
+["I2050","Placa Polivalente","placas-polivalentes",null],
+["I2060","Placas de Cocción Mixtas","placas-mixtas",null],
+["I6001","Teppanyaki","teppanyaki",null],
+["I6005","Módulos de integración","modulos-de-integracion",null],
+["I6010","Modulo de Calentamiento","cajones-calientaplatos","MHD: «Módulo de calentamiento»."],
+["I6501","Cafetera de Integración","cafeteras-integrables",null],
+["I7001","Conjunto de Cocción (Horno y Placa)","conjuntos-de-horno-y-placa",null],
+["I7510","Extractor de cocina o baño","extractores-de-cocina-y-bano",null],
+["I8010","Pack de Fregadero y Grifo (KIT)","packs-de-fregadero-y-grifo",null],
+["I8510","Grifo de Baño","grifos-de-bano",null],
+["I8701","Triturador de alimentos para fregaderos","trituradores-de-residuos-para-fregadero",null],
+["I9005","Barbacoa a Gas","barbacoas-de-gas",null],
+["I9010","Hornillo de Cocina","hornillos",null],
+["S6001","Accesorios para Hornos","accesorios-para-hornos",null],
+["S6005","Accesorios para Microondas","accesorios-para-microondas",null],
+["S6010","Accesorios para Placas","accesorios-para-placas",null],
+["S6060","Cubre Encimeras","cubreencimeras",null],
+["S6070","Accesorios para Campanas","accesorios-para-campanas",null],
+["S6201","Accesorios para Fregaderos y Grifos","accesorios-para-fregaderos-y-grifos",null],
+["K0101","Aire Acondicionado de Instalación","aire-acondicionado",null],
+["K0110","Aire Acondicionado Portátil","aire-acondicionado-portatil",null],
+["K1001","Ventilador de Aire","ventiladores",null],
+["K1501","Climatizadores","climatizadores-evaporativos",null],
+["K2501","Deshumidificador","deshumidificadores",null],
+["K3501","Radiador de Aceite","radiadores-de-aceite",null],
+["K5501","Emisor Térmico eléctrico","emisores-termicos",null],
+["K8001","Calentador a Gas","calentadores-de-gas",null],
+["K8501","Caldera a Gas","calderas-de-gas",null],
+["K9001","Termo de Agua Caliente","termos-electricos","Termos de agua caliente eléctricos."],
+["C0501","Purificador Aire Ionizador Ozonificador","purificadores-de-aire",null],
+["C0520","Jarra Purificadora de Agua","jarras-purificadoras-de-agua",null],
+["C0560","Dispensador de Agua","dispensadores-de-agua",null],
+["C0570","Ambientador de Aire","ambientadores",null],
+["K2001","Termoventiladores","termoventiladores",null],
+["K3001","Estufas","estufas",null],
+["K4001","Calefactores eléctricos","calefactores-electricos","Radiadores, toalleros, calientacamas… van a su colección por la decisión 7."],
+["K4201","Braseros Eléctricos","braseros-electricos",null],
+["K4501","Convector Mural eléctrico","convectores",null],
+["K5001","Placa Eléctrica a Radiación","paneles-radiantes","MHD: «Placa eléctrica a radiación»."],
+["K6501","Secatoallas eléctrico","toalleros-electricos",null],
+["K7101","Termos de Energía Solar y Térmica","termos-solares",null],
+["K7115","Captadores Solares","captadores-solares",null],
+["K7120","Grupo Solar","grupos-solares",null],
+["K7140","Pack Solar (KIT)","kits-solares",null],
+["K8510","Caldera Mixta Agua y Calefacción","calderas-mixtas",null],
+["K9510","Reloj Programador","programadores-horarios",null],
+["K9520","Estaciones Meteorológicas","estaciones-meteorologicas",null],
+["S9010","Accesorios para Calentadores","accesorios-para-calentadores",null],
+["S9015","Accesorios para Calderas","accesorios-para-calderas",null],
+["S9018","Accesorios para Termos de Agua Caliente","accesorios-para-termos",null],
+["S9020","Accesorios para Aire Acondicionado","accesorios-para-aire-acondicionado",null],
+["S9025","Accesorios para Climatización","accesorios-de-climatizacion",null],
+["S9028","Accesorios para Ventiladores","accesorios-para-ventiladores",null],
+["S9030","Accesorios para Radiadores y Emisores","accesorios-para-radiadores-y-emisores",null],
+["S9040","Accesorios para Purificadores","accesorios-para-purificadores",null],
+["10101","Televisor (TV)","televisores",null],
+["10501","Proyector de Imagen","proyectores",null],
+["21501","Barras de Sonido TV","barras-de-sonido",null],
+["10601","Monitores y Pantallas","monitores","Decisión 5: su sitio pasa a Tecnología › Informática y sale en el menú; también se ve desde Televisión."],
+["10610","Video Wall","videowalls",null],
+["10620","Pantalla Táctil","pantallas-tactiles",null],
+["10630","Pantalla de Proyección","pantallas-de-proyeccion",null],
+["10701","Reproductores TDT e Internet TV set-top box","tv-box-y-sticks-de-tv",null],
+["10710","Receptor Satélite","receptores-de-satelite",null],
+["10715","Receptor Combo TDT y Satélite","receptores-tdt-y-satelite",null],
+["10801","Reproductor o Grabador DVD y BluRay","reproductores-de-dvd-y-blu-ray",null],
+["10901","Visor Personal","gafas-de-realidad-virtual","MHD: «Visor personal»."],
+["11501","Antena Portátil TV","antenas-de-tv-portatiles","Las antenas de red (Ubiquiti) van a redes por la decisión 7."],
+["11510","Antena Fija TV","antenas-de-tv-fijas",null],
+["11515","Antena Parabólica TV","antenas-parabolicas",null],
+["A0101","Robot Aspirador","robots-aspiradores",null],
+["A0115","Aspirador","aspiradores",null],
+["A1001","Hidrolimpiadora","hidrolimpiadoras",null],
+["A2001","Centro de Planchado y Planchado Vertical","centros-de-planchado-y-planchas-verticales",null],
+["A2010","Plancha de ropa","planchas-de-ropa",null],
+["B0101","Secador de Pelo","secadores-de-pelo",null],
+["B0110","Plancha de Pelo","planchas-de-pelo",null],
+["B0501","Depiladoras","depiladoras",null],
+["B0510","Afeitadora","afeitadoras",null],
+["B1001","Cepillo Dental","cepillos-de-dientes-electricos",null],
+["B1530","Tensiómetro","tensiometros",null],
+["B1580","Manta Eléctrica","mantas-electricas",null],
+["B2001","Vigilabebés","vigilabebes",null],
+["C0101","Cafeteras","cafeteras",null],
+["C0150","Hervidor de Agua","hervidores-de-agua",null],
+["C1001","Robot de Cocina","robots-de-cocina",null],
+["C1002","Batidora eléctrica","batidoras",null],
+["C1010","Freidoras","freidoras",null],
+["A0190","Vaporeta","vaporetas",null],
+["A0510","Fregona Eléctrica","fregonas-electricas",null],
+["A2020","Planchadora Horizontal","planchadoras",null],
+["A2030","Mesa de Planchar","tablas-de-planchar",null],
+["A2040","Quitapelusas","quitapelusas",null],
+["A4001","Limpia Cristales Eléctrico","limpiacristales",null],
+["B0120","Moldeador Rizador de Pelo","moldeadores-y-rizadores-de-pelo",null],
+["B0505","Recortador de Bikini","recortadoras-de-bikini",null],
+["B0515","Cortapelos","cortapelos",null],
+["B0520","Barberos","recortadoras-de-barba","MHD: «Barberos»."],
+["B0530","Recortador de Nariz y Oídos","recortadoras-de-nariz-y-orejas",null],
+["B1010","Irrigadores","irrigadores-dentales",null],
+["B1501","Limpieza Facial","limpiadores-faciales",null],
+["B1510","Set de Manicura y Pedicura","sets-de-manicura-y-pedicura",null],
+["B1520","Masaje Anticelulíticos","masajeadores-anticeluliticos",null],
+["B1525","Hidromasaje","hidromasaje-de-pies",null],
+["B1528","Salud Sexual","salud-sexual",null],
+["B1540","Fitness Salud","fitness-y-salud",null],
+["B1575","Almohadillas Eléctricas","almohadillas-electricas",null],
+["B1585","Calientacamas y Cubrecamas","calientacamas",null],
+["B1590","Calientapiés","calientapies",null],
+["B2005","Termómetro","termometros",null],
+["B2010","Humidificador","humidificadores",null],
+["B2015","Esterilizador","esterilizadores-de-biberones",null],
+["B2050","Biberones","biberones",null],
+["B2055","Calienta Biberones","calientabiberones",null],
+["B2060","Chupetes","chupetes",null],
+["B2070","Extractor de Leche materna","sacaleches",null],
+["B2072","Cuidado Del Pecho y Pezones","cuidado-del-pecho",null],
+["B2080","Vaso para Bebé","vasos-para-bebe",null],
+["B2085","Hora de Comer (Bebes)","vajilla-infantil",null],
+["B2090","Set Básico para Bebes","sets-para-bebe",null],
+["B9001","Espejos de Baño","espejos-de-bano",null],
+["B9501","Mata Insectos Eléctrico","matamosquitos-electricos",null],
+["C0130","Molinillos de Café","molinillos-de-cafe",null],
+["C0135","Calienta leches y Multibebidas","calientaleches",null],
+["C0140","Batidor de Leche","espumadores-de-leche",null],
+["C1005","Amasadoras eléctrica","amasadoras",null],
+["C1007","Picadora eléctrica","picadoras",null],
+["C1008","Licuadora eléctrica","licuadoras",null],
+["C1009","Exprimidor eléctrico","exprimidores",null],
+["C1015","Fondues eléctricas y fuentes de chocolate","fondues-y-fuentes-de-chocolate",null],
+["C1018","Pizzeras eléctricas","hornos-para-pizza",null],
+["C1020","Plancha de Asados y Grill eléctricos","planchas-de-asar-y-grills-electricos",null],
+["C1021","Tostadoras eléctricas","tostadoras",null],
+["C1022","Panificadoras eléctricas","panificadoras",null],
+["C1023","Sandwichera eléctrica","sandwicheras",null],
+["C1025","Cortafiambres eléctrico","cortafiambres",null],
+["C1030","Perritos Calientes","maquinas-de-perritos-calientes",null],
+["C1035","Palomitero eléctrico y Maquina Algodon Azucar","palomiteras-y-maquinas-de-algodon-de-azucar",null],
+["C1045","Yogurtera eléctrica","yogurteras",null],
+["C1050","Gofreras y Creperas eléctricas","gofreras-y-creperas",null],
+["C1055","Heladera eléctrica","heladeras",null],
+["C1060","Cocina Al Vapor y Baja Temperatura","coccion-al-vapor-y-a-baja-temperatura",null],
+["C1065","Hervidor de Arroz eléctrico","arroceras",null],
+["C1070","Cuece Huevos eléctrico","cuecehuevos",null],
+["C1072","Envasadora de Vacío","envasadoras-al-vacio",null],
+["C1075","Molinillo Sal y Pimienta eléctricos","molinillos-electricos-de-sal-y-pimienta",null],
+["C1076","Triturador de Hielo eléctrico","picadoras-de-hielo",null],
+["C1077","Pasapurés eléctrico","pasapures-electricos",null],
+["C1080","Cuchillos de Cocina Eléctricos","cuchillos-electricos",null],
+["C1085","Afilador Eléctrico","afiladores-electricos",null],
+["C1090","Abrelatas Eléctricos","abrelatas-electricos",null],
+["C1095","Encendedor Eléctrico","encendedores-electricos",null],
+["C2001","Básculas","basculas",null],
+["C3001","Batería de Cocina","baterias-de-cocina",null],
+["C3005","Ollas, Cacerolas y Cazos","ollas-cacerolas-y-cazos",null],
+["C3010","Paelleras","paelleras",null],
+["C3020","Plancha de Asados y Grill menaje","planchas-de-asar-y-parrillas",null],
+["C3030","Sartén","sartenes",null],
+["C3040","Wok Menaje","woks",null],
+["C3050","Set de Cocina","sets-de-cocina",null],
+["C3060","Fiambrera","fiambreras",null],
+["C3085","Termos de Servicio Menaje","termos","Termos de servicio (menaje), no termos eléctricos."],
+["C3087","Tetera Menaje","teteras",null],
+["C3090","Utensilio de Cocina","utensilios-de-cocina",null],
+["C5001","Carritos de la Compra","carros-de-la-compra",null],
+["C5010","Complemento para la Cocina","complementos-de-cocina",null],
+["C6001","Maquina de Coser eléctrica","maquinas-de-coser",null],
+["C6505","Toallero de Baño","toalleros-de-bano",null],
+["C6510","Dosificador de Jabón","dosificadores-de-jabon",null],
+["L0101","Herramienta Eléctrica","herramientas-electricas",null],
+["L5001","Robot Cortacésped","robots-cortacesped",null],
+["L5002","Cortacésped","cortacespedes",null],
+["L5020","Electrobombas","bombas-de-agua",null],
+["L5025","Desbrozadoras","desbrozadoras",null],
+["L5030","Cortasetos","cortasetos",null],
+["L5035","Sopladores","sopladores",null],
+["L5040","Hidrolimpiadoras","hidrolimpiadoras","Se une a A1001 (decisión 2026-10-26): MHD tiene las hidrolimpiadoras en dos subfamilias; los dos códigos apuntan a la misma colección."],
+["L5090","Linterna","linternas",null],
+["L6001","Motosierras","motosierras",null],
+["L6015","Tijeras de Poda","tijeras-de-podar",null],
+["L6017","Minimotosierra de Poda","podadoras-electricas",null],
+["M0101","Muebles TV","muebles-de-tv",null],
+["M2001","Silla Gamer","sillas-gaming",null],
+["M2050","Mesa Gaming","mesas-gaming",null],
+["M6001","Colchones","colchones",null],
+["M6005","Canapé","canapes",null],
+["M6090","Patas de Canapé y Tapiflex","patas-de-canape-y-somieres",null],
+["S0101","Soportes","soportes-de-tv-y-monitor",null],
+["S0301","Mando a Distancia","mandos-a-distancia",null],
+["S0601","Accesorio para TV","accesorios-para-tv",null],
+["S0701","Accesorio para Proyectores","accesorios-para-proyectores",null],
+["S0901","Objetivos para cámaras","objetivos",null],
+["S0910","Lentes y Filtros para cámaras","lentes-y-filtros-fotograficos",null],
+["S0915","Antorchas y Flashes para cámaras","flashes",null],
+["S0920","Accesorios genéricos para Cámaras","accesorios-para-camaras",null],
+["S6501","Accesorios para Cafeteras","accesorios-para-cafeteras",null],
+["S6701","Accesorios para Depiladoras","accesorios-para-depiladoras",null],
+["S6710","Accesorios para Afeitadoras","accesorios-para-afeitadoras",null],
+["S6901","Accesorios para Dentales","cabezales-y-accesorios-dentales",null],
+["S7001","Accesorios para Aspirador","accesorios-para-aspiradores",null],
+["S7010","Accesorios para Planchas","accesorios-para-planchas",null],
+["S7015","Accesorios para Mesas de Planchar","fundas-para-tablas-de-planchar","MHD: «Accesorios para mesas de planchar»."],
+["S7090","Accesorios para Limpieza Alta Presión","accesorios-para-hidrolimpiadoras",null],
+["S7095","Mantenimiento y Limpieza","limpieza-para-electronica","MHD: «Mantenimiento y limpieza»."],
+["S7501","Accesorios para Grill Barbacoa","accesorios-para-barbacoas",null],
+["S7510","Accesorios para Elaboración de Alimentos","accesorios-para-robots-y-batidoras",null],
+["S8501","Accesorio para Menaje","accesorios-de-menaje",null],
+["S8801","Accesorios para Salud y Bienestar","accesorios-de-salud-y-bienestar",null],
+["S9101","Accesorios para Costura","accesorios-de-costura",null],
+["20110","Auriculares","auriculares",null],
+["21001","Altavoces HiFi","altavoces",null],
+["30101","Teléfono Móvil Smartphone","smartphones",null],
+["30120","Teléfono Inalámbrico Dect","telefonos-inalambricos",null],
+["40101","Pc Portátil","portatiles",null],
+["40110","Pc Sobremesa","ordenadores-de-sobremesa",null],
+["41001","Tablet","tablets",null],
+["43001","Impresora","impresoras","Las impresoras de tickets van a TPV por la decisión 7."],
+["50101","Consola de Videojuegos","consolas",null],
+["60501","Bicicletas Eléctricas (eBike)","bicicletas-electricas",null],
+["61001","Patinetes y Scooter Eléctricos","patinetes-electricos",null],
+["70101","Asistentes Domóticos","altavoces-inteligentes",null],
+["70501","Relojes inteligentes Smartwatch","smartwatches",null],
+["75015","Video Vigilancia Domótica","videovigilancia",null],
+["21010","Packs altavoces HiFi (KIT)","packs-de-altavoces",null],
+["21510","Home Cinema","home-cinema",null],
+["22001","Sistema HiFi Compacto","equipos-de-musica",null],
+["23001","Receptor Audio Video HiFi Hi End","receptores-av",null],
+["23010","Amplificador HiFi Hi End","amplificadores",null],
+["23018","Reproductor Audio HiFi Hi End","reproductores-de-audio-hi-fi",null],
+["23030","Giradiscos HiFi Hi End","tocadiscos",null],
+["23501","Mesas de mezclas","mesas-de-mezclas",null],
+["24001","Radio","radios",null],
+["24010","Radio CD y Radio Cassette","radios-cd-y-radiocasetes",null],
+["24020","Reproductor Multimedia","reproductores-mp3-y-mp4",null],
+["24075","Transmisor FM","transmisores-fm",null],
+["25001","Radio Relojes Despertadores","radiodespertadores",null],
+["25010","Reloj Despertador analógico","despertadores",null],
+["26001","Radio y Sistemas Multimedia para Coche","radios-y-multimedia-para-coche",null],
+["26005","Elementos Señalización Coche","senalizacion-para-coche",null],
+["27001","Micrófono","microfonos",null],
+["27010","Megáfonos","megafonos",null],
+["30110","Teléfono Móvil Reacondicionado","smartphones-reacondicionados",null],
+["30130","Teléfono Sobremesa","telefonos-fijos",null],
+["30150","Teléfono Por Internet (VoIP)","telefonos-voip",null],
+["38001","Walkie Talkie","walkie-talkies",null],
+["40102","Pc Portátil Reacondicionado","portatiles-reacondicionados",null],
+["40501","Disco Duro Portátil","discos-duros-externos",null],
+["40801","Tarjeta de Memoria","tarjetas-de-memoria",null],
+["40810","Multilector de Tarjetas","lectores-de-tarjetas",null],
+["40815","Memoria USB","memorias-usb",null],
+["40910","Unidad CD, DVD o Blu-Ray para PC","grabadoras-de-cd-dvd-y-blu-ray",null],
+["41010","PDA","pda",null],
+["41015","TPV","tpv",null],
+["42001","Libro Electrónico (eBook)","ebooks",null],
+["43060","Plóter","plotters",null],
+["43501","Ratones","ratones",null],
+["43515","Teclados","teclados",null],
+["43520","Pack Teclado + Ratón (KIT)","packs-de-teclado-y-raton",null],
+["44501","Escáner","escaneres",null],
+["44510","Lector Digital de DNI","lectores-de-dni-electronico",null],
+["44520","Lector de Monedas y Billetes","contadores-y-detectores-de-billetes",null],
+["44525","Lector de Código de Barras","lectores-de-codigo-de-barras",null],
+["45001","Grabadora de Voz","grabadoras-de-voz",null],
+["45501","Destructora de Papel","destructoras-de-papel",null],
+["46001","Alimentación Ininterrumpida (SAI)","sai",null],
+["48001","Programas Software","software",null],
+["48501","Repartidor Red Eléctrica PLC","adaptadores-plc",null],
+["48505","Wifi Links","repetidores-y-sistemas-wifi-mesh",null],
+["48510","Rúter","routers",null],
+["48515","Modem Informático","modems",null],
+["48520","Hub Switch","switches-y-hubs",null],
+["48560","Servidores Informáticos","servidores-y-nas",null],
+["48590","Adaptador Bluetooth USB","adaptadores-bluetooth",null],
+["49010","Calculadoras","calculadoras",null],
+["50150","Videojuegos","videojuegos",null],
+["51001","Juguetes Robots y Robótica","robotica-educativa",null],
+["51010","Joystick","joysticks",null],
+["51020","Volante Gaming","volantes-gaming",null],
+["60101","Motos Eléctricas","motos-electricas",null],
+["64001","Aire Libre (Outdoor)","aire-libre",null],
+["65001","GPS Deportivos","relojes-gps-deportivos",null],
+["65010","Navegadores GPS","navegadores-gps",null],
+["65030","Localizadores GPS","localizadores-gps",null],
+["70510","Anillos inteligentes","anillos-inteligentes",null],
+["70520","Pulseras de Actividad","pulseras-de-actividad",null],
+["75010","Seguridad Domótica","sensores-y-cerraduras-inteligentes",null],
+["76010","Comederos y bebederos Mascotas","comederos-y-bebederos-para-mascotas",null],
+["79001","Iluminación Domótica Smart Home","iluminacion-inteligente",null],
+["79010","Energía Domótica Smart Home","enchufes-inteligentes",null],
+["90101","Cámara Fotográfica","camaras-de-fotos",null],
+["90501","Videocámaras","videocamaras","MHD mete aquí grabadores de vigilancia y cámaras de videoconferencia: por la decisión 7 van a Videovigilancia y Webcams."],
+["91001","Cámara Deportiva y Acción","camaras-deportivas",null],
+["92501","WebCam","webcams",null],
+["94010","Prismáticos","prismaticos",null],
+["99001","Marco Digital de Fotografía","marcos-digitales",null],
+["S1001","Accesorio para Audio e HiFi","accesorios-de-audio",null],
+["S1501","Cables","cables",null],
+["S1505","Distribuidor HDMI","distribuidores-hdmi",null],
+["S1515","Adaptador de Conexiones","adaptadores",null],
+["S1520","Cargador de Corriente","cargadores",null],
+["S1525","Regletas Smart de Corriente","regletas",null],
+["S2001","Pilas","pilas",null],
+["S2005","Baterías de Energía","baterias-externas-powerbank","Casi todo son baterías externas (powerbank)."],
+["S2501","Accesorios Informáticos y Videojuegos","armarios-rack-y-accesorios-de-red",null],
+["S2515","Accesorio para Impresoras","accesorios-para-impresoras",null],
+["S2518","Accesorios para Plóter","accesorios-para-plotters",null],
+["S2520","Accesorio para Tablet y PDA","fundas-y-accesorios-para-tablets",null],
+["S2530","Accesorio para Libros Electrónicos","accesorios-para-ebooks",null],
+["S2540","Accesorios para Consolas de Videojuegos","accesorios-para-consolas",null],
+["S2570","Refrigerador para Pc Portátil","ventiladores-y-refrigeracion-para-pc",null],
+["S2590","Accesorio Puntero","punteros",null],
+["S2801","Papel Fotográfico","papel-fotografico",null],
+["S2810","Tóner para Impresoras","toner",null],
+["S2815","Cinta para Impresora Matricial","cintas-para-impresora",null],
+["S2820","Cartucho para Impresoras","cartuchos-de-tinta",null],
+["S2825","Discos CD y Blu Ray","discos-virgenes","MHD mete aquí SSD y discos duros: por la decisión 7 van a «Discos duros internos y SSD»; aquí quedan los discos vírgenes."],
+["S2850","Cafés y Tés","cafes-e-infusiones",null],
+["S2870","Filtro de Agua","filtros-de-agua",null],
+["S2873","Filtro de Aspirador","filtros-para-aspiradores",null],
+["S2875","Bolsas de Aspirador","bolsas-para-aspiradores",null],
+["S2880","Consumibles para Maquina de Vacío","bolsas-y-rollos-para-envasar-al-vacio",null],
+["S3001","Ampliaciones de Memoria","memoria-ram",null],
+["S3005","Disco Duro Integración","discos-duros-internos-y-ssd",null],
+["S3010","Placa Base de Integración para PC","placas-base",null],
+["S3012","Grabadora Pc para integración","grabadoras-internas",null],
+["S3015","Fuente de Alimentación PC","fuentes-de-alimentacion",null],
+["S3020","Procesador Pc de Integración","procesadores",null],
+["S3025","Grabadora Externa para PC","grabadoras-externas",null],
+["S3030","Tarjeta de Red para PC","tarjetas-de-red",null],
+["S3035","Tarjeta Sintonizadora para PC","sintonizadoras-de-tv-para-pc",null],
+["S3040","Tarjeta de Sonido para PC","tarjetas-de-sonido",null],
+["S3050","Tarjeta Grafica para PC","tarjetas-graficas",null],
+["S3080","Disquetera para Pc","disqueteras",null],
+["S3085","Caja de CPU PC","cajas-de-ordenador",null],
+["S3090","Caja para Discos Duros","cajas-para-discos-duros",null],
+["S3201","Antenas y Accesorio Wifi PC","antenas-y-adaptadores-wifi",null],
+["S3301","Accesorio para Antenas TV","accesorios-para-antenas-de-tv",null],
+["S3501","Manos Libres para Teléfono Móvil","manos-libres",null],
+["S3505","Accesorio para telefonos y SmartPhones","accesorios-para-moviles",null],
+["S3510","Protector de Pantalla para Tablet y PDA","protectores-de-pantalla",null],
+["S3605","Accesorios Relojes Smartwatch, anillos y Pulseras inteligentes","correas-y-accesorios-para-smartwatch",null],
+["S3701","Accesorios de movilidad urbana, Cascos de Bici y Moto","accesorios-de-movilidad-urbana",null],
+["S3705","Accesorios para Navegadores GPS","accesorios-para-gps-y-coche",null],
+["S4001","Fundas para Teléfonos Móviles y Audio","fundas-para-moviles",null],
+["S4050","Bolsas, Fundas, Bolsos y Maletines para PC","fundas-y-maletines-para-portatiles",null],
+["S4060","Mochila Transporte para PC","mochilas-para-portatiles",null]
+]'::jsonb) r;
+insert into public.store_collection_equivalences (current_handle,new_handle,level,confidence,criterion,products,products_mhd,clicks_16m) select r->>0,r->>1,r->>2,r->>3,r->>4,(r->>5)::int,(r->>6)::int,(r->>7)::int from jsonb_array_elements('[
+["accesorios-campanas","accesorios-para-campanas","familia","alta","Por sus productos: 21 de 156 están en MHD; accesorios-para-campanas 20, accesorios-para-hornos 1",156,21,68],
+["accesorios-combis","accesorios-para-frigorificos-y-congeladores","familia","baja","Sin productos de MHD; propuesta a mano",3,0,6],
+["accesorios-congeladores","accesorios-para-frigorificos-y-congeladores","familia","baja","Sin productos de MHD; propuesta a mano",1,0,0],
+["accesorios-conservadores","accesorios-para-frigorificos-y-congeladores","familia","baja","Sin productos de MHD; propuesta a mano",3,0,1],
+["accesorios-fregaderos","accesorios-para-fregaderos-y-grifos","familia","media","Por sus productos: 1 de 20 están en MHD; accesorios-para-fregaderos-y-grifos 1",20,1,33],
+["accesorios-hornos","accesorios-para-hornos","familia","media","Por sus productos: 1 de 28 están en MHD; accesorios-para-hornos 1",28,1,25],
+["accesorios-informatica","accesorios-y-componentes","grupo","media","Antigua colección de accesorios de informática",3,1,0],
+["accesorios-lavadoras","accesorios-para-lavadoras","familia","baja","Sin productos de MHD; propuesta a mano",2,0,5],
+["accesorios-lavavajillas","accesorios-para-lavavajillas","familia","media","Por sus productos: 1 de 1 están en MHD; accesorios-para-lavavajillas 1",1,1,9],
+["accesorios-microondas","accesorios-para-microondas","familia","baja","Sin productos de MHD; propuesta a mano",1,0,1],
+["accesorios-movilidad","accesorios-de-movilidad-urbana","familia","media","Por sus productos: 2 de 9 están en MHD; accesorios-de-movilidad-urbana 2",9,2,1],
+["accesorios-patines-electricos","accesorios-de-movilidad-urbana","familia","baja","Sin productos de MHD; propuesta a mano",0,0,0],
+["accesorios-placas","accesorios-para-placas","familia","baja","Sin productos de MHD; propuesta a mano",1,0,0],
+["accesorios-televisores","soportes-de-tv-y-monitor","familia","media","Por sus productos: 59 de 93 están en MHD; soportes-de-tv-y-monitor 46, mandos-a-distancia 8, tv-box-y-sticks-de-tv 2",93,59,10],
+["aeg","aeg","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",56,20,497],
+["afeitadoras-corporales","afeitadoras","familia","baja","Sin productos de MHD; por el nombre",1,0,2],
+["agfaphoto","agfaphoto","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",25,13,0],
+["aires-acondicionados","aire-acondicionado","familia","baja","Sin productos de MHD; propuesta a mano",6,0,235],
+["aires-acondicionados-orbegozo","aire-acondicionado","familia","baja","Sin productos de MHD; propuesta a mano",1,0,2],
+["aiwa","aiwa","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",62,35,4],
+["alessi","alessi","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",2,0,5],
+["almohadillas-electricas","almohadillas-electricas","misma","alta","La colección se reutiliza en el árbol nuevo",12,11,6],
+["altavoces-portatiles","altavoces","familia","alta","Por sus productos: 25 de 79 están en MHD; altavoces 23, amplificadores 2",79,25,11],
+["alza","alza","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",6,0,92],
+["apple","apple","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0],
+["ariel","ariel","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0],
+["ariete","ariete","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",28,5,2],
+["arroceras","arroceras","misma","alta","La colección se reutiliza en el árbol nuevo",3,2,3],
+["aspes","aspes","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",178,71,14],
+["aspiracion-limpieza","aspiradores","familia","alta","Por sus productos: 21 de 39 están en MHD; aspiradores 17, vaporetas 2, hidrolimpiadoras 1",39,21,110],
+["aspiradoras","aspiradores","familia","alta","Por sus productos: 5 de 6 están en MHD; aspiradores 5",6,5,68],
+["aspiradoras-cecotec","aspiradores","familia","baja","Sin productos de MHD; propuesta a mano",3,0,1],
+["aspiradoras-de-mano","aspiradores","familia","alta","Por sus productos: 4 de 4 están en MHD; aspiradores 4",4,4,18],
+["aspiradoras-escoba-cecotec","aspiradores","familia","baja","Sin productos de MHD; propuesta a mano",2,0,8],
+["aspiradoras-orbegozo","aspiradores","familia","media","Por sus productos: 2 de 2 están en MHD; aspiradores 2",2,2,2],
+["aspiradoras-sin-cable","aspiradores","familia","alta","Por sus productos: 8 de 21 están en MHD; aspiradores 8",21,8,78],
+["audio","audio","misma","alta","La colección se reutiliza en el árbol nuevo",62,26,30],
+["audio-e-imagen","audio","grupo","media","Por sus productos: 218 de 503 están en MHD; auriculares 54, radios 51, altavoces 29",503,218,0],
+["audio-portatil","audio","grupo","alta","Por sus productos: 92 de 204 están en MHD; radios 51, altavoces 23, radiodespertadores 8",204,92,11],
+["auriculares","auriculares","misma","alta","La colección se reutiliza en el árbol nuevo",133,55,14],
+["auriculares-deportivos","auriculares","familia","baja","Sin productos de MHD; por el nombre",1,0,4],
+["auriculares-diadema","auriculares","familia","alta","Por sus productos: 10 de 26 están en MHD; auriculares 10",26,10,23],
+["auriculares-internos","auriculares","familia","alta","Por sus productos: 45 de 106 están en MHD; auriculares 44, cables 1",106,45,18],
+["balay","balay","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",200,126,96],
+["barbacoa-electrica","planchas-de-asar-y-grills-electricos","familia","baja","Sin productos de MHD; propuesta a mano",1,0,5],
+["barbacoas-de-gas","barbacoas-de-gas","misma","alta","La colección se reutiliza en el árbol nuevo",2,0,5],
+["barberos","cortapelos","familia","media","Por sus productos: 1 de 9 están en MHD; cortapelos 1",9,1,3],
+["barra-de-sonido","barras-de-sonido","familia","alta","Por sus productos: 10 de 44 están en MHD; barras-de-sonido 10",44,10,126],
+["barra-de-sonido-panasonic","barras-de-sonido","familia","baja","Sin productos de MHD; propuesta a mano",2,0,5],
+["barras-de-sonido-dvds","barras-de-sonido","familia","alta","Por sus productos: 11 de 46 están en MHD; barras-de-sonido 10, reproductores-de-dvd-y-blu-ray 1",46,11,43],
+["barras-de-sonido-tcl","barras-de-sonido","familia","baja","Sin productos de MHD; por el nombre",4,0,164],
+["basculas-de-bano","basculas","familia","alta","Por sus productos: 6 de 16 están en MHD; basculas 6",16,6,7],
+["basculas-de-cocina","basculas","familia","alta","Por sus productos: 4 de 13 están en MHD; basculas 4",13,4,11],
+["baterias-de-cocina","baterias-de-cocina","misma","alta","La colección se reutiliza en el árbol nuevo",2,1,3],
+["baterias-portatiles","accesorios-y-componentes","grupo","media","Por sus productos: 2 de 9 están en MHD; baterias-externas-powerbank 1, accesorios-para-moviles 1",9,2,7],
+["batidoras","batidoras","misma","alta","La colección se reutiliza en el árbol nuevo",39,21,699],
+["batidoras-amasadoras","amasadoras","familia","media","Por sus productos: 1 de 2 están en MHD; amasadoras 1",2,1,21],
+["batidoras-cecotec","pequeno-electro-de-cocina","grupo","media","Por sus productos: 2 de 4 están en MHD; batidoras 1, licuadoras 1",4,2,12],
+["batidoras-de-varillas","amasadoras","familia","alta","Por sus productos: 3 de 6 están en MHD; amasadoras 3",6,3,54],
+["batidoras-de-vaso","batidoras","familia","alta","Por sus productos: 14 de 22 están en MHD; batidoras 14",22,14,35],
+["batidoras-de-vaso-orbegozo","batidoras","familia","alta","Por sus productos: 4 de 7 están en MHD; batidoras 4",7,4,11],
+["batidoras-de-vaso-smeg","batidoras","familia","media","Por sus productos: 2 de 3 están en MHD; batidoras 2",3,2,2],
+["batidoras-ufesa","batidoras","familia","alta","Por sus productos: 3 de 5 están en MHD; batidoras 3",5,3,0],
+["beko","beko","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",112,69,8],
+["berghoff","berghoff","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",1,0,0],
+["beurer","beurer","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",9,4,2],
+["bicicleta-estatica","fitness-y-salud","familia","baja","Sin productos de MHD; propuesta a mano",1,0,0],
+["bienestar-corporal","cuidado-personal-y-salud","grupo","alta","Por sus productos: 19 de 27 están en MHD; almohadillas-electricas 9, calientacamas 6, mantas-electricas 2",27,19,1],
+["black-decker","black-decker","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",4,4,0],
+["bluray-reproductor","reproductores-de-dvd-y-blu-ray","familia","baja","Sin productos de MHD; propuesta a mano",1,0,0],
+["bosch","bosch","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",98,53,14],
+["bose","bose","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",40,14,0],
+["bra","bra","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",45,37,30],
+["bra-cacerolas-y-cazos","ollas-cacerolas-y-cazos","familia","alta","Por sus productos: 12 de 12 están en MHD; ollas-cacerolas-y-cazos 12",12,12,19],
+["bra-ollas-a-presion","ollas-cacerolas-y-cazos","familia","media","Por sus productos: 1 de 1 están en MHD; ollas-cacerolas-y-cazos 1",1,1,4],
+["braun","braun","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",40,20,14],
+["bricolaje","herramientas-electricas","familia","media","Por sus productos: 1 de 3 están en MHD; herramientas-electricas 1",3,1,0],
+["brita","brita","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0],
+["cables","cables","misma","alta","La colección se reutiliza en el árbol nuevo",3,0,0],
+["cables-hdmi","cables","familia","media","Por sus productos: 3 de 5 están en MHD; cables 2, accesorios-de-audio 1",5,3,1],
+["cables-usb","cables","familia","baja","Vacía; por el nombre",0,0,0],
+["cacerolas-y-cazos","ollas-cacerolas-y-cazos","familia","alta","Por sus productos: 21 de 32 están en MHD; ollas-cacerolas-y-cazos 21",32,21,12],
+["cafetera-superautomatica","cafeteras","familia","alta","Por sus productos: 4 de 9 están en MHD; cafeteras 4",9,4,24],
+["cafeteras","cafeteras","misma","alta","La colección se reutiliza en el árbol nuevo",83,44,237],
+["cafeteras-cecotec","cafeteras","familia","media","Por sus productos: 2 de 6 están en MHD; cafeteras 2",6,2,5],
+["cafeteras-de-capsulas","cafeteras","familia","alta","Por sus productos: 4 de 6 están en MHD; cafeteras 4",6,4,49],
+["cafeteras-de-embolo","cafeteras","familia","baja","Sin productos de MHD; por el nombre",2,0,42],
+["cafeteras-de-goteo","cafeteras","familia","alta","Por sus productos: 7 de 18 están en MHD; cafeteras 7",18,7,35],
+["cafeteras-express","cafeteras","familia","alta","Por sus productos: 12 de 21 están en MHD; cafeteras 12",21,12,8],
+["cafeteras-integrables","cafeteras-integrables","misma","alta","La colección se reutiliza en el árbol nuevo",3,0,84],
+["cafeteras-italianas","cafeteras","familia","alta","Por sus productos: 16 de 25 están en MHD; cafeteras 16",25,16,21],
+["cafeteras-krups","cafeteras","familia","alta","Por sus productos: 5 de 7 están en MHD; cafeteras 5",7,5,0],
+["cafeteras-moka","cafeteras","familia","media","Por sus productos: 1 de 2 están en MHD; cafeteras 1",2,1,0],
+["cafeteras-monix","cafeteras","familia","media","Por sus productos: 2 de 3 están en MHD; cafeteras 2",3,2,0],
+["cafeteras-orbegozo","cafeteras","familia","alta","Por sus productos: 20 de 33 están en MHD; cafeteras 20",33,20,0],
+["cafeteras-smeg","cafeteras","familia","alta","Por sus productos: 3 de 7 están en MHD; cafeteras 3",7,3,173],
+["cafeteras-ufesa","cafeteras","familia","alta","Por sus productos: 3 de 7 están en MHD; cafeteras 3",7,3,1],
+["calderas","calderas-de-gas","familia","baja","Sin productos de MHD; propuesta a mano",2,0,6],
+["calefaccion-y-ventilacion","climatizacion","grupo","alta","Por sus productos: 70 de 196 están en MHD; estufas 15, radiadores-de-aceite 15, termoventiladores 14",196,70,2],
+["calefactores","climatizacion","grupo","alta","Por sus productos: 22 de 49 están en MHD; termoventiladores 13, calefactores-electricos 9",49,22,39],
+["calentadores","calentadores-de-gas","familia","baja","Sin productos de MHD; propuesta a mano",9,0,33],
+["calienta-platos","cajones-calientaplatos","familia","baja","Sin productos de MHD; propuesta a mano",7,0,16],
+["calientacamas","calientacamas","misma","alta","La colección se reutiliza en el árbol nuevo",11,8,4],
+["camaras-compactas","camaras-de-fotos","familia","alta","Por sus productos: 19 de 35 están en MHD; camaras-de-fotos 19",35,19,18],
+["camaras-de-fotos","camaras-de-fotos","misma","alta","La colección se reutiliza en el árbol nuevo",52,31,9],
+["camaras-instantaneas","camaras-de-fotos","familia","alta","Por sus productos: 12 de 17 están en MHD; camaras-de-fotos 10, impresoras 1, papel-fotografico 1",17,12,26],
+["campanas-convencionales","campanas-extractoras","familia","media","Por sus productos: 12 de 25 están en MHD; campanas-extractoras 9, extractores-de-cocina-y-bano 3",25,12,28],
+["campanas-decorativas","campanas-extractoras","familia","alta","Por sus productos: 68 de 275 están en MHD; campanas-extractoras 68",275,68,273],
+["campanas-extractoras","campanas-extractoras","misma","alta","La colección se reutiliza en el árbol nuevo",631,144,484],
+["campanas-extractoras-aeg","campanas-extractoras","familia","media","Por sus productos: 1 de 3 están en MHD; campanas-extractoras 1",3,1,3],
+["campanas-extractoras-balay","campanas-extractoras","familia","alta","Por sus productos: 20 de 47 están en MHD; campanas-extractoras 20",47,20,24],
+["campanas-extractoras-beko","campanas-extractoras","familia","media","Por sus productos: 1 de 6 están en MHD; campanas-extractoras 1",6,1,2],
+["campanas-extractoras-bosch","campanas-extractoras","familia","media","Por sus productos: 2 de 9 están en MHD; campanas-extractoras 2",9,2,26],
+["campanas-extractoras-cata","campanas-extractoras","familia","alta","Por sus productos: 25 de 161 están en MHD; campanas-extractoras 22, extractores-de-cocina-y-bano 3",161,25,57],
+["campanas-extractoras-electrolux","campanas-extractoras","familia","baja","Sin productos de MHD; por el nombre",1,0,0],
+["campanas-extractoras-mepamsa","campanas-extractoras","familia","alta","Por sus productos: 17 de 105 están en MHD; campanas-extractoras 17",105,17,104],
+["campanas-extractoras-smeg","campanas-extractoras","familia","baja","Sin productos de MHD; por el nombre",2,0,58],
+["campanas-extractoras-teka","campanas-extractoras","familia","alta","Por sus productos: 38 de 106 están en MHD; campanas-extractoras 38",106,38,23],
+["campanas-grupo-filtrantes","campanas-extractoras","familia","alta","Por sus productos: 14 de 76 están en MHD; campanas-extractoras 14",76,14,1278],
+["campanas-integrables","campanas-extractoras","familia","alta","Por sus productos: 6 de 12 están en MHD; campanas-extractoras 6",12,6,271],
+["campanas-integrables-balay","campanas-extractoras","familia","alta","Por sus productos: 3 de 5 están en MHD; campanas-extractoras 3",5,3,0],
+["campanas-isla-cata","campanas-extractoras","familia","baja","Sin productos de MHD; propuesta a mano",9,0,1],
+["campanas-islas","campanas-extractoras","familia","media","Por sus productos: 1 de 23 están en MHD; campanas-extractoras 1",23,1,117],
+["campanas-sobremesa","campanas-extractoras","familia","baja","Sin productos de MHD; propuesta a mano",1,0,49],
+["campanas-telescopicas","campanas-extractoras","familia","alta","Por sus productos: 22 de 63 están en MHD; campanas-extractoras 22",63,22,83],
+["candy","candy","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0],
+["cata","cata","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",384,61,34],
+["cecotec","cecotec","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",62,21,20],
+["cecotec-basculas-de-bano","basculas","familia","media","Por sus productos: 1 de 1 están en MHD; basculas 1",1,1,0],
+["cecotec-conga","robots-aspiradores","familia","baja","Sin productos de MHD; propuesta a mano",1,0,37],
+["centro-de-planchado","centros-de-planchado-y-planchas-verticales","familia","alta","Por sus productos: 4 de 9 están en MHD; centros-de-planchado-y-planchas-verticales 4",9,4,15],
+["cepillos-de-dientes-electricos","cepillos-de-dientes-electricos","misma","alta","La colección se reutiliza en el árbol nuevo",31,13,234],
+["cepillos-dentales-oral-b","cepillos-de-dientes-electricos","familia","media","Por sus productos: 13 de 31 están en MHD; cepillos-de-dientes-electricos 10, cabezales-y-accesorios-dentales 3",31,13,6],
+["cintas-de-correr","fitness-y-salud","familia","baja","Sin productos de MHD; propuesta a mano",1,0,1],
+["climatizacion","climatizacion","misma","alta","La colección se reutiliza en el árbol nuevo",289,94,66],
+["climatizador","climatizadores-evaporativos","familia","baja","Sin productos de MHD; propuesta a mano",7,0,121],
+["cocina","cocina","misma","alta","La colección se reutiliza en el árbol nuevo",1349,450,23],
+["cocina-creativa","pequeno-electro-de-cocina","grupo","alta","Por sus productos: 4 de 9 están en MHD; palomiteras-y-maquinas-de-algodon-de-azucar 2, fondues-y-fuentes-de-chocolate 1, maquinas-de-perritos-calientes 1",9,4,1],
+["cocina-pequeno-electrodomestico","pequeno-electro-de-cocina","grupo","alta","Antiguo grupo de cocina de pequeño electrodoméstico",109,66,0],
+["cocinas","cocinas-de-gas-y-electricas","familia","alta","Por sus productos: 14 de 28 están en MHD; cocinas-de-gas-y-electricas 14",28,14,37],
+["cocinas-beko","cocinas-de-gas-y-electricas","familia","media","Por sus productos: 1 de 3 están en MHD; cocinas-de-gas-y-electricas 1",3,1,18],
+["cocinas-electricas","cocinas-de-gas-y-electricas","familia","baja","Sin productos de MHD; propuesta a mano",1,0,3],
+["cocinas-gas","cocinas-de-gas-y-electricas","familia","alta","Por sus productos: 11 de 19 están en MHD; cocinas-de-gas-y-electricas 11",19,11,469],
+["cocinas-gas-y-electricas","cocinas-de-gas-y-electricas","familia","alta","Por sus productos: 3 de 4 están en MHD; cocinas-de-gas-y-electricas 3",4,3,364],
+["cocinas-induccion","cocinas-de-gas-y-electricas","familia","baja","Sin productos de MHD; propuesta a mano",1,0,14],
+["cocinas-smeg","cocinas-de-gas-y-electricas","familia","baja","Sin productos de MHD; propuesta a mano",1,0,11],
+["cocinas-vitroceramicas","cocinas-de-gas-y-electricas","familia","baja","Sin productos de MHD; propuesta a mano",3,0,107],
+["cocinas-vitrokitchen","cocinas-de-gas-y-electricas","familia","alta","Por sus productos: 3 de 6 están en MHD; cocinas-de-gas-y-electricas 3",6,3,4],
+["cointra","cointra","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",28,3,4],
+["combis","frigorificos-combi","familia","alta","Por sus productos: 83 de 270 están en MHD; frigorificos-combi 83",270,83,1015],
+["combis-aeg","frigorificos-combi","familia","baja","Sin productos de MHD; propuesta a mano",7,0,3],
+["combis-balay","frigorificos-combi","familia","alta","Por sus productos: 23 de 34 están en MHD; frigorificos-combi 23",34,23,22],
+["combis-beko","frigorificos-combi","familia","alta","Por sus productos: 11 de 15 están en MHD; frigorificos-combi 11",15,11,0],
+["combis-bosch","frigorificos-combi","familia","alta","Por sus productos: 14 de 18 están en MHD; frigorificos-combi 14",18,14,18],
+["combis-de-170-a-184-cm","frigorificos-combi","familia","alta","Por sus productos: 20 de 37 están en MHD; frigorificos-combi 20",37,20,7103],
+["combis-de-185-a-199-cm","frigorificos-combi","familia","alta","Por sus productos: 36 de 114 están en MHD; frigorificos-combi 36",114,36,5542],
+["combis-integrables","frigorificos-combi","familia","alta","Por sus productos: 16 de 31 están en MHD; frigorificos-combi 16",31,16,3729],
+["combis-lg","frigorificos-combi","familia","alta","Por sus productos: 5 de 48 están en MHD; frigorificos-combi 5",48,5,3],
+["combis-libre-instalacion","frigorificos-combi","familia","alta","Por sus productos: 67 de 236 están en MHD; frigorificos-combi 67",236,67,288],
+["combis-smeg","frigorificos-combi","familia","media","Por sus productos: 2 de 4 están en MHD; frigorificos-combi 2",4,2,1],
+["combis-teka","frigorificos-combi","familia","alta","Por sus productos: 4 de 26 están en MHD; frigorificos-combi 4",26,4,3],
+["congeladores","congeladores-verticales","familia","media","Por sus productos: 24 de 74 están en MHD; congeladores-verticales 19, arcones-congeladores 5",74,24,438],
+["congeladores-arcon","arcones-congeladores","familia","alta","Por sus productos: 5 de 28 están en MHD; arcones-congeladores 5",28,5,1214],
+["congeladores-beko","congeladores-verticales","familia","alta","Por sus productos: 6 de 9 están en MHD; congeladores-verticales 6",9,6,28],
+["congeladores-bosch","congeladores-verticales","familia","media","Por sus productos: 2 de 2 están en MHD; congeladores-verticales 2",2,2,7],
+["congeladores-integrables","congeladores-verticales","familia","media","Por sus productos: 2 de 3 están en MHD; congeladores-verticales 2",3,2,68],
+["congeladores-lg","congeladores-verticales","familia","media","Por sus productos: 2 de 3 están en MHD; congeladores-verticales 2",3,2,17],
+["congeladores-libre-instalacion","congeladores-verticales","familia","alta","Por sus productos: 17 de 42 están en MHD; congeladores-verticales 17",42,17,64],
+["congeladores-pequenos","congeladores-verticales","familia","alta","Por sus productos: 3 de 7 están en MHD; congeladores-verticales 3",7,3,506],
+["conjuntos-de-horno-y-placa","conjuntos-de-horno-y-placa","misma","alta","La colección se reutiliza en el árbol nuevo",2,2,168],
+["conjuntos-fregaderos-y-grifos","packs-de-fregadero-y-grifo","familia","media","Por sus productos: 2 de 4 están en MHD; packs-de-fregadero-y-grifo 2",4,2,12],
+["conservadores","frigorificos-de-1-puerta","familia","alta","Por sus productos: 15 de 39 están en MHD; frigorificos-de-1-puerta 15",39,15,184],
+["conservadores-integrables","frigorificos-de-1-puerta","familia","media","Por sus productos: 2 de 3 están en MHD; frigorificos-de-1-puerta 2",3,2,4],
+["conservadores-libre-instalacion","frigorificos-de-1-puerta","familia","alta","Por sus productos: 13 de 33 están en MHD; frigorificos-de-1-puerta 13",33,13,7],
+["conservadores-teka","frigorificos-de-1-puerta","familia","media","Por sus productos: 1 de 7 están en MHD; frigorificos-de-1-puerta 1",7,1,1],
+["consolas","consolas","misma","alta","La colección se reutiliza en el árbol nuevo",1,0,1],
+["convectores","convectores","misma","alta","La colección se reutiliza en el árbol nuevo",6,3,4],
+["cortafiambres","cortafiambres","misma","alta","La colección se reutiliza en el árbol nuevo",5,3,6],
+["cortapelos","cortapelos","misma","alta","La colección se reutiliza en el árbol nuevo",23,18,13],
+["cuidado-del-bebe","cuidado-personal-y-salud","grupo","baja","Sin productos de MHD; propuesta a mano",0,0,0],
+["cuidado-personal","cuidado-personal-y-salud","grupo","alta","Por sus productos: 92 de 176 están en MHD; secadores-de-pelo 24, cortapelos 21, cepillos-de-dientes-electricos 10",176,92,5],
+["daga","daga","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",1,1,0],
+["dailysafe","dailysafe","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",2,0,0],
+["delonghi","delonghi","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",11,8,3],
+["denon","denon","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",18,7,2],
+["denver","denver","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",1,0,0],
+["depiladoras","depiladoras","misma","alta","La colección se reutiliza en el árbol nuevo",7,3,41],
+["deporte-indoor","fitness-y-salud","familia","baja","Sin productos de MHD; propuesta a mano",2,0,0],
+["desayuno","pequeno-electro-de-cocina","grupo","alta","Por sus productos: 62 de 101 están en MHD; tostadoras 20, exprimidores 15, hervidores-de-agua 13",101,62,1],
+["deshumidificadores","deshumidificadores","misma","alta","La colección se reutiliza en el árbol nuevo",12,2,52],
+["di4","di4","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0],
+["discman","radios-cd-y-radiocasetes","familia","baja","Sin productos de MHD; propuesta a mano",2,0,48],
+["duux","duux","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",3,0,3],
+["dvd","reproductores-de-dvd-y-blu-ray","familia","media","Por sus productos: 1 de 1 están en MHD; reproductores-de-dvd-y-blu-ray 1",1,1,1],
+["dvd-reproductor","reproductores-de-dvd-y-blu-ray","familia","media","Por sus productos: 1 de 1 están en MHD; reproductores-de-dvd-y-blu-ray 1",1,1,2],
+["ebooks","ebooks","misma","alta","La colección se reutiliza en el árbol nuevo",14,12,238],
+["edesa","edesa","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",5,0,4],
+["elbe","elbe","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",12,9,9],
+["electrodomesticos","electrodomesticos","misma","alta","Landing de gama blanca (plantilla propia): se mantiene",2656,878,2201],
+["electrodomesticos-aeg","aeg","marca","alta","Página de electrodomésticos de una marca: a la página de la marca",53,19,6],
+["electrodomesticos-aspes","aspes","marca","alta","Página de electrodomésticos de una marca: a la página de la marca",168,67,4],
+["electrodomesticos-beko","beko","marca","alta","Página de electrodomésticos de una marca: a la página de la marca",112,69,1],
+["electrodomesticos-cata","cata","marca","alta","Página de electrodomésticos de una marca: a la página de la marca",383,60,2],
+["electrodomesticos-cecotec","cecotec","marca","alta","Página de electrodomésticos de una marca: a la página de la marca",9,6,6],
+["electrodomesticos-electrolux","electrolux","marca","alta","Página de electrodomésticos de una marca: a la página de la marca",17,7,2],
+["electrodomesticos-haier","haier","marca","alta","Página de electrodomésticos de una marca: a la página de la marca",5,3,15],
+["electrodomesticos-hisense","hisense","marca","alta","Página de electrodomésticos de una marca: a la página de la marca",180,24,1],
+["electrodomesticos-integrables","lavado","apartado","media","Por sus productos: 54 de 109 están en MHD; lavavajillas 25, frigorificos-combi 16, lavadoras 5",109,54,113],
+["electrodomesticos-lg","lg","marca","alta","Página de electrodomésticos de una marca: a la página de la marca",193,36,3],
+["electrodomesticos-mepamsa","mepamsa","marca","alta","Página de electrodomésticos de una marca: a la página de la marca",145,40,2],
+["electrodomesticos-samsung","samsung","marca","alta","Página de electrodomésticos de una marca: a la página de la marca",104,1,1],
+["electrodomesticos-smeg","smeg","marca","alta","Página de electrodomésticos de una marca: a la página de la marca",21,6,6],
+["electrodomesticos-tcl","tcl","marca","alta","Página de electrodomésticos de una marca: a la página de la marca",1,1,0],
+["electrodomesticos-teka","teka","marca","alta","Página de electrodomésticos de una marca: a la página de la marca",651,206,0],
+["electrodomesticos-whirlpool","whirlpool","marca","alta","Página de electrodomésticos de una marca: a la página de la marca",69,28,1],
+["electrodomesticos-wonder","wonder","marca","alta","Página de electrodomésticos de una marca: a la página de la marca",4,2,64],
+["electrolux","electrolux","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",17,7,3],
+["eltax","eltax","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0],
+["emisores-termicos","emisores-termicos","misma","alta","La colección se reutiliza en el árbol nuevo",24,13,23],
+["emisores-termicos-cointra","emisores-termicos","familia","baja","Sin productos de MHD; por el nombre",5,0,12],
+["emisores-termicos-orbegozo","emisores-termicos","familia","alta","Por sus productos: 13 de 19 están en MHD; emisores-termicos 12, calefactores-electricos 1",19,13,29],
+["energy-sistem","energy-sistem","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",1,1,1],
+["envasador-al-vacio","envasadoras-al-vacio","familia","baja","Sin productos de MHD; propuesta a mano",2,0,0],
+["envasadoras-al-vacio","envasadoras-al-vacio","misma","alta","La colección se reutiliza en el árbol nuevo",7,6,21],
+["equipo-de-sonido","equipos-de-musica","familia","alta","Por sus productos: 5 de 17 están en MHD; equipos-de-musica 5",17,5,93],
+["equipos-de-proteccion","cuidado-personal-y-salud","grupo","baja","Sin productos de MHD; propuesta a mano",2,0,0],
+["espumadoras-de-leche","espumadores-de-leche","familia","media","Por sus productos: 1 de 1 están en MHD; espumadores-de-leche 1",1,1,37],
+["estetica","cuidado-personal-y-salud","grupo","baja","Sin productos de MHD; propuesta a mano",2,0,1],
+["estimuladores","salud-sexual","familia","media","Por sus productos: 2 de 7 están en MHD; salud-sexual 2",7,2,69],
+["estufa-de-gas-llama-azul","estufas","familia","alta","Por sus productos: 3 de 4 están en MHD; estufas 3",4,3,81],
+["estufas","estufas","misma","alta","La colección se reutiliza en el árbol nuevo",22,15,16],
+["exprimidores","exprimidores","misma","alta","La colección se reutiliza en el árbol nuevo",22,15,4],
+["exprimidores-smeg","exprimidores","familia","alta","Por sus productos: 3 de 3 están en MHD; exprimidores 3",3,3,4],
+["fagor","fagor","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0],
+["farma","cuidado-personal-y-salud","grupo","baja","Sin productos de MHD; propuesta a mano",4,0,0],
+["fissler","fissler","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",2,0,15],
+["flux-s","flux-s","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0],
+["fonestar","fonestar","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",21,15,0],
+["fotografia-y-video","camaras-de-fotos","familia","alta","Por sus productos: 34 de 58 están en MHD; camaras-de-fotos 29, impresoras 3, camaras-deportivas 1",58,34,1],
+["franke","franke","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",2,0,0],
+["fregaderos","fregaderos","misma","alta","La colección se reutiliza en el árbol nuevo",168,77,24],
+["fregaderos-bajo-encimera","fregaderos","familia","alta","Por sus productos: 25 de 37 están en MHD; fregaderos 25",37,25,89],
+["fregaderos-bajo-encimera-teka","fregaderos","familia","alta","Por sus productos: 13 de 23 están en MHD; fregaderos 13",23,13,109],
+["fregaderos-cata","fregaderos","familia","alta","Por sus productos: 8 de 22 están en MHD; fregaderos 8",22,8,100],
+["fregaderos-especiales","fregaderos","familia","baja","Sin productos de MHD; por el nombre",2,0,29],
+["fregaderos-mepamsa","fregaderos","familia","alta","Por sus productos: 15 de 17 están en MHD; fregaderos 15",17,15,83],
+["fregaderos-sinteticos","fregaderos","familia","alta","Por sus productos: 19 de 23 están en MHD; fregaderos 19",23,19,15],
+["fregaderos-sobre-encimera","fregaderos","familia","alta","Por sus productos: 30 de 81 están en MHD; fregaderos 30",81,30,13],
+["fregaderos-teka","fregaderos","familia","alta","Por sus productos: 53 de 109 están en MHD; fregaderos 51, packs-de-fregadero-y-grifo 2",109,53,28],
+["fregaderos-y-grifos","fregaderos","familia","media","Por sus productos: 102 de 243 están en MHD; fregaderos 74, grifos-de-cocina 25, packs-de-fregadero-y-grifo 2",243,102,67],
+["freidora-sin-aceite","freidoras","familia","alta","Por sus productos: 9 de 18 están en MHD; freidoras 8, accesorios-para-robots-y-batidoras 1",18,9,57],
+["freidoras-de-aceite","freidoras","familia","alta","Por sus productos: 5 de 8 están en MHD; freidoras 5",8,5,18],
+["frigorificos","frigorificos-y-congeladores","grupo","alta","Por sus productos: 37 de 125 están en MHD; frigorificos-de-2-puertas 18, frigorificos-de-1-puerta 11, frigorificos-americanos-y-side-by-side 8",125,37,1991],
+["frigorificos-4-puertas","frigorificos-americanos-y-side-by-side","familia","media","Por sus productos: 1 de 35 están en MHD; frigorificos-americanos-y-side-by-side 1",35,1,374],
+["frigorificos-55-cm-ancho","frigorificos-y-congeladores","grupo","alta","Por sus productos: 27 de 65 están en MHD; frigorificos-de-1-puerta 11, frigorificos-combi 10, congeladores-verticales 3",65,27,3967],
+["frigorificos-60-cm-ancho","frigorificos-y-congeladores","grupo","alta","Por sus productos: 105 de 335 están en MHD; frigorificos-combi 60, congeladores-verticales 15, frigorificos-de-1-puerta 15",335,105,948],
+["frigorificos-70-cm-ancho","frigorificos-combi","familia","alta","Por sus productos: 11 de 28 están en MHD; frigorificos-combi 10, arcones-congeladores 1",28,11,1058],
+["frigorificos-americanos","frigorificos-americanos-y-side-by-side","familia","alta","Por sus productos: 8 de 46 están en MHD; frigorificos-americanos-y-side-by-side 8",46,8,998],
+["frigorificos-americanos-blancos","frigorificos-americanos-y-side-by-side","familia","alta","Por sus productos: 3 de 10 están en MHD; frigorificos-americanos-y-side-by-side 3",10,3,177],
+["frigorificos-americanos-con-dispensador-de-agua","frigorificos-americanos-y-side-by-side","familia","media","Por sus productos: 1 de 18 están en MHD; frigorificos-americanos-y-side-by-side 1",18,1,102],
+["frigorificos-americanos-lg","frigorificos-americanos-y-side-by-side","familia","media","Por sus productos: 1 de 26 están en MHD; frigorificos-americanos-y-side-by-side 1",26,1,155],
+["frigorificos-americanos-teka","frigorificos-americanos-y-side-by-side","familia","baja","Sin productos de MHD; propuesta a mano",6,0,55],
+["frigorificos-beko","frigorificos-y-congeladores","grupo","alta","Por sus productos: 31 de 38 están en MHD; frigorificos-de-1-puerta 13, frigorificos-combi 11, congeladores-verticales 6",38,31,62],
+["frigorificos-con-dispensador-de-agua","frigorificos-americanos-y-side-by-side","familia","media","Por sus productos: 1 de 10 están en MHD; frigorificos-americanos-y-side-by-side 1",10,1,3],
+["frigorificos-dos-puertas","frigorificos-de-2-puertas","familia","alta","Por sus productos: 19 de 54 están en MHD; frigorificos-de-2-puertas 18, frigorificos-de-1-puerta 1",54,19,552],
+["frigorificos-haier","frigorificos-y-congeladores","grupo","baja","Sin productos de MHD; propuesta a mano",2,0,11],
+["frigorificos-integrables","frigorificos-de-1-puerta","familia","media","Por sus productos: 2 de 2 están en MHD; frigorificos-de-1-puerta 2",2,2,199],
+["frigorificos-integrables-bajo-encimera","frigorificos-de-1-puerta","familia","media","Por sus productos: 1 de 2 están en MHD; frigorificos-de-1-puerta 1",2,1,935],
+["frigorificos-lg","frigorificos-y-congeladores","grupo","alta","Por sus productos: 11 de 102 están en MHD; frigorificos-combi 5, congeladores-verticales 2, frigorificos-de-2-puertas 2",102,11,73],
+["frigorificos-smeg","frigorificos-combi","familia","media","Por sus productos: 2 de 4 están en MHD; frigorificos-combi 2",4,2,84],
+["frigorificos-teka","frigorificos-y-congeladores","grupo","alta","Por sus productos: 12 de 62 están en MHD; frigorificos-combi 4, vinotecas 3, frigorificos-de-1-puerta 2",62,12,92],
+["frigorificos-una-puerta","frigorificos-de-1-puerta","familia","alta","Por sus productos: 7 de 21 están en MHD; frigorificos-de-1-puerta 7",21,7,106],
+["frigorificos-whirlpool","frigorificos-combi","familia","media","Por sus productos: 1 de 12 están en MHD; frigorificos-combi 1",12,1,9],
+["frigorificos-y-congeladores","frigorificos-y-congeladores","misma","alta","La colección se reutiliza en el árbol nuevo",562,166,906],
+["fujifilm","fujifilm","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",20,14,0],
+["garantia3","garantia3","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",9,0,22],
+["garantias","garantias","misma","alta","Colección comercial o de servicio",9,0,48],
+["garmin","garmin","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",59,32,145],
+["gestion-de-residuos","accesorios-de-cocina","grupo","baja","Sin productos de MHD; propuesta a mano",1,0,0],
+["gps","navegadores-gps","familia","media","Por sus productos: 14 de 18 están en MHD; navegadores-gps 9, radios-y-multimedia-para-coche 2, relojes-gps-deportivos 2",18,14,5],
+["grifos-cano-alto","grifos-de-cocina","familia","alta","Por sus productos: 15 de 42 están en MHD; grifos-de-cocina 15",42,15,9],
+["grifos-cano-alto-extraible","grifos-de-cocina","familia","alta","Por sus productos: 6 de 18 están en MHD; grifos-de-cocina 6",18,6,5],
+["grifos-cano-bajo","grifos-de-cocina","familia","alta","Por sus productos: 4 de 11 están en MHD; grifos-de-cocina 4",11,4,2],
+["grifos-cano-bajo-extraible","grifos-de-cocina","familia","baja","Sin productos de MHD; propuesta a mano",4,0,0],
+["grifos-cata","grifos-de-cocina","familia","alta","Por sus productos: 4 de 11 están en MHD; grifos-de-cocina 4",11,4,3],
+["grifos-de-cocina","grifos-de-cocina","misma","alta","La colección se reutiliza en el árbol nuevo",75,25,32],
+["grifos-de-cocina-abatibles","grifos-de-cocina","familia","alta","Por sus productos: 3 de 3 están en MHD; grifos-de-cocina 3",3,3,0],
+["grifos-teka","grifos-de-cocina","familia","alta","Por sus productos: 21 de 63 están en MHD; grifos-de-cocina 21",63,21,15],
+["grundig","grundig","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",1,0,0],
+["haier","haier","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",5,3,4],
+["hama","hama","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",2,0,0],
+["help-flash","help-flash","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",1,0,3],
+["hervidores-de-agua","hervidores-de-agua","misma","alta","La colección se reutiliza en el árbol nuevo",26,14,19],
+["hervidores-de-agua-smeg","hervidores-de-agua","familia","alta","Por sus productos: 7 de 10 están en MHD; hervidores-de-agua 6, calientaleches 1",10,7,7],
+["hidrolimpiadoras","hidrolimpiadoras","misma","alta","La colección se reutiliza en el árbol nuevo",1,1,0],
+["hisense","hisense","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",214,28,118],
+["home-mejores-precios","home-mejores-precios","misma","alta","Colección comercial o de servicio",8,6,0],
+["home-para-el-dia-a-dia","home-para-el-dia-a-dia","misma","alta","Colección comercial o de servicio",6,2,0],
+["hoover","hoover","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0],
+["hornillo-de-gas-vitrokitchen","hornillos","familia","alta","Por sus productos: 8 de 11 están en MHD; hornillos 7, soportes-de-tv-y-monitor 1",11,8,0],
+["hornillos-de-gas","hornillos","familia","alta","Por sus productos: 16 de 19 están en MHD; hornillos 15, soportes-de-tv-y-monitor 1",19,16,2212],
+["hornillos-de-gas-orbegozo","hornillos","familia","alta","Por sus productos: 7 de 7 están en MHD; hornillos 7",7,7,8],
+["horno-y-placa-induccion","conjuntos-de-horno-y-placa","familia","media","Por sus productos: 1 de 1 están en MHD; conjuntos-de-horno-y-placa 1",1,1,120],
+["horno-y-placa-vitroceramica","conjuntos-de-horno-y-placa","familia","media","Por sus productos: 1 de 1 están en MHD; conjuntos-de-horno-y-placa 1",1,1,16],
+["hornos","hornos","misma","alta","La colección se reutiliza en el árbol nuevo",213,78,674],
+["hornos-aeg","hornos","familia","media","Por sus productos: 1 de 3 están en MHD; hornos 1",3,1,22],
+["hornos-aspes","hornos","familia","alta","Por sus productos: 14 de 19 están en MHD; hornos 12, hornos-compactos 2",19,14,150],
+["hornos-bajo-consumo","hornos","familia","alta","Por sus productos: 29 de 77 están en MHD; hornos 27, hornos-compactos 2",77,29,2645],
+["hornos-balay","hornos","familia","media","Por sus productos: 18 de 22 están en MHD; hornos 14, hornos-compactos 2, microondas-integrables 2",22,18,61],
+["hornos-beko","hornos","familia","media","Por sus productos: 7 de 11 están en MHD; hornos 5, hornos-compactos 2",11,7,24],
+["hornos-bosch","hornos","familia","alta","Por sus productos: 5 de 8 están en MHD; hornos 5",8,5,75],
+["hornos-cata","hornos","familia","baja","Sin productos de MHD; por el nombre",19,0,43],
+["hornos-compactos-45","hornos-compactos","familia","media","Por sus productos: 13 de 31 están en MHD; hornos-compactos 9, hornos 2, microondas-integrables 2",31,13,2723],
+["hornos-convencionales","hornos","familia","alta","Por sus productos: 7 de 14 están en MHD; hornos 6, hornos-compactos 1",14,7,21],
+["hornos-electrolux","hornos","familia","media","Por sus productos: 1 de 4 están en MHD; hornos 1",4,1,6],
+["hornos-gas","hornos","familia","baja","Sin productos de MHD; por el nombre",2,0,74],
+["hornos-microondas","microondas-integrables","familia","media","Por sus productos: 2 de 5 están en MHD; microondas-integrables 2",5,2,170],
+["hornos-multifuncion","hornos","familia","alta","Por sus productos: 68 de 163 están en MHD; hornos 60, hornos-compactos 8",163,68,379],
+["hornos-piroliticos","hornos","familia","alta","Por sus productos: 11 de 39 están en MHD; hornos 11",39,11,17],
+["hornos-polivalentes","hornos-polivalentes","misma","alta","La colección se reutiliza en el árbol nuevo",1,0,2808],
+["hornos-smeg","hornos","familia","media","Por sus productos: 1 de 3 están en MHD; hornos 1",3,1,8],
+["hornos-sobremesa","hornos-de-sobremesa","familia","alta","Por sus productos: 10 de 15 están en MHD; hornos-de-sobremesa 10",15,10,96],
+["hornos-sobremesa-orbegozo","hornos-de-sobremesa","familia","alta","Por sus productos: 5 de 9 están en MHD; hornos-de-sobremesa 5",9,5,6],
+["hornos-teka","hornos","familia","media","Por sus productos: 14 de 58 están en MHD; hornos 11, hornos-compactos 3",58,14,84],
+["hornos-whirlpool","hornos","familia","media","Por sus productos: 2 de 5 están en MHD; hornos 2",5,2,6],
+["hornos-y-placas-samsung","hornos","familia","baja","Sin productos de MHD; por el nombre",9,0,19],
+["humidificadores","humidificadores","misma","alta","La colección se reutiliza en el árbol nuevo",5,3,9],
+["hyundai","hyundai","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",10,6,3],
+["impresora-portatil","impresoras","familia","media","Por sus productos: 2 de 2 están en MHD; impresoras 2",2,2,1],
+["indesit","indesit","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",1,0,0],
+["informatica","informatica","misma","alta","La colección se reutiliza en el árbol nuevo",35,10,1],
+["irobot","irobot","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",2,1,0],
+["irrigadores-dentales","irrigadores-dentales","misma","alta","La colección se reutiliza en el árbol nuevo",2,0,21],
+["jarras-dispensadores-de-agua","jarras-purificadoras-de-agua","familia","media","Propuesta a mano (los productos estaban repartidos)",4,2,4],
+["jata","jata","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",103,80,1],
+["jata-basculas-de-bano","basculas","familia","media","Por sus productos: 2 de 4 están en MHD; basculas 2",4,2,0],
+["jata-batidoras","batidoras","familia","alta","Por sus productos: 10 de 11 están en MHD; batidoras 9, accesorios-para-robots-y-batidoras 1",11,10,3],
+["jata-cafeteras","cafeteras","familia","media","Por sus productos: 2 de 3 están en MHD; cafeteras 2",3,2,1],
+["jata-cocina","pequeno-electro","apartado","media","Por sus productos: 18 de 26 están en MHD; planchas-de-asar-y-grills-electricos 5, hornos-de-sobremesa 4, hornillos 3",26,18,0],
+["jata-exprimidores","exprimidores","familia","alta","Por sus productos: 3 de 4 están en MHD; exprimidores 3",4,3,0],
+["jata-pequeno-electrodomestico","jata","marca","alta","Página de electrodomésticos de una marca: a la página de la marca",83,64,3],
+["jata-plancha","planchas-de-ropa","familia","alta","Por sus productos: 7 de 7 están en MHD; planchas-de-ropa 7",7,7,12],
+["jata-planchas-de-asar","planchas-de-asar-y-grills-electricos","familia","alta","Por sus productos: 4 de 6 están en MHD; planchas-de-asar-y-grills-electricos 4",6,4,1],
+["jata-preparador-de-alimentos","batidoras","familia","media","Por sus productos: 20 de 25 están en MHD; batidoras 14, bolsas-y-rollos-para-envasar-al-vacio 2, envasadoras-al-vacio 2",25,20,0],
+["jata-secadores-de-pelo","secadores-de-pelo","familia","alta","Por sus productos: 4 de 5 están en MHD; secadores-de-pelo 4",5,4,3],
+["jbl","jbl","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",57,7,0],
+["jlab","jlab","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0],
+["kingston","kingston","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0],
+["kitchenaid","kitchenaid","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",1,0,19],
+["kodak","kodak","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",13,7,0],
+["krups","krups","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",7,5,2],
+["ksix","ksix","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",26,5,2],
+["kuhn-rikon","kuhn-rikon","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",3,0,168],
+["lauson","lauson","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",4,1,1],
+["lavado","lavado","misma","alta","La colección se reutiliza en el árbol nuevo",327,83,31],
+["lavadoras","lavadoras","misma","alta","La colección se reutiliza en el árbol nuevo",211,57,4444],
+["lavadoras-10-kg","lavadoras","familia","alta","Por sus productos: 7 de 23 están en MHD; lavadoras 7",23,7,252],
+["lavadoras-6-kg","lavadoras","familia","alta","Por sus productos: 5 de 13 están en MHD; lavadoras 5",13,5,30],
+["lavadoras-7-kg","lavadoras","familia","alta","Por sus productos: 8 de 36 están en MHD; lavadoras 8",36,8,30],
+["lavadoras-8-kg","lavadoras","familia","alta","Por sus productos: 16 de 52 están en MHD; lavadoras 16",52,16,141],
+["lavadoras-9-kg","lavadoras","familia","alta","Por sus productos: 14 de 62 están en MHD; lavadoras 14",62,14,122],
+["lavadoras-aeg","lavadoras","familia","alta","Por sus productos: 5 de 12 están en MHD; lavadoras 5",12,5,80],
+["lavadoras-aspes","lavadoras","familia","alta","Por sus productos: 4 de 22 están en MHD; lavadoras 4",22,4,143],
+["lavadoras-balay","lavadoras","familia","alta","Por sus productos: 4 de 9 están en MHD; lavadoras 4",9,4,62],
+["lavadoras-beko","lavadoras","familia","alta","Por sus productos: 5 de 11 están en MHD; lavadoras 5",11,5,83],
+["lavadoras-bosch","lavadoras","familia","alta","Por sus productos: 5 de 8 están en MHD; lavadoras 5",8,5,124],
+["lavadoras-carga-superior","lavadoras","familia","alta","Por sus productos: 8 de 16 están en MHD; lavadoras 8",16,8,276],
+["lavadoras-con-wifi","lavadoras","familia","alta","Por sus productos: 6 de 43 están en MHD; lavadoras 6",43,6,234],
+["lavadoras-de-fondo-reducido","lavadoras","familia","alta","Por sus productos: 3 de 10 están en MHD; lavadoras 3",10,3,12630],
+["lavadoras-electrolux","lavadoras","familia","media","Por sus productos: 2 de 3 están en MHD; lavadoras 2",3,2,9],
+["lavadoras-integrables","lavadoras","familia","alta","Por sus productos: 5 de 16 están en MHD; lavadoras 5",16,5,4598],
+["lavadoras-lg","lavadoras","familia","alta","Por sus productos: 8 de 32 están en MHD; lavadoras 8",32,8,142],
+["lavadoras-libre-instalacion","lavadoras","familia","alta","Por sus productos: 44 de 177 están en MHD; lavadoras 44",177,44,432],
+["lavadoras-libre-instalacion-aeg","lavadoras","familia","alta","Por sus productos: 3 de 8 están en MHD; lavadoras 3",8,3,1],
+["lavadoras-libre-instalacion-beko","lavadoras","familia","alta","Por sus productos: 3 de 9 están en MHD; lavadoras 3",9,3,6],
+["lavadoras-libre-instalacion-lg","lavadoras","familia","alta","Por sus productos: 8 de 32 están en MHD; lavadoras 8",32,8,3],
+["lavadoras-samsung","lavadoras","familia","baja","Sin productos de MHD; por el nombre",19,0,10],
+["lavadoras-secadoras","lavadoras-secadoras","misma","alta","La colección se reutiliza en el árbol nuevo",52,12,3612],
+["lavadoras-secadoras-aeg","lavadoras-secadoras","familia","media","Por sus productos: 2 de 3 están en MHD; lavadoras-secadoras 2",3,2,19],
+["lavadoras-secadoras-bosch","lavadoras-secadoras","familia","media","Por sus productos: 1 de 1 están en MHD; lavadoras-secadoras 1",1,1,14],
+["lavadoras-secadoras-integrables","lavadoras-secadoras","familia","media","Por sus productos: 1 de 2 están en MHD; lavadoras-secadoras 1",2,1,209],
+["lavadoras-secadoras-lg","lavadoras-secadoras","familia","alta","Por sus productos: 3 de 21 están en MHD; lavadoras-secadoras 3",21,3,38],
+["lavadoras-secadoras-libre-instalacion","lavadoras-secadoras","familia","alta","Por sus productos: 11 de 50 están en MHD; lavadoras-secadoras 11",50,11,99],
+["lavadoras-secadoras-whirlpool","lavadoras-secadoras","familia","baja","Sin productos de MHD; por el nombre",2,0,16],
+["lavadoras-teka","lavadoras","familia","media","Por sus productos: 1 de 20 están en MHD; lavadoras 1",20,1,19],
+["lavadoras-whirlpool","lavadoras","familia","alta","Por sus productos: 7 de 14 están en MHD; lavadoras 7",14,7,16],
+["lavavajillas","lavavajillas","misma","alta","La colección se reutiliza en el árbol nuevo",175,77,854],
+["lavavajillas-3-bandejas","lavavajillas","familia","alta","Por sus productos: 28 de 74 están en MHD; lavavajillas 28",74,28,1379],
+["lavavajillas-45-cm-integrables","lavavajillas","familia","alta","Por sus productos: 5 de 10 están en MHD; lavavajillas 5",10,5,955],
+["lavavajillas-45-cm-libre-instalacion","lavavajillas","familia","alta","Por sus productos: 6 de 18 están en MHD; lavavajillas 6",18,6,994],
+["lavavajillas-45cm-aeg","lavavajillas","familia","media","Por sus productos: 2 de 2 están en MHD; lavavajillas 2",2,2,5],
+["lavavajillas-45cm-whirlpool","lavavajillas","familia","media","Por sus productos: 1 de 2 están en MHD; lavavajillas 1",2,1,10],
+["lavavajillas-60-cm","lavavajillas","familia","alta","Por sus productos: 66 de 143 están en MHD; lavavajillas 66",143,66,81],
+["lavavajillas-aeg","lavavajillas","familia","alta","Por sus productos: 6 de 12 están en MHD; lavavajillas 6",12,6,51],
+["lavavajillas-balay","lavavajillas","familia","alta","Por sus productos: 13 de 21 están en MHD; lavavajillas 13",21,13,48],
+["lavavajillas-beko","lavavajillas","familia","alta","Por sus productos: 9 de 14 están en MHD; lavavajillas 9",14,9,142],
+["lavavajillas-bosch","lavavajillas","familia","alta","Por sus productos: 6 de 17 están en MHD; lavavajillas 6",17,6,79],
+["lavavajillas-bosch-45cm","lavavajillas","familia","baja","Sin productos de MHD; por el nombre",3,0,313],
+["lavavajillas-compactos","lavavajillas","familia","baja","Sin productos de MHD; por el nombre",1,0,2814],
+["lavavajillas-hisense","lavavajillas","familia","media","Por sus productos: 2 de 18 están en MHD; lavavajillas 2",18,2,44],
+["lavavajillas-inox","lavavajillas","familia","alta","Por sus productos: 31 de 67 están en MHD; lavavajillas 31",67,31,59],
+["lavavajillas-integrables","lavavajillas","familia","alta","Por sus productos: 20 de 41 están en MHD; lavavajillas 20",41,20,1657],
+["lavavajillas-integrables-aeg","lavavajillas","familia","media","Por sus productos: 1 de 4 están en MHD; lavavajillas 1",4,1,97],
+["lavavajillas-integrables-balay","lavavajillas","familia","alta","Por sus productos: 4 de 7 están en MHD; lavavajillas 4",7,4,17],
+["lavavajillas-integrables-beko","lavavajillas","familia","alta","Por sus productos: 3 de 3 están en MHD; lavavajillas 3",3,3,10],
+["lavavajillas-integrables-bosch","lavavajillas","familia","alta","Por sus productos: 3 de 4 están en MHD; lavavajillas 3",4,3,19],
+["lavavajillas-integrables-teka","lavavajillas","familia","alta","Por sus productos: 4 de 5 están en MHD; lavavajillas 4",5,4,15],
+["lavavajillas-integrables-whirlpool","lavavajillas","familia","media","Por sus productos: 2 de 3 están en MHD; lavavajillas 2",3,2,4],
+["lavavajillas-lg","lavavajillas","familia","alta","Por sus productos: 4 de 15 están en MHD; lavavajillas 4",15,4,102],
+["lavavajillas-libre-instalacion","lavavajillas","familia","alta","Por sus productos: 45 de 104 están en MHD; lavavajillas 45",104,45,70],
+["lavavajillas-negros","lavavajillas","familia","baja","Sin productos de MHD; por el nombre",2,0,50],
+["lavavajillas-pequenos","lavavajillas","familia","alta","Por sus productos: 10 de 30 están en MHD; lavavajillas 10",30,10,854],
+["lavavajillas-samsung","lavavajillas","familia","baja","Sin productos de MHD; por el nombre",9,0,4],
+["lavavajillas-teka","lavavajillas","familia","alta","Por sus productos: 11 de 19 están en MHD; lavavajillas 11",19,11,19],
+["lavavajillas-teka-45cm","lavavajillas","familia","alta","Por sus productos: 5 de 6 están en MHD; lavavajillas 5",6,5,22],
+["lavavajillas-whirlpool","lavavajillas","familia","alta","Por sus productos: 12 de 17 están en MHD; lavavajillas 12",17,12,9],
+["lenovo","lenovo","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",3,0,0],
+["lg","lg","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",293,56,297],
+["licuadoras","licuadoras","misma","alta","La colección se reutiliza en el árbol nuevo",4,3,8],
+["liebherr","liebherr","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0],
+["magic-vac","magic-vac","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0],
+["magna","magna","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",1,0,0],
+["magnat","magnat","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0],
+["mando-smart-tv","mandos-a-distancia","familia","baja","Sin productos de MHD; propuesta a mano",3,0,5],
+["mando-universal","mandos-a-distancia","familia","alta","Por sus productos: 8 de 8 están en MHD; mandos-a-distancia 8",8,8,2],
+["maquinas-de-afeitar","afeitadoras","familia","alta","Por sus productos: 12 de 21 están en MHD; afeitadoras 10, cortapelos 2",21,12,71],
+["masaje","cuidado-personal-y-salud","grupo","baja","Sin productos de MHD; propuesta a mano",1,0,0],
+["maxell","maxell","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0],
+["menaje-de-cocina","pequeno-electro-de-cocina","grupo","alta","Por sus productos: 55 de 105 están en MHD; ollas-cacerolas-y-cazos 27, sartenes 16, planchas-de-asar-y-parrillas 7",105,55,30],
+["mepamsa","mepamsa","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",145,40,19],
+["micel","micel","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",1,0,0],
+["microondas","microondas","misma","alta","La colección se reutiliza en el árbol nuevo",180,85,376],
+["microondas-aeg","microondas-integrables","familia","media","Por sus productos: 1 de 1 están en MHD; microondas-integrables 1",1,1,4],
+["microondas-aspes","microondas","familia","media","Por sus productos: 10 de 18 están en MHD; microondas 7, microondas-integrables 3",18,10,23],
+["microondas-balay","microondas-integrables","familia","alta","Por sus productos: 12 de 14 están en MHD; microondas-integrables 10, microondas 2",14,12,25],
+["microondas-beko","microondas-integrables","familia","alta","Por sus productos: 4 de 5 están en MHD; microondas-integrables 4",5,4,13],
+["microondas-bosch","microondas-integrables","familia","media","Por sus productos: 4 de 4 están en MHD; microondas-integrables 3, microondas 1",4,4,11],
+["microondas-cata","microondas","familia","media","Por sus productos: 1 de 7 están en MHD; microondas 1",7,1,5],
+["microondas-cecotec","microondas","familia","media","Por sus productos: 6 de 9 están en MHD; microondas 4, microondas-integrables 2",9,6,24],
+["microondas-electrolux","microondas-integrables","familia","media","Por sus productos: 2 de 2 están en MHD; microondas-integrables 2",2,2,4],
+["microondas-fondo-30-cm","microondas-integrables","familia","alta","Por sus productos: 10 de 18 están en MHD; microondas-integrables 10",18,10,4339],
+["microondas-integrable-25-litros","microondas-integrables","familia","alta","Por sus productos: 17 de 24 están en MHD; microondas-integrables 17",24,17,797],
+["microondas-integrables","microondas-integrables","misma","alta","La colección se reutiliza en el árbol nuevo",86,44,1757],
+["microondas-integrables-aeg","microondas-integrables","familia","media","Por sus productos: 1 de 1 están en MHD; microondas-integrables 1",1,1,2],
+["microondas-integrables-balay","microondas-integrables","familia","alta","Por sus productos: 10 de 12 están en MHD; microondas-integrables 10",12,10,10],
+["microondas-integrables-beko","microondas-integrables","familia","alta","Por sus productos: 4 de 4 están en MHD; microondas-integrables 4",4,4,44],
+["microondas-integrables-blancos","microondas-integrables","familia","alta","Por sus productos: 6 de 16 están en MHD; microondas-integrables 6",16,6,812],
+["microondas-integrables-bosch","microondas-integrables","familia","alta","Por sus productos: 3 de 3 están en MHD; microondas-integrables 3",3,3,12],
+["microondas-integrables-cata","microondas","familia","media","Por sus productos: 1 de 7 están en MHD; microondas 1",7,1,11],
+["microondas-integrables-cecotec","microondas-integrables","familia","media","Por sus productos: 2 de 3 están en MHD; microondas-integrables 2",3,2,8],
+["microondas-integrables-electrolux","microondas-integrables","familia","media","Por sus productos: 2 de 2 están en MHD; microondas-integrables 2",2,2,0],
+["microondas-integrables-orbegozo","microondas-integrables","familia","alta","Por sus productos: 3 de 4 están en MHD; microondas-integrables 3",4,3,8],
+["microondas-integrables-whirlpool","microondas-integrables","familia","alta","Por sus productos: 3 de 3 están en MHD; microondas-integrables 3",3,3,36],
+["microondas-lg","electrodomesticos-de-cocina","grupo","media","Por sus productos: 2 de 8 están en MHD; microondas 1, microondas-integrables 1",8,2,27],
+["microondas-libre-instalacion","microondas","familia","alta","Por sus productos: 41 de 93 están en MHD; microondas 41",93,41,45],
+["microondas-orbegozo","microondas","familia","alta","Por sus productos: 17 de 26 están en MHD; microondas 14, microondas-integrables 3",26,17,8],
+["microondas-teka","electrodomesticos-de-cocina","grupo","alta","Por sus productos: 10 de 40 están en MHD; microondas-integrables 5, microondas 5",40,10,28],
+["microondas-whirlpool","microondas-integrables","familia","alta","Por sus productos: 3 de 7 están en MHD; microondas-integrables 3",7,3,7],
+["modulos-de-almacenamiento","modulos-de-integracion","familia","baja","Sin productos de MHD; propuesta a mano",9,0,1],
+["moldeadores-de-pelo","moldeadores-y-rizadores-de-pelo","familia","alta","Por sus productos: 7 de 10 están en MHD; moldeadores-y-rizadores-de-pelo 7",10,7,3],
+["molinillos-de-cafe","molinillos-de-cafe","misma","alta","La colección se reutiliza en el árbol nuevo",4,3,24],
+["monitor","monitores","familia","baja","Sin productos de MHD; propuesta a mano",3,0,1],
+["monitores-tv","monitores","familia","baja","Sin productos de MHD; por el nombre",7,0,27],
+["monix","monix","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",4,3,0],
+["motorola","motorola","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",29,17,1],
+["moulinex","moulinex","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",14,10,13],
+["movilidad","movilidad","misma","alta","La colección se reutiliza en el árbol nuevo",39,24,0],
+["muse","muse","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",75,24,8],
+["nariceros","recortadoras-de-nariz-y-orejas","familia","media","Por sus productos: 3 de 6 están en MHD; recortadoras-de-nariz-y-orejas 2, cortapelos 1",6,3,8],
+["neveras-2-metros","frigorificos-combi","familia","alta","Por sus productos: 26 de 115 están en MHD; frigorificos-combi 26",115,26,2832],
+["nevir","nevir","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",18,4,8],
+["new-pol","new-pol","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0],
+["nimo","nimo","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0],
+["ninja","ninja","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",2,1,4],
+["nintendo","nintendo","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",1,0,2],
+["nodor","nodor","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",3,0,1],
+["nokia","nokia","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",6,0,0],
+["novedades","novedades","misma","alta","Colección comercial o de servicio",3,2,3],
+["ofertas","ofertas","misma","alta","Colección comercial o de servicio",302,141,549],
+["ofertas-electrodomesticos","ofertas","misma","alta","Ofertas de electrodomésticos: a Ofertas (colección comercial)",81,49,0],
+["ollas-electricas","ollas-cacerolas-y-cazos","familia","alta","Por sus productos: 3 de 5 están en MHD; ollas-cacerolas-y-cazos 3",5,3,26],
+["ollas-express","ollas-cacerolas-y-cazos","familia","alta","Por sus productos: 6 de 17 están en MHD; ollas-cacerolas-y-cazos 6",17,6,142],
+["ollas-gm","ollas-gm","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",1,0,3],
+["one-for-all","one-for-all","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",23,14,1],
+["onkyo","onkyo","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",1,0,3],
+["oral-b","oral-b","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",34,13,214],
+["orbegozo","orbegozo","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",365,213,4],
+["otsein","otsein","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0],
+["paelleras-y-parrillas","planchas-de-asar-y-parrillas","familia","media","Por sus productos: 4 de 6 están en MHD; planchas-de-asar-y-parrillas 3, paelleras 1",6,4,15],
+["panasonic","panasonic","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",25,4,5],
+["patines-electricos","patinetes-electricos","familia","baja","Sin productos de MHD; propuesta a mano",4,0,13],
+["pebbly","pebbly","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",1,0,0],
+["pequeno-electrodomestico","pequeno-electro","apartado","alta","Antiguo apartado de pequeño electrodoméstico",628,358,660],
+["pequeno-electrodomestico-smeg","smeg","marca","alta","Página de electrodomésticos de una marca: a la página de la marca",32,19,2],
+["philips","philips","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",36,27,4],
+["picadoras-electricas","picadoras","familia","media","Por sus productos: 2 de 6 están en MHD; picadoras 2",6,2,27],
+["pioneer","pioneer","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0],
+["placas-de-cocina","electrodomesticos-de-cocina","grupo","alta","Por sus productos: 127 de 283 están en MHD; placas-de-induccion 54, placas-de-gas 30, placas-vitroceramicas 23",283,127,36],
+["placas-de-cocina-aeg","placas-de-induccion","familia","media","Por sus productos: 2 de 6 están en MHD; placas-de-induccion 2",6,2,7],
+["placas-de-cocina-balay","electrodomesticos-de-cocina","grupo","alta","Por sus productos: 26 de 35 están en MHD; placas-de-induccion 12, placas-de-gas 8, placas-vitroceramicas 5",35,26,9],
+["placas-de-cocina-beko","placas-de-induccion","familia","media","Por sus productos: 8 de 11 están en MHD; placas-de-induccion 5, modulos-de-integracion 3",11,8,17],
+["placas-de-cocina-bosch","placas-de-induccion","familia","media","Por sus productos: 8 de 13 están en MHD; placas-de-induccion 6, placas-vitroceramicas 1, placas-de-gas 1",13,8,9],
+["placas-de-cocina-cata","electrodomesticos-de-cocina","grupo","alta","Por sus productos: 16 de 50 están en MHD; placas-de-gas 7, placas-de-induccion 4, placas-vitroceramicas 3",50,16,13],
+["placas-de-cocina-electrolux","placas-de-induccion","familia","media","Por sus productos: 2 de 5 están en MHD; placas-de-induccion 2",5,2,3],
+["placas-de-cocina-smeg","placas-de-gas","familia","media","Por sus productos: 1 de 6 están en MHD; placas-de-gas 1",6,1,17],
+["placas-de-cocina-teka","electrodomesticos-de-cocina","grupo","alta","Por sus productos: 39 de 92 están en MHD; placas-vitroceramicas 10, modulos-de-integracion 9, placas-de-induccion 8",92,39,94],
+["placas-de-cocina-whirlpool","placas-de-induccion","familia","media","Por sus productos: 2 de 8 están en MHD; placas-de-induccion 2",8,2,7],
+["placas-de-induccion-80-cm","placas-de-induccion","familia","media","Por sus productos: 2 de 8 están en MHD; placas-de-induccion 2",8,2,808],
+["placas-de-induccion-90-cm","placas-de-induccion","familia","baja","Sin productos de MHD; por el nombre",6,0,1064],
+["placas-de-induccion-blancas","placas-de-induccion","familia","alta","Por sus productos: 3 de 7 están en MHD; placas-de-induccion 3",7,3,723],
+["placas-de-induccion-de-70-cm","placas-de-induccion","familia","alta","Por sus productos: 4 de 4 están en MHD; placas-de-induccion 4",4,4,1113],
+["placas-electricas-portatiles","hornillos","familia","media","Por sus productos: 3 de 5 están en MHD; hornillos 2, placas-de-induccion 1",5,3,244],
+["placas-gas","placas-de-gas","familia","alta","Por sus productos: 29 de 84 están en MHD; placas-de-gas 29",84,29,608],
+["placas-gas-y-electricas","placas-mixtas","familia","baja","Sin productos de MHD; propuesta a mano",2,0,269],
+["placas-induccion","placas-de-induccion","familia","alta","Por sus productos: 51 de 118 están en MHD; placas-de-induccion 51",118,51,760],
+["placas-induccion-aeg","placas-de-induccion","familia","media","Por sus productos: 2 de 5 están en MHD; placas-de-induccion 2",5,2,38],
+["placas-induccion-balay","placas-de-induccion","familia","alta","Por sus productos: 12 de 17 están en MHD; placas-de-induccion 12",17,12,171],
+["placas-induccion-beko","placas-de-induccion","familia","alta","Por sus productos: 5 de 5 están en MHD; placas-de-induccion 5",5,5,160],
+["placas-induccion-bosch","placas-de-induccion","familia","alta","Por sus productos: 6 de 7 están en MHD; placas-de-induccion 6",7,6,82],
+["placas-induccion-cata","placas-de-induccion","familia","media","Por sus productos: 2 de 17 están en MHD; placas-de-induccion 2",17,2,202],
+["placas-induccion-con-extraccion","placas-de-induccion","familia","alta","Por sus productos: 3 de 3 están en MHD; placas-de-induccion 3",3,3,228],
+["placas-induccion-electrolux","placas-de-induccion","familia","media","Por sus productos: 2 de 3 están en MHD; placas-de-induccion 2",3,2,25],
+["placas-induccion-teka","placas-de-induccion","familia","alta","Por sus productos: 8 de 30 están en MHD; placas-de-induccion 8",30,8,284],
+["placas-induccion-whirlpool","placas-de-induccion","familia","media","Por sus productos: 2 de 6 están en MHD; placas-de-induccion 2",6,2,81],
+["placas-modulares","modulos-de-integracion","familia","alta","Por sus productos: 17 de 33 están en MHD; modulos-de-integracion 15, placas-vitroceramicas 1, cajones-calientaplatos 1",33,17,199],
+["placas-polivalentes","placas-polivalentes","misma","alta","La colección se reutiliza en el árbol nuevo",6,5,40],
+["placas-vitroceramica","placas-vitroceramicas","familia","alta","Por sus productos: 22 de 36 están en MHD; placas-vitroceramicas 22",36,22,497],
+["plancha","planchas-de-ropa","familia","alta","Por sus productos: 23 de 32 están en MHD; planchas-de-ropa 23",32,23,46],
+["plancha-vertical","centros-de-planchado-y-planchas-verticales","familia","baja","Sin productos de MHD; propuesta a mano",4,0,4],
+["planchado-secado-costura","planchas-de-ropa","familia","media","Por sus productos: 36 de 57 están en MHD; planchas-de-ropa 23, tablas-de-planchar 8, centros-de-planchado-y-planchas-verticales 4",57,36,1],
+["planchas-de-asar","planchas-de-asar-y-grills-electricos","familia","alta","Por sus productos: 5 de 12 están en MHD; planchas-de-asar-y-grills-electricos 5",12,5,4],
+["planchas-de-pelo","planchas-de-pelo","misma","alta","La colección se reutiliza en el árbol nuevo",7,3,14],
+["pocketbook","pocketbook","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",14,12,49],
+["polk","polk","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",6,5,1],
+["preparador-de-alimentos","batidoras","familia","media","Por sus productos: 54 de 100 están en MHD; batidoras 33, basculas 4, envasadoras-al-vacio 4",100,54,2],
+["promociones","promociones","misma","alta","Colección comercial o de servicio",11,0,850],
+["pulseras-de-actividad","pulseras-de-actividad","misma","alta","La colección se reutiliza en el árbol nuevo",7,0,11],
+["purificadores","purificadores-de-aire","familia","baja","Sin productos de MHD; propuesta a mano",1,0,12],
+["pyrex","pyrex","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",1,0,0],
+["qubo","qubo","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",18,0,4],
+["quitapelusas","quitapelusas","misma","alta","La colección se reutiliza en el árbol nuevo",4,1,4],
+["radiador-toallero","toalleros-electricos","familia","media","Por sus productos: 1 de 1 están en MHD; toalleros-electricos 1",1,1,4],
+["radiadores","radiadores-de-aceite","familia","media","Por sus productos: 19 de 40 están en MHD; radiadores-de-aceite 15, calefactores-electricos 2, paneles-radiantes 2",40,19,72],
+["radiocassettes","radios","familia","media","Por sus productos: 1 de 3 están en MHD; radios 1",3,1,93],
+["radios-cd","radios-cd-y-radiocasetes","familia","media","Por sus productos: 3 de 10 están en MHD; radios-cd-y-radiocasetes 2, reproductores-de-audio-hi-fi 1",10,3,96],
+["radios-despertadores","radiodespertadores","familia","media","Por sus productos: 13 de 33 están en MHD; radiodespertadores 8, radios 4, camaras-deportivas 1",33,13,35],
+["radios-portatiles","radios","familia","alta","Por sus productos: 46 de 71 están en MHD; radios 46",71,46,486],
+["receptores-av","receptores-av","misma","alta","La colección se reutiliza en el árbol nuevo",6,3,31],
+["reloj-despertador","despertadores","familia","baja","Sin productos de MHD; propuesta a mano",1,0,0],
+["reproductor-mp3-mp4","audio","grupo","alta","Por sus productos: 4 de 5 están en MHD; reproductores-de-audio-hi-fi 2, reproductores-mp3-y-mp4 2",5,4,16],
+["ritter","ritter","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0],
+["robots-aspiradores","robots-aspiradores","misma","alta","La colección se reutiliza en el árbol nuevo",5,1,7],
+["rowenta","rowenta","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",65,26,14],
+["russell-hobbs","russell-hobbs","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",4,3,3],
+["sage","sage","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",1,0,6],
+["samsung","samsung","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",203,7,29],
+["sandwicheras","sandwicheras","misma","alta","La colección se reutiliza en el árbol nuevo",12,6,5],
+["sangean","sangean","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",39,18,8],
+["sartenes-bra","sartenes","familia","media","Por sus productos: 17 de 20 están en MHD; sartenes 13, planchas-de-asar-y-parrillas 4",20,17,216],
+["sartenes-y-woks","sartenes","familia","alta","Por sus productos: 20 de 34 están en MHD; sartenes 16, planchas-de-asar-y-parrillas 4",34,20,21],
+["sartenes-y-woks-tefal","sartenes","familia","alta","Por sus productos: 3 de 13 están en MHD; sartenes 3",13,3,1],
+["satisfyer","satisfyer","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",7,2,0],
+["secadora-integrable","secadoras","familia","baja","Sin productos de MHD; propuesta a mano",1,0,1204],
+["secadoras","secadoras","misma","alta","La colección se reutiliza en el árbol nuevo",64,14,13009],
+["secadoras-aeg","secadoras","familia","baja","Sin productos de MHD; por el nombre",2,0,63],
+["secadoras-balay","secadoras","familia","media","Por sus productos: 2 de 2 están en MHD; secadoras 2",2,2,29],
+["secadoras-beko","secadoras","familia","baja","Sin productos de MHD; por el nombre",7,0,141],
+["secadoras-bosch","secadoras","familia","alta","Por sus productos: 3 de 3 están en MHD; secadoras 3",3,3,32],
+["secadoras-condensacion","secadoras","familia","alta","Por sus productos: 14 de 63 están en MHD; secadoras 14",63,14,725],
+["secadoras-lg","secadoras","familia","alta","Por sus productos: 4 de 11 están en MHD; secadoras 4",11,4,33],
+["secadoras-whirlpool","secadoras","familia","media","Por sus productos: 1 de 1 están en MHD; secadoras 1",1,1,17],
+["secadores-de-pelo","secadores-de-pelo","misma","alta","La colección se reutiliza en el árbol nuevo",36,24,15],
+["sennheiser","sennheiser","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",8,7,0],
+["servicios","servicios","misma","alta","Colección comercial o de servicio",12,0,55],
+["shark","shark","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",2,0,1],
+["sharp","sharp","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0],
+["siemens","siemens","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",65,33,19],
+["smart-home","hogar-inteligente-y-relojes","grupo","baja","Sin productos de MHD; propuesta a mano",3,0,1],
+["smartbot","smartbot","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0],
+["smartphones","smartphones","misma","alta","La colección se reutiliza en el árbol nuevo",59,0,33],
+["smartwatchs","smartwatches","familia","alta","Por sus productos: 20 de 59 están en MHD; smartwatches 20",59,20,435],
+["smeg","smeg","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",53,25,134],
+["sony","sony","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",11,11,2],
+["soportes","soportes-de-tv-y-monitor","familia","alta","Por sus productos: 46 de 69 están en MHD; soportes-de-tv-y-monitor 46",69,46,29],
+["sunstech","sunstech","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",36,25,5],
+["svan","svan","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",125,67,34],
+["svan-electrodomesticos","svan","marca","alta","Página de electrodomésticos de una marca: a la página de la marca",120,64,4],
+["tabla-de-planchar","tablas-de-planchar","familia","alta","Por sus productos: 8 de 8 están en MHD; tablas-de-planchar 8",8,8,2],
+["tablets","tablets","misma","alta","La colección se reutiliza en el árbol nuevo",14,0,24],
+["tablets-samsung","tablets","familia","baja","Sin productos de MHD; por el nombre",11,0,1],
+["tangent","tangent","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0],
+["tcl","tcl","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",31,2,573],
+["tcl-55-pulgadas","televisores","familia","baja","Sin productos de MHD; propuesta a mano",5,0,27],
+["tdt","receptores-tdt-y-satelite","familia","baja","Sin productos de MHD; propuesta a mano",1,0,261],
+["tefal","tefal","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",26,5,13],
+["teka","teka","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",676,208,69],
+["telefonia-e-informatica","tecnologia","apartado","alta","Antiguo apartado de telefonía e informática",245,53,0],
+["telefonos","smartwatches","familia","media","Por sus productos: 31 de 182 están en MHD; smartwatches 20, telefonos-inalambricos 8, telefonos-fijos 3",182,31,19],
+["telefonos-fijos","telefonos-fijos","misma","alta","La colección se reutiliza en el árbol nuevo",9,7,19],
+["telefonos-inalambricos","telefonos-inalambricos","misma","alta","La colección se reutiliza en el árbol nuevo",10,4,35],
+["telefonos-moviles","smartphones","familia","baja","Sin productos de MHD; propuesta a mano",38,0,68],
+["televisor-98-pulgadas","televisores","familia","baja","Sin productos de MHD; propuesta a mano",3,0,93],
+["televisores","televisores","misma","alta","La colección se reutiliza en el árbol nuevo",246,74,592],
+["televisores-led-24-pulgadas","televisores","familia","media","Por sus productos: 1 de 3 están en MHD; televisores 1",3,1,27],
+["televisores-led-32-pulgadas","televisores","familia","alta","Por sus productos: 4 de 17 están en MHD; televisores 4",17,4,45],
+["televisores-led-40-43-pulgadas","televisores","familia","media","Por sus productos: 1 de 23 están en MHD; televisores 1",23,1,376],
+["televisores-led-50-55-pulgadas","televisores","familia","media","Por sus productos: 1 de 34 están en MHD; televisores 1",34,1,74],
+["televisores-led-60-65-pulgadas","televisores","familia","media","Por sus productos: 1 de 19 están en MHD; televisores 1",19,1,92],
+["televisores-led-70","televisores","familia","alta","Por sus productos: 3 de 19 están en MHD; televisores 3",19,3,156],
+["televisores-lg","televisores","familia","alta","Por sus productos: 7 de 51 están en MHD; televisores 7",51,7,725],
+["televisores-lg-24-pulgadas","televisores","familia","baja","Sin productos de MHD; por el nombre",3,0,135],
+["televisores-lg-32-pulgadas","televisores","familia","media","Por sus productos: 2 de 5 están en MHD; televisores 2",5,2,187],
+["televisores-lg-43-pulgadas","televisores","familia","media","Por sus productos: 1 de 6 están en MHD; televisores 1",6,1,157],
+["televisores-lg-50-pulgadas","televisores","familia","baja","Sin productos de MHD; por el nombre",4,0,51],
+["televisores-lg-55-pulgadas","televisores","familia","media","Por sus productos: 2 de 9 están en MHD; televisores 2",9,2,149],
+["televisores-lg-65-pulgadas","televisores","familia","baja","Sin productos de MHD; por el nombre",9,0,121],
+["televisores-lg-75-pulgadas","televisores","familia","baja","Sin productos de MHD; por el nombre",2,0,164],
+["televisores-lg-de-86-pulgadas","televisores","familia","baja","Sin productos de MHD; por el nombre",3,0,49],
+["televisores-oled-48-pulgadas","televisores","familia","baja","Sin productos de MHD; por el nombre",2,0,148],
+["televisores-oled-55-pulgadas","televisores","familia","media","Por sus productos: 1 de 4 están en MHD; televisores 1",4,1,239],
+["televisores-oled-65-pulgadas","televisores","familia","baja","Sin productos de MHD; por el nombre",3,0,226],
+["televisores-oled-77-pulgadas","televisores","familia","baja","Sin productos de MHD; por el nombre",2,0,465],
+["televisores-panasonic","televisores","familia","baja","Sin productos de MHD; por el nombre",3,0,188],
+["televisores-samsung","televisores","familia","baja","Sin productos de MHD; por el nombre",35,0,586],
+["televisores-samsung-55","televisores","familia","baja","Sin productos de MHD; por el nombre",8,0,24],
+["televisores-samsung-65","televisores","familia","baja","Sin productos de MHD; por el nombre",7,0,8],
+["televisores-samsung-mas70","televisores","familia","baja","Sin productos de MHD; por el nombre",3,0,11],
+["televisores-tcl","televisores","familia","media","Por sus productos: 1 de 23 están en MHD; televisores 1",23,1,1837],
+["televisores-tcl-32-pulgadas","televisores","familia","baja","Sin productos de MHD; por el nombre",2,0,38],
+["televisores-tcl-40-pulgadas","televisores","familia","baja","Sin productos de MHD; por el nombre",1,0,109],
+["televisores-tcl-50-pulgadas","televisores","familia","baja","Sin productos de MHD; por el nombre",1,0,164],
+["tensiometros","tensiometros","misma","alta","La colección se reutiliza en el árbol nuevo",1,0,1],
+["termometros","termometros","misma","alta","La colección se reutiliza en el árbol nuevo",2,0,1],
+["termos","termos","misma","alta","La colección se reutiliza en el árbol nuevo",3,0,0],
+["termos-electricos","termos-electricos","misma","alta","La colección se reutiliza en el árbol nuevo",51,10,149],
+["termos-electricos-cointra","termos-electricos","familia","alta","Por sus productos: 3 de 12 están en MHD; termos-electricos 3",12,3,8],
+["termos-electricos-de-150-litros","termos-electricos","familia","baja","Sin productos de MHD; por el nombre",2,0,6],
+["termos-electricos-de-50-litros","termos-electricos","familia","alta","Por sus productos: 3 de 13 están en MHD; termos-electricos 3",13,3,12],
+["termos-electricos-de-80-litros","termos-electricos","familia","alta","Por sus productos: 3 de 14 están en MHD; termos-electricos 3",14,3,77],
+["termos-electricos-edesa","termos-electricos","familia","baja","Sin productos de MHD; por el nombre",5,0,163],
+["termos-electricos-orbegozo","termos-electricos","familia","baja","Sin productos de MHD; por el nombre",4,0,2],
+["termos-electricos-teka","termos-electricos","familia","media","Por sus productos: 2 de 16 están en MHD; termos-electricos 2",16,2,20],
+["teteras","teteras","misma","alta","La colección se reutiliza en el árbol nuevo",7,1,1],
+["tm-electron","tm-electron","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0],
+["tocadiscos","tocadiscos","misma","alta","La colección se reutiliza en el árbol nuevo",31,12,74],
+["torres-de-sonido","altavoces","familia","alta","Por sus productos: 6 de 8 están en MHD; altavoces 6",8,6,31],
+["toshiba","toshiba","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",1,1,0],
+["tostadoras","tostadoras","misma","alta","La colección se reutiliza en el árbol nuevo",32,20,73],
+["tostadoras-grill","planchas-de-asar-y-grills-electricos","familia","alta","Por sus productos: 3 de 6 están en MHD; planchas-de-asar-y-grills-electricos 3",6,3,4],
+["tostadoras-orbegozo","tostadoras","familia","alta","Por sus productos: 5 de 7 están en MHD; tostadoras 5",7,5,2],
+["tostadoras-smeg","tostadoras","familia","alta","Por sus productos: 4 de 8 están en MHD; tostadoras 4",8,4,60],
+["tostadoras-ufesa","tostadoras","familia","media","Por sus productos: 2 de 5 están en MHD; tostadoras 2",5,2,2],
+["trevi","trevi","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",1,0,6],
+["turboair","turboair","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0],
+["tv-24-pulgadas","televisores","familia","media","Por sus productos: 1 de 6 están en MHD; televisores 1",6,1,62],
+["tv-32-pulgadas","televisores","familia","alta","Por sus productos: 4 de 17 están en MHD; televisores 4",17,4,24],
+["tv-40-pulgadas","televisores","familia","baja","Sin productos de MHD; propuesta a mano",4,0,16],
+["tv-43-pulgadas","televisores","familia","media","Por sus productos: 1 de 20 están en MHD; televisores 1",20,1,48],
+["tv-50-pulgadas","televisores","familia","baja","Sin productos de MHD; propuesta a mano",16,0,34],
+["tv-55-pulgadas","televisores","familia","media","Por sus productos: 2 de 29 están en MHD; televisores 2",29,2,23],
+["tv-65-pulgadas","televisores","familia","media","Por sus productos: 1 de 26 están en MHD; televisores 1",26,1,63],
+["tv-75-pulgadas","televisores","familia","media","Por sus productos: 2 de 11 están en MHD; televisores 2",11,2,58],
+["tv-85-pulgadas","televisores","familia","baja","Sin productos de MHD; propuesta a mano",5,0,66],
+["tv-86-pulgadas","televisores","familia","baja","Sin productos de MHD; propuesta a mano",3,0,38],
+["tv-led","televisores","familia","alta","Por sus productos: 12 de 116 están en MHD; televisores 12",116,12,172],
+["tv-led-tcl","televisores","familia","media","Por sus productos: 1 de 15 están en MHD; televisores 1",15,1,0],
+["tv-mini-led","televisores","familia","baja","Sin productos de MHD; propuesta a mano",16,0,761],
+["tv-oled","televisores","familia","alta","Por sus productos: 3 de 14 están en MHD; televisores 3",14,3,436],
+["ufesa","ufesa","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",111,33,1],
+["ultimas-unidades","ultimas-unidades","misma","alta","Colección comercial o de servicio",506,214,170],
+["unimade","unimade","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0],
+["utensilios-electricos-de-cocina","utensilios-de-cocina","familia","media","Por sus productos: 3 de 5 están en MHD; utensilios-de-cocina 2, picadoras 1",5,3,13],
+["vaporeras-electricas","coccion-al-vapor-y-a-baja-temperatura","familia","media","Por sus productos: 3 de 3 están en MHD; coccion-al-vapor-y-a-baja-temperatura 2, arroceras 1",3,3,21],
+["vaporetas-limpiadoras-a-vapor-fregonas","vaporetas","familia","media","Por sus productos: 2 de 2 están en MHD; vaporetas 2",2,2,7],
+["varta","varta","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0],
+["ventiladores","ventiladores","misma","alta","La colección se reutiliza en el árbol nuevo",54,6,84],
+["veritas","veritas","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0],
+["videocamaras","videocamaras","misma","alta","La colección se reutiliza en el árbol nuevo",4,1,1],
+["videocamaras-deportivas","camaras-deportivas","familia","media","Por sus productos: 1 de 4 están en MHD; camaras-deportivas 1",4,1,1],
+["vinotecas","vinotecas","misma","alta","La colección se reutiliza en el árbol nuevo",19,6,113],
+["vinotecas-cata","vinotecas","familia","baja","Sin productos de MHD; por el nombre",3,0,13],
+["vinotecas-integrables","vinotecas","familia","alta","Por sus productos: 3 de 7 están en MHD; vinotecas 3",7,3,363],
+["vinotecas-libre-instalacion","vinotecas","familia","alta","Por sus productos: 3 de 12 están en MHD; vinotecas 3",12,3,40],
+["vinotecas-menos-de-10-botellas","vinotecas","familia","baja","Sin productos de MHD; por el nombre",3,0,207],
+["vinotecas-teka","vinotecas","familia","alta","Por sus productos: 3 de 6 están en MHD; vinotecas 3",6,3,58],
+["vitrex","vitrex","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",5,0,12],
+["vitrokitchen","vitrokitchen","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",26,14,34],
+["vogels","vogels","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",40,27,0],
+["wahl","wahl","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",4,4,2],
+["walkie-talkies","walkie-talkies","misma","alta","La colección se reutiliza en el árbol nuevo",8,8,8],
+["whirlpool","whirlpool","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",69,28,11],
+["wide","wide","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",10,0,11],
+["wonder","wonder","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",4,2,4],
+["xiaomi","xiaomi","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",66,12,7],
+["zanussi","zanussi","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0],
+["zeeclo","zeeclo","marca","alta","Página de marca: se mantiene (si se retira, a /pages/marcas)",0,0,0]
+]'::jsonb) r;
 commit;
