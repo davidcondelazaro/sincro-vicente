@@ -5,6 +5,7 @@
 export type WarningKind = { tipo: string; nombre: string; destino: "mhd" | "revisar" | "interno"; test: RegExp };
 
 export const WARNING_KINDS: WarningKind[] = [
+  { tipo: "freno", nombre: "Freno automático: muchos fallos seguidos", destino: "interno", test: /^Freno automático/ },
   { tipo: "sin_saldo", nombre: "Anthropic sin saldo o con el tope de gasto alcanzado", destino: "interno", test: /Sin saldo en Anthropic|credit balance|usage limits?/i },
   { tipo: "ficha_mhd", nombre: "MHD no devolvió la ficha", destino: "mhd", test: /MHD no devolvió la ficha|MHD ya no tiene el producto/ },
   { tipo: "foto_mhd_inexistente", nombre: "Foto de MHD que no existe en su servidor", destino: "mhd", test: /MHD no tiene esa foto/ },

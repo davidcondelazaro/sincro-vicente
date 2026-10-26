@@ -122,6 +122,11 @@ export async function processJobItem(deps: { db: SupabaseClient; config: Sources
     const retry = item.attempts < WORKER.maxAttempts;
     log.add({ level: "error", step: "Producto", message: `${message}${retry ? " · se reintenta" : ""}`, durationMs: Date.now() - started });
     await deps.db.from("mhd_importer_job_items").update(retry ? { status: "pendiente", error: message, lease_until: null, step: null } : { status: "error", error: message, finished_at: new Date().toISOString(), duration_ms: Date.now() - started, lease_until: null, step: null }).eq("id", item.id);
+    // Freno automático (David, 2026-10-26: «para todo»): si fallan muchos seguidos, por el motivo que sea, se pausan las
+    // tandas. Así un fallo nuevo que nadie ha previsto no quema miles de productos.
+    await log.flush();
+    const { data: brake } = await deps.db.rpc("mhd_importer_brake_check", { p_job: item.job_id });
+    if (brake) console.error(JSON.stringify({ productImporterWorker: "freno", reason: brake }));
   } finally {
     await log.flush();
   }
