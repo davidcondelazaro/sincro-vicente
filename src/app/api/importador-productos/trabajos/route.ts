@@ -72,8 +72,14 @@ export async function POST(request: Request) {
       } else if (body.codes?.length) {
         codes = [...new Set(body.codes.map((code) => code.trim()).filter(Boolean))].map((codigo) => ({ codigo, family_code: null }));
       } else if (body.families?.length) {
+        // Solo los que están en el último listado de MHD (2026-10-26): la importación no da de baja los que MHD quita, así
+        // que «present» incluye productos que ya no vende (6.768 el 26-10, casi todos sin ficha).
+        const { data: lastRun, error: runError } = await session.db.from("mhd_catalog_import_runs").select("id").eq("status", "completed").contains("entities", ["products"]).order("started_at", { ascending: false }).limit(1).maybeSingle();
+        if (runError) throw runError;
         for (let from = 0; ; from += 1000) {
-          const { data, error } = await session.db.from("mhd_catalog_products").select("codigo,cod_familia").in("cod_familia", body.families).eq("presence_status", "present").order("codigo").range(from, from + 999);
+          let query = session.db.from("mhd_catalog_products").select("codigo,cod_familia").in("cod_familia", body.families).eq("presence_status", "present");
+          if (lastRun) query = query.eq("last_seen_run_id", lastRun.id);
+          const { data, error } = await query.order("codigo").range(from, from + 999);
           if (error) throw error;
           codes.push(...data.map((row) => ({ codigo: row.codigo, family_code: row.cod_familia })));
           if (data.length < 1000) break;
