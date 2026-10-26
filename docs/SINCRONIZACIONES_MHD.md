@@ -17,6 +17,7 @@ Solo las altas y las modificaciones importantes piden el resto de datos (ficha d
 
 - **Altas:** se publican directamente en la tienda, sin borrador (David, 2026-10-26). La colocación se decide al subir, con el árbol nuevo de colecciones.
 - **Bajas:** se **archivan** (no a borrador) y se crea su redirección a la colección de su familia en el árbol nuevo. Archivar las separa de los borradores pendientes, conserva su historial y se deshace si MHD vuelve a darlas de alta.
+- **Bajas también para lo que entró con la sincronización antigua** (SQL Server / Pladisel): el «ERP» y MHD son lo mismo (David, 2026-10-26). Sustituye a la decisión de esa mañana de archivar solo lo creado por el importador. El 26-10 había 440 productos activos de esa vía cuyo EAN MHD ya había dado de baja; se cruzan por EAN o por código.
 - **Seguros de las bajas** (una lectura incompleta de MHD parecería una baja masiva):
   - solo se da de baja lo que falta en **dos lecturas seguidas**;
   - **freno:** si de una vez desaparece más de un porcentaje pequeño del catálogo, no se archiva nada y se manda correo de fallo grave.
@@ -43,7 +44,6 @@ Propuesta inicial:
 
 ## Pendiente de decidir
 
-- **Productos entrados con la sincronización antigua (SQL Server / Pladisel):** David dice que el «ERP» y MHD son lo mismo. Esta mañana se decidió archivar solo lo creado por el importador; hay 440 productos activos de esa vía cuyo EAN MHD ya ha dado de baja. ¿Se les aplican también las bajas?
 - Hora del resumen diario y destinatarios.
 - Servicio de correo.
 - El porcentaje del freno de bajas.
