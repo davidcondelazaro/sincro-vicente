@@ -6,7 +6,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { loadBundledFonts } from "./fonts";
 import { createHash } from "node:crypto";
 import sharp from "sharp";
-import { costUsd, PROCESSOR_MODEL } from "./ai";
+import { costUsd, createStreamed, PROCESSOR_MODEL } from "./ai";
 import { fetchMhdMedia } from "./sources";
 
 export type ImageKind = "frontal" | "tres_cuartos" | "lateral" | "trasera" | "abierto" | "detalle" | "ambiente" | "medidas" | "icono_o_logo" | "etiqueta_energetica" | "otro";
@@ -77,7 +77,7 @@ export async function classifyImages(client: Anthropic, productName: string, ima
     { type: "image" as const, source: { type: "base64" as const, media_type: "image/jpeg" as const, data: image.thumbnail } },
   ]);
   content.push({ type: "text", text: `Son las fotos del producto «${productName}». Para cada imagen indica: kind (qué muestra: frontal = el producto entero visto de frente; tres_cuartos = el producto entero en perspectiva; lateral, trasera, abierto = puerta o tapa abierta; detalle = una parte del producto; ambiente = el producto en una estancia; medidas = plano con cotas; icono_o_logo; etiqueta_energetica; otro), quality (nitidez y encuadre para una tienda online), duplicate_of (índice de otra imagen que muestra lo mismo desde el mismo ángulo, o null; marca como duplicada la de menor resolución) y una descripción de 3-8 palabras en español.` });
-  const message = await client.messages.create({ model: PROCESSOR_MODEL, max_tokens: 4000, output_config: { effort: "low", format: { type: "json_schema", schema } }, messages: [{ role: "user", content }] });
+  const message = await createStreamed(client, { model: PROCESSOR_MODEL, max_tokens: 4000, output_config: { effort: "low", format: { type: "json_schema", schema } }, messages: [{ role: "user", content }] });
   if (message.stop_reason !== "end_turn") throw new Error(`La clasificación de imágenes terminó con ${message.stop_reason}.`);
   const text = message.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("");
   const parsed = JSON.parse(text) as { images: { index: number; kind: ImageKind; quality: ClassifiedImage["quality"]; duplicate_of: number | null; description: string }[] };

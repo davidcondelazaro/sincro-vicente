@@ -11,11 +11,17 @@ const pathFor = (runId: string, file: Pick<MediaFile, "role" | "position" | "fil
 export async function saveRunMedia(db: SupabaseClient, runId: string, media: MediaFile[]) {
   if (!media.length) return;
   for (const file of media) {
-    const { error } = await db.storage.from(MEDIA_BUCKET).upload(pathFor(runId, file), file.bytes, { contentType: file.contentType, upsert: true });
+    // Un segundo intento (2026-10-26): en el masivo, Supabase devolvía de vez en cuando «fetch failed» y el producto
+    // entero se repetía por un archivo.
+    let { error } = await db.storage.from(MEDIA_BUCKET).upload(pathFor(runId, file), file.bytes, { contentType: file.contentType, upsert: true });
+    if (error) {
+      await new Promise((resolve) => setTimeout(resolve, 2_000));
+      ({ error } = await db.storage.from(MEDIA_BUCKET).upload(pathFor(runId, file), file.bytes, { contentType: file.contentType, upsert: true }));
+    }
     if (error) throw new Error(`No se pudo guardar ${file.filename}: ${error.message}`);
   }
   const { error } = await db.from("mhd_importer_media").insert(media.map((file) => ({ run_id: runId, role: file.role, position: file.position, filename: file.filename, content_type: file.contentType, width: file.width, height: file.height, storage_path: pathFor(runId, file), meta: file.meta })));
-  if (error) throw error;
+  if (error) throw new Error(`No se pudo apuntar los archivos de la prueba: ${error.message}`);
 }
 
 // Limpieza (David, 2026-10-26): al reprocesar un producto se borran los archivos de sus pruebas anteriores (almacenamiento

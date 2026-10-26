@@ -1,6 +1,13 @@
 // Modelos y coste de las llamadas de IA del importador. Precios en dólares por millón de tokens (2026-10).
 import type Anthropic from "@anthropic-ai/sdk";
 
+// Llamadas largas del procesador por partes (2026-10-26): sin respuesta por partes, algunas peticiones se cortaban a los
+// 32 s justos («Request timed out», en rachas de 3 o 4 a la vez) mientras la IA aún pensaba. Con el stream la conexión
+// recibe datos todo el rato; el resultado es el mismo mensaje completo.
+export function createStreamed(client: Anthropic, params: Parameters<Anthropic["messages"]["stream"]>[0]) {
+  return client.messages.stream(params).finalMessage();
+}
+
 export const ANALYST_MODEL = "claude-opus-5-5";   // analista: una vez por familia
 export const PROCESSOR_MODEL = "claude-haiku-5-5"; // procesador: una vez por producto
 // Elvi aparte (prueba del 2026-10-26): con un modelo de más razonamiento, una vez redactada la ficha.
