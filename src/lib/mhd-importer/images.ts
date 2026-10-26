@@ -90,8 +90,9 @@ export async function classifyImages(client: Anthropic, productName: string, ima
 
 // Orden (decidido 2026-10-23): principal = la principal de MHD si es frontal o tres cuartos; si no, la frontal sobre
 // blanco de más resolución, luego tres cuartos sobre blanco, luego la mejor frontal con otro fondo. Después: resto de
-// vistas del producto, detalles, ambiente y, al final, medidas. Fuera iconos, etiquetas sueltas, fondos negros,
-// duplicados y pequeñas.
+// vistas del producto, detalles, ambiente y, al final, medidas. Fuera iconos, etiquetas sueltas, duplicados y
+// pequeñas. Las de fondo negro se quedan (David, 2026-10-26: «son todas válidas»; antes se descartaban y los televisores
+// perdían sus fotos de marca y algún producto se quedaba sin ninguna): nunca son la principal si hay otra y van detrás.
 const RANK: Record<ImageKind, number> = { frontal: 0, tres_cuartos: 1, abierto: 2, lateral: 3, trasera: 4, detalle: 5, ambiente: 6, otro: 7, medidas: 8, icono_o_logo: 99, etiqueta_energetica: 99 };
 const MIN_SIDE = 500;
 export function orderImages(classified: ClassifiedImage[]): OrderedImages {
@@ -99,7 +100,6 @@ export function orderImages(classified: ClassifiedImage[]): OrderedImages {
   classified.forEach((image, index) => {
     const other = image.duplicateOf !== null && image.duplicateOf !== index ? classified[image.duplicateOf] : undefined;
     if (RANK[image.kind] >= 99) dropped.push({ ...image, reason: image.kind === "etiqueta_energetica" ? "Etiqueta energética: va en su metacampo" : "Icono o logo" });
-    else if (image.background === "negro") dropped.push({ ...image, reason: "Fondo negro: se descarta (decidido 2026-10-23)" });
     else if (other && other.width * other.height >= image.width * image.height) dropped.push({ ...image, reason: "Repetida (se queda la de más resolución)" });
     else if (Math.max(image.width, image.height) < MIN_SIDE) dropped.push({ ...image, reason: `Demasiado pequeña (${image.width}×${image.height})` });
     else keep.push(image);
