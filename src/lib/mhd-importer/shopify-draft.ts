@@ -51,15 +51,11 @@ async function stagedUpload(config: ShopifyConfig, files: Upload[]) {
 export const SHOPIFY_MAX_FILE_BYTES = 20_000_000;
 const mb = (bytes: number) => `${(bytes / 1_000_000).toFixed(1).replace(".", ",")} MB`;
 
-// PDF de más de 20 MB: se limpia con MuPDF (objetos repetidos, flujos sin comprimir; sigue siendo un PDF que se abre en
-// el navegador). En un manual de 35,5 MB quitó un 8 % (un ZIP, un 2 %: el PDF ya va comprimido por dentro). Si aun así
-// no cabe, no se sube.
-async function fitDocument(bytes: Uint8Array): Promise<{ bytes: Uint8Array | null; note: string | null }> {
+// PDF de más de 20 MB: no se sube, sin intentar comprimirlo (David, 2026-10-26: «tan grandes, fuera»). Probado: un ZIP
+// le quita un 2 % y limpiarlo con MuPDF, un 8 %; no compensa.
+function fitDocument(bytes: Uint8Array): { bytes: Uint8Array | null; note: string | null } {
   if (bytes.byteLength <= SHOPIFY_MAX_FILE_BYTES) return { bytes, note: null };
-  const mupdf = await import("mupdf");
-  const cleaned = mupdf.Document.openDocument(bytes, "application/pdf").asPDF()?.saveToBuffer("garbage=4,compress=yes,compress-images=yes,compress-fonts=yes").asUint8Array() ?? null;
-  if (cleaned && cleaned.byteLength <= SHOPIFY_MAX_FILE_BYTES) return { bytes: cleaned, note: `comprimido de ${mb(bytes.byteLength)} a ${mb(cleaned.byteLength)} para caber en Shopify (máximo 20 MB).` };
-  return { bytes: null, note: `demasiado grande para Shopify (${mb(cleaned?.byteLength ?? bytes.byteLength)} tras comprimirlo; máximo 20 MB): no se sube.` };
+  return { bytes: null, note: `demasiado grande para Shopify (${mb(bytes.byteLength)}; máximo 20 MB): no se sube.` };
 }
 
 // Archivos que se enlazan desde metacampos (etiqueta, PDF): se crean en Archivos de Shopify con su nombre.
@@ -163,7 +159,7 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
       // Un documento que no se puede subir (p. ej. de más de 20 MB) no impide subir el producto (David, 2026-10-26).
       const uploaded = await Promise.all(product.documents.map(async (document) => {
         try {
-          const fitted = await fitDocument((await fetchIcecatDocument(deps.icecat, document.url)).bytes);
+          const fitted = fitDocument((await fetchIcecatDocument(deps.icecat, document.url)).bytes);
           if (fitted.note) t.event(fitted.bytes ? "decision" : "aviso", "Shopify: etiqueta y documentos", `${document.filename}: ${fitted.note}`);
           if (!fitted.bytes) return null;
           return await uploadOnce(deps, { filename: document.filename, mimeType: "application/pdf", bytes: fitted.bytes, resource: "FILE", kind: "documento", sourceUrl: document.url });
