@@ -45,6 +45,23 @@ async function stagedUpload(config: ShopifyConfig, files: Upload[]) {
   return targets.map((target) => target.resourceUrl);
 }
 
+// Límites de Shopify (comprobado 2026-10-26: un PDF de 35 MB devuelve «EntityTooLarge»): 20 MB para archivos que no
+// son imagen ni vídeo y para imágenes; 1 GB para vídeos (los vídeos ya se limitan antes a 50 MB, el máximo del
+// almacenamiento: videos.ts).
+export const SHOPIFY_MAX_FILE_BYTES = 20_000_000;
+const mb = (bytes: number) => `${(bytes / 1_000_000).toFixed(1).replace(".", ",")} MB`;
+
+// PDF de más de 20 MB: se limpia con MuPDF (objetos repetidos, flujos sin comprimir; sigue siendo un PDF que se abre en
+// el navegador). En un manual de 35,5 MB quitó un 8 % (un ZIP, un 2 %: el PDF ya va comprimido por dentro). Si aun así
+// no cabe, no se sube.
+async function fitDocument(bytes: Uint8Array): Promise<{ bytes: Uint8Array | null; note: string | null }> {
+  if (bytes.byteLength <= SHOPIFY_MAX_FILE_BYTES) return { bytes, note: null };
+  const mupdf = await import("mupdf");
+  const cleaned = mupdf.Document.openDocument(bytes, "application/pdf").asPDF()?.saveToBuffer("garbage=4,compress=yes,compress-images=yes,compress-fonts=yes").asUint8Array() ?? null;
+  if (cleaned && cleaned.byteLength <= SHOPIFY_MAX_FILE_BYTES) return { bytes: cleaned, note: `comprimido de ${mb(bytes.byteLength)} a ${mb(cleaned.byteLength)} para caber en Shopify (máximo 20 MB).` };
+  return { bytes: null, note: `demasiado grande para Shopify (${mb(cleaned?.byteLength ?? bytes.byteLength)} tras comprimirlo; máximo 20 MB): no se sube.` };
+}
+
 // Archivos que se enlazan desde metacampos (etiqueta, PDF): se crean en Archivos de Shopify con su nombre.
 async function createFiles(config: ShopifyConfig, files: { originalSource: string; filename: string; contentType: "IMAGE" | "FILE" | "VIDEO"; alt?: string }[]) {
   if (!files.length) return [];
@@ -135,13 +152,29 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   const productVideos = videos.filter((item) => meta(item).kind === "producto").slice(0, 1);
   const brandVideos = videos.filter((item) => !productVideos.includes(item));
   const [photoUrls, { labelId, documentIds }, { productVideoUrls, videoIds }] = await Promise.all([
-    t.step("Shopify: subir fotos", async () => stagedUpload(deps.shopify, await Promise.all(photos.map(async (item) => ({ filename: item.filename, mimeType: item.content_type, bytes: await mediaBytes(deps.db, item), resource: "IMAGE" as const })))), (result) => `${result.length} fotos`),
+    t.step("Shopify: subir fotos", async () => stagedUpload(deps.shopify, await Promise.all(photos.map(async (item) => {
+      const bytes = await mediaBytes(deps.db, item);
+      // Tratadas quedan en ~0,5 MB como mucho; por si acaso, una foto de más de 20 MB no se puede subir.
+      if (bytes.byteLength > SHOPIFY_MAX_FILE_BYTES) throw new Error(`La foto ${item.filename} pesa ${mb(bytes.byteLength)} y Shopify admite 20 MB como máximo.`);
+      return { filename: item.filename, mimeType: item.content_type, bytes, resource: "IMAGE" as const };
+    }))), (result) => `${result.length} fotos`),
     t.step("Shopify: etiqueta y documentos", async () => {
-      const pdfs = await Promise.all(product.documents.map(async (document) => ({ document, bytes: (await fetchIcecatDocument(deps.icecat, document.url)).bytes })));
       const labelId = label ? await uploadOnce(deps, { filename: label.filename, mimeType: "image/png", bytes: await mediaBytes(deps.db, label), resource: "IMAGE", kind: "etiqueta_energetica", alt: `Etiqueta energética ${shop.title}` }) : null;
-      const documentIds = await Promise.all(pdfs.map((item) => uploadOnce(deps, { filename: item.document.filename, mimeType: "application/pdf", bytes: item.bytes, resource: "FILE", kind: "documento", sourceUrl: item.document.url })));
-      return { labelId, documentIds };
-    }, (result) => `${result.labelId ? "etiqueta y " : ""}${result.documentIds.length} documentos`),
+      // Un documento que no se puede subir (p. ej. de más de 20 MB) no impide subir el producto (David, 2026-10-26).
+      const uploaded = await Promise.all(product.documents.map(async (document) => {
+        try {
+          const fitted = await fitDocument((await fetchIcecatDocument(deps.icecat, document.url)).bytes);
+          if (fitted.note) t.event(fitted.bytes ? "decision" : "aviso", "Shopify: etiqueta y documentos", `${document.filename}: ${fitted.note}`);
+          if (!fitted.bytes) return null;
+          return await uploadOnce(deps, { filename: document.filename, mimeType: "application/pdf", bytes: fitted.bytes, resource: "FILE", kind: "documento", sourceUrl: document.url });
+        } catch (caught) {
+          t.event("aviso", "Shopify: etiqueta y documentos", `${document.filename}: no se sube (${caught instanceof Error ? caught.message : String(caught)}).`);
+          return null;
+        }
+      }));
+      const documentIds = uploaded.filter((id): id is string => Boolean(id));
+      return { labelId, documentIds, skipped: uploaded.length - documentIds.length };
+    }, (result) => `${result.labelId ? "etiqueta y " : ""}${result.documentIds.length} documentos${result.skipped ? ` (${result.skipped} sin subir)` : ""}`),
     t.step("Shopify: vídeos", async () => {
       const productVideoUrls = await stagedUpload(deps.shopify, await Promise.all(productVideos.map(async (item) => ({ filename: item.filename, mimeType: "video/mp4", bytes: await mediaBytes(deps.db, item), resource: "VIDEO" as const }))));
       const videoIds: string[] = [];

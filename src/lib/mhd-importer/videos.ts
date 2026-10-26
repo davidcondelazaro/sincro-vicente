@@ -24,12 +24,17 @@ export async function classifyVideos(client: Anthropic, product: { title: string
 
 // Nombres: el del producto, como sus fotos (`lavadora-electrolux-ew6f…-video.mp4`); los de marca, por marca y título
 // (`electrolux-video-sensicare.mp4`), porque se comparten entre productos.
+// El almacenamiento de Supabase admite 50 MiB por archivo; Shopify, 1 GB por vídeo.
+const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
+
 export async function prepareVideos(config: IcecatConfig, videos: IcecatVideo[], kinds: { kind: VideoKind; reason: string }[], names: { productBase: string; brand: string }) {
   const prepared: PreparedVideo[] = []; const errors: string[] = []; const seen = new Set<string>();
   let productVideos = 0;
   for (const [index, video] of videos.entries()) {
     try {
       const media = await fetchIcecatDocument(config, video.url);
+      // Más de 50 MB no cabe en el almacenamiento de las pruebas (y rompería el producto entero): no se usa.
+      if (media.bytes.byteLength > MAX_VIDEO_BYTES) { errors.push(`Vídeo demasiado grande (${(media.bytes.byteLength / 1_000_000).toFixed(1).replace(".", ",")} MB; máximo 50 MB): no se usa ${video.url}`); continue; }
       const hash = createHash("sha1").update(media.bytes).digest("hex");
       if (seen.has(hash)) continue;
       seen.add(hash);
