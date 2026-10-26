@@ -4,7 +4,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import sharp from "sharp";
-import { classifyInStore, productDistinction, type Classification } from "./classification";
+import { productDistinction, type Classification } from "./classification";
 import { PROCESSOR_MODEL } from "./ai";
 import { writeContent, writeElviForPage, type ProductContent } from "./content";
 import { resolveBrand, type BrandChoice } from "./brands";
@@ -333,11 +333,13 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   for (const [position, video] of preparedVideos.videos.entries()) media.push({ role: "video", position, filename: video.filename, contentType: video.contentType, width: 0, height: 0, bytes: video.bytes, meta: { kind: video.kind, reason: video.reason, description: video.description, hash: video.hash, sourceUrl: video.url } });
   const mp4 = preparedVideos.videos.map((video) => ({ url: video.url, description: video.description, kind: video.kind, reason: video.reason, filename: video.filename, sizeBytes: video.sizeBytes, hash: video.hash }));
 
-  // Colocación en las colecciones actuales (hermanas por EAN) y datos de Shopify.
+  // Colocación: ya no se calcula al procesar (David, 2026-10-26): las colecciones actuales se sustituyen por el árbol nuevo
+  // de Vicente, así que se decide al subir a Shopify, con ese árbol. Copiarla de las hermanas actuales costaba ~3 s por
+  // producto y dejaba «sin colocación clara» en 885 de los primeros 1.300 del masivo. `classifyInStore` (classification.ts) queda
+  // para la subida.
   const vendor = brandChoice.vendor;
   const distinction = productDistinction(profile, values);
-  const classification = await t.step("Colocar en la tienda", () => classifyInStore(deps.db, { subfamilyEans: subfamilyEans.filter((ean) => ean !== listing.codigo_ean), distinction, distinctionNames: profile.product.distinctions.map((item) => item.name), vendor }), (result) => `Tipo «${result.productType ?? "sin tipo"}» · ${result.tags.length} etiquetas`);
-  warnings.push(...classification.notes);
+  const classification: Classification = { productType: null, tags: [], category: null, siblings: 0, distinction, brandCollection: null, notes: [] };
     // Sin etiqueta buena no va «Energética»: con esa etiqueta y el metacampo vacío, el tema abriría la última foto.
   const tags = [...classification.tags, ...(label ? ["Energética"] : [])];
   const { data: previousRun } = await deps.db.from("mhd_importer_product_runs").select("shopify_product_id").eq("codigo", listing.codigo).not("shopify_product_id", "is", null).order("created_at", { ascending: false }).limit(1).maybeSingle();
