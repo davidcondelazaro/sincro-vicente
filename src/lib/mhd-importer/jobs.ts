@@ -82,9 +82,17 @@ export async function processJobItem(deps: { db: SupabaseClient; config: Sources
     // Tandas con «Subir a Shopify» (2026-10-26): el producto se sube en borrador al momento, con el tiempo de cada parte.
     // Si la subida falla, el producto queda procesado y el error en el registro y en su detalle.
     let uploadError: string | null = null;
-    // «nuevos»: solo los que la tienda aún no tiene (por EAN, en el espejo); los demás no se tocan.
-    const inStore = deps.upload === "nuevos" && result.status === "ok" && result.product.ean ? (await deps.db.from("shopify_variants").select("product_id").eq("barcode", result.product.ean).limit(1).maybeSingle()).data : null;
-    if (inStore) log.add({ level: "decision", step: "Subir a Shopify", message: `Ya está en la tienda (${inStore.product_id}): no se sube, la tanda solo sube los nuevos.` });
+    // «nuevos»: no se tocan los productos que la tienda ya tenía antes del importador (por EAN, en el espejo); los que
+    // creó el importador (alguna prueba con ese identificador de Shopify) sí se actualizan (David, 2026-10-26).
+    let inStore: { product_id: string } | null = null;
+    if (deps.upload === "nuevos" && result.status === "ok" && result.product.ean) {
+      const { data: found } = await deps.db.from("shopify_variants").select("product_id").eq("barcode", result.product.ean).limit(1).maybeSingle();
+      if (found) {
+        const { count } = await deps.db.from("mhd_importer_product_runs").select("id", { count: "exact", head: true }).eq("shopify_product_id", found.product_id);
+        if (!count) inStore = found;
+      }
+    }
+    if (inStore) log.add({ level: "decision", step: "Subir a Shopify", message: `Ya estaba en la tienda antes del importador (${inStore.product_id}): no se toca, la tanda solo sube los nuevos.` });
     if (deps.upload && result.status === "ok" && !inStore) {
       await log.trace.step("Subir a Shopify", () => createShopifyDraft({ db: deps.db, shopify: deps.config.shopify, icecat: deps.config.icecat, trace: log.trace }, saved.id), (draft) => `${draft.updated ? "Actualizado" : "Creado"} en ${draft.status === "DRAFT" ? "borrador" : draft.status} · ${draft.files.photos} fotos`)
         .catch((caught: Error) => { uploadError = `Procesado, pero no se subió a Shopify: ${caught.message}`; });
