@@ -8,6 +8,7 @@ import type { FamilySummary } from "@/lib/mhd-importer/family";
 import type { FamilyProfile, FilterRule } from "@/lib/mhd-importer/profile";
 import type { ProcessedProduct } from "@/lib/mhd-importer/processor";
 import { BenchView } from "./bench";
+import { ReviewView } from "./review";
 
 // Importador de productos MHD (piloto). Ver docs/IMPORTADOR_PRODUCTOS_MHD.md: el analista fija un perfil por familia
 // de MHD y el procesador monta cada producto con ese perfil. Todo se lanza a mano desde aquí.
@@ -27,7 +28,7 @@ const statusLabel = (status: TreeFamily["profile_status"]) => status === "review
 export default function ProductImporterPage() {
   const [email, setEmail] = useState<string | null>(null); const [error, setError] = useState<string | null>(null);
   const [tree, setTree] = useState<TreeLine[]>([]); const [search, setSearch] = useState(""); const [showEmpty, setShowEmpty] = useState(false); const [onlyProfiled, setOnlyProfiled] = useState(false); const [openLines, setOpenLines] = useState<string[]>([]);
-  const [selected, setSelected] = useState<string | null>(null); const [version, setVersion] = useState(0); const [tab, setTab] = useState<"families" | "product" | "bench">("families");
+  const [selected, setSelected] = useState<string | null>(null); const [version, setVersion] = useState(0); const [tab, setTab] = useState<"families" | "product" | "bench" | "review">("families");
   useEffect(() => { createClient().auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null)); }, []);
   useEffect(() => { fetchJson<{ tree: TreeLine[] }>("/api/importador-productos/familias", "No se pudo leer el árbol de MHD.").then((body) => setTree(body.tree ?? []), (caught: Error) => setError(caught.message)); }, [version]);
   const term = search.trim().toLowerCase();
@@ -40,8 +41,8 @@ export default function ProductImporterPage() {
   return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]"><AppSidebar active="productImporter" userEmail={email} /><main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 pb-24 pt-28 sm:px-10 lg:mx-0 lg:py-16">
     <header><h1 className="text-4xl font-semibold tracking-tight">Importador de productos</h1><p className="mt-3 text-zinc-600">Piloto del paso de MHD a Shopify. Cada familia de MHD tiene un perfil con sus reglas: primero se prepara una muestra de productos (MHD e Icecat) y después el analista propone el perfil.</p></header>
     {error && <p className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">{error}</p>}
-    <div className="flex flex-wrap gap-2">{([["families", "Familias"], ["product", "Prueba de producto"], ["bench", "Banco de prueba"]] as const).map(([key, label]) => <button key={key} type="button" onClick={() => setTab(key)} className={`rounded-lg px-4 py-2 text-sm font-medium ${tab === key ? "bg-emerald-700 text-white" : "border border-zinc-300 bg-white text-zinc-700"}`}>{label}</button>)}</div>
-    {tab === "bench" ? <BenchView /> : tab === "product" ? <ProductTest /> : <>
+    <div className="flex flex-wrap gap-2">{([["families", "Familias"], ["product", "Prueba de producto"], ["bench", "Banco de prueba"], ["review", "Cola de revisión"]] as const).map(([key, label]) => <button key={key} type="button" onClick={() => setTab(key)} className={`rounded-lg px-4 py-2 text-sm font-medium ${tab === key ? "bg-emerald-700 text-white" : "border border-zinc-300 bg-white text-zinc-700"}`}>{label}</button>)}</div>
+    {tab === "review" ? <ReviewView /> : tab === "bench" ? <BenchView /> : tab === "product" ? <ProductTest /> : <>
     <div className="flex flex-wrap items-end justify-between gap-3"><label className="text-sm font-medium text-zinc-700">Buscar<input value={search} onChange={(event) => setSearch(event.target.value)} className="mt-1 block h-10 w-72 rounded-lg border border-zinc-300 px-3" placeholder="Línea, familia, subfamilia o código" /></label>
       <div className="flex flex-wrap items-center gap-4 text-sm text-zinc-600"><label className="flex items-center gap-2"><input type="checkbox" checked={onlyProfiled} onChange={(event) => setOnlyProfiled(event.target.checked)} />Solo con perfil</label><label className="flex items-center gap-2"><input type="checkbox" checked={showEmpty} onChange={(event) => setShowEmpty(event.target.checked)} />Mostrar familias sin productos</label><button type="button" onClick={() => setOpenLines(openLines.length ? [] : tree.map((line) => line.code))} className="font-medium text-emerald-700 hover:underline">{openLines.length ? "Plegar todo" : "Desplegar todo"}</button><span className="text-zinc-500">{integer.format(visible.length)} líneas · {integer.format(familyCount)} familias</span></div></div>
     <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm sm:p-4">

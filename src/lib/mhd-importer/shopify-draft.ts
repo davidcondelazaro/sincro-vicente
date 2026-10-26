@@ -62,6 +62,10 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   if (run.status !== "ok" || !run.result) throw new Error("Esta prueba no tiene un producto montado.");
   const product = run.result as ProcessedProduct; const shop = product.shopify;
   if (product.contentBlocked) throw new Error("La ficha tiene afirmaciones sin respaldo en los datos (ver avisos): rehazla antes de guardarla en Shopify.");
+  // Cola de revisión (2026-10-26): lo marcado «No importar» no se sube a Shopify.
+  const { data: decision, error: decisionError } = await deps.db.from("mhd_importer_review_items").select("status,note").eq("codigo", product.codigo).maybeSingle();
+  if (decisionError) throw decisionError;
+  if (decision?.status === "no_importar") throw new Error(`Marcado «No importar» en la cola de revisión${decision.note ? `: ${decision.note}` : ""}.`);
   // ¿Ya existe en Shopify? Primero la propia prueba; si no, cualquier prueba anterior del mismo código de MHD.
   let existingId = run.shopify_product_id as string | null;
   if (!existingId) {

@@ -57,6 +57,14 @@ Tras revisar el planteamiento (sesión del 24 al 26-10), David pidió dejarlo he
 - **Código:** modelo limpio (`models.ts`), tabla de marcas (`brands.ts`), exclusiones (maquetas, B1528, unidades sueltas de aire acondicionado), cola de revisión (`review.ts`: clase energética, diferencias de más del 20 %, precio frente a la mediana, modelo o marca dudosos; se guarda en `result.review_reasons`).
 - **Jueces** (`judges.ts`, `scripts/juzgar-familias.mjs`, `scripts/calibrar-jueces.mjs`): Claude y OpenAI revisan perfiles y dudas con el reglamento; solo se cierra una duda si coinciden los dos. Calibración en [CALIBRACION_JUECES.md](CALIBRACION_JUECES.md).
 
+### Cola de revisión en Sincro (2026-10-26)
+
+- **Pantalla:** Importador de productos → pestaña «Cola de revisión» (`src/app/importador-productos/review.tsx`, API `api/importador-productos/revision`). Enseña los productos cuya última prueba trae motivos de revisión, con el tipo de cada motivo (clase energética, MHD e Icecat no cuadran, precio, modelo, marca, regla de la familia), filtros por estado, tipo, familia y búsqueda, y tres decisiones: «Está bien», «No importar» y «Avisar a MHD» (estas dos con nota obligatoria). «Descargar avisos a MHD» saca un CSV para el informe al proveedor.
+- **Datos:** tabla `mhd_importer_review_items` y vista `mhd_importer_review_queue` (migración `20261026120000`). La decisión guarda la huella de los motivos: si una prueba nueva trae otros, el producto vuelve a pendientes.
+- **Efecto:** lo marcado «No importar» no se puede subir a Shopify (`createShopifyDraft` lo rechaza). Pendiente para el masivo: decidir si los pendientes se suben igual (como borrador) o esperan a la revisión.
+- **Ruido quitado:** la misma cifra en otra unidad («1,45W» de MHD frente a «1450 W» de Icecat) ya no va a revisión como discrepancia; es un error de formato de MHD (va en el informe).
+- Probado en local (escritorio y 375 px): listado, filtros, decidir con nota, ya decididos y reabrir.
+
 ### Un solo juez y correcciones aplicadas (2026-10-26)
 
 - **Un solo juez, Claude** (David: «hagamos caso en todo al juez»). La calibración mostró que el juez falla por lo que no ve, no por lo que decide; un segundo juez con consenso solo frenaría. La clave de OpenAI no hace falta; `judges.ts` la sigue admitiendo.
