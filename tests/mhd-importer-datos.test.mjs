@@ -182,3 +182,16 @@ test("diferencias MHD/Icecat: la misma cifra en otra unidad no cuenta", () => {
   assert.equal(sourceDisagreements(profile, new Map([["mhd:potencia", "1,45W"], ["icecat:desempeño|potencia", "1450 W"]])).length, 0);
   assert.equal(sourceDisagreements(profile, new Map([["mhd:potencia", "2000W"], ["icecat:desempeño|potencia", "1500 W"]])).length, 1);
 });
+
+test("negritas de la descripción larga: como mucho 4, datos cortos, sin etiquetas ni repetidas", async () => {
+  const { normalizeBold } = await jiti.import("../src/lib/mhd-importer/content.ts");
+  const html = "<p>Lavadora de <strong>9 kg</strong> con <strong>motor Inverter</strong> y <b>clase A</b>.</p><ul><li><strong>Peso:</strong> 70 kg</li></ul><p><strong>Es una lavadora muy completa para toda la familia</strong>, con <strong>9 kg</strong>, <strong>1400 rpm</strong>, <strong>vapor</strong> y <strong>WiFi</strong>.</p>";
+  const out = normalizeBold(html);
+  assert.equal((out.match(/<strong>/g) ?? []).length, 4);
+  assert.match(out, /<strong>9 kg<\/strong>/);
+  assert.match(out, /<strong>clase A<\/strong>/);
+  assert.match(out, /<li>Peso: 70 kg<\/li>/);
+  assert.match(out, /<p>Es una lavadora muy completa/);
+  assert.match(out, /, vapor y WiFi\./);
+  assert.equal(normalizeBold("<p>Sin negritas.</p>"), "<p>Sin negritas.</p>");
+});

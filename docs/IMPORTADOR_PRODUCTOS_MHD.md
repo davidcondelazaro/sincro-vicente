@@ -57,6 +57,10 @@ Tras revisar el planteamiento (sesión del 24 al 26-10), David pidió dejarlo he
 - **Código:** modelo limpio (`models.ts`), tabla de marcas (`brands.ts`), exclusiones (maquetas, B1528, unidades sueltas de aire acondicionado), cola de revisión (`review.ts`: clase energética, diferencias de más del 20 %, precio frente a la mediana, modelo o marca dudosos; se guarda en `result.review_reasons`).
 - **Jueces** (`judges.ts`, `scripts/juzgar-familias.mjs`, `scripts/calibrar-jueces.mjs`): Claude y OpenAI revisan perfiles y dudas con el reglamento; solo se cierra una duda si coinciden los dos. Calibración en [CALIBRACION_JUECES.md](CALIBRACION_JUECES.md).
 
+### Negritas en la descripción larga (David, 2026-10-26)
+
+De 2 a 4 por descripción, solo en los datos clave cortos que el perfil manda destacar («9 kg», «No Frost total», «clase A»), nunca frases, etiquetas ni repeticiones. Va en la instrucción de redacción y `normalizeBold` (`content.ts`) lo ajusta sin pedir otro intento (quita lo que sobra, nunca añade). En el banco: las 37 fichas con entre 2 y 4 (antes, la mitad sin ninguna y algunas con 10), sin más intentos (1,41 de media).
+
 ### Cola de revisión en Sincro (2026-10-26)
 
 - **Pantalla:** Importador de productos → pestaña «Cola de revisión» (`src/app/importador-productos/review.tsx`, API `api/importador-productos/revision`). Enseña los productos cuya última prueba trae motivos de revisión, con el tipo de cada motivo (clase energética, MHD e Icecat no cuadran, precio, modelo, marca, regla de la familia), filtros por estado, tipo, familia y búsqueda, y tres decisiones: «Está bien», «No importar» y «Avisar a MHD» (estas dos con nota obligatoria). «Descargar avisos a MHD» saca un CSV para el informe al proveedor.

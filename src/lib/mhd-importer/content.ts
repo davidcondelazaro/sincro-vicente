@@ -43,7 +43,7 @@ Reglas:
 - Meta título: para Google, unos 60 caracteres (nunca más de ${META_TITLE_MAX}), con lo que la gente busca delante.
 - Descripción corta: 2 frases en texto plano (unos 200-250 caracteres, nunca más de ${SHORT_MAX}). La primera engancha con lo que más distingue al producto, con un dato real (no un adjetivo). La segunda da los datos clave.
 - Meta descripción: distinta de la descripción corta, entre 140 y 155 caracteres (nunca menos de ${META_DESCRIPTION.min} ni más de ${META_DESCRIPTION.max}), con lo esencial en los primeros 120. NO repitas el título ni el modelo: Google ya enseña el título encima, así que aprovecha el espacio para 2-3 datos clave, lo que diferencia al producto y para quién es. Sin precio.
-- Descripción larga: HTML sencillo. NO repitas el nombre del producto como titular (la ficha ya lo tiene). Empieza con un párrafo de entrada (<p>, 2-3 frases) que vende con datos: lo que distingue al producto y sus puntos fuertes. Después, 3-4 apartados con <h2> y un <p> cada uno (puedes usar <strong> y una lista <ul><li> si ayuda). Sin <h1>, <h3> ni <h4>, sin frase de cierre de relleno ni apartado final de resumen o lista que repita lo ya dicho, sin estilos, enlaces, imágenes ni tablas de especificaciones (la ficha técnica se muestra aparte). Incluye los datos que el perfil manda destacar.`;
+- Descripción larga: HTML sencillo. NO repitas el nombre del producto como titular (la ficha ya lo tiene). Empieza con un párrafo de entrada (<p>, 2-3 frases) que vende con datos: lo que distingue al producto y sus puntos fuertes. Después, 3-4 apartados con <h2> y un <p> cada uno (puedes usar una lista <ul><li> si ayuda). Sin <h1>, <h3> ni <h4>, sin frase de cierre de relleno ni apartado final de resumen o lista que repita lo ya dicho, sin estilos, enlaces, imágenes ni tablas de especificaciones (la ficha técnica se muestra aparte). Incluye los datos que el perfil manda destacar. Negritas (<strong>): entre 2 y 4 en toda la descripción, solo en los datos clave que el perfil manda destacar, cortos (el dato con su unidad o el nombre de la tecnología: «<strong>9 kg</strong>», «<strong>No Frost total</strong>», «<strong>clase A</strong>»), nunca frases enteras, etiquetas («Peso:») ni el mismo dato dos veces.`;
 
 // Solo cuando se pide la frase de Elvi (fuera del masivo desde el 2026-10-26).
 const SYSTEM_ELVI = `- Elvi (elvi_tip): Elvi es la vendedora con inteligencia artificial de la tienda. No da consejos de uso ni recita la ficha: habla como una buena vendedora delante del cliente, de tú, en 3 o 4 frases (unos 300-450 caracteres). 1) Para quién es, por la situación del cliente («Si en casa ponéis lavadoras casi a diario…»). Siempre de tú en singular (nunca «vosotros», «os», «hacéis»). 2) Las 2 o 3 cosas que ella destacaría (las que el perfil manda destacar en esta categoría), cada una con su dato exacto y lo que supone para el cliente, solo si se deduce directamente del dato (9 kg → coladas grandes; 60 cm de ancho → hueco estándar; 39 dB → silencioso). 3) Un cierre honesto de vendedora (en qué se fijaría ella o qué comprobar antes de decidirse, p. ej. las medidas del hueco, con la medida exacta que dan los datos). No afirmes qué cabe o qué se puede hacer con el aparato («cabe un edredón», «un pollo entero», «para cuatro personas») si no lo dicen los datos. Ejemplo de tono: «Si haces la compra para toda la semana, este combi te va a dar mucho juego: son 368 L, con 279 para la nevera y 89 para el congelador, y lleva No Frost en los dos. Además es de los silenciosos, con 39 dB, algo que se agradece si la cocina está abierta al salón. Mide 203 cm de alto y 60 de ancho, así que antes de decidirte comprueba que te cabe en el hueco.» Sigue sin explicar qué hacen las tecnologías ni inventar beneficios. En «sources» pon los datos en que se apoya, con la clave exacta de «datos_con_clave» y su valor. Prohibido: instalación eléctrica, de gas o de agua, seguridad, salud, cifras de ahorro, garantías, compatibilidades, comparaciones con otros productos (nada de «de los más…», «de los silenciosos», «más que la media») y cualquier cifra que no esté en los datos. Si no hay nada que destacar con datos, deja text vacío y sources vacío.`;
@@ -60,6 +60,21 @@ export function brandAsWritten(listing: ListingProduct, icecat: IcecatSummary | 
 // Secuencias de N palabras seguidas que el texto comparte con los de MHD o Icecat.
 // `data`: palabras de la hoja de datos. Una secuencia que es casi toda datos (cifras, unidades, nombres de programas o
 // sintonizadores: «dvb c dvb s dvb s2 dvb», «mide 96 9 cm de ancho 63») no es copiar la redacción (2026-10-26).
+// Negritas de la descripción larga (David, 2026-10-26): de 2 a 4, solo datos clave cortos. El código las ajusta sin pedir
+// otro intento: quita la negrita a lo que no es un dato corto (más de 4 palabras, etiquetas que acaban en «:») y a las
+// repetidas, y deja como mucho las 4 primeras. Nunca añade negritas.
+export const BOLD = { max: 4, maxWords: 4 };
+export function normalizeBold(html: string) {
+  const seen = new Set<string>(); let kept = 0;
+  return html.replace(/<(strong|b)>([\s\S]*?)<\/\1>/gi, (_match, _tag: string, inner: string) => {
+    const text = inner.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim(); const key = text.toLowerCase();
+    const keep = text && !text.endsWith(":") && text.split(" ").length <= BOLD.maxWords && !seen.has(key) && kept < BOLD.max;
+    if (!keep) return inner;
+    seen.add(key); kept += 1;
+    return `<strong>${inner}</strong>`;
+  });
+}
+
 export function copiedSequences(text: string, sources: string[], size = COPY_WORDS, data: Set<string> = new Set()) {
   const shingles = new Set<string>();
   for (const source of sources) { const list = words(source); for (let i = 0; i + size <= list.length; i += 1) shingles.add(list.slice(i, i + size).join(" ")); }
@@ -195,7 +210,7 @@ export async function writeContent(client: Anthropic, input: { profile: FamilyPr
     if (message.stop_reason !== "end_turn") throw new Error(`La redacción terminó con ${message.stop_reason}.`);
     const text = message.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("");
     const parsed = JSON.parse(text) as Omit<ProductContent, "elvi_tip"> & { elvi_tip?: ElviTip };
-    content = { ...parsed, elvi_tip: parsed.elvi_tip ?? { text: "", sources: [] } };
+    content = { ...parsed, long_description_html: normalizeBold(parsed.long_description_html ?? ""), elvi_tip: parsed.elvi_tip ?? { text: "", sources: [] } };
     const texts = { title: content.title, meta_title: content.meta_title, short_description: content.short_description, meta_description: content.meta_description, long_description_html: content.long_description_html, ...(content.elvi_tip.text ? { elvi: content.elvi_tip.text } : {}) };
     errors = [...validateContent(content, brand, model, originals, values), ...missingKeyData(content.title, profile, values, listing.nombre_subfamilia, listing.cod_subfamilia), ...unsupportedNumbers(texts, values, [brand, model, listing.nombre_marca, icecat?.partCode, icecat?.modelName]).map((problem) => `Cifra sin respaldo: ${problem} Usa solo cifras de datos_con_clave.`)];
     // Solo se revisan los datos de una ficha que ya cumple el formato (ahorra llamadas).
