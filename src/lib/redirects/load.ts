@@ -70,9 +70,9 @@ async function shopifyRedirects(config: ShopifyConfig) {
 async function productIdsByHandle(db: SupabaseClient) {
   const ids = new Map<string, string>();
   for (let from = 0; ; from += 1000) {
-    const { data, error } = await db.from("shopify_products").select("id,handle").range(from, from + 999);
+    const { data, error } = await db.from("shopify_products").select("product_id,handle").order("product_id").range(from, from + 999);
     if (error) throw new Error(`No se pudo leer el espejo de la tienda: ${error.message}`);
-    for (const row of data as { id: string; handle: string }[]) ids.set(row.handle, row.id);
+    for (const row of data as { product_id: string; handle: string }[]) ids.set(row.handle, row.product_id);
     if (data.length < 1000) break;
   }
   return ids;
