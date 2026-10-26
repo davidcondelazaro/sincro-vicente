@@ -6,7 +6,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { anthropicKey, ELVI_MODELS, PROCESSOR_MODEL } from "./ai";
 import type { SourcesConfig } from "./gather";
-import { saveRunMedia } from "./media-store";
+import { pruneOlderRunMedia, saveRunMedia } from "./media-store";
 import { createShopifyDraft } from "./shopify-draft";
 import { processProduct } from "./processor";
 import { createTrace, type TraceEvent } from "./trace";
@@ -77,7 +77,11 @@ export async function processJobItem(deps: { db: SupabaseClient; config: Sources
     const saved = await log.trace.step("Guardar la prueba", async () => {
       const { data, error: saveError } = await deps.db.from("mhd_importer_product_runs").insert(row).select("id").single();
       if (saveError) throw saveError;
-      if (result.status === "ok") await saveRunMedia(deps.db, data.id, result.media);
+      if (result.status === "ok") {
+        await saveRunMedia(deps.db, data.id, result.media);
+        // Fuera los archivos de las pruebas anteriores de este producto; si falla, se avisa y se sigue.
+        await pruneOlderRunMedia(deps.db, listing.codigo, data.id).catch((caught: Error) => log.add({ level: "aviso", step: "Guardar la prueba", message: `No se borraron los archivos antiguos: ${caught.message}` }));
+      }
       return data;
     }, () => (result.status === "ok" ? `${result.media.length} archivos guardados` : "Descartado"));
     // Avisos del procesador que no han salido ya como decisión o revisión.
