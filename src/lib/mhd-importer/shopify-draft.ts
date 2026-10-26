@@ -9,6 +9,16 @@ import { STORE_RULES, type ProcessedProduct } from "./processor";
 import { fetchIcecatDocument, type IcecatConfig } from "./sources";
 import { shopifyGraphql, type ShopifyConfig } from "./store-filters";
 
+// Regla de David (2026-10-26): los productos con revisión pendiente se suben igual, como borrador, y se revisan antes de
+// publicar. Llevan esta etiqueta mientras estén pendientes en la cola; al marcarlos «Está bien» se quita.
+export const REVIEW_TAG = "Revisar antes de publicar";
+export async function setReviewTag(shopify: ShopifyConfig, productId: string, pending: boolean) {
+  const mutation = pending ? "tagsAdd" : "tagsRemove";
+  const result = await shopifyGraphql<Record<string, { userErrors: { message: string }[] }>>(shopify, `mutation($id: ID!, $tags: [String!]!) { ${mutation}(id: $id, tags: $tags) { userErrors { message } } }`, { id: productId, tags: [REVIEW_TAG] });
+  const errors = result[mutation]?.userErrors ?? [];
+  if (errors.length) throw new Error(errors.map((item) => item.message).join(" "));
+}
+
 type UserError = { field: string[] | null; message: string };
 type Upload = { filename: string; mimeType: string; bytes: Uint8Array; resource: "IMAGE" | "FILE" | "VIDEO" };
 
@@ -66,6 +76,9 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   const { data: decision, error: decisionError } = await deps.db.from("mhd_importer_review_items").select("status,note").eq("codigo", product.codigo).maybeSingle();
   if (decisionError) throw decisionError;
   if (decision?.status === "no_importar") throw new Error(`Marcado «No importar» en la cola de revisión${decision.note ? `: ${decision.note}` : ""}.`);
+  const { data: queued, error: queueError } = await deps.db.from("mhd_importer_review_queue").select("pending").eq("codigo", product.codigo).maybeSingle();
+  if (queueError) throw queueError;
+  const reviewPending = Boolean(queued?.pending);
   // ¿Ya existe en Shopify? Primero la propia prueba; si no, cualquier prueba anterior del mismo código de MHD.
   let existingId = run.shopify_product_id as string | null;
   if (!existingId) {
@@ -144,7 +157,7 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   // Un borrador aún puede cambiar de dirección; un producto activo (o refrescado) conserva la suya.
   const handle = existing && (refresh || existing.status === "ACTIVE") ? existing.handle : shop.handle;
   const input = {
-    title: shop.title, handle, status: existing?.status ?? "DRAFT", vendor: shop.vendor, productType: shop.productType ?? "", tags: shop.tags,
+    title: shop.title, handle, status: existing?.status ?? "DRAFT", vendor: shop.vendor, productType: shop.productType ?? "", tags: reviewPending ? [...shop.tags, REVIEW_TAG] : shop.tags,
     ...(shop.category ? { category: shop.category.id } : {}), descriptionHtml: shop.descriptionHtml, seo: shop.seo, metafields: finalMetafields,
     files: galleryFiles,
     productOptions: [{ name: "Title", values: [{ name: "Default Title" }] }],

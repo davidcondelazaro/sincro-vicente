@@ -2,7 +2,7 @@
 
 _Generado con `scripts/exportar-decisiones.mjs` desde la tabla `mhd_importer_decisions` (2026-10-26). No se edita a mano: se cambia el registro y se vuelve a generar._
 
-19 reglas · 262 dudas de los perfiles: 213 cerradas y 49 abiertas.
+20 reglas · 262 dudas de los perfiles: 213 cerradas y 49 abiertas.
 
 ## Reglamento
 
@@ -21,6 +21,7 @@ _Generado con `scripts/exportar-decisiones.mjs` desde la tabla `mhd_importer_dec
 - **regla:mhd-manda** (David, 2026-10-24): Si MHD e Icecat no cuadran, manda MHD. Icecat solo entra si MHD no trae el dato o el valor es absurdo (min y max de las reglas). Van a revisión a mano: cualquier diferencia en la clase energética y las cifras que difieran más de un 20 %. Colores con matiz y redondeos no se revisan.
 - **regla:no-se-importa** (David, 2026-10-24): No se importan: maquetas («DUMMY», «MAQUETA»), unidades sueltas de aire acondicionado y productos de salud sexual. Los reacondicionados sí, con «Reacondicionado» en el título. Van a revisión los productos sin precio o con precio 0 y los de más de 5 veces o menos de la quinta parte de la mediana de su subfamilia.
 - **regla:nombres-comerciales** (David, 2026-10-24): Nombres comerciales: término genérico en los filtros y el de la marca en el título y los textos (EcoSilence y Direct Drive = Inverter; HomeOS = VIDAA). Se respetan los valores que la tienda ya usa aunque nacieran como marca («Aquálisis», «DualClean»). Se quedan tal cual los que no tienen equivalente genérico (Dolby Vision, Dolby Atmos, webOS, Google TV, Tizen).
+- **regla:pendientes-como-borrador** (David, 2026-10-26): Los productos con revisión pendiente se suben igual a Shopify como borrador, con la etiqueta «Revisar antes de publicar», y se revisan antes de publicar. Al marcarlos «Está bien» en la cola se quita la etiqueta; lo marcado «No importar» no se sube.
 - **regla:simplificar-filtros** (David, 2026-10-23): Pocos valores y que se repitan: tramos abiertos en los extremos («Más de 10 kg») y redondeo a los valores que ya usa la tienda (1351 rpm → «1350 rpm»).
 - **regla:sin-resumen** (David (propuesta aplicada por urgencia, revisable), 2026-10-26): La descripción larga no lleva un apartado final de resumen ni una lista que repita lo ya dicho: la ficha técnica va aparte.
 - **regla:solo-mhd-icecat** (David, 2026-10-23): Fuentes: todo lo que se importa sale de MHD (listado y ficha) e Icecat. La IA redacta y ordena con esos datos y no añade nada de su conocimiento ni de la web.
