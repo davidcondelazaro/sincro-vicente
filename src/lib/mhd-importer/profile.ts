@@ -18,8 +18,10 @@ export type FilterRule = ValueRule & { metafield: string; label: string; note: s
 // Reglas de revisión (2026-10-26): mandan el producto a la cola de revisión a mano cuando se cumplen; el producto se
 // procesa igual. Mismos métodos que los filtros (`contiene`, `tabla`, `tramos` con sus fuentes, min y max: hay revisión
 // si la regla da un valor no vacío) más `fuera_de_lista`: hay revisión si la primera fuente con dato no casa (contiene)
-// con ninguna fila (p. ej. la categoría de Icecat no es de las de la familia). `label` es el motivo que se lee en la cola.
-export type ReviewRule = { label: string; sources: string[]; method: "contiene" | "tabla" | "tramos" | "fuera_de_lista"; table: { source: string; value: string }[]; ranges: { from: string; to: string; value: string }[]; subfamilies?: string[]; min?: string; max?: string; note?: string };
+// con ninguna fila (p. ej. la categoría de Icecat no es de las de la familia), y `distinto`: compara las dos primeras
+// fuentes traducidas con la tabla (contiene) y hay revisión si las dos tienen traducción y no coinciden (p. ej. MHD
+// «Integrable: Sí» → «integrable» e Icecat «Independiente» → «libre»). `label` es el motivo que se lee en la cola.
+export type ReviewRule = { label: string; sources: string[]; method: "contiene" | "tabla" | "tramos" | "fuera_de_lista" | "distinto"; table: { source: string; value: string }[]; ranges: { from: string; to: string; value: string }[]; subfamilies?: string[]; min?: string; max?: string; note?: string };
 export type FamilyProfile = {
   product: { singular: string; plural: string; distinctions: { name: string; sources: string[]; how_to_name: string }[] };
   title: { template: string; key_data: { name: string; sources: string[]; format: string }[]; examples: string[]; avoid: string[] };
@@ -49,7 +51,7 @@ export function familyProfileSchema() {
     descriptions: obj({ short: str, long: str, highlight: strings, avoid: strings }),
     subfamily_exceptions: { type: "array", items: obj({ subfamily: str, changes: str }) },
     review: { type: "array", items: obj({
-      label: str, sources: strings, method: { type: "string", enum: ["contiene", "tabla", "tramos", "fuera_de_lista"] },
+      label: str, sources: strings, method: { type: "string", enum: ["contiene", "tabla", "tramos", "fuera_de_lista", "distinto"] },
       table: { type: "array", items: obj({ source: str, value: str }) }, ranges: { type: "array", items: obj({ from: str, to: str, value: str }) },
       subfamilies: strings, min: str, max: str, note: str,
     }) },

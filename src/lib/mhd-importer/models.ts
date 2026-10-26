@@ -42,7 +42,7 @@ const foreignDevice = (text: string, brand: string) => words(plain(text)).some((
 // Códigos que no son modelos: internos de MHD (dos letras y 6-9 cifras, «DSP…»), ASIN de Amazon, EAN o números largos.
 export function isInternalCode(text: string, ean?: string | null) {
   const code = text.trim().toUpperCase();
-  return /^[A-Z]{2}\d{6,9}$/.test(code) || /^DSP\d{6,}$/.test(code) || (/^B0[0-9A-Z]{8}$/.test(code) && /[A-Z]/.test(code.slice(2)))
+  return /^[A-Z]{2}\d{6,9}$/.test(code) || /^DSP\d{6,}$/.test(code) || /^MGS\d{4,}$/.test(code) || (/^B0[0-9A-Z]{8}$/.test(code) && /[A-Z]/.test(code.slice(2)))
     || /^\d{12,14}$/.test(code) || Boolean(ean && normalizeModel(code) === normalizeModel(ean));
 }
 

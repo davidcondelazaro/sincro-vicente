@@ -168,3 +168,11 @@ test("reglas de revisión del perfil", async () => {
   assert.equal(reviewReasons(profile, new Map([["mhd:unidades", "12"]]), "S4001").length, 1);
   assert.equal(reviewReasons({ filters: [] }, values, null).length, 0);
 });
+
+test("regla de revisión «distinto» (MHD frente a Icecat)", async () => {
+  const { reviewReasons } = await jiti.import("../src/lib/mhd-importer/rules.ts");
+  const profile = { filters: [], review: [{ label: "Integrable según MHD y libre instalación según Icecat", sources: ["mhd:integrable", "icecat:diseño|tipo de instalación"], method: "distinto", table: [{ source: "sí", value: "integrable" }, { source: "integrado", value: "integrable" }, { source: "independiente", value: "libre" }, { source: "no", value: "libre" }], ranges: [] }] };
+  assert.equal(reviewReasons(profile, new Map([["mhd:integrable", "Sí"], ["icecat:diseño|tipo de instalación", "Independiente"]]), null).length, 1);
+  assert.equal(reviewReasons(profile, new Map([["mhd:integrable", "Sí"], ["icecat:diseño|tipo de instalación", "Completamente integrado"]]), null).length, 0);
+  assert.equal(reviewReasons(profile, new Map([["mhd:integrable", "Sí"]]), null).length, 0);
+});

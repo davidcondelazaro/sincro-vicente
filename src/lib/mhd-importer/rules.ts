@@ -178,6 +178,13 @@ export function reviewReasons(profile: FamilyProfile, values: SourceValues, subf
       if (value && !rule.table.some((row) => containsPositive(value, row.source))) reasons.push(`${rule.label} (${source}: «${value}»)`);
       continue;
     }
+    if (rule.method === "distinto") {
+      const [first, second] = rule.sources;
+      const translate = (source?: string) => { const value = source ? values.get(source.toLowerCase()) : undefined; const row = value ? rule.table.find((item) => containsPositive(value, item.source)) : undefined; return row?.value.trim() ? { value: value!, as: row.value.trim() } : null; };
+      const a = translate(first); const b = translate(second);
+      if (a && b && a.as !== b.as) reasons.push(`${rule.label} (${first}: «${a.value}»; ${second}: «${b.value}»)`);
+      continue;
+    }
     const applied = applyValueRule(rule as ReviewRule & { method: "contiene" | "tabla" | "tramos" }, values);
     if (applied && applied.value.trim() && applied.value.trim() !== "-") reasons.push(`${rule.label} (${applied.source}: ${applied.value})`);
   }

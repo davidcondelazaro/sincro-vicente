@@ -85,7 +85,7 @@ function applyOps(profile, ops, subfamilies) {
       const value = JSON.parse(op.value_json);
       if (op.op === "set_section") {
         if (!(op.section in profile) && op.section !== "review") throw new Error(`sección ${op.section} desconocida`);
-        if (op.section === "review") for (const rule of value) { if (!rule.label || !Array.isArray(rule.sources) || !["contiene", "tabla", "tramos", "fuera_de_lista"].includes(rule.method) || !Array.isArray(rule.table) || !Array.isArray(rule.ranges)) throw new Error(`regla de revisión mal formada: ${JSON.stringify(rule).slice(0, 120)}`); for (const code of rule.subfamilies ?? []) if (!subfamilies.has(code)) throw new Error(`subfamilia ${code} ajena`); }
+        if (op.section === "review") for (const rule of value) { if (!rule.label || !Array.isArray(rule.sources) || !["contiene", "tabla", "tramos", "fuera_de_lista", "distinto"].includes(rule.method) || !Array.isArray(rule.table) || !Array.isArray(rule.ranges)) throw new Error(`regla de revisión mal formada: ${JSON.stringify(rule).slice(0, 120)}`); for (const code of rule.subfamilies ?? []) if (!subfamilies.has(code)) throw new Error(`subfamilia ${code} ajena`); }
         sections[op.section] = value; continue;
       }
       const rule = normalizeFilter(value); const problems = filterProblems(rule, subfamilies);
