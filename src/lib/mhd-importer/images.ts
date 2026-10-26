@@ -11,8 +11,8 @@ import { fetchMhdMedia } from "./sources";
 
 export type ImageKind = "frontal" | "tres_cuartos" | "lateral" | "trasera" | "abierto" | "detalle" | "ambiente" | "medidas" | "icono_o_logo" | "etiqueta_energetica" | "otro";
 export type Background = "blanco" | "negro" | "otro";
-export type PreparedImage = { url: string; contentType: string; width: number; height: number; bytes: Uint8Array; hash: string; thumbnail: string; background: Background };
-export type ClassifiedImage = Omit<PreparedImage, "bytes" | "thumbnail"> & { kind: ImageKind; quality: "buena" | "regular" | "mala"; duplicateOf: number | null; description: string; isMhdMain: boolean };
+export type PreparedImage = { url: string; contentType: string; width: number; height: number; bytes: Uint8Array; hash: string; thumbnail: string; background: Background; source: "mhd" | "icecat"; visualHash: string };
+export type ClassifiedImage = Omit<PreparedImage, "bytes" | "thumbnail" | "visualHash"> & { kind: ImageKind; quality: "buena" | "regular" | "mala"; duplicateOf: number | null; description: string; isMhdMain: boolean };
 export type OrderedImages = { keep: ClassifiedImage[]; dropped: (ClassifiedImage & { reason: string })[] };
 export type ProcessedImageFile = { bytes: Uint8Array; contentType: string; width: number; height: number; treatment: string };
 
@@ -36,17 +36,29 @@ async function backgroundOf(bytes: Uint8Array): Promise<Background> {
   return white / total > 0.6 ? "blanco" : black / total > 0.6 ? "negro" : "otro";
 }
 
-export async function prepareImages(urls: string[]): Promise<{ images: PreparedImage[]; errors: string[] }> {
+// Huella visual (dHash de 64 bits): dos fotos iguales en distinto tamaño o formato dan huellas casi iguales. Sirve para
+// no repetir en la galería la misma foto que traen MHD e Icecat (2026-10-26).
+async function visualHashOf(bytes: Uint8Array) {
+  const px = await sharp(bytes).flatten({ background: "#ffffff" }).greyscale().resize(9, 8, { fit: "fill" }).raw().toBuffer();
+  let bits = "";
+  for (let y = 0; y < 8; y += 1) for (let x = 0; x < 8; x += 1) bits += px[y * 9 + x] > px[y * 9 + x + 1] ? "1" : "0";
+  return bits;
+}
+export function sameVisual(a: string, b: string) { let differ = 0; for (let i = 0; i < a.length; i += 1) if (a[i] !== b[i]) differ += 1; return differ <= 8; }
+
+// `fetcher`: cómo se descarga (MHD con sus cabeceras; Icecat por el proxy de Pladisel, porque sin él inishop.com
+// contesta 403 a más de la mitad de sus fotos).
+export async function prepareImages(urls: string[], source: "mhd" | "icecat" = "mhd", fetcher: (url: string) => Promise<{ contentType: string; bytes: Uint8Array }> = fetchMhdMedia): Promise<{ images: PreparedImage[]; errors: string[] }> {
   const images: PreparedImage[] = []; const errors: string[] = []; const seen = new Set<string>();
   for (const url of [...new Set(urls)]) {
     try {
-      const media = await fetchMhdMedia(url);
+      const media = await fetcher(url);
       const hash = sha1(media.bytes);
       if (seen.has(hash)) continue; // misma imagen con otra URL
       seen.add(hash);
       const meta = await sharp(media.bytes).metadata();
       const thumbnail = (await sharp(media.bytes).resize(384, 384, { fit: "inside" }).flatten({ background: "#ffffff" }).jpeg({ quality: 70 }).toBuffer()).toString("base64");
-      images.push({ url, contentType: media.contentType, width: meta.width ?? 0, height: meta.height ?? 0, bytes: media.bytes, hash, thumbnail, background: await backgroundOf(media.bytes) });
+      images.push({ url, contentType: media.contentType, width: meta.width ?? 0, height: meta.height ?? 0, bytes: media.bytes, hash, thumbnail, background: await backgroundOf(media.bytes), source, visualHash: await visualHashOf(media.bytes) });
     } catch (caught) { errors.push(caught instanceof Error ? caught.message : `No se pudo leer ${url}`); }
   }
   return { images, errors };
@@ -69,9 +81,9 @@ export async function classifyImages(client: Anthropic, productName: string, ima
   if (message.stop_reason !== "end_turn") throw new Error(`La clasificación de imágenes terminó con ${message.stop_reason}.`);
   const text = message.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("");
   const parsed = JSON.parse(text) as { images: { index: number; kind: ImageKind; quality: ClassifiedImage["quality"]; duplicate_of: number | null; description: string }[] };
-  const classified: ClassifiedImage[] = images.map(({ url, contentType, width, height, hash, background }, index) => {
+  const classified: ClassifiedImage[] = images.map(({ url, contentType, width, height, hash, background, source }, index) => {
     const item = parsed.images.find((entry) => entry.index === index);
-    return { url, contentType, width, height, hash, background, kind: item?.kind ?? "otro", quality: item?.quality ?? "regular", duplicateOf: item?.duplicate_of ?? null, description: item?.description ?? "", isMhdMain: url === mhdMainUrl };
+    return { url, contentType, width, height, hash, background, source, kind: item?.kind ?? "otro", quality: item?.quality ?? "regular", duplicateOf: item?.duplicate_of ?? null, description: item?.description ?? "", isMhdMain: url === mhdMainUrl };
   });
   return { classified, usage: message.usage, costUsd: costUsd(PROCESSOR_MODEL, message.usage) };
 }

@@ -150,6 +150,24 @@ Medido en producción con el banco de 41: 41 s por producto y 2,2 productos por 
   - Hay que rehacer las etiquetas subidas hoy desde producción.
 - **Enlace a la ficha bajo la etiqueta:** el tema lo pone si el producto tiene la ficha UE en PDF (`custom.documentos`) o el número EPREL (`custom.eprel`). Sin Icecat no hay ninguno de los dos (p. ej. lavavajillas Hyundai HDW6013EDI00).
 
+### Fotos de MHD e Icecat (David, 2026-10-26)
+
+- **Datos:**
+  - **MHD, en 24.000 fichas:** el 9 % de los productos no trae ninguna foto, el 16 % trae 1, el 23 % trae 2 o 3, y el resto 4 o más. En una muestra de 273 fotos, el 15 % mide menos de 500 px y el 71 % tiene fondo blanco.
+  - **Icecat:** el 87 % de los productos consultados tiene ficha, y sus fotos suelen ser más grandes (un tercio pasa de 2.000 px).
+  - **Fuentes:** muchas fotos de Icecat son las mismas que las de MHD.
+  - **Problema encontrado:** el 55 % de las fotos de Icecat están en `inishop.com`, que contesta 403 sin el proxy de Pladisel; las de `images.icecat.biz` el proxy las rechaza (400), pero se descargan directas.
+- **Regla:**
+  - Manda MHD: su foto principal y su orden.
+  - Si MHD trae 3 o menos, se completan con las de Icecat comprobado (hasta 12; primero directas y, si no, por el proxy) que no repitan una de MHD (huella visual `sameVisual` en `images.ts`).
+  - Si una foto está en las dos fuentes, se queda la de mayor tamaño (al menos un 20 % más de superficie).
+  - Todo queda en el registro: «Fotos de Icecat: n añadidas, n sustituyen…».
+- **Probado en local con 5 productos:**
+  - 10057093, antes descartado, ahora con 7 fotos de Icecat.
+  - 10006088: 2 de MHD más 5 de Icecat.
+  - 10075231: 2 fotos de MHD sustituidas por las mismas en 2.400 px.
+  - 10069104: Icecat solo tiene fotos de 350 px, así que usa la mejor y va a revisión.
+
 ## Metacampos de categoría de Shopify (estudiado 2026-10-26)
 
 Pregunta de David: ¿dan más flexibilidad o más datos en los filtros? **No.** Comprobado en la documentación y en la taxonomía de la tienda:

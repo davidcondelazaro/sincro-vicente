@@ -15,7 +15,7 @@ import { cached } from "./cache";
 import { gatherProduct, type SourcesConfig } from "./gather";
 import { embeddableYoutubeVideos, icecatMetafield, summarizeIcecat, type IcecatSummary } from "./icecat";
 import { checkIcecatIdentity, labelMatches, labelText } from "./identity";
-import { classifyImages, imageFilenames, KIND_ALT, normalizeEnergyLabel, orderImages, pdfFirstPageToPng, prepareImages, processImage, slugify, type ImageKind } from "./images";
+import { classifyImages, imageFilenames, KIND_ALT, normalizeEnergyLabel, orderImages, pdfFirstPageToPng, prepareImages, processImage, sameVisual, slugify, type ImageKind } from "./images";
 import type { FamilyProfile } from "./profile";
 import { classifyVideos, prepareVideos, type VideoKind } from "./videos";
 import { noTrace, type Trace } from "./trace";
@@ -198,28 +198,56 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
 
   // Fotos antes de redactar (2026-10-26): sin ninguna descargable no se gasta la redacción. La foto principal del listado
   // de MHD (`img/<EAN>_…`) no existe en su servidor en buena parte del catálogo (S3 contesta 403, no es un bloqueo por IP);
-  // las de la ficha (`img/analyzed/mhd/…`) sí. Si MHD no da ninguna, se usan las de Icecat comprobado.
+  // las de la ficha (`img/analyzed/mhd/…`) sí.
+  // Fotos de MHD e Icecat (David, 2026-10-26): manda MHD (su principal y su orden). Si trae 3 o menos, se completan con
+  // las de Icecat comprobado (por el proxy de Pladisel) que no repitan una de MHD; si una foto está en las dos, se queda
+  // la de mayor tamaño.
   const photoUrls = gathered.detail?.fotos?.length ? gathered.detail.fotos : listing.imagen ? [listing.imagen] : [];
   let prepared = await t.step("Descargar fotos", () => prepareImages(photoUrls), (result) => `${result.images.length} de ${photoUrls.length} descargadas`);
   warnings.push(...prepared.errors.map((error) => error.replace(/\(HTTP 403\)/, "(HTTP 403: MHD no tiene esa foto en su servidor)")));
-  if (!prepared.images.length && icecat?.gallery?.length) {
-    const fromIcecat = await prepareImages(icecat.gallery.map((picture) => picture.url).filter(Boolean));
+  let mainUrl = listing.imagen;
+  // images.icecat.biz se descarga directo (el proxy lo rechaza con 400); inishop.com contesta 403 sin el proxy.
+  const icecatImage = async (url: string) => {
+    const direct = await fetch(url, { signal: AbortSignal.timeout(30_000) }).catch(() => null);
+    if (direct?.ok) return { contentType: direct.headers.get("content-type") ?? "image/jpeg", bytes: new Uint8Array(await direct.arrayBuffer()) };
+    return fetchIcecatDocument(deps.config.icecat, url);
+  };
+  const icecatPhotos = async () => prepareImages((icecat?.gallery ?? []).map((picture) => picture.url).filter(Boolean).slice(0, 12), "icecat", icecatImage);
+  const addIcecat = (fromIcecat: Awaited<ReturnType<typeof icecatPhotos>>) => {
+    let added = 0, replaced = 0, repeated = 0;
+    for (const image of fromIcecat.images) {
+      const twin = prepared.images.find((item) => sameVisual(item.visualHash, image.visualHash));
+      if (!twin) { prepared.images.push(image); added += 1; continue; }
+      if (image.width * image.height > twin.width * twin.height * 1.2) {
+        t.event("decision", "Descargar fotos", `Foto de MHD sustituida por la misma de Icecat, más grande (${twin.width}×${twin.height} → ${image.width}×${image.height}).`);
+        if (twin.url === mainUrl) mainUrl = image.url;
+        prepared.images[prepared.images.indexOf(twin)] = image; replaced += 1;
+      } else repeated += 1;
+    }
+    return { added, replaced, repeated };
+  };
+  if (prepared.images.length <= 3 && icecat?.gallery?.length) {
+    const fromIcecat = await t.step("Fotos de Icecat", icecatPhotos, (result) => `${result.images.length} de ${Math.min(12, icecat.gallery.length)} descargadas`);
     warnings.push(...fromIcecat.errors);
-    if (fromIcecat.images.length) { warnings.push(`Fotos de Icecat (${fromIcecat.images.length}): MHD no tiene ninguna descargable.`); t.event("decision", "Descargar fotos", `Fotos de Icecat (${fromIcecat.images.length}): MHD no tiene ninguna descargable.`); }
-    prepared = fromIcecat;
+    const mhdCount = prepared.images.length;
+    const result = addIcecat(fromIcecat);
+    if (result.added || result.replaced) {
+      const message = `Fotos de Icecat: ${result.added} añadidas${result.replaced ? `, ${result.replaced} sustituyen a la misma de MHD en más grande` : ""}${result.repeated ? `, ${result.repeated} repetidas no se usan` : ""} (MHD traía ${mhdCount}).`;
+      warnings.push(message); t.event("decision", "Fotos de Icecat", message);
+    }
   }
   if (!prepared.images.length) { t.event("decision", "Descartes", "Descartado: sin imagen descargable (ni en MHD ni en Icecat)"); return { status: "discarded", reason: "Sin imagen descargable (ni en MHD ni en Icecat)", warnings }; }
 
   // Fotos antes de redactar (2026-10-26): la IA dice qué vista es cada una con el título de MHD y el código calcula el
   // fondo y ordena. Si ninguna vale, se descarta sin gastar la redacción.
-  const classified = await t.step("Clasificar fotos (IA)", () => classifyImages(deps.ai, listing.titulo ?? "", prepared.images, listing.imagen), (result) => `${result.classified.length} fotos clasificadas`);
+  const classified = await t.step("Clasificar fotos (IA)", () => classifyImages(deps.ai, listing.titulo ?? "", prepared.images, mainUrl), (result) => `${result.classified.length} fotos clasificadas`);
   cost += classified.costUsd ?? 0; usage.images = classified.usage;
   let ordered = orderImages(classified.classified);
   const mhdDropped = ordered.dropped;
   // Si todas las de MHD se descartan al revisarlas (fondo negro, pequeñas…), se prueban las de Icecat comprobado.
-  if (!ordered.keep.length && icecat?.gallery?.length && !prepared.images.some((image) => icecat.gallery.some((picture) => picture.url === image.url))) {
+  if (!ordered.keep.length && icecat?.gallery?.length && !prepared.images.some((image) => image.source === "icecat")) {
     for (const image of ordered.dropped) t.event("aviso", "Clasificar fotos (IA)", `Foto de MHD descartada: ${image.reason} (${image.url})`);
-    const fromIcecat = await prepareImages(icecat.gallery.map((picture) => picture.url).filter(Boolean));
+    const fromIcecat = await icecatPhotos();
     if (fromIcecat.images.length) {
       const again = await classifyImages(deps.ai, listing.titulo ?? "", fromIcecat.images, null);
       cost += again.costUsd ?? 0;
