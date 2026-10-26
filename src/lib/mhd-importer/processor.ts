@@ -207,7 +207,18 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   // Fotos: la IA dice qué vista es cada una; el código calcula el fondo, ordena y trata.
   const classified = prepared.images.length ? await classifyImages(deps.ai, written.content.title, prepared.images, listing.imagen) : { classified: [] as ClassifiedImage[], costUsd: 0, usage: null };
   cost += classified.costUsd ?? 0; usage.images = classified.usage;
-  const ordered = orderImages(classified.classified);
+  let ordered = orderImages(classified.classified);
+  // Si todas las de MHD se descartan al revisarlas (fondo negro, pequeñas…), se prueban las de Icecat comprobado.
+  if (!ordered.keep.length && icecat?.gallery?.length && !prepared.images.some((image) => icecat.gallery.some((picture) => picture.url === image.url))) {
+    const fromIcecat = await prepareImages(icecat.gallery.map((picture) => picture.url).filter(Boolean));
+    if (fromIcecat.images.length) {
+      const again = await classifyImages(deps.ai, written.content.title, fromIcecat.images, null);
+      cost += again.costUsd ?? 0;
+      prepared = { images: [...prepared.images, ...fromIcecat.images], errors: prepared.errors };
+      ordered = orderImages(again.classified);
+      if (ordered.keep.length) warnings.push(`Fotos de Icecat (${ordered.keep.length}): las de MHD no pasaron la revisión.`);
+    }
+  }
   if (!ordered.keep.length) return { status: "discarded", reason: "Sin imagen válida (todas descartadas al revisarlas)", warnings };
   const brand = brandChoice.brand;
   // Tipo para la dirección y los archivos: lo que va delante de la marca en el título («Freidora de aire»), porque en
