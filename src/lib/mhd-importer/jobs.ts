@@ -17,7 +17,7 @@ export type JobItem = { id: number; job_id: string; codigo: string; family_code:
 
 // Una llamada dura como mucho 300 s en Vercel: no se reservan productos nuevos pasados 150 s (un producto tarda hasta
 // ~2 min), y el puesto caduca a los 120 s sin latido por si la llamada muere. Por defecto, 2 trabajadores con 6
-// productos a la vez cada uno; cada tanda lo cambia (options.workers, hasta 6, y options.concurrency, hasta 12).
+// productos a la vez cada uno; cada tanda lo cambia (options.workers, hasta 12, y options.concurrency, hasta 12).
 export const WORKER = { budgetMs: 150_000, leaseSeconds: 120, itemLeaseSeconds: 600, workers: 2, concurrency: 6, maxAttempts: 2, mirrorMaxAgeHours: 6 };
 
 // Cliente con la clave secreta: el trabajador no tiene sesión de usuario. Vale la clave nueva (SUPABASE_SECRET_KEY) o
@@ -132,7 +132,7 @@ export async function runWorkerTurn(env: Env, config: SourcesConfig, spawn: () =
   const db = workerClient(env);
   const { data: jobs } = await db.from("mhd_importer_jobs").select("options").in("status", ["en_cola", "en_curso"]).order("created_at").limit(1);
   const options = (jobs?.[0]?.options ?? {}) as { workers?: number; concurrency?: number };
-  const workers = Math.min(6, Math.max(1, Number(options.workers ?? WORKER.workers)));
+  const workers = Math.min(12, Math.max(1, Number(options.workers ?? WORKER.workers)));
   const concurrency = Math.min(12, Math.max(1, Number(options.concurrency ?? WORKER.concurrency)));
   const { data: slots, error } = await db.rpc("mhd_importer_slot_acquire", { p_seconds: WORKER.leaseSeconds, p_max: workers });
   if (error) throw error;
