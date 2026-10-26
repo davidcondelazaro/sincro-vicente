@@ -1,0 +1,119 @@
+codigo_mhd,ean,modelo,marca_actual,marca_esperada,confianza,motivo,titulo_mhd
+10049461,8716184064135,WM2151,One For All,A comprobar (Vogel's o One For All),A comprobar,Marca One For All y título VOGELS,Soporte VOGELS WM2151
+10028781,7332543835973,ECFB02,Zanussi,AEG,A comprobar,Marca Zanussi y título AEG (mismo grupo),"Accesorio campana AEG ECFB02 Filtro válido para Win, Jolly,  Crop, Sklok"
+10000654,8413173369621,AC0517E,Youin,Engel,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),Soporte ENGEL AC0517E
+10000744,8434128002530,AC0570E,Youin,Engel,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),Soporte ENGEL AC0570E
+10000746,8434128002554,AC0590E,Youin,Engel,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),Soporte ENGEL AC0590E
+10000747,8434128002578,AC0592E,Youin,Engel,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),Soporte ENGEL AC0592E
+10000748,8434128002585,AC0593E,Youin,Engel,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),Soporte ENGEL AC0593E
+10000906,8434128002561,AC0591E,Youin,Engel,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),Soporte ENGEL AC0591E
+10000922,8434127013681,AC0594E,Youin,Engel,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),Soporte ENGEL AC0594E
+10046303,8434128002479,MD0031,Youin,Engel,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),Accesorio frigorífico ENGEL MD0031
+10046304,8054242080285,MD0028,Youin,Engel,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),Mando a distancia ENGEL MD0028
+10001441,4015867186695,650310,Nilox,Equip,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),Soporte EQUIP 650310
+10001442,4015867186701,650311,Nilox,Equip,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),Soporte EQUIP 650311
+10015010,4015867107829,128521,Nilox,Equip,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),Cable EQUIP 128521
+10002047,8716065216677,EW3550,Nilox,Ewent,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),"Micrófono para PC Alámbrico EWENT EW3550  | Omnidireccional, 50-16000 Hz, Negro"
+10014063,8054392610387,EW1052,Nilox,Ewent,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),Multilector Tarjetas EWENT EW1052
+10042484,8054392610943,EW3158,Nilox,Ewent,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),"Ratón Óptico 1,600 DPI Oficina EWENT EW3158  | Negro"
+10050698,8054392610936,EW3157,Nilox,Ewent,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),"Ratón Óptica 1,800 DPI Oficina EWENT EW3157  | Negro"
+10079103,8435099534044,XFC-120SRW,Approx,Keep Out,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),Refrigerador Pc Portátil KEEP OUT XFC-120SRW
+10079105,8435099533986,XFC-120DRW,Approx,Keep Out,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),Refrigerador Pc Portátil KEEP OUT XFC-120DRW
+10079107,8435099534013,XFC-120M,Approx,Keep Out,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),Refrigerador Pc Portátil KEEP OUT XFC-120M
+10079108,8435099534020,XFC-120MW,Approx,Keep Out,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),Refrigerador Pc Portátil KEEP OUT XFC-120MW
+10079109,8435099533962,XFC-120DRM,Approx,Keep Out,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),Refrigerador Pc Portátil KEEP OUT XFC-120DRM
+10079110,8435099533979,XFC-120DRMW,Approx,Keep Out,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),Refrigerador Pc Portátil KEEP OUT XFC-120DRMW
+10079112,8435099533948,XWC-120,Approx,Keep Out,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),TARJETA GRAFICA PC KEEP OUT XWC-120
+10079113,8435099533931,XWC-120W,Approx,Keep Out,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),TARJETA GRAFICA PC KEEP OUT XWC-120W
+10079114,8435099533375,XC-201 GLASS,Approx,Keep Out,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),CAJA DE CPU PARA PC KEEP OUT XC-201 GLASS
+10079116,8435099533382,XC-210 GLASS,Approx,Keep Out,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),CAJA DE CPU PARA PC KEEP OUT XC-210 GLASS
+10079118,8435099533573,XC-220W GLASS,Approx,Keep Out,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),CAJA DE CPU PARA PC KEEP OUT XC-220W GLASS
+10079120,8435099533405,XC-301 GLASS,Approx,Keep Out,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),CAJA DE CPU PARA PC KEEP OUT XC-301 GLASS
+10079121,8435099533580,XC-301W GLASS,Approx,Keep Out,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),CAJA DE CPU PARA PC KEEP OUT XC-301W GLASS
+10079123,8435099534075,XWC-240W PRO,Approx,Keep Out,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),TARJETA GRAFICA PC KEEP OUT XWC-240W PRO
+10079124,8435099533429,XC-501 MESH,Approx,Keep Out,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),CAJA DE CPU PARA PC KEEP OUT XC-501 MESH
+10079126,8435099533436,XC-901 PRO,Approx,Keep Out,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),CAJA DE CPU PARA PC KEEP OUT XC-901 PRO
+10079127,8435099534099,XWC-360W PRO,Approx,Keep Out,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),TARJETA GRAFICA PC KEEP OUT XWC-360W PRO
+10079128,8435099533443,XC-905 PRO+,Approx,Keep Out,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),CAJA DE CPU PARA PC KEEP OUT XC-905 PRO+
+10079129,8435099533450,XC-911PROXL+,Approx,Keep Out,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),CAJA DE CPU PARA PC KEEP OUT XC-911PROXL+
+10050534,5901969415803,AK-1601-B,Phasak,Lanberg,A comprobar,Marca Phasak y título LANBERG,Soporte LANBERG AK-1601-B
+10082915,5063194002347,THZ987GL,HYPER,Targus,A comprobar,Marca HYPER y título TARGUS,Accesorio tablet TARGUS THZ987GL
+10007942,8433281010376,TQR-211B,Nanocable,Tooq,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),Lector DNI TOOQ TQR-211B  | Negro
+10007943,8433281010383,TQR-220B,Nanocable,Tooq,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),Lector DNI TOOQ TQR-220B  | Negro
+10043120,8433281013667,TQCLKC0045-G,Nanocable,Tooq,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),Accesorio Informático TOOQ TQCLKC0045-G
+10043604,8433281013650,TQCLKC0035-G,Nanocable,Tooq,A comprobar,La marca no coincide con la del título (posible marca del mismo grupo o del distribuidor),Accesorio Informático TOOQ TQCLKC0035-G
+10008158,4023125028854,FRITZ!REPEATER 600,Navman,AVM (FRITZ!),Confirmado,Producto FRITZ! (EAN de AVM 4023125…),"Wifi Link 2,4 GHz Rango de Transferencia 600 Mbps FRITZ FRITZ!Repeater 600  | Blanco"
+10008172,4023125029530,FRITZ!REPEATER 6000,Navman,AVM (FRITZ!),Confirmado,Producto FRITZ! (EAN de AVM 4023125…),"Wifi Link 2,4 GHz 5 GHz Rango de Transferencia 6,000 Mbps FRITZ FRITZ!Repeater 6000  | Bla"
+10151240,4023125031281,MESH SET 1700,Apple,AVM (FRITZ!),Confirmado,Producto FRITZ! (EAN de AVM 4023125…),Tarjeta de Red PC Apple MESH SET 1700
+10151241,4023125031328,REPEATER 1700,Apple,AVM (FRITZ!),Confirmado,Producto FRITZ! (EAN de AVM 4023125…),Tarjeta de Red PC Apple REPEATER 1700
+10151299,4023125031267,MESH SET 1600,Apple,AVM (FRITZ!),Confirmado,Producto FRITZ! (EAN de AVM 4023125…),Tarjeta de Red PC Apple MESH SET 1600
+10151300,4023125031298,MESH SET 1700,Apple,AVM (FRITZ!),Confirmado,Producto FRITZ! (EAN de AVM 4023125…),Tarjeta de Red PC Apple MESH SET 1700
+10085609,4977766718523,DR241CL,Pantum,Brother,Confirmado,El título dice BROTHER; EAN de Brother (4977766…),Cartucho Impresora BROTHER DR241CL
+10006207,8435350788643,M-TN2320,Brother,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Tóner Impresora DAYMA M-TN2320
+10006208,6986500007661,M-TN245Y,Brother,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Tóner Impresora DAYMA M-TN245Y
+10006209,6986500007654,M-TN245C,Brother,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Tóner Impresora DAYMA M-TN245C
+10006210,6986500007678,M-TN245M,Brother,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Tóner Impresora DAYMA M-TN245M
+10006212,6986500013624,M-CE505A/280A,HP,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Tóner Impresora DAYMA M-CE505A/280A
+10006216,6986500042716,M-CF530BK,HP,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Tóner Impresora DAYMA M-CF530BK
+10006217,6986500042723,M-CF531C,HP,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Tóner Impresora DAYMA M-CF531C
+10006218,6986500042747,M-CF532Y,HP,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Tóner Impresora DAYMA M-CF532Y
+10006219,6986500042730,M-CF533M,HP,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Tóner Impresora DAYMA M-CF533M
+10006222,6986500079842,M-TN243BK,Brother,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Tóner Impresora DAYMA M-TN243BK
+10006223,6986500079804,M-TN247BK,Brother,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Tóner Impresora DAYMA M-TN247BK
+10006224,6986500079811,M-TN247C,Brother,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Tóner Impresora DAYMA M-TN247C
+10006225,6986500079828,M-TN247M,Brother,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Tóner Impresora DAYMA M-TN247M
+10006226,6986500079835,M-TN247Y,Brother,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Tóner Impresora DAYMA M-TN247Y
+10006227,6986500079859,M-TN243C,Brother,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Tóner Impresora DAYMA M-TN243C
+10006228,6986500079866,M-TN243M,Brother,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Tóner Impresora DAYMA M-TN243M
+10006229,6986500079873,M-TN243Y,Brother,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Tóner Impresora DAYMA M-TN243Y
+10006236,6986500054658,M-CF230AJ,HP,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Tóner Impresora DAYMA M-CF230AJ
+10006653,8435350785444,M-C9352A,HP,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-C9352A
+10006655,8435350789862,M-HP302XLBKN,HP,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-HP302XLBKN
+10006656,6986000014398,M-LC121BK,Brother,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-LC121BK
+10006658,6986000014404,M-LC123C,Brother,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-LC123C
+10006659,6986000014411,M-LC123M,Brother,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-LC123M
+10006660,6986000006102,M-LC1240BK,Brother,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-LC1240BK
+10006661,6986000006133,M-LC1240Y,Brother,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-LC1240Y
+10006662,6986000006119,M-LC1240C,Brother,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-LC1240C
+10006663,6986000006126,M-LC1240M,Brother,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-LC1240M
+10006664,6986000014473,M-LC223BK,Brother,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-LC223BK
+10006665,6986000014480,M-LC223C,Brother,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-LC223C
+10006666,6986000014497,M-LC223M,Brother,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-LC223M
+10006669,6986000014695,M-T0712,Epson,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-T0712
+10006670,6986000014701,M-T0713,Epson,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-T0713
+10006671,6986000014718,M-T0714,Epson,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-T0714
+10006672,6986000002876,M-T1281,Epson,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-T1281
+10006673,6986000002883,M-T1283,Epson,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-T1283
+10006676,6986000002968,M-T1633,Epson,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-T1633
+10006677,6986000002975,M-T1634,Epson,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-T1634
+10006678,6986000006065,M-T1811,Epson,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-T1811
+10006682,6926474694016,M-T2991,Epson,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-T2991
+10006683,8435350789275,M-T2992,Epson,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-T2992
+10006684,8405353789282,M-T2993,Epson,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-T2993
+10006685,8435350789299,M-T2994,Epson,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-T2994
+10006686,8435350782917,M-CB325EE,HP,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-CB325EE
+10006687,8435350782894,M-CB323EE,HP,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-CB323EE
+10006688,8435350782900,M-CB324EE,HP,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-CB324EE
+10006689,8435350782870,M-CN684EE,HP,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-CN684EE
+10006690,6986000023970,M-LC3213C,Brother,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-LC3213C
+10006691,6986000023987,M-LC3213M,Brother,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-LC3213M
+10006692,6986000023994,M-LC3213Y,Brother,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-LC3213Y
+10042669,8435350780166,M-T1282,Epson,Dayma,Confirmado,Compatible Dayma: el título y la descripción dicen DAYMA y el modelo empieza por M-,Cartucho Impresora DAYMA M-T1282
+10000643,8716184076022,URC1312,Sony,One For All,Confirmado,El título dice ONE FOR ALL,Mando a distancia ONE FOR ALL URC1312
+10086242,8720689035217,HX6062/88,Oral B,Philips,Confirmado,El título dice PHILIPS (cabezal Philips Sonicare),Accesorio dental PHILIPS HX6062/88  | Optimal
+10086253,8720689036818,HX6062/87,Oral B,Philips,Confirmado,El título dice PHILIPS (cabezal Philips Sonicare),Accesorio dental PHILIPS HX6062/87  | Optimal
+10068018,4008496941612,S1A100,Philips,Remington,Confirmado,S1A100 es una plancha de pelo de Remington según la ficha del fabricante; EAN de Remington (400849…),"Plancha de pelo Cerámica Temperatura (máx) 200 °C 40W Philips S1A100  | Cabello seco, Temp"
+10085110,5901986047988,SAVPILOTRC13-SONY,Marshall,Savio,Confirmado,El título y el modelo dicen SAVIO,Mando a distancia SAVIO SAVPILOTRC13-SONY
+10110424,4582712710751,YAS-DGC100-BK,UAG,Yashica,Confirmado,Modelo YAS-…: gama Yashica,"Cámara fotos digital compacta digital 5K 72 CMOS Visor Pantalla LCD 2.8"" UAG YAS-DGC100-BK"
+10110425,4582712710744,YAS-DGC100-WH,UAG,Yashica,Confirmado,Modelo YAS-…: gama Yashica,Cámara fotos digital Cámara compacta digital 5K Ultra HD 72 CMOS Visor Pantalla LCD girato
+10110426,4582712710386,YAS-DGC200-BK,UAG,Yashica,Confirmado,Modelo YAS-…: gama Yashica,Cámara fotos digital Cámara compacta digital 5K Ultra HD 72 CMOS Visor LCD UAG YAS-DGC200-
+10110427,4582712710379,YAS-DGC200-WH,UAG,Yashica,Confirmado,Modelo YAS-…: gama Yashica,Cámara fotos digital Cámara compacta digital 5K Ultra HD 72 CMOS Visor Pantalla LCD UAG YA
+10110429,4582712710140,YAS-DGM100-OW,UAG,Yashica,Confirmado,Modelo YAS-…: gama Yashica,"Cámara fotos digital Cámara compacta digital 4K Ultra HD 64 CMOS Visor Pantalla LCD 2.7"" U"
+10110459,4582712710164,YAS-DGM100-GM,Sangean,Yashica,Confirmado,Modelo YAS-…: gama Yashica,Cámara fotos digital Compacta 4K Ultra HD 64 MP CMOS Visor No Sangean Zoom digital 18X YAS
+10010708,0790069248153,DEM-311GT,D-Link,D-Link,Confirmado (error en el título),"La marca D-Link es correcta, pero el título dice CISCO; la descripción ampliada dice D-LINK",Accesorio Informático CISCO DEM-311GT
+10151107,4711081906209,90MB1BB0-M0EAY0,Gigabyte,Asus,Muy probable,90MB1BB0-M0EAY0 es una referencia de Asus y el EAN es de Asus (4711081…),Placa Base PC Gigabyte 90MB1BB0-M0EAY0
+10086353,0745883904099,WCA008KQ1MWH-B6,Trust,Belkin,Muy probable,WCA008… es un modelo de Belkin y el EAN es de Belkin (0745883…),"Cargador Trust WCA008KQ1MWH-B6  | Carga rápida, Power Delivery 3.1, 1x USB-C, Smartphones,"
+10013300,6941921148652,HJGAN245-EU,Hyperx,HYPER,Muy probable,El título dice HYPER; HJGAN245 es un cargador HyperJuice,Cargador HYPER HJGAN245-EU
+10120927,4895229165670,SHC5200M2/12,Samsung,Philips,Muy probable,SHC5200M2/12 es un modelo de Philips y el EAN es de Philips,Auriculares Samsung SHC5200M2/12 Inalámbrico On-Ear (Sobre la oreja) Negro No SHC5200M2/12
+10106705,6932849424416,U11,Realme,Tenda,Muy probable,U11 es un adaptador de Tenda y el EAN es de Tenda,"Adaptador de Conexiones Realme U11  | Wi-Fi 6, Dual Band, Modo AP, OFDMA MU-MIMO, Diseño c"
+10077627,0840283918278,PROTECTOR LENTE APPLE IPH,Apple,UAG,Muy probable,EAN del fabricante UAG (0840283…); el modelo está truncado,Protector de Pantalla Apple PROTECTOR LENTE APPLE IPH

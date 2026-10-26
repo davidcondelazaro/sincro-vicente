@@ -1,0 +1,69 @@
+cd_marca,nombre_actual,nombre_esperado,productos
+1655,"""Hisense """,Hisense,95
+1127,"""Beurer """,Beurer,88
+1385,"""Denver """,Denver,66
+1455,"""Elbe """,Elbe,46
+1447,"""Edesa """,Edesa,43
+1995,"""One For All """,One For All,43
+1380,"""Delonghi """,Delonghi,38
+1535,"""Fagor """,Fagor,37
+2335,"""Sunstech """,Sunstech,33
+2163,"""Russell Hobbs """,Russell Hobbs,27
+2525,"""Wahl """,Wahl,25
+2515,"""Vitrokitchen """,Vitrokitchen,21
+2130,"""Remington """,Remington,13
+2570,"""Wonder """,Wonder,9
+1070,"""Babyliss """,Babyliss,8
+1775,"""Kuhn Rikon """,Kuhn Rikon,7
+1853,"""Magic Vac """,Magic Vac,6
+1657,"""Hoover """,Hoover,1
+3407,"""Vileda """,Vileda,1
+3037,"""2K Games """,2K Games,0
+3038,"""2K Sports """,2K Sports,0
+3039,"""3Mk """,3Mk,0
+3041,"""505 Games """,505 Games,0
+3042,"""9H """,9H,0
+3043,"""Abbrazzio """,Abbrazzio,0
+3055,"""Archos """,Archos,0
+3056,"""Arozzi """,Arozzi,0
+3057,"""Astan """,Astan,0
+3059,"""Atari """,Atari,0
+3062,"""Audio Pro """,Audio Pro,0
+3072,"""Beats """,Beats,0
+1125,"""Berghoff """,Berghoff,0
+3087,"""Bolsa """,Bolsa,0
+1270,"""Butsir """,Butsir,0
+1300,"""Cartabon """,Cartabon,0
+3103,"""Caseland """,Caseland,0
+1375,"""Dailysafe """,Dailysafe,0
+1395,"""Di4 """,Di4,0
+1440,"""Ecomove """,Ecomove,0
+1443,"""Ecoxtrem """,Ecoxtrem,0
+1500,"""Elma """,Elma,0
+1532,"""Eureka """,Eureka,0
+1537,"""Fissler """,Fissler,0
+1652,"""Heco """,Heco,0
+3001,"""Innov8 """,Innov8,0
+1855,"""Magna """,Magna,0
+1895,"""Micel """,Micel,0
+3031,"""Nasa """,Nasa,0
+1953,"""New Pol """,New Pol,0
+1955,"""Nilson """,Nilson,0
+1970,"""Novogal """,Novogal,0
+2005,"""Otsein """,Otsein,0
+2030,"""Papelga """,Papelga,0
+2035,"""Pebbly """,Pebbly,0
+2050,"""Philips Avent """,Philips Avent,0
+2135,"""Ritter """,Ritter,0
+3032,"""Roborock """,Roborock,0
+2165,"""Sage """,Sage,0
+2230,"""Serifor """,Serifor,0
+3033,"""Sjöstrand """,Sjöstrand,0
+2265,"""Smartbot """,Smartbot,0
+2280,"""Smartwares """,Smartwares,0
+2365,"""Tangent """,Tangent,0
+2395,"""Technics """,Technics,0
+2425,"""Tm Electron """,Tm Electron,0
+2505,"""Veritas """,Veritas,0
+2510,"""Vitrex """,Vitrex,0
+2924,"""VivaPos """,VivaPos,0

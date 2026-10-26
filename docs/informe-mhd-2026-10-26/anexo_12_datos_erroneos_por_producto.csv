@@ -1,0 +1,74 @@
+codigo_mhd,ean,modelo,marca,subfamilia,campo,valor_actual,valor_correcto_o_esperado,evidencia,estado
+10139276,4242005553679,SPS2HKI55E,Bosch,Lavavajillas,Característica «Integrable» y título,«Integrable: Sí»; título «Lavavajillas Integrable»,No integrable (libre instalación),Su propia descripción ampliada: «LAVAVAJILLAS LIBRE INSTALACIÓN ANCHO 45 CM»,Confirmado
+10084955,4002516868637,TWA 520,Miele,Secadora de ropa,Característica «Integrable» y título,«Integrable: Sí»; título «Secadora Integrable»,No integrable (libre instalación),Su propia descripción ampliada: «SECADORAS DE LIBRE INSTALACIÓN»,Confirmado
+10057104,4242005307401,DWK91LT60,Bosch,Campana Extractora,Máxima capacidad de extracción,1007 m³/h,441 m³/h según la ficha del fabricante,Diferencia de más del doble,A comprobar
+10022912,7332543989324,EW6F3924AL,Electrolux,Lavadora,img_ficha_eficiencia (etiqueta energética),Etiqueta del modelo EN6F5922FB (EPREL 1335607),Etiqueta de la EW6F3924AL,El archivo enlazado lleva escrito otro modelo,Confirmado
+10060805,6935364072766,TAPO-P100-2-PACK,Tp-Link,Energía Domótica Smart Home,Potencia (y título),2990 W,"2300 W (enchufe de 10 A a 230 V, según la ficha del fabricante)",El mismo pack Tapo P100 en 10152017 trae 2300 W,Confirmado
+10114800,5397184962305,WH125-DWW,Dell,Auriculares,Noise Cancelling,Sí,No (auricular de oficina sin cancelación activa),Según la ficha del fabricante,A comprobar
+10090783,4711174725106,TC500,Synology,Video Vigilancia Domótica,Wifi,Sí,"No (cámara PoE, conexión por cable)",Según la ficha del fabricante: alimentación y datos por PoE,A comprobar
+10144115,8434778043037,IZC 63015 MSM,Teka,Placa de Inducción,Campana integrada,Sí,No,Placa de inducción sin extractor según su descripción ampliada,A comprobar
+10116283,7333394134222,TO63IQ00IT,Aeg,Placa de Inducción,Campana integrada,Sí,No (Hob2Hood es conexión con una campana aparte),Su descripción no menciona extractor integrado,A comprobar
+10145497,8445946034665,SI2302,Svan,Placa de Inducción,Campana integrada,Sí,No,Placa de inducción sin extractor; su descripción ampliada es la plantilla «Escriba aquí su descripción»,A comprobar
+10026392,8434778027068,IZC 63632 MPT,Teka,Placa de Inducción,Campana integrada,Sí,No,Su descripción ampliada no menciona extractor,A comprobar
+10026394,8434778027051,IZC 63320 MPS,Teka,Placa de Inducción,Campana integrada,Sí,No,Su descripción ampliada no menciona extractor,A comprobar
+10026387,8434778014709,IZF 68780 CONECT MST,Teka,Placa de Inducción,Campana integrada,Sí,No,Su descripción ampliada no menciona extractor,A comprobar
+10026305,8422248059190,GIGA 600 BK,Cata,Placa de Inducción,Campana integrada,Sí,No,Su descripción ampliada no menciona extractor,A comprobar
+10026699,8434778019483,GBC 64003 KBA BUT,Teka,Placa a Gas,Campana integrada,Sí,No,Placa de gas; su descripción ampliada no menciona extractor,A comprobar
+10026709,8434778025248,E/60.3 40 BUT,Teka,Placa a Gas,Campana integrada,Sí,No,Placa de gas; su descripción ampliada no menciona extractor,A comprobar
+10123478,8445946031985,AG4601X,Aspes,Placa a Gas,Campana integrada,1,No,Placa de gas; su descripción ampliada no menciona extractor; además «1» en lugar de Sí/No,A comprobar
+10123480,8445946032012,SGW4600B,Svan,Placa a Gas,Campana integrada,1,No,Placa de gas; su descripción ampliada no menciona extractor; además «1» en lugar de Sí/No,A comprobar
+10074986,4002516185277,KM 7667 FL,Miele,Placa de Inducción,Campana integrada,«Con@ctivity para conexión automática»,No (Con@ctivity es conexión con una campana aparte),Valor de otra característica,A comprobar
+10010693,0043859642854,POWERSHRED 60CS,Fellowes,Destructora de Papel,"Modelo (ref_proved), título y características",POWERSHRED 60CS,60Cs,Su descripción ampliada dice «FELLOWES 60CS»,Confirmado
+10010694,0043859690695,POWERSHRED 60CS,Fellowes,Destructora de Papel,"Modelo (ref_proved), título y características",POWERSHRED 60CS,P-25S,Su descripción ampliada dice «FELLOWES P - 25»,Confirmado
+10010696,0043859728510,POWERSHRED 60CS,Fellowes,Destructora de Papel,"Modelo (ref_proved), título y características",POWERSHRED 60CS,M-7C,Su descripción ampliada dice «FELLOWES M - 7C»,Confirmado
+10010698,0043859764778,POWERSHRED LX85,Fellowes,Destructora de Papel,"Modelo (ref_proved), título y características",POWERSHRED LX85,LX45,Su descripción ampliada dice «FELLOWES LX45»,Confirmado
+10010699,0043859764808,LX45,Fellowes,Destructora de Papel,"Modelo (ref_proved), título y características",LX45,12C (LX85/12C),Su descripción ampliada dice «FELLOWES 12C»,Confirmado
+10010702,0043859769018,LX45,Fellowes,Destructora de Papel,"Modelo (ref_proved), título y características",LX45,LX25,Su descripción ampliada dice «FELLOWES LX25»,Confirmado
+10108266,6942138936865,256370,Bestway,Aire Libre (Outdoor),Modelo (ref_proved),256370,57326,Su descripción ampliada: «BESTWAY 57326 - PISCINA»,Confirmado
+10028115,7612986162929,SQUARE 50.40,Mepamsa,Fregadero de cocina,Material,Acero inoxidable,Sintético (granito/fibra),Su descripción ampliada: «CUBETAS DE COLOR SINTÉTICOS … ACABADO SINTETICO»,Confirmado
+10028116,7612986162912,SQUARE 50.40,Mepamsa,Fregadero de cocina,Material,Acero inoxidable,Sintético (granito/fibra),Su descripción ampliada: «CUBETAS DE COLOR SINTÉTICOS … ACABADO SINTETICO»,Confirmado
+10142979,8436558026131,SIENA5043N,Nova,Fregadero de cocina,Material,Acero inoxidable,Sintético,Su descripción ampliada: «FREGADERO SINTETICO»,Confirmado
+10083966,8435092434389,M240226,Monix,"Ollas, Cacerolas y Cazos",Tipo y título,Olla a presión,Olla (con tapa de vidrio),Su descripción ampliada: «OLLA MONIX ELITE 26CM CON TAPA VIDRIO»,Confirmado
+10030131,4000530725011,791819990,WMF,"Ollas, Cacerolas y Cazos",Tipo,Olla de vapor,Olla a presión según la ficha del fabricante,,A comprobar
+10110115,8445946025861,SKM4501X,Svan,Cocina a Gas o Electrica,Tipo de gas,Natural,Butano,Su descripción ampliada: «COCINA MIXTA GAS BUTANO»,Confirmado
+10084086,5604409073518,G1530DVW1NAT,Meireles,Cocina a Gas o Electrica,Tipo de gas,Butano,Gas natural (sufijo NAT del modelo),,A comprobar
+10060677,4015867223260,2CONCIRO01W,Conceptronic,Accesorios Productos Limpieza,Descripción,Descripción de un switch HDMI 4K,Caja UV esterilizadora Conceptronic CIRO,Su descripción ampliada: «CAJA UV ESTERILIZADORA CONCEPTRONIC CIRO»,Confirmado
+10060678,4015867223277,2CONCIRO01WC,Conceptronic,Accesorios Productos Limpieza,Descripción,Descripción de un kit de teclado y ratón,Caja UV esterilizadora con cargador inalámbrico CIRO,Su descripción ampliada: «CAJA UV ESTERILIZADORA CARGADOR WIRELESS 10W»,Confirmado
+10055209,8436584384601,HTEN2375,Jata,Accesorios para Lavadoras,Descripción,Descripción de las bolsas de lavado JATA HPLA5210,Tendedero de aluminio HTEN2375,Su descripción ampliada: «TENDEDERO ALUMINIO PLEGABLE»,Confirmado
+10137542,0195951030715,SMARTPHONE APPLE IPHONE,Apple,Fundas para Teléfonos Móviles y Audio,"Título, subfamilia o precio","«Funda Apple Smartphone Apple Iphone», 1.321 €, subfamilia de fundas","Si es una funda, precio de funda; si es un iPhone 17e de 256 GB, título y subfamilia de smartphone",Su descripción habla de un iPhone 17E de 256 GB; el EAN es de Apple,Confirmado
+10012353,4008928396416,39641,Vivanco,Fundas para Teléfonos Móviles y Audio,Tipo de producto,Funda rígida,Cable USB-C según la ficha del fabricante,,A comprobar
+10001271,8713439204421,20442,Trust,Home Cinema,"Potencia, canales y tipo","600 W, 5.1, «Home Cinema»","Altavoces de PC Trust Avora 2.1 de 9 W, según la ficha del fabricante",,A comprobar
+10089941,8445484390919,2500002907,Cerdá,Moldeador Rizador de Pelo,Temperatura y potencia,200 ºC y 45 W,Ninguna (cepillo sin motor ni calor),Cepillo infantil sin motor,A comprobar
+10092164,0887930952858,30952850,Kodak,Pilas,Descripción,Descripción de una cámara digital compacta,Pila Kodak,,Confirmado
+10062458,0887930959529,30959521,Kodak,Pilas,Descripción,Descripción de una cámara digital compacta,Pila Kodak,,Confirmado
+10060729,6940533542094,TPVCAJON 56001,Unyka,TPV,Características de procesador y pantalla,"«Intel Core i3», «17""»",Ninguna (cajón portamonedas),Valores de otro producto de la subfamilia TPV,Confirmado
+10000414,8433281011922,LP1043F-B,Tooq,Soportes,Peso,510Kg,Peso real del soporte (unos kilos),Valor imposible para un soporte de pared,Confirmado
+10000442,8054392610905,EW1501,Ewent,Soportes,Peso,560Kg,Peso real del soporte (unos kilos),Valor imposible para un soporte de pared,Confirmado
+10078958,0736983031761,SELFIE STICK K07,Khomo,Soportes,Tipo Soporte,TV,Palo selfie,,Confirmado
+10016410,8004399024175,EC260.W,Delonghi,Cafeteras,Color Cafeteras,Acero Inoxidable,Blanco (modelo EC260.W),,Confirmado
+10016782,8436044522291,KF 100 A 1 TAZA,Orbegozo,Cafeteras,Color Cafeteras,Acero Inoxidable,Aluminio,,A comprobar
+10141736,8806096740002,75MRGB87B6B.AEU,LG,Televisor (TV),HDR,"1,00 cm","Formato HDR (HDR10, HLG…)",Valor de otra característica,Confirmado
+10068388,8435256898408,VPX-1971 BLACK,Aiwa,Giradiscos HiFi Hi End,Funcionamiento,Manual,Automático según la ficha del fabricante,,A comprobar
+10069406,3700460209582,MT-207PGR BLACK,Muse,Giradiscos HiFi Hi End,Funcionamiento,Manual,Automático según la ficha del fabricante,,A comprobar
+10151467,8711902065067,LS-100WD,Lenco,Giradiscos HiFi Hi End,Funcionamiento,Semiautomático,Automático según la ficha del fabricante,,A comprobar
+10023546,8436555985332,CSM320W,Corbero,Secadora de ropa,Nueva Clase Energética,C,Clase de la etiqueta oficial (la ficha del fabricante indica otra),,A comprobar
+10140530,6930265343632,HWS247GEH1,Haier,Vinotecas y Armarios Bodega,Clase energética,E,G según la ficha del fabricante,,A comprobar
+10118781,8720689029094,CP0709086,Philips,Accesorios para Afeitadoras,Modelo repetido,CP0709086 (45 €),Un único producto o el modelo correcto de cada uno,10081876 tiene el mismo modelo con otro EAN (48 €),A comprobar
+10081876,8720689029070,CP0709086,Philips,Accesorios para Afeitadoras,Modelo repetido,CP0709086 (48 €),Un único producto o el modelo correcto de cada uno,10118781 tiene el mismo modelo con otro EAN (45 €),A comprobar
+10083530,8445946023911,HQP19283NEDCW00,Hyundai,Frigorificos Americanos y Side By Side,Título frente a su web,Título: «puerta Francesa … 466L … Alto 193cm»,"Coherente con su web, que muestra «4 puertas 350l 192cm» y el modelo «HAM19283NEDCW00»",,A comprobar
+10140234,6942351434773,65E8S,Hisense,Televisor (TV),Tecnología de visualización TV,QLED,Mini LED,Su descripción ampliada: «TV HISENSE 65E8S MINILED»,Confirmado
+10144278,8806099120993,TQ55QN70HAUXXC,Samsung,Televisor (TV),Tecnología de visualización TV,QLED,Mini LED,Su propia descripción dice «Mini LED»,Confirmado
+10151977,6942351437149,55U7S PRO,Hisense,Televisor (TV),Tecnología de visualización TV,QLED,Mini LED,Su propia descripción dice «Mini LED»,Confirmado
+10144282,8806099138943,TU100M90HUXXC,Samsung,Televisor (TV),Tecnología de visualización TV,LED,Mini LED,Su propia descripción dice «Mini LED»,Confirmado
+10144262,8806099113612,TMR55R85HAUXXC,Samsung,Televisor (TV),Tecnología de visualización TV,LED,Micro RGB,"Su propia descripción: «televisor Samsung Micro RGB de 55""»",Confirmado
+10039592,8436545137383,SVCA01CH,Svan,Convector Mural eléctrico,Potencia y niveles de potencia,«Potencia: 2000W»; «Niveles de potencia: 3W»,1500 W según la ficha del fabricante; niveles: 3 (no «3W»),,A comprobar
+10028188,8434778004786,DISPENSADOR DE JABON,Teka,Accesorios para Fregaderos y Grifos,Modelo (ref_proved),DISPENSADOR DE JABON,115890012,"Referencia del fabricante, que figura en su descripción ampliada",Confirmado
+10139601,4573535358909,ATXF35F,Daikin,Aire Acondicionado de Instalación,Título,«Aire Acondicionado de Instalación Sistema split…»,Indicar que es solo la unidad interior,Se vende la unidad interior suelta,A comprobar
+10139813,8432884645275,DS-12KTP-6,Daitsu,Aire Acondicionado de Instalación,Título,«Aire Acondicionado de Instalación 54dB…»,Indicar que es solo la unidad interior,Se vende la unidad interior suelta; su característica «Tipo de unidad interna» es el propio modelo,A comprobar
+10084489,8435430625097,ARTICAHUSH,NGS,Auriculares,Noise Cancelling,Sí,Comprobar si tiene cancelación activa de ruido,Según la ficha del fabricante no coincide,A comprobar
+10095919,8422521022910,SONAIR-2M,Fonestar,Micrófono,Título (Bluetooth),«Micrófono Inalámbrico Bluetooth»,Sistema de micrófono UHF,Según la ficha del fabricante,A comprobar
+10098377,8422521022934,SONAIR-2MP,Fonestar,Micrófono,Título (Bluetooth),«Micrófono Inalámbrico Bluetooth»,Sistema de micrófono UHF,Según la ficha del fabricante,A comprobar
+10106011,4977766666961,TN230Y,Brother,Tóner para Impresoras,Color,Negro (visto en la revisión de perfiles; no lo localizamos en los datos actuales de la API),Amarillo (sufijo Y),,A comprobar
+10086799,6986000011861,M-LC3219M,Dayma,Cartucho para Impresoras,Color,Negro (visto en la revisión de perfiles; no lo localizamos en los datos actuales de la API),Magenta (sufijo M),,A comprobar
+10040581,8033509885160,G3CES250,Garantia3,Extensión de Garantía,es_garantia,false,true,Extensión de garantía G3CES250,Confirmado
+10040582,8033509885177,G3CES500,Garantia3,Extensión de Garantía,es_garantia,false,true,Extensión de garantía G3CES500,Confirmado

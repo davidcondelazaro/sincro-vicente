@@ -1,0 +1,6 @@
+codigo_mhd,ean,modelo,marca,imagen_en_listado_api,fotos_en_ficha_api,fotos_en_su_web_26_10_2026,ejemplo_de_foto_en_su_web,conclusion
+10144280,8806099121051,TQ75QN73HAUXXC,Samsung,https://cdn.mihogardigital.es/img/8806099121051_m002.webp (no existe: 403),0,10,https://cdn.mihogardigital.es/img/analyzed/mhd/8806099121051_m002.webp … _v002.webp,La API no da ninguna foto descargable; la web tiene 10
+10084925,4002516867968,TWD 640,Miele,https://cdn.mihogardigital.es/img/4002516867968_a001.webp,0,5,https://cdn.mihogardigital.es/img/analyzed/mhd/4002516867968_a001.webp (también _c001 _f001 _n _r),La ficha de la API no trae las 5 fotos de la web
+10026959,8436555982607,CC900X,Corbero,https://cdn.mihogardigital.es/img/8436555982607_a001.webp,0,1,https://cdn.mihogardigital.es/img/analyzed/mhd/8436555982607_a001.webp,La ficha de la API no trae la foto de la web; la del listado apunta a la otra ruta
+10141743,8806096704479,86QNED86B6B.AEU,LG,(vacío),0,0,(ninguna; solo la etiqueta energética),Producto sin ninguna foto ni en la API ni en la web
+10083530,8445946023911,HQP19283NEDCW00,Hyundai,(vacío),0,0,(ninguna; solo la etiqueta energética),Producto sin ninguna foto ni en la API ni en la web

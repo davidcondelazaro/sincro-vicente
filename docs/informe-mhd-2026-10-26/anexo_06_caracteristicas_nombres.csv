@@ -1,0 +1,68 @@
+tipo,nombres,propuesta,productos
+Doble espacio en el nombre,"""Tipo de  Montaje""",Tipo de Montaje,850
+Dos nombres para lo mismo en la misma ficha,"""Clase energética"" y ""Nueva Clase Energética""",Uno solo,432
+Dos nombres para lo mismo en la misma ficha,"""Capacidad"" y ""Capacidad interior""",Uno solo,188
+Dos nombres para lo mismo en la misma ficha,"""Color"" y ""Color del producto""",Uno solo,186
+Errata en el nombre,Bluethooth,Bluetooth,808
+Misma característica repetida en la ficha,Tipo de auricular,Una sola vez (con los valores juntos si son varios),584
+Misma característica repetida en la ficha,Color,Una sola vez (con los valores juntos si son varios),331
+Misma característica repetida en la ficha,Color del producto,Una sola vez (con los valores juntos si son varios),258
+Misma característica repetida en la ficha,Sensibilidad auricular,Una sola vez (con los valores juntos si son varios),255
+Misma característica repetida en la ficha,Sistemas operativos móviles soportados,Una sola vez (con los valores juntos si son varios),189
+Misma característica repetida en la ficha,Tipo,Una sola vez (con los valores juntos si son varios),172
+Misma característica repetida en la ficha,Puertos tipo básico de conmutación,Una sola vez (con los valores juntos si son varios),172
+Misma característica repetida en la ficha,puertos básicos,Una sola vez (con los valores juntos si son varios),152
+Misma característica repetida en la ficha,Utilizar con,Una sola vez (con los valores juntos si son varios),149
+Misma característica repetida en la ficha,Protección,Una sola vez (con los valores juntos si son varios),140
+Misma característica repetida en la ficha,Adecuado para,Una sola vez (con los valores juntos si son varios),127
+Misma característica repetida en la ficha,Profundidad,Una sola vez (con los valores juntos si son varios),104
+Misma característica repetida en la ficha,Conectividad Altavoces,Una sola vez (con los valores juntos si son varios),97
+Misma característica repetida en la ficha,Altura,Una sola vez (con los valores juntos si son varios),95
+Misma característica repetida en la ficha,Productos compatibles,Una sola vez (con los valores juntos si son varios),95
+Misma característica repetida en la ficha,Colores de impresión,Una sola vez (con los valores juntos si son varios),85
+Misma característica repetida en la ficha,Diseño,Una sola vez (con los valores juntos si son varios),84
+Misma característica repetida en la ficha,Uso recomendado,Una sola vez (con los valores juntos si son varios),83
+Misma característica repetida en la ficha,Tamaño papel,Una sola vez (con los valores juntos si son varios),70
+Misma característica repetida en la ficha,Conexión,Una sola vez (con los valores juntos si son varios),69
+Misma característica repetida en la ficha,Impresión,Una sola vez (con los valores juntos si son varios),68
+Misma característica repetida en la ficha,Protección Fundas Teléfonos,Una sola vez (con los valores juntos si son varios),63
+Misma característica repetida en la ficha,Sistema operativo MAC soportado,Una sola vez (con los valores juntos si son varios),61
+Misma característica repetida en la ficha,Compatibilidad,Una sola vez (con los valores juntos si son varios),58
+Misma característica repetida en la ficha,Procesador,Una sola vez (con los valores juntos si son varios),50
+Misma característica repetida en la ficha,Diámetro,Una sola vez (con los valores juntos si son varios),49
+Misma característica repetida en la ficha,Conectividad Auriculares,Una sola vez (con los valores juntos si son varios),47
+Misma característica repetida en la ficha,Capacidad,Una sola vez (con los valores juntos si son varios),44
+Misma característica repetida en la ficha,Montaje en rack,Una sola vez (con los valores juntos si son varios),43
+Misma característica repetida en la ficha,Marca compatible,Una sola vez (con los valores juntos si son varios),39
+Misma característica repetida en la ficha,Bandas de radio,Una sola vez (con los valores juntos si son varios),35
+Misma característica repetida en la ficha,Tipo de consumible,Una sola vez (con los valores juntos si son varios),35
+Misma característica repetida en la ficha,Velocidad de impresión,Una sola vez (con los valores juntos si son varios),33
+Misma característica repetida en la ficha,Interfaz del dispositivo,Una sola vez (con los valores juntos si son varios),32
+Misma característica repetida en la ficha,Escáner,Una sola vez (con los valores juntos si son varios),32
+Misma característica repetida en la ficha,Tarjetas de memoria compatibles,Una sola vez (con los valores juntos si son varios),30
+Misma característica repetida en la ficha,Formato imagen soportada,Una sola vez (con los valores juntos si son varios),29
+Misma característica repetida en la ficha,Fuente de energía,Una sola vez (con los valores juntos si son varios),29
+Misma característica repetida en la ficha,Diseño Auriculares,Una sola vez (con los valores juntos si son varios),28
+Misma característica repetida en la ficha,Copia,Una sola vez (con los valores juntos si son varios),28
+Misma característica repetida en la ficha,Tecnología de conectividad,Una sola vez (con los valores juntos si son varios),26
+Misma característica repetida en la ficha,Bluethooth,Una sola vez (con los valores juntos si son varios),26
+Misma característica repetida en la ficha,Banda Wi-Fi,Una sola vez (con los valores juntos si son varios),26
+Misma característica repetida en la ficha,Pantalla,Una sola vez (con los valores juntos si son varios),24
+Misma característica repetida en la ficha,Color Cafeteras,Una sola vez (con los valores juntos si son varios),23
+Misma característica repetida en la ficha,Factor de forma,Una sola vez (con los valores juntos si son varios),20
+Mismo concepto con varios nombres,"""Color"" / ""Color del producto"" / ""Color Cafeteras"" / ""Color de la carcasa""",Color,11491
+Mismo concepto con varios nombres,"""Bluetooth"" / ""Bluethooth""",Bluetooth,2494
+Mismo concepto con varios nombres,"""Capacidad"" / ""Capacidad interior"" / ""Capacidad (L)"" / ""Capacidad Total"" / ""capacidad total""",Capacidad (con unidad),1932
+Mismo concepto con varios nombres,"""Clase energética"" / ""Clase Energética"" / ""Nueva Clase Energética"" / ""Clase de eficiencia de energía""",Clase energética (indicando si es la escala A-G vigente o la anterior),1241
+Mismo nombre con distinta mayúscula o espaciado,"""Wifi"" / ""WiFi""",Wifi,2418
+Mismo nombre con distinta mayúscula o espaciado,"""Tamaño pantalla"" / ""Tamaño Pantalla""",Tamaño pantalla,930
+Mismo nombre con distinta mayúscula o espaciado,"""Tipo de  Montaje"" / ""Tipo de montaje""",Tipo de  Montaje,866
+Mismo nombre con distinta mayúscula o espaciado,"""Ram"" / ""RAM""",Ram,765
+Mismo nombre con distinta mayúscula o espaciado,"""Clase energética"" / ""Clase Energética""",Clase energética,676
+Mismo nombre con distinta mayúscula o espaciado,"""Nº Hdmi"" / ""Nº HDMI""",Nº Hdmi,599
+Mismo nombre con distinta mayúscula o espaciado,"""capacidad total"" / ""Capacidad Total""",capacidad total,297
+Mismo nombre con distinta mayúscula o espaciado,"""No frost"" / ""No Frost""",No frost,272
+Mismo nombre con distinta mayúscula o espaciado,"""Monitor cardíaco"" / ""Monitor Cardíaco""",Monitor cardíaco,236
+Mismo nombre con distinta mayúscula o espaciado,"""zonas cocción"" / ""Zonas cocción""",zonas cocción,232
+Mismo nombre con distinta mayúscula o espaciado,"""Tipo de uso"" / ""Tipo de Uso""",Tipo de uso,183
+Mismo nombre con distinta mayúscula o espaciado,"""Sistema operativo"" / ""Sistema Operativo""",Sistema operativo,30
