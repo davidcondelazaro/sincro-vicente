@@ -9,7 +9,8 @@ Diseño acordado con David para mantener la tienda al día una vez terminado el 
 | 30 min | Precio y stock directos a Shopify, sin IA | `/prices` y `/stocks` con `fecha_modificacion_precio` / `fecha_modificacion_stock` desde la última lectura (unos cientos por hora) |
 | 1 hora | Altas: todo el proceso del importador (ficha de detalle, Icecat, IA, fotos, subida) | `/products` con `fecha_modificacion_producto` desde la última lectura; un código nuevo es un alta |
 | 1 hora | Modificaciones, según su tipo (abajo) | El mismo `/products` filtrado; las huellas por partes (`IMPORTACION_FICHAS_MHD_Y_HUELLAS.md`) dicen qué ha cambiado |
-| 1 hora | Bajas: archivar y redirigir | Listado completo de códigos (`/prices` entero, ~9 s) comparado con lo que tenemos |
+| 1 hora | Bajas: archivar y redirigir; opciones de entrega | Listado completo de `/products` (33 s, 125 MB): códigos que faltan y huellas de portes y servicios |
+| 1 día | Repaso completo de precio y stock | `/prices` y `/stocks` enteros (~9 s cada uno), por si un cambio se escapó al filtro por fecha |
 
 Solo las altas y las modificaciones importantes piden el resto de datos (ficha de detalle, Icecat…). Todo lo demás sale de la lectura básica. Filtros por fecha comprobados en `API_MHD.md`.
 
@@ -40,7 +41,7 @@ Propuesta inicial:
 | Familia o subfamilia | **Se recoloca solo en el árbol nuevo** (David, 2026-10-26): metacampos de apartado, grupo y familia, colecciones y migas de pan. Se recalculan también los filtros (`filtro.*`), que dependen de la familia. La dirección del producto no cambia, así que no hace falta redirección. |
 | Marca, EAN o modelo | **A revisión, sin tocar nada** (David, 2026-10-26): puede ser otro producto con el mismo código. Sale en el resumen diario. |
 | Clase energética | **Todo lo que depende de ella** (David, 2026-10-26): la etiqueta energética (`custom.etiqueta_energetica`), la ficha de información del producto de la UE y el enlace a EPREL (`custom.documentos`, `custom.eprel`), el filtro de eficiencia y la etiqueta «Energética». Como es un dato clave, también se rehacen los textos (regla de los cambios de datos). Si la etiqueta nueva no casa con el modelo, a revisión. |
-| Opciones de entrega | **Se actualizan solas, siempre** (David, 2026-10-26: «esta parte es importantísima»): portes, subida, instalación y retirada del viejo, con sus precios, al metacampo `custom.opciones_entrega`, sin IA. Hoy esos campos van dentro de la huella «precio» (`mhd_hash_parts`), pero `/prices` no los devuelve: conviene separarlos en una huella propia y comprobar qué fecha de modificación de MHD cambia cuando cambia un servicio (si ninguna, leerlos del listado completo cada hora). Sale en el resumen diario. Si un servicio desaparece o su precio sube mucho, aviso en el resumen. |
+| Opciones de entrega | **Se actualizan solas, siempre** (David, 2026-10-26: «esta parte es importantísima»): portes, subida, instalación y retirada del viejo, con sus precios, al metacampo `custom.opciones_entrega`, sin IA. Hoy esos campos van dentro de la huella «precio» (`mhd_hash_parts`), pero `/prices` no los devuelve. Se detectan **cada hora con el listado completo de `/products`** (medido el 2026-10-26: 30.961 productos en 4 páginas de 9.999, **33 s y 125 MB**; trae los siete campos de portes y servicios), sin depender de qué fecha cambie MHD. Conviene separarlos en una huella propia. Sale en el resumen diario. Si un servicio desaparece o su precio sube mucho, aviso en el resumen. |
 
 ## Pendiente de decidir
 
