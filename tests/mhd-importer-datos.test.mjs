@@ -224,3 +224,16 @@ test("título: los datos clave solo se exigen si son una cifra (masivo, 2026-10-
   assert.equal(missingKeyData("Lavadora Bosch WAN24272ES", perfil, datos("", "9 kg")).length, 1);
   assert.deepEqual(missingKeyData("Lavadora Bosch WAN24272ES de 9 kg", perfil, datos("", "9 kg")), []);
 });
+
+test("redirecciones: ruta vieja y a qué apunta (2026-10-26)", async () => {
+  const { originPath, keyFor, parseCsv } = await jiti.import("../src/lib/redirects/load.ts");
+  assert.equal(originPath("https://www.electronicavicente.com/lavadoras/lavadora-bosch-1.html?x=1"), "/lavadoras/lavadora-bosch-1.html");
+  assert.equal(originPath("/marca/aeg-2/"), "/marca/aeg-2");
+  const ids = new Map([["lavadora-bosch-wan24272es", "gid://shopify/Product/1"]]);
+  assert.deepEqual(keyFor("/lavadoras/lavadora-bosch-1.html", "/products/lavadora-bosch-wan24272es", "producto", ids).shopify_product_id, "gid://shopify/Product/1");
+  assert.equal(keyFor("/lavadoras-12", "/collections/lavadoras", "categoría", ids).key_type, "coleccion");
+  assert.equal(keyFor("/marca/aeg-2", "/collections/aeg", "marca", ids).key_value, "aeg");
+  assert.deepEqual([keyFor("/combis/combi-balay-3kfd-13968.html", null, null, ids).key_type, keyFor("/combis/combi-balay-3kfd-13968.html", null, null, ids).key_value], ["producto_viejo", "13968"]);
+  assert.equal(keyFor("/pulseras-de-actividad", null, null, ids).key_type, "categoria_vieja");
+  assert.deepEqual(parseCsv('a,b\n"x, y",2\n'), [{ a: "x, y", b: "2" }]);
+});
