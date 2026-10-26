@@ -14,7 +14,6 @@ import { checkIcecatIdentity, labelMatches, labelText } from "./identity";
 import { classifyImages, imageFilenames, KIND_ALT, normalizeEnergyLabel, orderImages, pdfFirstPageToPng, prepareImages, processImage, slugify, type ClassifiedImage, type ImageKind } from "./images";
 import type { FamilyProfile } from "./profile";
 import { classifyVideos, prepareVideos, type VideoKind } from "./videos";
-import { reviewsMetafield } from "./reviews";
 import { applyProfile, discardReason, firstNumber, sourceValues, type AppliedRules } from "./rules";
 import { fetchIcecatByModel, fetchIcecatDocument, fetchMhdMedia } from "./sources";
 import { shopifyGraphql } from "./store-filters";
@@ -215,8 +214,6 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   const handle = await freeHandle(deps.config, base, typeof applied.metafields["filtro.color"] === "string" ? applied.metafields["filtro.color"] as string : null, previousRun?.shopify_product_id ?? null);
   const sellWithoutStock = STORE_RULES.sellOutOfStockBrands.includes(vendor) && STORE_RULES.sellOutOfStockLines.includes(listing.cod_linea ?? "");
   // Opiniones que ya tenemos de este EAN (Trusted Shops) con el resumen de Elvi, para la sección «Opiniones».
-  const opinions = await reviewsMetafield(deps.db, deps.ai, listing.codigo_ean, written.content.title).catch((caught: Error) => { warnings.push(`Opiniones: ${caught.message}`); return { metafield: null, costUsd: 0 }; });
-  cost += opinions.costUsd;
   const technical = icecatMetafield(icecat, gathered.detail?.caracteristicas ?? [], youtube);
   const metafields: MetafieldInput[] = [
     { namespace: "custom", key: "referencia", type: "single_line_text_field", value: listing.ref_proved ?? "" },
@@ -227,7 +224,6 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
     ...(listing.opciones_entrega ? [{ namespace: "custom", key: "opciones_entrega", type: "json", value: json(listing.opciones_entrega) }] : []),
     ...(icecat?.eprelId ? [{ namespace: "custom", key: "eprel", type: "single_line_text_field", value: icecat.eprelId }] : []),
     ...(technical ? [{ namespace: "custom", key: "icecat", type: "json", value: json(technical) }] : []),
-    ...(opinions.metafield ? [{ namespace: "custom", key: "opiniones", type: "json", value: json(opinions.metafield) }] : []),
     ...(written.content.elvi_tip.text.trim() ? [{ namespace: "custom", key: "consejo_elvi", type: "multi_line_text_field", value: written.content.elvi_tip.text.trim() }] : []),
     ...Object.entries(applied.metafields).map(([key, value]) => { const [namespace, name] = key.split("."); return { namespace, key: name, type: LISTS.has(key) ? "list.single_line_text_field" : "single_line_text_field", value: Array.isArray(value) ? json(value) : value }; }),
   ];

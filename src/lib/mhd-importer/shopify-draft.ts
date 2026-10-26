@@ -153,7 +153,7 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   // Al actualizar, productSet no borra los metacampos que ya no van (p. ej. la etiqueta, el EPREL o la ficha de Icecat
   // de otro modelo): se borran aquí los que gestiona el importador y esta vez no llevan valor.
   if (existing) {
-    const managed = [...shop.metafields.map((item) => `${item.namespace}.${item.key}`), "custom.etiqueta_energetica", "custom.eprel", "custom.icecat", "custom.documentos", "custom.videos", "custom.opiniones"];
+    const managed = [...shop.metafields.map((item) => `${item.namespace}.${item.key}`), "custom.etiqueta_energetica", "custom.eprel", "custom.icecat", "custom.documentos", "custom.videos"];
     const kept = new Set(finalMetafields.map((item) => `${item.namespace}.${item.key}`));
     const stale = [...new Set(managed)].filter((name) => !kept.has(name)).map((name) => { const [namespace, key] = name.split("."); return { ownerId: created.id, namespace, key }; });
     if (stale.length) {

@@ -117,6 +117,8 @@ alter table public.mhd_catalog_import_runs add constraint mhd_catalog_import_run
 
 -- Fichas que faltan en una ejecución: las que no hay, las de fecha de modificación distinta a la del listado y, en
 -- «details_all», todas las que esta ejecución aún no ha leído. No se repite en la misma ejecución una que ya falló.
+-- Las que MHD no tiene (404) no se vuelven a pedir mientras no cambie su fecha de modificación en el listado: sin
+-- ficha no hay características ni, por tanto, filtros (David, 2026-10-23).
 -- Fuera el merchandising (S95) y los servicios (S93), que no se importan.
 create or replace function public.mhd_import_detail_pending(p_run_id uuid)
 returns table (codigo text) language sql stable security definer set search_path = public as $$
@@ -126,7 +128,8 @@ returns table (codigo text) language sql stable security definer set search_path
     cross join (select kind from public.mhd_catalog_import_runs where id = p_run_id) r
    where p.presence_status = 'present' and coalesce(p.cod_familia, '') not in ('S95', 'S93')
      and d.last_attempt_run_id is distinct from p_run_id
-     and (d.codigo is null or d.source_payload is null
+     and (d.codigo is null
+          or (d.source_payload is null and not (d.last_error like '%(404)%' and d.fecha_modificacion_producto is not distinct from p.fecha_modificacion_producto))
           or d.fecha_modificacion_producto is distinct from p.fecha_modificacion_producto
           or r.kind = 'details_all')
    order by p.codigo
@@ -168,9 +171,12 @@ begin
   on conflict (codigo) do update set source_payload = excluded.source_payload, fetched_at = excluded.fetched_at,
     last_seen_run_id = excluded.last_seen_run_id, last_attempt_run_id = excluded.last_attempt_run_id, last_error = null, last_error_at = null;
 
-  insert into public.mhd_catalog_product_details (codigo, last_attempt_run_id, last_error, last_error_at)
-  select f->>'codigo', p_run_id, left(f->>'error', 500), v_now from jsonb_array_elements(p_failed) f
-  on conflict (codigo) do update set last_attempt_run_id = excluded.last_attempt_run_id, last_error = excluded.last_error, last_error_at = excluded.last_error_at;
+  -- En las 404 se apunta la fecha de modificación del listado: hasta que cambie, no se vuelven a pedir.
+  insert into public.mhd_catalog_product_details (codigo, fecha_modificacion_producto, last_attempt_run_id, last_error, last_error_at)
+  select f->>'codigo', case when f->>'error' like '%(404)%' then p.fecha_modificacion_producto end, p_run_id, left(f->>'error', 500), v_now
+    from jsonb_array_elements(p_failed) f left join public.mhd_catalog_products p on p.codigo = f->>'codigo'
+  on conflict (codigo) do update set fecha_modificacion_producto = case when public.mhd_catalog_product_details.source_payload is null then excluded.fecha_modificacion_producto else public.mhd_catalog_product_details.fecha_modificacion_producto end,
+    last_attempt_run_id = excluded.last_attempt_run_id, last_error = excluded.last_error, last_error_at = excluded.last_error_at;
 
   v_prog := coalesce(v_run.entity_progress->'details', '{}'::jsonb);
   v_prog := v_prog || jsonb_build_object('done', coalesce((v_prog->>'done')::integer, 0) + v_ok + v_ko,

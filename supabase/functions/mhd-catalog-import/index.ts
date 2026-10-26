@@ -69,7 +69,10 @@ async function fetchDetail(codigo: string) {
     try {
       const response = await fetch(url, { headers: { Accept: "application/json", Authorization: authorization }, signal: AbortSignal.timeout(20_000) });
       if (response.status === 404) return { error: "MHD no tiene la ficha (404)" };
-      const body = await response.json().catch(() => null) as { success?: boolean; data?: Record<string, unknown> } | null;
+      // Alguna ficha trae el carácter nulo (\u0000), que jsonb no admite y tumbaría la tanda entera: se quita.
+      const text = (await response.text()).replace(/\\u0000/g, "");
+      let body: { success?: boolean; data?: Record<string, unknown> } | null = null;
+      try { body = JSON.parse(text); } catch { body = null; }
       if (response.ok && body?.success && body.data) return { row: { ...body.data, codigo: String(body.data.codigo ?? codigo) } };
       lastError = `HTTP ${response.status}`;
       // Con 4xx que no sean de saturación no tiene sentido insistir.
@@ -115,7 +118,8 @@ async function step(runId: string) {
     // Un fallo de la base en una tanda: se libera la reserva y el vigilante la retoma.
     try { await detailsStep(runId, lease_token); }
     catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      // Los errores de Supabase son objetos, no Error: se sacan mensaje, detalle y código.
+      const message = error instanceof Error ? error.message : [(error as { message?: string })?.message, (error as { details?: string })?.details, (error as { code?: string })?.code].filter(Boolean).join(" · ") || JSON.stringify(error);
       await db.rpc("mhd_import_page_failed", { p_run_id: runId, p_lease_token: lease_token, p_entity: entity, p_part: part, p_page: page, p_attempts: 1, p_duration_ms: 0, p_error: message });
       console.error(JSON.stringify({ run: runId, entity, error: message }));
     }

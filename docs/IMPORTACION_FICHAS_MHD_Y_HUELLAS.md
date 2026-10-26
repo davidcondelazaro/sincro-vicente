@@ -15,7 +15,7 @@ filtros que MHD ha decidido para cada subfamilia, y de ellas salen nuestros filt
 - `mhd_catalog_product_details`: el **JSON entero** de la ficha de cada producto (`source_payload`), con la fecha de
   modificación de MHD, cuándo se leyó y el último error si no se pudo leer. Las fotos se guardan como enlaces, no se
   descargan.
-- Fuera el merchandising (S95) y los servicios (S93), que no se importan.
+- Fuera el merchandising (S95) y los servicios y garantías (S93): no se descargan sus fichas (confirmado por David, 2026-10-23). Las garantías quedan pendientes de decidir; ver `docs/IMPORTADOR_PRODUCTOS_MHD.md`.
 
 ## Huellas (para las actualizaciones por partes)
 
@@ -71,6 +71,9 @@ Ritmo y límites:
 
 ## Pendiente
 
+- **Servicios y portes van con el precio (David, 2026-10-24):** ya están dentro de `hash_precio`, así que no necesitan
+  huella propia. Condición para el refresco: la sincronización parcial de precio también reescribe
+  `custom.opciones_entrega` (portes, subida, retirada e instalación), no solo el precio de la variante.
 - Usar la vista de cambios en el refresco de Shopify (textos, filtros, imágenes, precio y stock por separado).
 - Comprobar con datos reales que MHD cambia `fecha_modificacion_producto` cuando cambia las características o las
   fotos. Si no, la importación de fichas habrá que lanzarla de vez en cuando con `details_all`.

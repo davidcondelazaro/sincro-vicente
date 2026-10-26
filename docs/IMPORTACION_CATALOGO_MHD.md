@@ -296,3 +296,16 @@ marcas 2 s, categorías 2 s); solo productos 2 min 58 s. La primera completa
 en producción queda pendiente de lanzarla a mano. Primera importación de
 productos en producción (22-10, 12:52): 30.649 productos en 2 min 10 s, sin
 errores.
+
+**Primera importación completa en producción (22-10-2026, 14:56):** 2 min 52 s,
+51 páginas, ninguna con error.
+
+| Parte | Registros | Duración |
+| --- | --- | --- |
+| Categorías (3 niveles) | 651 | 3 s |
+| Marcas | 2.058 | 3 s |
+| Productos | 30.650 | 1 min 57 s |
+| Precios | 30.650 | 24 s |
+| Stock | 30.650 | 21 s |
+
+Solo productos (14:35): 30.660 en 2 min 1 s.
