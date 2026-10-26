@@ -15,18 +15,18 @@ type Run = {
   page_errors: PageError[];
 };
 
-const labels: Record<string, string> = { categories: "Categorías", brands: "Marcas", products: "Productos", prices: "Precios", stock: "Stock", details: "Fichas de detalle" };
-const kindLabels: Record<string, string> = { full: "Completa", ...labels, details_all: "Todas las fichas" };
+const labels: Record<string, string> = { categories: "Categorías", brands: "Marcas", products: "Productos", prices: "Precios", stock: "Stock", details: "Fichas de detalle de producto" };
+const kindLabels: Record<string, string> = { full: "Completa", ...labels, details_all: "Todas las fichas de detalle de producto", details_codes: "Fichas de detalle de producto (lista)" };
 const pageSizes: Record<string, number> = { categories: 1000, brands: 1000, products: 1000, prices: 5000, stock: 5000, details: 300 };
 const launchers = [
-  { kind: "full", detail: "Categorías, marcas, productos, precios, stock y las fichas nuevas o cambiadas." },
+  { kind: "full", detail: "Categorías, marcas, productos, precios, stock y las fichas de detalle de producto nuevas o cambiadas." },
   { kind: "categories", detail: "Los tres niveles: líneas, familias y subfamilias." },
   { kind: "brands", detail: "Listado de marcas." },
   { kind: "products", detail: "Catálogo de productos." },
   { kind: "prices", detail: "Todos los precios (/prices)." },
   { kind: "stock", detail: "Todo el stock (/stocks)." },
-  { kind: "details", detail: "Fichas (características y fotos) que faltan o que MHD ha modificado. Una petición por producto, de 2 en 2." },
-  { kind: "details_all", detail: "Todas las fichas otra vez, aunque no hayan cambiado. Tarda horas." },
+  { kind: "details", detail: "Fichas de detalle de producto (características y fotos) que faltan o que MHD ha modificado. Una petición por producto, de 8 en 8." },
+  { kind: "details_all", detail: "Todas las fichas de detalle de producto otra vez, aunque no hayan cambiado. Unos 40 minutos." },
 ];
 const STALL_MS = 60_000;
 
