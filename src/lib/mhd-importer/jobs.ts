@@ -109,9 +109,12 @@ export async function processJobItem(deps: { db: SupabaseClient; config: Sources
     log.add({ level: "info", step: "Producto", message: `${result.status === "ok" ? `Hecho: ${result.product.content.title}` : `Descartado: ${result.reason}`} · ${Math.round(duration / 1000)} s`, durationMs: duration });
   } catch (caught) {
     const message = caught instanceof Error ? caught.message : typeof caught === "object" && caught && "message" in caught ? String((caught as { message: unknown }).message) : String(caught);
-    // Sin saldo en Anthropic: se pausan todas las tandas y el producto vuelve a la cola sin gastar intento.
-    if (/credit balance|billing|saldo/i.test(message)) {
-      await deps.db.rpc("mhd_importer_pause_all", { p_reason: `Anthropic no tiene saldo: ${message.slice(0, 200)}` });
+    // Sin saldo en Anthropic o tope de gasto del espacio de trabajo alcanzado («workspace API usage limits», 2026-10-26:
+    // no se detectaba y más de mil productos acabaron en error): se pausan todas las tandas y el producto vuelve a la cola
+    // sin gastar intento.
+    if (/credit balance|billing|saldo|usage limits?/i.test(message)) {
+      const reason = /usage limits?/i.test(message) ? "Anthropic: se ha alcanzado el tope de gasto del espacio de trabajo" : "Anthropic no tiene saldo";
+      await deps.db.rpc("mhd_importer_pause_all", { p_reason: `${reason}: ${message.slice(0, 200)}` });
       log.add({ level: "error", step: "Producto", message: `Sin saldo en Anthropic: tandas pausadas. ${message}`, durationMs: Date.now() - started });
       await deps.db.from("mhd_importer_job_items").update({ status: "pendiente", attempts: Math.max(0, item.attempts - 1), lease_until: null, step: null }).eq("id", item.id);
       return;
