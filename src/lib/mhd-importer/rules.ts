@@ -16,7 +16,7 @@ export type AppliedRules = {
 // Claves de las fuentes: «mhd:<característica>» e «icecat:<sección>|<característica>», en minúsculas para comparar.
 // «texto:descripcion» junta la descripción de MHD y el resumen y destacados de Icecat, para reglas «contiene» que
 // buscan nombres comerciales (p. ej. «i-DOS» → Autodosificador).
-export function sourceValues(detail: MhdProductDetail | null, icecat: IcecatSummary | null, listing?: { descripcion?: string | null; descripcion_ampliada?: string | null; nombre_subfamilia?: string | null; titulo?: string | null }): SourceValues {
+export function sourceValues(detail: MhdProductDetail | null, icecat: IcecatSummary | null, listing?: { descripcion?: string | null; descripcion_ampliada?: string | null; nombre_subfamilia?: string | null; titulo?: string | null; nombre_marca?: string | null }): SourceValues {
   const values: SourceValues = new Map();
   if (listing?.nombre_subfamilia) values.set("mhd:subfamilia", listing.nombre_subfamilia.trim());
   const text = [listing?.descripcion, listing?.descripcion_ampliada, icecat?.longSummary, ...(icecat?.bulletPoints ?? [])].filter(Boolean).join(" ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
@@ -32,6 +32,7 @@ export function sourceValues(detail: MhdProductDetail | null, icecat: IcecatSumm
   if (icecat?.category) values.set("icecat:categoria", icecat.category.trim());
   if (icecat?.title) values.set("icecat:titulo", icecat.title.trim());
   if (listing?.titulo?.trim()) values.set("mhd:titulo", listing.titulo.trim());
+  if (listing?.nombre_marca?.trim()) values.set("mhd:marca", listing.nombre_marca.trim());
   return values;
 }
 
