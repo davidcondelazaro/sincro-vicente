@@ -59,7 +59,9 @@ async function fetchPage(entity: string, part: number, page: number) {
 // Fichas de detalle: una petición por producto (/products/:codigo), así que van de pocas en pocas (DETAIL_CONCURRENCY
 // a la vez) y con un tope de tiempo por tanda para no pasar de la reserva de 90 s. Las que no se llegan a pedir siguen
 // pendientes para la tanda siguiente; las que fallan se apuntan con el motivo y se reintentan en la próxima importación.
-const DETAIL_BATCH = 60, DETAIL_CONCURRENCY = 2, DETAIL_BUDGET_MS = 55_000;
+// 2026-10-26: de 60 de 2 en 2 (~1 ficha por segundo, 8 horas el catálogo) a 300 de 8 en 8. Medido: MHD contesta en
+// ~0,3 s y con 10 a la vez da 12 fichas por segundo sin errores (~40 min el catálogo).
+const DETAIL_BATCH = 300, DETAIL_CONCURRENCY = 8, DETAIL_BUDGET_MS = 55_000;
 
 async function fetchDetail(codigo: string) {
   const url = mhdUrl(`products/${encodeURIComponent(codigo)}`, 1, 1).replace(/\?.*$/, "");

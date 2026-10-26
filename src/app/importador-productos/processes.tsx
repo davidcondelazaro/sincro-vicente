@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { WARNING_KINDS } from "@/lib/mhd-importer/warning-kinds";
 
 // Procesos del importador (docs/IMPORTADOR_PRODUCTOS_MHD.md): tandas de productos que procesa en producción el
 // trabajador de Vercel, sin depender del ordenador de nadie. Se ve en directo qué hace con cada producto, cuánto tarda
@@ -32,6 +33,14 @@ async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { cache: "no-store", ...init, headers: { "Content-Type": "application/json", ...init?.headers } });
   const body = await response.json(); if (!response.ok) throw new Error(body.error ?? "Error de la API.");
   return body as T;
+}
+type Warning = { tipo: string; productos: number; avisos: number; ejemplos: string[] };
+const KIND_BY_TIPO = new Map(WARNING_KINDS.map((kind) => [kind.tipo, kind]));
+const DESTINOS = { mhd: "Informe a MHD", revisar: "Dudas para revisar", interno: "Nuestro" } as const;
+function downloadWarnings(jobId: string, warnings: Warning[]) {
+  const cell = (value: string | number) => `"${String(value).replaceAll("\"", "\"\"")}"`;
+  const rows = [["tipo", "nombre", "para", "productos", "avisos", "ejemplos"], ...warnings.map((warning) => { const kind = KIND_BY_TIPO.get(warning.tipo); return [warning.tipo, kind?.nombre ?? warning.tipo, DESTINOS[kind?.destino ?? "interno"], warning.productos, warning.avisos, warning.ejemplos.join(" ")]; })];
+  const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([rows.map((row) => row.map(cell).join(",")).join("\n")], { type: "text/csv;charset=utf-8" })); link.download = `resumen-avisos-${jobId.slice(0, 8)}.csv`; link.click();
 }
 const post = (body: Record<string, unknown>) => api<{ ok: boolean; job?: string; items?: number; note?: string | null }>("/api/importador-productos/trabajos", { method: "POST", body: JSON.stringify(body) });
 
@@ -111,17 +120,18 @@ function JobCard({ job, now, selected, onSelect, onAction }: { job: Job; now: nu
 function JobDetail({ jobId, now }: { jobId: string; now: number }) {
   const [steps, setSteps] = useState<Step[]>([]); const [items, setItems] = useState<Item[]>([]); const [log, setLog] = useState<{ key: string; list: LogEvent[] }>({ key: "", list: [] });
   const [itemStatus, setItemStatus] = useState<Item["status"] | "">(""); const [level, setLevel] = useState<LogEvent["level"] | "">(""); const [codigo, setCodigo] = useState("");
+  const [warnings, setWarnings] = useState<Warning[]>([]); const [tipo, setTipo] = useState("");
   const [error, setError] = useState<string | null>(null);
   const lastId = useRef(0);
   // Al cambiar los filtros del registro se carga de nuevo; después solo llega lo nuevo (since).
   useEffect(() => {
-    let alive = true; lastId.current = 0; const key = `${level}|${codigo}`;
+    let alive = true; lastId.current = 0; const key = `${level}|${codigo}|${tipo}`;
     const load = async () => {
-      const query = new URLSearchParams({ job: jobId, ...(lastId.current ? { since: String(lastId.current) } : {}), ...(level ? { level } : {}), ...(codigo.trim() ? { codigo: codigo.trim() } : {}) });
+      const query = new URLSearchParams({ job: jobId, ...(lastId.current ? { since: String(lastId.current) } : {}), ...(level ? { level } : {}), ...(codigo.trim() ? { codigo: codigo.trim() } : {}), ...(tipo ? { tipo } : {}) });
       try {
-        const body = await api<{ steps: Step[]; items: Item[]; events: LogEvent[] }>(`/api/importador-productos/trabajos?${query}`);
+        const body = await api<{ steps: Step[]; items: Item[]; events: LogEvent[]; warnings: Warning[] }>(`/api/importador-productos/trabajos?${query}`);
         if (!alive) return;
-        setSteps(body.steps); setItems(body.items); setError(null);
+        setSteps(body.steps); setItems(body.items); setWarnings(body.warnings ?? []); setError(null);
         if (body.events.length) lastId.current = Math.max(lastId.current, ...body.events.map((event) => event.id));
         // Con otros filtros, el registro empieza de nuevo; con los mismos, lo nuevo va delante.
         setLog((current) => ({ key, list: current.key === key ? [...body.events, ...current.list].slice(0, 1000) : body.events }));
@@ -129,8 +139,8 @@ function JobDetail({ jobId, now }: { jobId: string; now: number }) {
     };
     void load(); const timer = setInterval(load, POLL_MS);
     return () => { alive = false; clearInterval(timer); };
-  }, [jobId, level, codigo]);
-  const events = log.key === `${level}|${codigo}` ? log.list : [];
+  }, [jobId, level, codigo, tipo]);
+  const events = log.key === `${level}|${codigo}|${tipo}` ? log.list : [];
   const shownItems = items.filter((item) => !itemStatus || item.status === itemStatus);
   const running = items.filter((item) => item.status === "en_curso");
   const sortedSteps = [...steps].sort((a, b) => b.media_ms - a.media_ms); const slowest = sortedSteps[0]?.media_ms ?? 1;
@@ -138,6 +148,12 @@ function JobDetail({ jobId, now }: { jobId: string; now: number }) {
   return <section className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
     {error && <p className="text-sm text-red-700">{error}</p>}
     {running.length > 0 && <div><h3 className="text-sm font-semibold text-zinc-900">Ahora mismo</h3><ul className="mt-2 flex flex-col gap-1 text-sm">{running.map((item) => <li key={item.id} className="flex flex-wrap gap-x-3"><button type="button" onClick={() => setCodigo(item.codigo)} className="font-medium text-sky-700 underline-offset-2 hover:underline">{item.codigo}</button><span className="text-zinc-500">{item.family_code}</span><span className="text-zinc-700">{item.step ? `«${item.step}»` : "empezando"}</span><span className="text-zinc-400">{ago(item.started_at, now)}</span></li>)}</ul></div>}
+    {warnings.length > 0 && <div><div className="flex flex-wrap items-end justify-between gap-2"><h3 className="text-sm font-semibold text-zinc-900">Resumen de avisos, dudas y fallos</h3>
+      <button type="button" onClick={() => downloadWarnings(jobId, warnings)} className="h-8 rounded-lg border border-zinc-300 px-2 text-xs">Descargar CSV</button></div>
+      <p className="mt-1 text-xs text-zinc-500">Productos con cada tipo (un producto puede tener varios). Pulsa un tipo para ver su registro.</p>
+      <div className="mt-2 overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-zinc-500"><th className="py-1 font-medium">Tipo</th><th className="font-medium">Para</th><th className="font-medium">Productos</th><th className="hidden font-medium sm:table-cell">Ejemplos</th></tr></thead>
+        <tbody>{warnings.map((warning) => { const kind = KIND_BY_TIPO.get(warning.tipo); return <tr key={warning.tipo} className="border-t border-zinc-100"><td className="py-1.5 pr-2"><button type="button" onClick={() => setTipo(warning.tipo)} className={`text-left underline-offset-2 hover:underline ${tipo === warning.tipo ? "font-semibold text-sky-800" : "text-sky-700"}`}>{kind?.nombre ?? warning.tipo}</button></td><td className="text-xs text-zinc-600">{DESTINOS[kind?.destino ?? "interno"]}</td><td className="tabular-nums">{integer.format(warning.productos)}</td><td className="hidden text-xs text-zinc-500 sm:table-cell">{warning.ejemplos.join(", ")}</td></tr>; })}</tbody></table></div>
+    </div>}
     <div><h3 className="text-sm font-semibold text-zinc-900">Tiempo de cada paso</h3>
       {!sortedSteps.length ? <p className="mt-1 text-sm text-zinc-500">Aún no hay pasos terminados.</p> : <table className="mt-2 w-full text-sm"><thead><tr className="text-left text-xs text-zinc-500"><th className="py-1 font-medium">Paso</th><th className="font-medium">Veces</th><th className="font-medium">Media</th><th className="hidden font-medium sm:table-cell">Máximo</th><th className="font-medium">Errores</th></tr></thead>
         <tbody>{sortedSteps.map((step) => <tr key={step.step} className="border-t border-zinc-100"><td className="py-1.5 pr-2"><span className="block">{step.step}</span><span className="mt-1 block h-1.5 rounded-full bg-sky-200" style={{ width: `${Math.max(4, (step.media_ms / slowest) * 100)}%` }} /></td><td className="tabular-nums">{integer.format(step.veces)}</td><td className="tabular-nums">{seconds(step.media_ms)}</td><td className="hidden tabular-nums sm:table-cell">{seconds(step.max_ms)}</td><td className={`tabular-nums ${step.errores ? "text-red-700" : ""}`}>{integer.format(step.errores)}</td></tr>)}</tbody></table>}
@@ -151,7 +167,7 @@ function JobDetail({ jobId, now }: { jobId: string; now: number }) {
     <div><div className="flex flex-wrap items-end gap-2"><h3 className="mr-auto text-sm font-semibold text-zinc-900">Registro</h3>
       <label className="text-xs text-zinc-600">Tipo <select value={level} onChange={(event) => setLevel(event.target.value as typeof level)} className="ml-1 h-8 rounded-lg border border-zinc-300 bg-white px-2 text-xs"><option value="">todo</option>{(Object.keys(LEVELS) as LogEvent["level"][]).map((key) => <option key={key} value={key}>{LEVELS[key].label}</option>)}</select></label>
       <label className="text-xs text-zinc-600">Producto <input value={codigo} onChange={(event) => setCodigo(event.target.value)} placeholder="código" className="ml-1 h-8 w-28 rounded-lg border border-zinc-300 px-2 text-xs" /></label>
-      {(level || codigo) && <button type="button" onClick={() => { setLevel(""); setCodigo(""); }} className="h-8 rounded-lg border border-zinc-300 px-2 text-xs">Quitar filtros</button>}</div>
+      {(level || codigo || tipo) && <button type="button" onClick={() => { setLevel(""); setCodigo(""); setTipo(""); }} className="h-8 rounded-lg border border-zinc-300 px-2 text-xs">Quitar filtros</button>}</div>
       <ol className="mt-2 flex max-h-[32rem] flex-col gap-1 overflow-auto text-sm">{events.map((event) => <li key={event.id} className="flex flex-wrap items-baseline gap-x-2 border-b border-zinc-50 py-1">
         <span className="w-16 shrink-0 text-xs tabular-nums text-zinc-400">{new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", timeStyle: "medium" }).format(new Date(event.created_at))}</span>
         <span className={`shrink-0 rounded px-1.5 text-xs font-medium ${LEVELS[event.level].color}`}>{LEVELS[event.level].label}</span>

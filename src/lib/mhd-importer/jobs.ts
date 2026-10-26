@@ -10,6 +10,7 @@ import { saveRunMedia } from "./media-store";
 import { createShopifyDraft } from "./shopify-draft";
 import { processProduct } from "./processor";
 import { createTrace, type TraceEvent } from "./trace";
+import { warningKind } from "./warning-kinds";
 
 type Env = Record<string, string | undefined>;
 export type JobItem = { id: number; job_id: string; codigo: string; family_code: string | null; attempts: number };
@@ -32,7 +33,9 @@ function itemLog(db: SupabaseClient, item: JobItem) {
   const pending: TraceEvent[] = [];
   const flush = async () => {
     if (!pending.length) return;
-    const rows = pending.splice(0).map((event) => ({ job_id: item.job_id, item_id: item.id, codigo: item.codigo, level: event.level, step: event.step, message: event.message.slice(0, 4000), duration_ms: event.durationMs ?? null, data: event.data ?? null }));
+    // Tipo fijo (warning-kinds.ts) en todo lo que no es un paso normal: para el resumen de la tanda.
+    const rows = pending.splice(0).map((event) => ({ job_id: item.job_id, item_id: item.id, codigo: item.codigo, level: event.level, step: event.step, message: event.message.slice(0, 4000), duration_ms: event.durationMs ?? null,
+      data: event.level === "info" && event.durationMs !== undefined && event.step !== "Producto" ? event.data ?? null : { ...(event.data ?? {}), tipo: event.level === "info" ? null : warningKind(event.message) } }));
     const { error } = await db.from("mhd_importer_events").insert(rows);
     if (error) console.error(JSON.stringify({ productImporterWorker: "registro", error: error.message }));
   };

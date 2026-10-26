@@ -36,15 +36,17 @@ export async function GET(request: Request) {
     if (params.get("level")) events = events.eq("level", params.get("level")!);
     if (params.get("step")) events = events.eq("step", params.get("step")!);
     if (params.get("codigo")) events = events.eq("codigo", params.get("codigo")!);
+    if (params.get("tipo")) events = events.eq("data->>tipo", params.get("tipo")!);
     let items = session.db.from("mhd_importer_job_items").select("id,codigo,family_code,status,step,attempts,started_at,finished_at,duration_ms,cost_usd,run_id,error").eq("job_id", job).order("id").limit(3000);
     if (params.get("itemStatus")) items = items.eq("status", params.get("itemStatus")!);
-    const [progress, stats, itemsResult, eventsResult] = await Promise.all([
+    const [progress, stats, itemsResult, eventsResult, warnings] = await Promise.all([
       session.db.from("mhd_importer_job_progress").select("*").eq("id", job).maybeSingle(),
       session.db.from("mhd_importer_step_stats").select("step,veces,media_ms,max_ms,errores").eq("job_id", job),
       items, events,
+      session.db.from("mhd_importer_job_warnings").select("tipo,productos,avisos,ejemplos").eq("job_id", job).order("productos", { ascending: false }),
     ]);
-    for (const result of [progress, stats, itemsResult, eventsResult]) if (result.error) throw result.error;
-    return Response.json({ job: progress.data, steps: stats.data, items: itemsResult.data, events: eventsResult.data });
+    for (const result of [progress, stats, itemsResult, eventsResult, warnings]) if (result.error) throw result.error;
+    return Response.json({ job: progress.data, steps: stats.data, items: itemsResult.data, events: eventsResult.data, warnings: warnings.data });
   } catch (caught) { return errorResponse(caught, "No se pudieron leer los procesos."); }
 }
 
