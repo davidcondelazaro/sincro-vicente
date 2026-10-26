@@ -2,7 +2,7 @@
 
 _Generado con `scripts/exportar-decisiones.mjs` desde la tabla `mhd_importer_decisions` (2026-10-26). No se edita a mano: se cambia el registro y se vuelve a generar._
 
-19 reglas · 261 dudas de los perfiles: 181 cerradas y 80 abiertas.
+19 reglas · 262 dudas de los perfiles: 182 cerradas y 80 abiertas.
 
 ## Reglamento
 
@@ -118,7 +118,7 @@ _Generado con `scripts/exportar-decisiones.mjs` desde la tabla `mhd_importer_dec
 - **S88 · 257**: La muestra solo trae 1 de los 4 productos (Beurer BS47); los de Jata, LG y el otro Beurer no se han visto. _Recomendación del borrador:_ perfil mínimo genérico y revisar esos tres en la primera importación.
 - **S90 · 258**: Neckar 7719001786 («AZ 267») y el resto de accesorios de calentadores no traen Icecat ni dicen qué son. _Recomendación del borrador:_ publicarlos como «Accesorio para calentador» solo si la foto lo aclara; si no, a revisión.
 
-## Cerradas (181)
+## Cerradas (182)
 
 - **101 · 1** (juez (Claude), regla:valores-nuevos): Se aprueban en filtro.tecnologia los valores nuevos «LED», «QLED», «Mini LED» y «OLED» para televisores, de la lista cerrada de las reglas 10-12 (QNED → QLED, NanoCell y LCD → LED, Mini RGB y Micro RGB → Mini LED). Los tipos actuales (TV LED, TV OLED, TV Mini LED) se mantienen.
 - **101 · 2** (juez (Claude), regla:excepcion-mhd): La descripción manda sobre «Tecnología de visualización TV» de MHD solo para Mini LED, con las filas «mini led», «mini-led», «qled miniled», «micro rgb» y «mini rgb». El OLED de MHD o Icecat va antes, y las LG «QNED MiniLED» siguen como QLED. Hay que anotar en el perfil la prueba (unos 15 de 74 QLED/LED/NanoCell de MHD que son Mini LED, alrededor del 20 %), avisar a MHD y revisar en el piloto las LG QNED81/86.
@@ -211,6 +211,7 @@ _Generado con `scripts/exportar-decisiones.mjs` desde la tabla `mhd_importer_dec
 - **C30 · 130** (juez (Claude), regla:valores-nuevos): filtro.tipo con los valores existentes Sartén, Grill, Wok y Crepera en C3020, C3030 y C3040, en el orden de tabla del perfil y con la subfamilia como último recurso.
 - **C50 · 132** (juez (Claude), regla:caracteristicas): El número de ruedas se queda en filtro.mas_especificaciones («Ruedas 2», «Ruedas 4», «Ruedas 2 o 4») y en el título. No se crean valores nuevos en filtro.tipo por ahora.
 - **C50 · 133** (juez (Claude), regla:simplificar-filtros): Se aceptan las equivalencias a colores base existentes: Granate/Burdeos→Rojo, Aqua/Sapphire/Marine→Azul, Olive→Verde y Estampado→Multicolor. No se crean «Granate» ni «Estampado».
+- **G01 · inverter** ⚠️ contra la recomendación del borrador (David): Se mantiene «Inverter» en lavadoras (desde «Tipo de motor» de MHD e Icecat; EcoSilence y Direct Drive cuentan como Inverter).
 - **G20 · 136** (juez (Claude), regla:excepcion-mhd): El filtro y el título toman la clase de «mhd:Clase energética secado» (ciclo completo de lavado y secado). Si falta, se usa Icecat «Clase de eficiencia energética (lavado y secado)». Se anota en el perfil que «Nueva Clase Energética» sale mal en 8 de 26 productos.
 - **G20 · 137** (juez (Claude), regla:simplificar-filtros): Se crean «Menos de 5 kg» (menos de 5) y «Más de 8 kg» (9 o más) en filtro.capacidad_secado. Los intermedios bajan al kg inferior (5, 6, 7 y 8 kg).
 - **G20 · 138** (regla, regla:capacidad-lavado): Más de 10 kg → «Más de 10 kg», como en lavadoras.
