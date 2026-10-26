@@ -20,7 +20,7 @@ export const KIND_SLUG: Record<ImageKind, string> = { frontal: "frontal", tres_c
 export const KIND_ALT: Record<ImageKind, string> = { frontal: "vista frontal", tres_cuartos: "vista en tres cuartos", lateral: "vista lateral", trasera: "vista trasera", abierto: "abierta", detalle: "detalle", ambiente: "en ambiente", medidas: "medidas", icono_o_logo: "icono", etiqueta_energetica: "etiqueta energética", otro: "foto" };
 const PRODUCT_VIEWS = new Set<ImageKind>(["frontal", "tres_cuartos", "lateral", "trasera", "abierto"]);
 
-function sha1(bytes: Uint8Array) { return createHash("sha1").update(bytes).digest("hex"); }
+export function sha1(bytes: Uint8Array) { return createHash("sha1").update(bytes).digest("hex"); }
 
 // Fondo por los bordes de la imagen: proporción de píxeles casi blancos o casi negros en el marco exterior.
 async function backgroundOf(bytes: Uint8Array): Promise<Background> {

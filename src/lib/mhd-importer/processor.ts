@@ -16,7 +16,7 @@ import { cached } from "./cache";
 import { gatherProduct, type SourcesConfig } from "./gather";
 import { embeddableYoutubeVideos, icecatMetafield, summarizeIcecat, type IcecatSummary } from "./icecat";
 import { checkIcecatIdentity, labelMatches, labelText } from "./identity";
-import { classifyImages, imageFilenames, KIND_ALT, normalizeEnergyLabel, orderImages, pdfFirstPageToPng, prepareImages, processImage, sameVisual, slugify, type ImageKind } from "./images";
+import { classifyImages, imageFilenames, KIND_ALT, normalizeEnergyLabel, orderImages, pdfFirstPageToPng, prepareImages, processImage, sameVisual, sha1, slugify, type ImageKind } from "./images";
 import type { FamilyProfile } from "./profile";
 import { classifyVideos, prepareVideos, type VideoKind } from "./videos";
 import { noTrace, type Trace } from "./trace";
@@ -300,7 +300,10 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   const media: MediaFile[] = []; const images: ProcessedImage[] = [];
   for (const [position, { image, file }] of treated.entries()) {
     const alt = position === 0 ? written.content.title : `${written.content.title}, ${KIND_ALT[image.kind]}`;
-    media.push({ role: "image", position, filename: filenames[position], contentType: file.contentType, width: file.width, height: file.height, bytes: file.bytes, meta: { alt, kind: image.kind } });
+    // Huellas de cada foto (David, 2026-10-26): para que las sincronizaciones sepan qué fotos siguen siendo las mismas
+    // cuando MHD cambia las suyas (de origen, visual aunque la recompriman, y de la foto ya tratada).
+    const source = prepared.images.find((item) => item.url === image.url);
+    media.push({ role: "image", position, filename: filenames[position], contentType: file.contentType, width: file.width, height: file.height, bytes: file.bytes, meta: { alt, kind: image.kind, source: image.source, sourceUrl: image.url, sourceHash: image.hash, visualHash: source?.visualHash ?? null, hash: sha1(file.bytes) } });
     images.push({ position, filename: filenames[position], alt, kind: image.kind, background: image.background, width: file.width, height: file.height, treatment: file.treatment, description: image.description, sourceUrl: image.url, isMhdMain: image.isMhdMain });
   }
 
