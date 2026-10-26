@@ -6,9 +6,13 @@
 //      después y guarda el perfil. Cada corrección queda en mhd_importer_judgements (purpose «correccion») con el perfil
 //      anterior, para ver qué cambió y deshacerlo.
 //   node scripts/aplicar-juicio.mjs G20,H40 [--guardar] [--a-la-vez 3]     |     --todas [--guardar]
-// Sin --guardar solo enseña lo que haría (y gasta la llamada). Necesita SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY de la
+// Sin --guardar solo enseña lo que haría (y gasta la llamada). Sin API (con subagentes de Claude Code, decidido el
+// 2026-10-26 para no pagar por llamada): `--exportar carpeta` deja en carpeta/<familia>.json lo que recibiría el corrector
+// y en carpeta/INSTRUCCIONES.md sus instrucciones; el subagente escribe carpeta/<familia>.ops.json ({ ops, notas }) y
+// `--ops carpeta --guardar` lo valida y lo aplica igual que si viniera de la API. Necesita SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY de la
 // base local; ANTHROPIC_API_KEY de .env.local.
 import { randomUUID } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createJiti } from "jiti";
 import { createClient } from "@supabase/supabase-js";
 
@@ -22,6 +26,7 @@ const args = process.argv.slice(2);
 const option = (name) => { const at = args.indexOf(name); return at >= 0 ? args.splice(at, 2)[1] : null; };
 const flag = (name) => { const at = args.indexOf(name); if (at >= 0) args.splice(at, 1); return at >= 0; };
 const save = flag("--guardar"); const all = flag("--todas"); const parallel = Number(option("--a-la-vez") ?? 3);
+const exportDir = option("--exportar"); const opsDir = option("--ops");
 if (!all && !args.length) { console.error("Uso: node scripts/aplicar-juicio.mjs G20,H40 [--guardar] | --todas [--guardar]"); process.exit(1); }
 
 const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -107,7 +112,7 @@ async function applyFamily(family) {
 
   // 1. Dudas: se cierran con el veredicto del juez.
   let closed = 0;
-  if (save) for (const verdict of verdicts) {
+  if (save && !exportDir) for (const verdict of verdicts) {
     const { data, error } = await db.from("mhd_importer_decisions").update({ status: "cerrada", decided_by: "juez (Claude)", decision: verdict.decision, reason: `${verdict.verdict} (confianza ${Math.round(verdict.confidence * 100)} %): ${verdict.reason}`, rule_key: verdict.rules?.[0] ?? null, contradicts_draft: verdict.verdict !== "aprobar", decided_at: new Date().toISOString() }).eq("key", verdict.key).eq("status", "abierta").select("key");
     if (error) throw error;
     closed += data.length;
@@ -121,10 +126,21 @@ async function applyFamily(family) {
   const subfamilies = new Set(products.map((product) => product.listing.cod_subfamilia).filter(Boolean));
   const before = coverageReport(row.profile, products);
   const payload = { ...judgePayload({ family: { code: family, name: row.family_name }, regulation, profile: row.profile, coverage: before, vocabulary, doubts: [] }), problemas_del_juez: problems, veredictos_del_juez: verdicts };
+  if (exportDir) {
+    writeFileSync(`${exportDir}/${family}.json`, JSON.stringify(payload, null, 1));
+    summary.push({ family, closed, ops: 0, cost: 0 }); console.log(`■ ${family}: exportado (${problems.length} problemas, ${verdicts.length} veredictos)`); return;
+  }
+  let output; let cost = 0; let usage = null; let model = "claude-code (subagente)";
+  if (opsDir) {
+    const file = `${opsDir}/${family}.ops.json`;
+    if (!existsSync(file)) throw new Error(`falta ${file}`);
+    output = JSON.parse(readFileSync(file, "utf8"));
+  } else {
   const message = await ai.messages.stream({ model: JUDGE_MODEL, max_tokens: 32000, thinking: { type: "adaptive" }, output_config: { effort: "medium", format: { type: "json_schema", schema } }, system: SYSTEM, messages: [{ role: "user", content: `Perfil, juicio y datos de la familia (JSON):\n\n${JSON.stringify(payload)}\n\nDevuelve las operaciones.` }] }).finalMessage();
   if (message.stop_reason !== "end_turn") throw new Error(`el corrector terminó con ${message.stop_reason}`);
-  const output = JSON.parse(message.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join(""));
-  const cost = costUsd(message.model, message.usage) ?? 0; totalCost += cost;
+  output = JSON.parse(message.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join(""));
+  cost = costUsd(message.model, message.usage) ?? 0; totalCost += cost; usage = message.usage; model = message.model;
+  }
   const { profile, errors } = applyOps(row.profile, output.ops, subfamilies);
 
   // 3. Cobertura antes y después: avisa de los filtros que pierden más de un 30 % de productos o desaparecen.
@@ -132,7 +148,7 @@ async function applyFamily(family) {
   const drops = [...was].filter(([key, count]) => count >= 5 && (now.get(key) ?? 0) < count * 0.7).map(([key, count]) => `${key} ${count} → ${now.get(key) ?? 0}`);
   const gains = [...now].filter(([key, count]) => count >= 5 && count > (was.get(key) ?? 0) * 1.3).map(([key, count]) => `${key} ${was.get(key) ?? 0} → ${count}`);
   if (save) {
-    const { error: logError } = await db.from("mhd_importer_judgements").insert({ run_id: runId, purpose: "correccion", decision_key: `perfil:${family}`, family_code: family, judge: "claude", model: message.model, verdict: { juicio: last.run_id, ops: output.ops, notas: output.notas, errores: errors, bajan: drops, suben: gains, antes: row.profile }, usage: message.usage, cost_usd: cost });
+    const { error: logError } = await db.from("mhd_importer_judgements").insert({ run_id: runId, purpose: "correccion", decision_key: `perfil:${family}`, family_code: family, judge: "claude", model, verdict: { juicio: last.run_id, ops: output.ops, notas: output.notas, errores: errors, bajan: drops, suben: gains, antes: row.profile }, usage, cost_usd: cost });
     if (logError) throw logError;
     const { error: saveError } = await db.from("mhd_importer_family_profiles").update({ profile, updated_at: new Date().toISOString() }).eq("family_code", family);
     if (saveError) throw saveError;
@@ -144,6 +160,7 @@ async function applyFamily(family) {
     ...(output.notas ? [`  Notas: ${output.notas}`] : [])].join("\n") + "\n");
 }
 
+if (exportDir) { mkdirSync(exportDir, { recursive: true }); writeFileSync(`${exportDir}/INSTRUCCIONES.md`, `${SYSTEM}\n\nFormato de salida (<familia>.ops.json): { "ops": [{ "op": "replace_filter" | "delete_filter" | "add_filter" | "set_section", "index": número o null, "section": "" | "product" | "title" | "meta_title" | "descriptions" | "subfamily_exceptions", "value_json": "<JSON en texto>", "why": "…" }], "notas": "…" }\n`); }
 const queue = [...families];
 await Promise.all(Array.from({ length: Math.max(1, parallel) }, async () => {
   while (queue.length) { const family = queue.shift(); try { await applyFamily(family); } catch (caught) { console.log(`✗ ${family}: ${caught?.message ?? caught}\n`); } }
