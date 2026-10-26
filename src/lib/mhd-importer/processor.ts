@@ -215,6 +215,7 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   const classified = await t.step("Clasificar fotos (IA)", () => classifyImages(deps.ai, listing.titulo ?? "", prepared.images, listing.imagen), (result) => `${result.classified.length} fotos clasificadas`);
   cost += classified.costUsd ?? 0; usage.images = classified.usage;
   let ordered = orderImages(classified.classified);
+  const mhdDropped = ordered.dropped;
   // Si todas las de MHD se descartan al revisarlas (fondo negro, pequeñas…), se prueban las de Icecat comprobado.
   if (!ordered.keep.length && icecat?.gallery?.length && !prepared.images.some((image) => icecat.gallery.some((picture) => picture.url === image.url))) {
     for (const image of ordered.dropped) t.event("aviso", "Clasificar fotos (IA)", `Foto de MHD descartada: ${image.reason} (${image.url})`);
@@ -225,6 +226,18 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
       prepared = { images: [...prepared.images, ...fromIcecat.images], errors: prepared.errors };
       ordered = orderImages(again.classified);
       if (ordered.keep.length) { warnings.push(`Fotos de Icecat (${ordered.keep.length}): las de MHD no pasaron la revisión.`); t.event("decision", "Clasificar fotos (IA)", `Fotos de Icecat (${ordered.keep.length}): las de MHD no pasaron la revisión.`); }
+    }
+  }
+  // Si todas son pequeñas (David, 2026-10-26): no se descarta el producto; se usa la mejor (una vista del producto si la
+  // hay, y la más grande) y va a la cola de revisión con el motivo «Foto pequeña».
+  let smallPhotoReason: string | null = null;
+  if (!ordered.keep.length) {
+    const views = (image: { kind: string }) => (image.kind === "frontal" || image.kind === "tres_cuartos" ? 0 : 1);
+    const best = [...new Set([...ordered.dropped, ...mhdDropped])].filter((image) => image.reason.startsWith("Demasiado pequeña")).sort((a, b) => views(a) - views(b) || b.width * b.height - a.width * a.height)[0];
+    if (best) {
+      ordered = { keep: [best], dropped: ordered.dropped.filter((image) => image !== best) };
+      smallPhotoReason = `Foto pequeña: todas las fotos miden menos de 500 px; se usa la mejor (${best.width}×${best.height}).`;
+      t.event("decision", "Clasificar fotos (IA)", `Se usa una foto pequeña (${best.width}×${best.height}): no hay otra válida. Va a revisión.`);
     }
   }
   for (const image of ordered.dropped) t.event("aviso", "Clasificar fotos (IA)", `Foto descartada: ${image.reason} (${image.url})`);
@@ -314,6 +327,7 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   // Cola de revisión (regla de David del 2026-10-24): el producto se monta igual, pero alguien tiene que mirarlo.
   const prices = await subfamilyPrices(deps.db, listing).catch((caught: Error) => { warnings.push(`Mediana de precios: ${caught.message}`); return null; });
   const review_reasons = [
+    smallPhotoReason,
     energyClassReason(listing.letra_eficiencia, icecat),
     ...sourceDisagreements(profile, values, listing.cod_subfamilia).map((item) => `${item.name}: MHD dice «${item.mhd}» e Icecat «${item.icecat}» (${Math.round(item.difference * 100)} % de diferencia).`),
     priceReason(listing.pvp, prices?.median ?? null, prices?.count ?? 0),

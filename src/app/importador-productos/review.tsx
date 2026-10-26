@@ -9,9 +9,9 @@ import { useEffect, useState } from "react";
 
 type Decision = "resuelto" | "no_importar" | "avisar_mhd";
 type QueueItem = { codigo: string; family_code: string | null; family_name: string | null; run_id: string; run_at: string; title: string | null; ean: string | null; reasons: string[]; decision: Decision | null; note: string | null; reviewer: string | null; decided_at: string | null; pending: boolean };
-type ReasonKind = "energia" | "cifras" | "precio" | "modelo" | "marca" | "perfil";
+type ReasonKind = "energia" | "cifras" | "precio" | "modelo" | "marca" | "foto" | "perfil";
 
-const KINDS: Record<ReasonKind, string> = { energia: "Clase energética", cifras: "MHD e Icecat no cuadran", precio: "Precio", modelo: "Modelo", marca: "Marca", perfil: "Regla de la familia" };
+const KINDS: Record<ReasonKind, string> = { energia: "Clase energética", cifras: "MHD e Icecat no cuadran", precio: "Precio", modelo: "Modelo", marca: "Marca", foto: "Foto pequeña", perfil: "Regla de la familia" };
 const DECISIONS: Record<Decision, { label: string; badge: string }> = {
   resuelto: { label: "Está bien", badge: "bg-emerald-100 text-emerald-800" },
   no_importar: { label: "No importar", badge: "bg-red-100 text-red-800" },
@@ -24,6 +24,7 @@ function reasonKind(reason: string): ReasonKind {
   if (/^(Precio raro|Sin precio)/.test(reason)) return "precio";
   if (reason.startsWith("Modelo:")) return "modelo";
   if (reason.startsWith("Marca:")) return "marca";
+  if (reason.startsWith("Foto pequeña:")) return "foto";
   return "perfil";
 }
 const integer = new Intl.NumberFormat("es-ES", { useGrouping: "always", maximumFractionDigits: 0 });
@@ -59,7 +60,7 @@ export function ReviewView() {
   }
 
   return <section className="flex flex-col gap-5">
-    <p className="text-sm text-zinc-600">Productos que el importador monta igual pero que alguien tiene que mirar: clase energética distinta en MHD e Icecat, cifras que no cuadran, precio raro, modelo o marca dudosos y los casos que marca la regla de cada familia (productos mal clasificados, fichas cruzadas…). Si una prueba nueva trae otros motivos, el producto vuelve a la cola.</p>
+    <p className="text-sm text-zinc-600">Productos que el importador monta igual pero que alguien tiene que mirar: clase energética distinta en MHD e Icecat, cifras que no cuadran, precio raro, modelo o marca dudosos, fotos pequeñas y los casos que marca la regla de cada familia (productos mal clasificados, fichas cruzadas…). Si una prueba nueva trae otros motivos, el producto vuelve a la cola.</p>
     {error && <p className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p>}
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{([["Pendientes", pending.length, "text-zinc-900"], ["Están bien", decided("resuelto"), "text-emerald-700"], ["No importar", decided("no_importar"), "text-red-700"], ["Avisar a MHD", decided("avisar_mhd"), "text-sky-700"]] as const).map(([label, value, color]) => <div key={label} className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm"><p className="text-xs text-zinc-500">{label}</p><p className={`mt-1 text-2xl font-semibold tabular-nums ${color}`}>{integer.format(value)}</p></div>)}</div>
     {pending.length > 0 && <div className="flex flex-wrap gap-2 text-xs">{byKind.filter(([, count]) => count).map(([key, count]) => <button key={key} type="button" onClick={() => { setKind(kind === key ? "" : key); setState("pendientes"); }} className={`rounded-full border px-3 py-1 ${kind === key ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-300 bg-white text-zinc-700"}`}>{KINDS[key]} · {integer.format(count)}</button>)}</div>}

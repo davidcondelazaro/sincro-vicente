@@ -117,6 +117,7 @@ Medido en producción con el banco de 41: 41 s por producto y 2,2 productos por 
   - Al crear una tanda se piden a Supabase las que faltan (`mhd_import_start_codes`, migración `20261026160000`). MHD no contesta a las fichas pedidas desde Vercel (HTTP 500).
   - Mientras se importan, los productos sin ficha esperan.
   - El procesador lee la ficha guardada (`gather.ts`).
+- **Fotos pequeñas (David, 2026-10-26, `regla:fotos-pequenas-a-revision`):** si todas las fotos miden menos de 500 px, el producto ya no se descarta. Se usa la mejor (una vista frontal o tres cuartos si la hay, y la más grande) y va a la cola de revisión con el motivo «Foto pequeña», con su tipo en la pantalla. Es lo que pasó a los 3 descartes del banco en producción: cafetera Krups 256×351, frigorífico Wonder 481×304 y lavavajillas Wonder 334×445, las tres del producto correcto. Además, MHD titula «Negra» la cafetera XN1005RD, que es roja: va al informe para MHD.
 - **Probado en local:**
   - 12 productos con 2 trabajadores de 4, en 82 s (~9 por minuto, frente a 2,2).
   - Pasos: colocar en la tienda 0,0 s (antes 2,7), dirección 0,0 s, etiqueta 0,3 s, tratar fotos 0,5 s, clasificar fotos 4,2 s. La redacción, 28 s, es ahora casi todo el tiempo.
