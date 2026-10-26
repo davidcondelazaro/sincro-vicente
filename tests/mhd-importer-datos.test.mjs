@@ -176,3 +176,9 @@ test("regla de revisión «distinto» (MHD frente a Icecat)", async () => {
   assert.equal(reviewReasons(profile, new Map([["mhd:integrable", "Sí"], ["icecat:diseño|tipo de instalación", "Completamente integrado"]]), null).length, 0);
   assert.equal(reviewReasons(profile, new Map([["mhd:integrable", "Sí"]]), null).length, 0);
 });
+
+test("diferencias MHD/Icecat: la misma cifra en otra unidad no cuenta", () => {
+  const profile = { title: { key_data: [{ name: "Potencia", sources: ["mhd:Potencia", "icecat:Desempeño|Potencia"], format: "{n} W" }] }, filters: [] };
+  assert.equal(sourceDisagreements(profile, new Map([["mhd:potencia", "1,45W"], ["icecat:desempeño|potencia", "1450 W"]])).length, 0);
+  assert.equal(sourceDisagreements(profile, new Map([["mhd:potencia", "2000W"], ["icecat:desempeño|potencia", "1500 W"]])).length, 1);
+});

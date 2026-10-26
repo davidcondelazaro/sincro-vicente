@@ -160,6 +160,11 @@ export function sourceDisagreements(profile: FamilyProfile, values: SourceValues
     seen.add(`${mhd}|${icecat}`.toLowerCase());
     const a = values.get(mhd.toLowerCase())!; const b = values.get(icecat.toLowerCase())!;
     const difference = relativeDifference(a, b);
+    // Misma cifra en otra unidad (MHD escribe «1,45W» por 1,45 kW, o mm por cm): no es una discrepancia del dato, sino del
+    // formato de MHD (va en el informe al proveedor); la hoja de datos ya se queda con la cifra que cuadra (2026-10-26).
+    const x = firstNumber(a); const y = firstNumber(b);
+    const scaled = x && y ? Math.max(x, y) / Math.min(x, y) : 0;
+    if ([10, 100, 1000].some((factor) => Math.abs(scaled - factor) <= factor * 0.02)) continue;
     if (difference !== null && difference > MAX_DIFFERENCE) found.push({ name: item.name, mhd: a, icecat: b, difference });
   }
   return found;
