@@ -34,12 +34,12 @@ function itemLog(db: SupabaseClient, item: JobItem) {
     const { error } = await db.from("mhd_importer_events").insert(rows);
     if (error) console.error(JSON.stringify({ productImporterWorker: "registro", error: error.message }));
   };
+  // En directo: el paso que está en marcha se apunta en el producto al empezar, y lo registrado se guarda al acabar
+  // cada paso (no al acabar el producto).
   const trace = createTrace((event) => {
     pending.push(event);
-    // El paso en curso se ve en la pantalla: se apunta el último terminado.
-    if (event.durationMs !== undefined) void db.from("mhd_importer_job_items").update({ step: event.step }).eq("id", item.id).eq("status", "en_curso").then(() => undefined);
-    if (pending.length >= 20) void flush();
-  });
+    if (event.durationMs !== undefined || pending.length >= 20) void flush();
+  }, (step) => void db.from("mhd_importer_job_items").update({ step }).eq("id", item.id).eq("status", "en_curso").then(() => undefined));
   return { trace, flush, add: (event: TraceEvent) => pending.push(event) };
 }
 

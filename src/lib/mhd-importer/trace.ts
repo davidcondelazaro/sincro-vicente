@@ -9,12 +9,13 @@ export type Trace = {
   event(level: TraceLevel, step: string, message: string, data?: Record<string, unknown>): void;
 };
 
-// Crea un registro que entrega cada hecho a `sink` (la base, la consola…). Un paso que falla se registra como error con
-// lo que tardó y el error sigue hacia arriba.
-export function createTrace(sink: (event: TraceEvent) => void): Trace {
+// Crea un registro que entrega cada hecho a `sink` (la base, la consola…) y avisa a `onStart` al empezar cada paso, para
+// ver en directo el que está en marcha. Un paso que falla se registra como error con lo que tardó y el error sigue hacia
+// arriba.
+export function createTrace(sink: (event: TraceEvent) => void, onStart?: (step: string) => void): Trace {
   return {
     async step(name, run, describe) {
-      const started = Date.now();
+      const started = Date.now(); onStart?.(name);
       try {
         const result = await run();
         sink({ level: "info", step: name, message: describe?.(result) ?? "Hecho", durationMs: Date.now() - started });
