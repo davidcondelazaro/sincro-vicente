@@ -4,15 +4,14 @@ Diseño acordado con David para mantener la tienda al día una vez terminado el 
 
 ## Qué se hace y cada cuánto
 
-| Cada | Qué | Cómo se lee de MHD |
-| --- | --- | --- |
-| 30 min | Precio y stock directos a Shopify, sin IA | `/prices` y `/stocks` con `fecha_modificacion_precio` / `fecha_modificacion_stock` desde la última lectura (unos cientos por hora) |
-| 1 hora | Altas: todo el proceso del importador (ficha de detalle, Icecat, IA, fotos, subida) | `/products` con `fecha_modificacion_producto` desde la última lectura; un código nuevo es un alta |
-| 1 hora | Modificaciones, según su tipo (abajo) | El mismo `/products` filtrado; las huellas por partes (`IMPORTACION_FICHAS_MHD_Y_HUELLAS.md`) dicen qué ha cambiado |
-| 1 hora | Bajas: archivar y redirigir; opciones de entrega | Listado completo de `/products` (33 s, 125 MB): códigos que faltan y huellas de portes y servicios |
-| 1 día | Repaso completo de precio y stock | `/prices` y `/stocks` enteros (~9 s cada uno), por si un cambio se escapó al filtro por fecha |
+**Se lee siempre todo y se compara aquí** (David, 2026-10-26): no se usan los filtros por fecha de MHD. Así no dependemos de que MHD actualice bien sus fechas, no hay cursor de «última lectura» que se pueda desajustar y, si una lectura falla, la siguiente lo recoge todo. Cada producto guarda sus huellas (precio, stock, contenido, fotos; y entrega, por separar): se calculan las nuevas y se actúa sobre las que cambian. Volumen: unos 3 GB al día descargados en total.
 
-Solo las altas y las modificaciones importantes piden el resto de datos (ficha de detalle, Icecat…). Todo lo demás sale de la lectura básica. Filtros por fecha comprobados en `API_MHD.md`.
+| Cada | Qué | Lectura de MHD (medida el 2026-10-26) |
+| --- | --- | --- |
+| 30 min | Precio y stock directos a Shopify, sin IA | `/prices` y `/stocks` completos: ~9 s cada uno, mucho más ligeros que el listado de productos |
+| 1 hora | Altas (códigos nuevos: todo el proceso del importador), bajas (códigos que faltan: archivar y redirigir), modificaciones según su tipo (abajo) y opciones de entrega | `/products` completo: 30.961 productos, ~33 s y 125 MB; trae también precio y stock, que sirven de comprobación |
+
+Solo las altas y las modificaciones importantes piden el resto de datos (ficha de detalle, Icecat…). Los filtros por fecha (`fecha_modificacion_*`) quedan documentados en `API_MHD.md` por si algún día hiciera falta ir más rápido.
 
 ## Decisiones
 
