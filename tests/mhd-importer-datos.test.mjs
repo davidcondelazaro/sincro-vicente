@@ -195,3 +195,21 @@ test("negritas de la descripción larga: como mucho 4, datos cortos, sin etiquet
   assert.match(out, /, vapor y WiFi\./);
   assert.equal(normalizeBold("<p>Sin negritas.</p>"), "<p>Sin negritas.</p>");
 });
+
+test("cifras: valen también las de los textos de MHD e Icecat (masivo, 2026-10-26)", () => {
+  const sheet = new Map([["mhd:resolución", "4K Ultra HD"]]);
+  const texto = { long_description_html: "<p>Resolución 3840 x 2160 y distancia de proyección desde 1,9 m.</p>" };
+  assert.equal(unsupportedNumbers(texto, sheet).length, 3); // 3840, 2160 y 1,9 m
+  assert.deepEqual(unsupportedNumbers(texto, sheet, [], ["su resolución 4K Ultra HD (3840 x 2160)", "<p>distancia de proyección desde 1,9 m hasta 9,7 m</p>"]), []);
+  assert.equal(unsupportedNumbers({ short_description: "Pantalla de 159,4 cm" }, sheet, [], ["distancia desde 1,9 m"]).length, 1);
+});
+
+test("título: vale la referencia de MHD o el modelo comercial de Icecat (masivo, 2026-10-26)", async () => {
+  const { validateContent } = await jiti.import("../src/lib/mhd-importer/content.ts");
+  const ficha = (title) => ({ title, meta_title: "x", short_description: "x", meta_description: "y".repeat(140), long_description_html: "<p>x</p><h2>x</h2>", elvi_tip: { text: "", sources: [] } });
+  const modelo = (errors) => errors.filter((error) => error.startsWith("El título no lleva el modelo"));
+  assert.equal(modelo(validateContent(ficha("Proyector Acer X1827 4K"), "Acer", "MR.JQG11.001", [], new Map())).length, 1);
+  assert.deepEqual(modelo(validateContent(ficha("Proyector Acer X1827 4K"), "Acer", "MR.JQG11.001", [], new Map(), ["X1827", "MR.JQG11.001"])), []);
+  assert.deepEqual(modelo(validateContent(ficha("Monitor Dell P2424HT de 24\""), "Dell", "DELL-P2424HT", [], new Map(), ["P2424HT"])), []);
+  assert.deepEqual(modelo(validateContent(ficha("Lavadora Bosch WAN 24272 ES"), "Bosch", "WAN24272ES", [], new Map())), []);
+});

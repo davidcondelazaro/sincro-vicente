@@ -111,9 +111,12 @@ export function stripNonData(text: string, names: (string | null | undefined)[])
   return plain.replace(STANDARDS, " ");
 }
 
-export function unsupportedNumbers(texts: Record<string, string>, sheet: SourceValues, names: (string | null | undefined)[] = []) {
-  // Cifras de los valores y de los nombres de los datos («Consumo de energía por 100 ciclos»).
-  const known = [...sheet].flatMap(([key, value]) => [...numbersIn(value), ...numbersIn(key.split(":").slice(1).join(":"))]);
+export function unsupportedNumbers(texts: Record<string, string>, sheet: SourceValues, names: (string | null | undefined)[] = [], references: (string | null | undefined)[] = []) {
+  // Cifras de los valores y de los nombres de los datos («Consumo de energía por 100 ciclos»), y de los textos de MHD e
+  // Icecat (2026-10-26, David: el masivo rechazaba «3840 x 2160», «desde 1,9 m» o «154 % DCI-P3» porque solo estaban en
+  // la descripción de MHD; 4 de cada 5 rechazos de cifras eran así). El revisor con IA sigue mirando que se usen bien.
+  const known = [...[...sheet].flatMap(([key, value]) => [...numbersIn(value), ...numbersIn(key.split(":").slice(1).join(":"))]),
+    ...references.flatMap((text) => (text ? numbersIn(text.replace(/<[^>]+>/g, " ")) : []))];
   const close = (a: number, b: number) => Math.abs(a - b) <= Math.max(0.011 * Math.abs(b), 0.0051);
   const problems: string[] = [];
   for (const [field, text] of Object.entries(texts)) {

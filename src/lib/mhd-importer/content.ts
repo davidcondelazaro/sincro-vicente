@@ -105,7 +105,7 @@ export function checkElviSources(tip: ElviTip, values: SourceValues) {
   });
 }
 
-export function validateContent(content: ProductContent, brand: string, model: string, originals: string[], values: SourceValues): string[] {
+export function validateContent(content: ProductContent, brand: string, model: string, originals: string[], values: SourceValues, altModels: (string | null | undefined)[] = []): string[] {
   const errors: string[] = [];
   if (content.title.length > TITLE_MAX) errors.push(`El título tiene ${content.title.length} caracteres (máximo ${TITLE_MAX}).`);
   if (content.meta_title.length > META_TITLE_MAX) errors.push(`El meta título tiene ${content.meta_title.length} caracteres (máximo ${META_TITLE_MAX}).`);
@@ -118,7 +118,12 @@ export function validateContent(content: ProductContent, brand: string, model: s
   if (plain(content.meta_description).includes(plain(content.title))) errors.push("La meta descripción repite el título: Google ya lo enseña encima; usa el espacio para datos clave y lo que diferencia al producto.");
   else if (model && plain(content.meta_description).includes(plain(model))) errors.push(`La meta descripción repite el modelo «${model}», que ya va en el título.`);
   if (brand && !content.title.includes(brand)) errors.push(`El título no lleva la marca escrita exactamente «${brand}».`);
-  if (model && !content.title.toLowerCase().includes(model.toLowerCase())) errors.push(`El título no lleva el modelo exacto «${model}».`);
+  // Vale la referencia de MHD o el modelo comercial de Icecat (2026-10-26, David): MHD da a veces la referencia interna del
+  // fabricante («MR.JQG11.001» para el Acer X1827) o la mezcla con el color («MOTO BUDS+ BEACH SAND»), y forzarla en el
+  // título rechazaba la mitad de los textos del masivo. Se compara sin espacios, guiones ni puntos.
+  const bare = (text: string) => text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9+]/g, "");
+  const models = [model, ...altModels].filter((item): item is string => Boolean(item && bare(item).length >= 3));
+  if (model && !models.some((item) => bare(content.title).includes(bare(item)))) errors.push(`El título no lleva el modelo «${model}»${models.length > 1 ? ` ni «${models.slice(1).join("», «")}»` : ""}.`);
   if (/\|/.test(content.title)) errors.push("El título lleva « | ».");
   const titleWords = content.title.toLowerCase().split(/\s+/).filter((word) => word.length > 3);
   const repeated = titleWords.filter((word, index) => titleWords.indexOf(word) !== index);
@@ -282,7 +287,7 @@ export async function writeContent(client: Anthropic, input: { profile: FamilyPr
     const parsed = JSON.parse(text) as Omit<ProductContent, "elvi_tip"> & { elvi_tip?: ElviTip };
     content = { ...parsed, long_description_html: normalizeBold(parsed.long_description_html ?? ""), elvi_tip: parsed.elvi_tip ?? { text: "", sources: [] } };
     const texts = { title: content.title, meta_title: content.meta_title, short_description: content.short_description, meta_description: content.meta_description, long_description_html: content.long_description_html, ...(content.elvi_tip.text ? { elvi: content.elvi_tip.text } : {}) };
-    errors = [...validateContent(content, brand, model, originals, values), ...missingKeyData(content.title, profile, values, listing.nombre_subfamilia, listing.cod_subfamilia), ...unsupportedNumbers(texts, values, [brand, model, listing.nombre_marca, icecat?.partCode, icecat?.modelName]).map((problem) => `Cifra sin respaldo: ${problem} Usa solo cifras de datos_con_clave.`)];
+    errors = [...validateContent(content, brand, model, originals, values, [icecat?.modelName, icecat?.partCode]), ...missingKeyData(content.title, profile, values, listing.nombre_subfamilia, listing.cod_subfamilia), ...unsupportedNumbers(texts, values, [brand, model, listing.nombre_marca, icecat?.partCode, icecat?.modelName], [listing.titulo, strip(listing.descripcion), listing.descripcion_ampliada, icecat?.title, icecat?.shortSummary, icecat?.longSummary, ...(icecat?.bulletPoints ?? [])]).map((problem) => `Cifra sin respaldo: ${problem} Usa solo cifras de los datos o de los textos de referencia.`)];
     // Solo se revisan los datos de una ficha que ya cumple el formato (ahorra llamadas).
     if (!errors.length) {
       const checked = await factCheck(client, content, facts); usage.push(checked.usage);

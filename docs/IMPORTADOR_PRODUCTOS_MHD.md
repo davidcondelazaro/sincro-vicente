@@ -46,6 +46,18 @@ sincro-vicente ya lee de la API todo el catálogo de MHD a Supabase (tablas `mhd
 - [ ] **Experimento controlado:** un producto de MHD con todo el proceso (descarte, Icecat, contenido con IA, colección, filtros, imágenes, etiqueta energética) hasta dejarlo como **borrador** en Shopify. Antes, cerrar el título ideal.
 - [ ] **Informes** de cada ejecución: todo lo descartado y por qué (sin imagen, poca información, sin precio, sin dato clave), lo que no casa con ninguna categoría del árbol, y las demás anomalías (ver *Informes de la importación*).
 
+## Lo aprendido en el masivo (2026-10-26)
+
+David: «tenemos que ir aprendiendo de todo esto». Cada regla que actúa mucho en el masivo se revisa con datos (cuántos productos, en qué familias, una muestra) antes de darla por buena.
+
+| Qué pasó | Datos | Qué se hizo |
+|---|---|---|
+| 12 trabajadores (48 productos a la vez) no iba más rápido | Anthropic devolvió 429 «concurrent requests … organization's limit»; Supabase y el proxy de Icecat, «fetch failed» | Se vuelve a 6 × 4 (~22/min). El techo es el límite de peticiones simultáneas de Anthropic, que sube con el nivel de uso de la organización. El código admite hasta 12 por si sube. |
+| 8 productos por trabajador iba peor que 4 | Medido con frigoríficos: redactar 29 → 39 s, bajar fotos 13 → 24 s | Más trabajadores con menos carga cada uno, no al revés. |
+| «¿Es el mismo modelo en Icecat?» fallaba | La respuesta se cortaba (400 tokens de salida, con el razonamiento dentro) en modelos enrevesados: monitores, informática | Margen de 2.000 tokens (y 3.000 en las otras comprobaciones cortas). Solo se paga lo que se usa. |
+| Fotos con fondo negro descartadas | 47 de 122 televisores perdían fotos de marca; unos auriculares Razer se quedaban sin ninguna | Se quedan (David: «son todas válidas»), detrás de las de fondo blanco. Reprocesados los 65 afectados. |
+| Solo el 39 % de los textos salía a la primera | 792 rechazos por «cifra sin respaldo» (4 de cada 5 falsos: la cifra estaba en el texto de MHD o Icecat) y 489 por «el título no lleva el modelo exacto» (referencias internas como «MR.JQG11.001» en lugar del modelo «X1827») | Las cifras valen si están en cualquier fuente; el título vale con la referencia de MHD o el modelo comercial de Icecat, comparados sin espacios ni guiones. |
+
 ## Criterios sin depender de David: registro, diccionario y jueces (2026-10-26)
 
 Tras revisar el planteamiento (sesión del 24 al 26-10), David pidió dejarlo hecho en el día. Cambios:
