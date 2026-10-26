@@ -103,10 +103,11 @@ export function numbersIn(text: string) {
 // Lo que no son datos y no se comprueba: la marca, el modelo y el nombre comercial (traen cifras: «DH 1655», «Televés
 // 435501», «Gran Turismo 7») y las versiones de normas y sistemas («USB 3.2», «HDMI 2.1», «Bluetooth 5.3», «Wi-Fi 6»).
 const STANDARDS = /(?<![\p{L}\d])(usb|hdmi|bluetooth|wi-?fi|cat|ddr|lpddr|pcie|pci-e|dvb-t|dvb-s|android|ios|windows|gen|generaci[oó]n|serie|series|ps|xbox|switch|displayport|dp|thunderbolt|sata|nvme|m\.2|lte|[345]g|ip|ipx|vesa|qi)\s*[-.]?\s*\d+(?:[.,]\d+)*(?:\s*(?:x|×)\s*\d+)*/giu;
+// Los nombres no se quitan de dentro de una cifra: el «20» de un modelo no puede dejar «20.000 Hz» en «.000 Hz».
 export function stripNonData(text: string, names: (string | null | undefined)[]) {
   let plain = text.replace(/<[^>]+>/g, " ");
   const tokens = names.filter((name): name is string => Boolean(name?.trim())).flatMap((name) => [name.trim(), ...name.split(/[\s/,()]+/).filter((token) => /\d/.test(token) && token.length >= 2)]);
-  for (const token of [...new Set(tokens)].sort((a, b) => b.length - a.length)) plain = plain.replace(new RegExp(`(?<![\\p{L}\\d])${token.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}(?![\\p{L}\\d])`, "giu"), " ");
+  for (const token of [...new Set(tokens)].sort((a, b) => b.length - a.length)) plain = plain.replace(new RegExp(`(?<![\\p{L}\\d])(?<!\\d[.,])${token.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}(?![\\p{L}\\d])(?![.,]\\d)`, "giu"), " ");
   return plain.replace(STANDARDS, " ");
 }
 

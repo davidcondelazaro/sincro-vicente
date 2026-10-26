@@ -35,13 +35,15 @@ Reglas:
 - «datos_con_clave» es la hoja de datos del producto, ya depurada (un solo valor por dato). Toda cifra que escribas tiene que estar ahí, con la misma unidad o su equivalente (59 cm = 590 mm): el código lo comprueba y rechaza la ficha si no. Los textos de referencia sirven solo para entender el producto, no como fuente de cifras. Medidas: las grandes (alto, ancho, fondo de más de unos 10 cm) en centímetros aunque la hoja las dé en milímetros (845 mm → 84,5 cm); las pequeñas (grosores, diámetros, cables cortos) en milímetros (5,9 mm). Nunca la misma medida en dos unidades («2030 mm (203 cm)»).
 - Usa SOLO los datos que te doy (MHD e Icecat). No inventes cifras, funciones, garantías ni compatibilidades. Si un dato no está, no lo menciones. No menciones lo que el producto NO tiene («no tiene tapa desmontable»).
 - Nombra las tecnologías y funciones tal como vienen en los datos y con su alcance exacto (si hay «No Frost» en el frigorífico y en el congelador, es No Frost en los dos; si solo en uno, solo en ese). NO expliques qué hacen ni qué consigues con ellas («para no descongelar a mano», «ahorra agua», «lava más rápido») salvo que esa explicación esté en los textos de referencia. No saques consecuencias ni comparaciones propias de los datos. Cada afirmación de la ficha tiene que poder señalarse en los datos: después la revisa otra IA y, si algo no está en los datos, la ficha se rechaza.
+- No atribuyas usos, públicos, estancias ni facilidad de uso («para salones grandes», «ideal para familias», «para una segunda sala», «fácil de manejar», «para el día a día en casa», «para cada tipo de prenda») salvo que lo digan los textos de referencia: el revisor lo rechaza. Tampoco digas para qué sirve una función («se saca para limpiarlo», «para llenarlo sin derramar»): nómbrala y basta.
+- Las listas de nombres técnicos (sintonizadores, programas, conexiones) y las medidas se pueden enumerar tal cual; lo que no se copia es la redacción de las frases.
 - Saca los hechos de los textos y de las características y ESCRIBE DESDE CERO, en tu propio orden y con tus frases. No sigas el orden ni la redacción de los textos de MHD o Icecat: una secuencia de ${COPY_WORDS} palabras seguidas igual que la suya hace que se rechace la ficha.
 - No menciones nunca al proveedor ni otras tiendas (mihogardigital.es, MHD), ni el «Consejo del Experto» del proveedor.
 - Título: sigue la plantilla y los datos clave del perfil, unos 70 caracteres como máximo (nunca más de ${TITLE_MAX}). Marca escrita como la escribe la marca, el resto en minúscula normal salvo nombres propios, modelo exacto. Sin « | », sin repeticiones, sin compatibilidades ni códigos internos.
 - Meta título: para Google, unos 60 caracteres (nunca más de ${META_TITLE_MAX}), con lo que la gente busca delante.
-- Descripción corta: 2 frases en texto plano (unos 200-250 caracteres, nunca más de ${SHORT_MAX}). La primera engancha: el beneficio principal o para quién es, con un dato real del producto (no un adjetivo). La segunda da los datos clave.
+- Descripción corta: 2 frases en texto plano (unos 200-250 caracteres, nunca más de ${SHORT_MAX}). La primera engancha con lo que más distingue al producto, con un dato real (no un adjetivo). La segunda da los datos clave.
 - Meta descripción: distinta de la descripción corta, entre 140 y 155 caracteres (nunca menos de ${META_DESCRIPTION.min} ni más de ${META_DESCRIPTION.max}), con lo esencial en los primeros 120. NO repitas el título ni el modelo: Google ya enseña el título encima, así que aprovecha el espacio para 2-3 datos clave, lo que diferencia al producto y para quién es. Sin precio.
-- Descripción larga: HTML sencillo. NO repitas el nombre del producto como titular (la ficha ya lo tiene). Empieza con un párrafo de entrada (<p>, 2-3 frases) que vende: para quién es y qué la hace buena elección. Después, 3-4 apartados con <h2> y un <p> cada uno (puedes usar <strong> y una lista <ul><li> si ayuda). Sin <h1>, <h3> ni <h4>, sin frase de cierre de relleno ni apartado final de resumen o lista que repita lo ya dicho, sin estilos, enlaces, imágenes ni tablas de especificaciones (la ficha técnica se muestra aparte). Incluye los datos que el perfil manda destacar.`;
+- Descripción larga: HTML sencillo. NO repitas el nombre del producto como titular (la ficha ya lo tiene). Empieza con un párrafo de entrada (<p>, 2-3 frases) que vende con datos: lo que distingue al producto y sus puntos fuertes. Después, 3-4 apartados con <h2> y un <p> cada uno (puedes usar <strong> y una lista <ul><li> si ayuda). Sin <h1>, <h3> ni <h4>, sin frase de cierre de relleno ni apartado final de resumen o lista que repita lo ya dicho, sin estilos, enlaces, imágenes ni tablas de especificaciones (la ficha técnica se muestra aparte). Incluye los datos que el perfil manda destacar.`;
 
 // Solo cuando se pide la frase de Elvi (fuera del masivo desde el 2026-10-26).
 const SYSTEM_ELVI = `- Elvi (elvi_tip): Elvi es la vendedora con inteligencia artificial de la tienda. No da consejos de uso ni recita la ficha: habla como una buena vendedora delante del cliente, de tú, en 3 o 4 frases (unos 300-450 caracteres). 1) Para quién es, por la situación del cliente («Si en casa ponéis lavadoras casi a diario…»). Siempre de tú en singular (nunca «vosotros», «os», «hacéis»). 2) Las 2 o 3 cosas que ella destacaría (las que el perfil manda destacar en esta categoría), cada una con su dato exacto y lo que supone para el cliente, solo si se deduce directamente del dato (9 kg → coladas grandes; 60 cm de ancho → hueco estándar; 39 dB → silencioso). 3) Un cierre honesto de vendedora (en qué se fijaría ella o qué comprobar antes de decidirse, p. ej. las medidas del hueco, con la medida exacta que dan los datos). No afirmes qué cabe o qué se puede hacer con el aparato («cabe un edredón», «un pollo entero», «para cuatro personas») si no lo dicen los datos. Ejemplo de tono: «Si haces la compra para toda la semana, este combi te va a dar mucho juego: son 368 L, con 279 para la nevera y 89 para el congelador, y lleva No Frost en los dos. Además es de los silenciosos, con 39 dB, algo que se agradece si la cocina está abierta al salón. Mide 203 cm de alto y 60 de ancho, así que antes de decidirte comprueba que te cabe en el hueco.» Sigue sin explicar qué hacen las tecnologías ni inventar beneficios. En «sources» pon los datos en que se apoya, con la clave exacta de «datos_con_clave» y su valor. Prohibido: instalación eléctrica, de gas o de agua, seguridad, salud, cifras de ahorro, garantías, compatibilidades, comparaciones con otros productos (nada de «de los más…», «de los silenciosos», «más que la media») y cualquier cifra que no esté en los datos. Si no hay nada que destacar con datos, deja text vacío y sources vacío.`;
@@ -56,11 +58,17 @@ export function brandAsWritten(listing: ListingProduct, icecat: IcecatSummary | 
 }
 
 // Secuencias de N palabras seguidas que el texto comparte con los de MHD o Icecat.
-export function copiedSequences(text: string, sources: string[], size = COPY_WORDS) {
+// `data`: palabras de la hoja de datos. Una secuencia que es casi toda datos (cifras, unidades, nombres de programas o
+// sintonizadores: «dvb c dvb s dvb s2 dvb», «mide 96 9 cm de ancho 63») no es copiar la redacción (2026-10-26).
+export function copiedSequences(text: string, sources: string[], size = COPY_WORDS, data: Set<string> = new Set()) {
   const shingles = new Set<string>();
   for (const source of sources) { const list = words(source); for (let i = 0; i + size <= list.length; i += 1) shingles.add(list.slice(i, i + size).join(" ")); }
   const list = words(text); const found: string[] = [];
-  for (let i = 0; i + size <= list.length; i += 1) { const shingle = list.slice(i, i + size).join(" "); if (shingles.has(shingle)) found.push(shingle); }
+  const isData = (word: string) => /\d/.test(word) || word.length <= 2 || data.has(word);
+  for (let i = 0; i + size <= list.length; i += 1) {
+    const chunk = list.slice(i, i + size); const shingle = chunk.join(" ");
+    if (shingles.has(shingle) && chunk.filter(isData).length < Math.ceil(size * 0.6)) found.push(shingle);
+  }
   return [...new Set(found)];
 }
 
@@ -81,7 +89,8 @@ export function validateContent(content: ProductContent, brand: string, model: s
   if (content.title.length > TITLE_MAX) errors.push(`El título tiene ${content.title.length} caracteres (máximo ${TITLE_MAX}).`);
   if (content.meta_title.length > META_TITLE_MAX) errors.push(`El meta título tiene ${content.meta_title.length} caracteres (máximo ${META_TITLE_MAX}).`);
   if (content.short_description.length > SHORT_MAX) errors.push(`La descripción corta tiene ${content.short_description.length} caracteres (máximo ${SHORT_MAX}).`);
-  if (content.meta_description.length < META_DESCRIPTION.min || content.meta_description.length > META_DESCRIPTION.max) errors.push(`La meta descripción tiene ${content.meta_description.length} caracteres (entre ${META_DESCRIPTION.min} y ${META_DESCRIPTION.max}).`);
+  // Margen de 5 caracteres (2026-10-26): 161-165 no merece otro intento; Google corta hacia 155-160 de todos modos.
+  if (content.meta_description.length < META_DESCRIPTION.min || content.meta_description.length > META_DESCRIPTION.max + 5) errors.push(`La meta descripción tiene ${content.meta_description.length} caracteres (entre ${META_DESCRIPTION.min} y ${META_DESCRIPTION.max}).`);
   if (content.meta_description.trim() === content.short_description.trim()) errors.push("La meta descripción repite la descripción corta.");
   // David, 2026-10-26: la meta descripción no repite el título ni el modelo (Google ya enseña el título encima).
   const plain = (text: string) => text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
@@ -100,8 +109,9 @@ export function validateContent(content: ProductContent, brand: string, model: s
   if (!/<h2>/.test(longHtml)) errors.push("La descripción larga debe tener apartados con <h2>.");
   if (/<h[1345][\s>]/.test(longHtml)) errors.push("La descripción larga solo puede usar <h2> como titulares.");
   if (/<h2>\s*(en\s+)?(resumen|datos clave|caracter[ií]sticas principales|lo m[aá]s destacado)/i.test(longHtml)) errors.push("La descripción larga no lleva apartado de resumen: la ficha técnica ya está aparte. Quítalo.");
+  const data = new Set([...values].filter(([key]) => !key.startsWith("texto:")).flatMap(([, value]) => words(value)));
   for (const field of ["short_description", "meta_description", "long_description_html"] as const) {
-    const copied = copiedSequences(content[field], originals);
+    const copied = copiedSequences(content[field], originals, COPY_WORDS, data);
     if (copied.length) errors.push(`«${field}» copia frases de MHD o Icecat: «${copied.slice(0, 2).join("», «")}». Redáctalo con tus palabras.`);
   }
   if (content.elvi_tip) errors.push(...checkElviSources(content.elvi_tip, values));
