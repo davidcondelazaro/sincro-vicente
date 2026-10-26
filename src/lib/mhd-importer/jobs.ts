@@ -7,6 +7,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { anthropicKey, PROCESSOR_MODEL } from "./ai";
 import type { SourcesConfig } from "./gather";
 import { saveRunMedia } from "./media-store";
+import { createShopifyDraft } from "./shopify-draft";
 import { processProduct } from "./processor";
 import { createTrace, type TraceEvent } from "./trace";
 
@@ -58,7 +59,7 @@ function familyData(db: SupabaseClient, family: string) {
   return familyCache.get(family)!;
 }
 
-export async function processJobItem(deps: { db: SupabaseClient; config: SourcesConfig; ai: Anthropic }, item: JobItem) {
+export async function processJobItem(deps: { db: SupabaseClient; config: SourcesConfig; ai: Anthropic; upload?: boolean }, item: JobItem) {
   const started = Date.now(); const log = itemLog(deps.db, item);
   try {
     const { data: listing, error } = await deps.db.rpc("mhd_importer_product", { p_codigo: item.codigo });
@@ -78,8 +79,15 @@ export async function processJobItem(deps: { db: SupabaseClient; config: Sources
     }, () => (result.status === "ok" ? `${result.media.length} archivos guardados` : "Descartado"));
     // Avisos del procesador que no han salido ya como decisión o revisión.
     for (const warning of result.warnings.filter((text) => !text.startsWith("Revisión:") && !/^(Modelo|Marca|Fotos de Icecat)/.test(text))) log.add({ level: "aviso", step: "Avisos", message: warning });
+    // Tandas con «Subir a Shopify» (2026-10-26): el producto se sube en borrador al momento, con el tiempo de cada parte.
+    // Si la subida falla, el producto queda procesado y el error en el registro y en su detalle.
+    let uploadError: string | null = null;
+    if (deps.upload && result.status === "ok") {
+      await log.trace.step("Subir a Shopify", () => createShopifyDraft({ db: deps.db, shopify: deps.config.shopify, icecat: deps.config.icecat, trace: log.trace }, saved.id), (draft) => `${draft.updated ? "Actualizado" : "Creado"} en ${draft.status === "DRAFT" ? "borrador" : draft.status} · ${draft.files.photos} fotos`)
+        .catch((caught: Error) => { uploadError = `Procesado, pero no se subió a Shopify: ${caught.message}`; });
+    }
     const duration = Date.now() - started;
-    await deps.db.from("mhd_importer_job_items").update({ status: result.status === "ok" ? "ok" : "descartado", finished_at: new Date().toISOString(), duration_ms: duration, cost_usd: result.status === "ok" ? result.costUsd : null, run_id: saved.id, error: result.status === "ok" ? null : result.reason, lease_until: null, step: null }).eq("id", item.id);
+    await deps.db.from("mhd_importer_job_items").update({ status: result.status === "ok" ? "ok" : "descartado", finished_at: new Date().toISOString(), duration_ms: duration, cost_usd: result.status === "ok" ? result.costUsd : null, run_id: saved.id, error: result.status === "ok" ? uploadError : result.reason, lease_until: null, step: null }).eq("id", item.id);
     log.add({ level: "info", step: "Producto", message: `${result.status === "ok" ? `Hecho: ${result.product.content.title}` : `Descartado: ${result.reason}`} · ${Math.round(duration / 1000)} s`, durationMs: duration });
   } catch (caught) {
     const message = caught instanceof Error ? caught.message : typeof caught === "object" && caught && "message" in caught ? String((caught as { message: unknown }).message) : String(caught);
@@ -122,6 +130,12 @@ export async function runWorkerTurn(env: Env, config: SourcesConfig, spawn: () =
     }
     // Con el espejo listo, arranca otro trabajador si la tanda usa más de uno (ese, a su vez, arranca el siguiente).
     if (jobs?.length && workers > 1) spawn();
+    // Opciones de cada tanda (p. ej. «Subir a Shopify»), leídas una vez por turno.
+    const optionsByJob = new Map<string, Promise<{ upload?: boolean }>>();
+    const jobOptions = (jobId: string) => {
+      if (!optionsByJob.has(jobId)) optionsByJob.set(jobId, Promise.resolve(db.from("mhd_importer_jobs").select("options").eq("id", jobId).single().then(({ data }) => (data?.options ?? {}) as { upload?: boolean })));
+      return optionsByJob.get(jobId)!;
+    };
     const running = new Set<Promise<void>>(); let empty = false;
     while (true) {
       const canClaim = !empty && Date.now() - started < WORKER.budgetMs;
@@ -130,7 +144,7 @@ export async function runWorkerTurn(env: Env, config: SourcesConfig, spawn: () =
         if (claimError) throw claimError;
         if (!items?.length) empty = true;
         for (const item of (items ?? []) as JobItem[]) {
-          const task: Promise<void> = processJobItem({ db, config, ai }, item).finally(() => { running.delete(task); processed += 1; });
+          const task: Promise<void> = jobOptions(item.job_id).then((options) => processJobItem({ db, config, ai, upload: Boolean(options.upload) }, item)).finally(() => { running.delete(task); processed += 1; });
           running.add(task);
         }
       }

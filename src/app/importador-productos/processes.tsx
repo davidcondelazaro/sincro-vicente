@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 // cada paso y el registro de decisiones, avisos, errores y motivos de revisión.
 
 type JobStatus = "en_cola" | "en_curso" | "pausado" | "terminado" | "cancelado";
-type Job = { id: string; title: string; status: JobStatus; options: { concurrency?: number; workers?: number }; created_by: string | null; created_at: string; started_at: string | null; finished_at: string | null; total: number; pendientes: number; en_curso: number; ok: number; descartados: number; errores: number; duracion_media_ms: number | null; coste_usd: number; ultima_actividad: string | null };
+type Job = { id: string; title: string; status: JobStatus; options: { concurrency?: number; workers?: number; upload?: boolean }; created_by: string | null; created_at: string; started_at: string | null; finished_at: string | null; total: number; pendientes: number; en_curso: number; ok: number; descartados: number; errores: number; duracion_media_ms: number | null; coste_usd: number; ultima_actividad: string | null };
 type Item = { id: number; codigo: string; family_code: string | null; status: "pendiente" | "en_curso" | "ok" | "descartado" | "error"; step: string | null; attempts: number; started_at: string | null; finished_at: string | null; duration_ms: number | null; cost_usd: number | null; run_id: string | null; error: string | null };
 type Step = { step: string; veces: number; media_ms: number; max_ms: number; errores: number };
 type LogEvent = { id: number; item_id: number | null; codigo: string | null; level: "info" | "decision" | "aviso" | "error" | "revision"; step: string; message: string; duration_ms: number | null; created_at: string };
@@ -64,7 +64,7 @@ export function ProcessesView() {
   }
 
   return <section className="flex flex-col gap-5">
-    <p className="text-sm text-zinc-600">Tandas de productos que se procesan en producción (Vercel y Supabase), sin depender de ningún ordenador: cada producto se monta como en la prueba (datos de MHD e Icecat, filtros, textos, fotos, etiqueta, documentos) y se guarda en Sincro, sin tocar Shopify. Aquí se ve en directo qué hace con cada uno, cuánto tarda cada paso y el registro de decisiones, avisos, errores y motivos de revisión.</p>
+    <p className="text-sm text-zinc-600">Tandas de productos que se procesan en producción (Vercel y Supabase), sin depender de ningún ordenador: cada producto se monta como en la prueba (datos de MHD e Icecat, filtros, textos, fotos, etiqueta, documentos) y se guarda en Sincro; si la tanda lo pide, se sube además a Shopify en borrador. Aquí se ve en directo qué hace con cada uno, cuánto tarda cada paso y el registro de decisiones, avisos, errores y motivos de revisión.</p>
     {error && <p className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p>}
     <div className="flex flex-wrap items-center gap-3">
       <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm ${working ? "bg-sky-100 text-sky-800" : "bg-zinc-100 text-zinc-600"}`}><span className={`h-2 w-2 rounded-full ${working ? "animate-pulse bg-sky-600" : "bg-zinc-400"}`} />{working ? `${active.length} trabajador${active.length > 1 ? "es" : ""} procesando` : "Trabajadores en espera"}{lastBeat ? ` · última señal ${ago(lastBeat, now)}` : ""}</span>
@@ -95,7 +95,7 @@ function JobCard({ job, now, selected, onSelect, onAction }: { job: Job; now: nu
       {([["Hechos", `${integer.format(done)} de ${integer.format(job.total)}`], ["Bien", integer.format(job.ok)], ["Descartados", integer.format(job.descartados)], ["Errores", integer.format(job.errores)], ["En curso", integer.format(job.en_curso)], ["Media por producto", seconds(job.duracion_media_ms)], ["Ritmo", perMinute ? `${perMinute.toFixed(1).replace(".", ",")}/min` : "—"], [job.status === "en_curso" ? "Quedan" : "Coste", job.status === "en_curso" ? (eta ? `~${eta < 60 ? `${Math.ceil(eta)} min` : `${(eta / 60).toFixed(1).replace(".", ",")} h`}` : "—") : `${Number(job.coste_usd).toFixed(2).replace(".", ",")} $`]] as const).map(([label, value]) => <div key={label}><dt className="text-xs text-zinc-500">{label}</dt><dd className="font-medium tabular-nums text-zinc-900">{value}</dd></div>)}
     </dl>
     <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-      <span className="text-xs text-zinc-500">Última actividad: {ago(job.ultima_actividad, now)} · coste {Number(job.coste_usd).toFixed(2).replace(".", ",")} $ · {job.options.workers ?? 1} × {job.options.concurrency ?? 4} a la vez</span>
+      <span className="text-xs text-zinc-500">Última actividad: {ago(job.ultima_actividad, now)} · coste {Number(job.coste_usd).toFixed(2).replace(".", ",")} $ · {job.options.workers ?? 1} × {job.options.concurrency ?? 4} a la vez{job.options.upload ? " · sube a Shopify en borrador" : ""}</span>
       <span className="ml-auto flex flex-wrap gap-2">
         {(job.status === "en_cola" || job.status === "en_curso") && <button type="button" onClick={() => onAction("pausar")} className="h-8 rounded-lg border border-zinc-300 px-3 text-xs font-medium">Pausar</button>}
         {job.status === "pausado" && <button type="button" onClick={() => onAction("reanudar")} className="h-8 rounded-lg bg-zinc-900 px-3 text-xs font-medium text-white">Reanudar</button>}
@@ -165,7 +165,7 @@ function JobDetail({ jobId, now }: { jobId: string; now: number }) {
 
 function NewJob({ onCreated }: { onCreated: (id: string) => void }) {
   const [mode, setMode] = useState<"familias" | "banco" | "codigos">("familias"); const [tree, setTree] = useState<TreeLine[]>([]); const [chosen, setChosen] = useState<string[]>([]);
-  const [codes, setCodes] = useState(""); const [title, setTitle] = useState(""); const [concurrency, setConcurrency] = useState(6); const [workerCount, setWorkerCount] = useState(2); const [skipDone, setSkipDone] = useState(true);
+  const [codes, setCodes] = useState(""); const [title, setTitle] = useState(""); const [concurrency, setConcurrency] = useState(6); const [workerCount, setWorkerCount] = useState(2); const [upload, setUpload] = useState(false); const [skipDone, setSkipDone] = useState(true);
   const [search, setSearch] = useState(""); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null);
   useEffect(() => { api<{ tree: TreeLine[] }>("/api/importador-productos/familias").then((body) => setTree(body.tree ?? []), (caught: Error) => setError(caught.message)); }, []);
   const families = tree.flatMap((line) => line.families.filter((family) => family.products > 0).map((family) => ({ ...family, line: line.name })));
@@ -175,7 +175,7 @@ function NewJob({ onCreated }: { onCreated: (id: string) => void }) {
   async function create() {
     setBusy(true); setError(null);
     try {
-      const body = await post({ action: "crear", title, workers: workerCount, concurrency, skipDone, ...(mode === "banco" ? { bench: true } : mode === "codigos" ? { codes: codes.split(/[\s,;]+/) } : { families: chosen }) });
+      const body = await post({ action: "crear", title, workers: workerCount, concurrency, skipDone, upload, ...(mode === "banco" ? { bench: true } : mode === "codigos" ? { codes: codes.split(/[\s,;]+/) } : { families: chosen }) });
       if (body.note) window.alert(body.note);
       onCreated(body.job!);
     } catch (caught) { setError(caught instanceof Error ? caught.message : "No se pudo crear."); } finally { setBusy(false); }
@@ -194,6 +194,7 @@ function NewJob({ onCreated }: { onCreated: (id: string) => void }) {
       <label className="text-sm font-medium text-zinc-700">Productos por trabajador<select value={concurrency} onChange={(event) => setConcurrency(Number(event.target.value))} className="mt-1 block h-10 rounded-lg border border-zinc-300 bg-white px-2 text-sm">{[1, 2, 4, 6, 8, 10, 12].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
       <span className="self-center text-xs text-zinc-500">{workerCount * concurrency} a la vez</span>
       <label className="flex h-10 items-center gap-2 text-sm text-zinc-700"><input type="checkbox" checked={skipDone} onChange={(event) => setSkipDone(event.target.checked)} />Solo los que faltan</label>
+      <label className="flex h-10 items-center gap-2 text-sm text-zinc-700"><input type="checkbox" checked={upload} onChange={(event) => setUpload(event.target.checked)} />Subir a Shopify (en borrador)</label>
       <button type="button" disabled={busy || (mode === "familias" && !chosen.length) || (mode === "codigos" && !codes.trim())} onClick={create} className="h-10 rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white disabled:opacity-50">{busy ? "Creando…" : "Encolar y empezar"}</button>
     </div>
     {error && <p className="text-sm text-red-700">{error}</p>}
