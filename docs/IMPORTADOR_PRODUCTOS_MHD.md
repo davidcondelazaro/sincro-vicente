@@ -123,6 +123,24 @@ Medido en producción con el banco de 41: 41 s por producto y 2,2 productos por 
   - Pasos: colocar en la tienda 0,0 s (antes 2,7), dirección 0,0 s, etiqueta 0,3 s, tratar fotos 0,5 s, clasificar fotos 4,2 s. La redacción, 28 s, es ahora casi todo el tiempo.
   - Siguiente paso: medir en producción con una familia de ~200 a 8, 16 y 24 a la vez, para ver dónde empiezan los límites de Anthropic, Icecat y Supabase.
 
+### Prueba completa hasta Shopify en producción (2026-10-26)
+
+- **Banco de 41 con 2 trabajadores × 6** y subida a Shopify solo de los nuevos:
+  - 41 productos en 3 min 33 s (11,6 por minuto). Antes, con 4 a la vez en bloques y sin subida, fueron 8 min 27 s (4,9 por minuto).
+  - Cada producto tarda lo mismo (38,7 s antes, 37 s ahora más 6,9 s de subida): la mejora sale de hacer más a la vez.
+  - Aprovechamiento del 70 % de los 12 huecos: con solo 41 productos pesan el arranque y el final.
+  - Primeros síntomas de saturación: descargar fotos pasa de 1,1 a 4,5 s, redactar de 21,7 a 25,6 s y clasificar fotos de 3,3 a 4,5 s.
+- **Subida a Shopify:**
+  - 27 creados en borrador y 11 sin tocar (ya estaban en la tienda).
+  - 1 frenado por el revisor de datos.
+  - 2 fallaron por un PDF demasiado grande; reintentados, se subieron sin ese PDF.
+  - Tiempos: crear el producto 1,2 s, subir las fotos 1,1 s, etiqueta y documentos 4,5 s.
+- **Límites de Shopify:** 20 MB para archivos que no son imagen ni vídeo y para imágenes; 1 GB para vídeos. Un PDF de 35 MB devuelve «EntityTooLarge».
+  - **Regla de David:** «tan grandes, fuera». Un PDF de más de 20 MB no se sube, sin comprimirlo; si Icecat ya dice que pesa más, ni se descarga. Probado: un ZIP le quita un 2 % y MuPDF, un 8 %.
+  - Un documento que falla no impide subir el producto.
+  - Los vídeos de más de 50 MB (máximo del almacenamiento) no se usan.
+- **Pendiente:** 12 de los 27 borradores llevan una sola foto, porque MHD no tiene más. Falta decidir si se completan con Icecat cuando MHD trae pocas.
+
 ## Metacampos de categoría de Shopify (estudiado 2026-10-26)
 
 Pregunta de David: ¿dan más flexibilidad o más datos en los filtros? **No.** Comprobado en la documentación y en la taxonomía de la tienda:
