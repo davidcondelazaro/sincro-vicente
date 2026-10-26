@@ -53,7 +53,7 @@ Tras revisar el planteamiento (sesión del 24 al 26-10), David pidió dejarlo he
 - **Registro de decisiones** (`mhd_importer_decisions`, migración `20261026090000`): cada regla y cada duda de los perfiles con pregunta, recomendación, decisión, quién y por qué. Se lee en [DECISIONES_IMPORTADOR.md](DECISIONES_IMPORTADOR.md), generado con `scripts/exportar-decisiones.mjs`. Las 258 dudas se repartieron en: resueltas por una regla (74, cerradas), para los jueces, arreglos de código, productos sueltos y negocio (10, con propuesta para Vicente).
 - **Reglas nuevas del 26-10:** excepción a «manda MHD» (campo que falla en el 20 % o más de una familia → Icecat primero, y vacío sin Icecat), meta descripción sin el título ni el modelo, Elvi fuera del masivo y sin apartado de resumen en la descripción larga. La primera, la segunda y la tercera son propuestas aplicadas por urgencia y revisables.
 - **Diccionario común** (`src/lib/mhd-importer/common.ts`, `scripts/aplicar-diccionario.mjs`): colores y clase energética en un solo sitio, volcados en los perfiles en borrador.
-- **Redacción:** razonamiento bajo, meta descripción sin título, sin resumen final, Elvi solo si se pide. El título sigue con IA: las plantillas de los perfiles son instrucciones en lenguaje natural y montarlo por código exige reescribirlas.
+- **Redacción:** razonamiento bajo, meta descripción sin título, sin resumen final, Elvi solo si se pide (reactivada por David el mismo día: ver «Elvi y etiquetas energéticas»). El título sigue con IA: las plantillas de los perfiles son instrucciones en lenguaje natural y montarlo por código exige reescribirlas.
 - **Código:** modelo limpio (`models.ts`), tabla de marcas (`brands.ts`), exclusiones (maquetas, B1528, unidades sueltas de aire acondicionado), cola de revisión (`review.ts`: clase energética, diferencias de más del 20 %, precio frente a la mediana, modelo o marca dudosos; se guarda en `result.review_reasons`).
 - **Jueces** (`judges.ts`, `scripts/juzgar-familias.mjs`, `scripts/calibrar-jueces.mjs`): Claude y OpenAI revisan perfiles y dudas con el reglamento; solo se cierra una duda si coinciden los dos. Calibración en [CALIBRACION_JUECES.md](CALIBRACION_JUECES.md).
 
@@ -140,6 +140,15 @@ Medido en producción con el banco de 41: 41 s por producto y 2,2 productos por 
   - Un documento que falla no impide subir el producto.
   - Los vídeos de más de 50 MB (máximo del almacenamiento) no se usan.
 - **Pendiente:** 12 de los 27 borradores llevan una sola foto, porque MHD no tiene más. Falta decidir si se completan con Icecat cuando MHD trae pocas.
+
+### Elvi y etiquetas energéticas (2026-10-26)
+
+- **Elvi reactivada** (David: «tiene mucho valor y es fácil de generar una vez tenemos toda la info del producto»). Va por defecto en la redacción; si el revisor la rechaza, la ficha sigue sin ella.
+- **Etiquetas con cuadraditos en producción:**
+  - El SVG oficial de EPREL escribe sus textos con Calibri y Verdana. En Vercel no hay ningún tipo de letra instalado y cada letra salía como «□». En local no se veía porque el Mac sí los tiene.
+  - Arreglo (`fonts.ts`, carpeta `fonts/`): se llevan dentro del proyecto Carlito (mismas medidas que Calibri, licencia OFL) y DejaVu Sans (en lugar de Verdana), y la librería de imágenes usa solo esos. Probado en local solo con esos tipos de letra: la etiqueta sale completa.
+  - Hay que rehacer las etiquetas subidas hoy desde producción.
+- **Enlace a la ficha bajo la etiqueta:** el tema lo pone si el producto tiene la ficha UE en PDF (`custom.documentos`) o el número EPREL (`custom.eprel`). Sin Icecat no hay ninguno de los dos (p. ej. lavavajillas Hyundai HDW6013EDI00).
 
 ## Metacampos de categoría de Shopify (estudiado 2026-10-26)
 

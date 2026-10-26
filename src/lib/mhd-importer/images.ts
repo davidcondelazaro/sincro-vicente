@@ -3,6 +3,7 @@
 // cada foto, y el código calcula el fondo, decide el orden y las prepara (recorte y encuadre). Decidido con David el
 // 2026-10-23; ver docs/IMPORTADOR_PRODUCTOS_MHD.md. Usa `sharp`, así que corre en Node (rutas de Next).
 import type Anthropic from "@anthropic-ai/sdk";
+import { loadBundledFonts } from "./fonts";
 import { createHash } from "node:crypto";
 import sharp from "sharp";
 import { costUsd, PROCESSOR_MODEL } from "./ai";
@@ -133,6 +134,7 @@ export const LABEL_HEIGHT = 1600;
 // El SVG se dibuja a 150 ppp (2026-10-26): a 300 salían ~4.700×9.400 px para dejarlos en 1.600 de alto, y en Vercel
 // tardaba 20-28 s. Si a 150 no llega a 1,2 veces el alto final, se dibuja a 300.
 async function renderLabel(bytes: Uint8Array, isVector: boolean) {
+  if (isVector) loadBundledFonts();
   if (!isVector) return sharp(bytes).flatten({ background: "#ffffff" }).png({ compressionLevel: 1 }).toBuffer();
   const draft = await sharp(bytes, { density: 150 }).flatten({ background: "#ffffff" }).png({ compressionLevel: 1 }).toBuffer({ resolveWithObject: true });
   if (draft.info.height >= LABEL_HEIGHT * 1.2) return draft.data;

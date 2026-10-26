@@ -178,8 +178,8 @@ export async function factCheck(client: Anthropic, content: ProductContent, fact
   return { problems: parsed.problems, usage: message.usage };
 }
 
-// `model`: el modelo limpio (models.ts); sin él, el de MHD. `elvi`: escribir la frase de Elvi (por defecto no: fuera del
-// masivo desde el 2026-10-26, porque es lo que más rechaza el revisor y su valor no está medido).
+// `model`: el modelo limpio (models.ts); sin él, el de MHD. `elvi`: escribir la frase de Elvi (por defecto sí:
+// David la reactivó el 2026-10-26, «tiene mucho valor»; si el revisor la rechaza, la ficha sigue sin ella).
 export async function writeContent(client: Anthropic, input: { profile: FamilyProfile; listing: ListingProduct & { descripcion?: string | null }; detail: MhdProductDetail | null; icecat: IcecatSummary | null; metafields: Record<string, string | string[]>; values: SourceValues; model?: string | null; elvi?: boolean }) {
   const { profile, listing, icecat, metafields } = input;
   // Hoja de datos única (facts.ts): la redacción y las revisiones solo ven un valor por dato.
@@ -187,7 +187,7 @@ export async function writeContent(client: Anthropic, input: { profile: FamilyPr
   // Los valores de los filtros ya calculados también son datos de la ficha (p. ej. «2000 W» sacado de un «2W» de MHD, o
   // «Mueble de 50 cm» sacado del texto): sin ellos, esas cifras no se podrían escribir.
   for (const [key, value] of Object.entries(metafields)) values.set(`filtro:${key}`, Array.isArray(value) ? value.join(", ") : value);
-  const brand = brandAsWritten(listing, icecat); const model = input.model || listing.ref_proved || ""; const withElvi = input.elvi ?? false;
+  const brand = brandAsWritten(listing, icecat); const model = input.model || listing.ref_proved || ""; const withElvi = input.elvi ?? true;
   const originals = [strip(listing.descripcion, 100_000), listing.descripcion_ampliada ?? "", icecat?.longSummary ?? "", icecat?.shortSummary ?? "", ...(icecat?.bulletPoints ?? [])].filter(Boolean);
   // El perfil de la familia va en el sistema, detrás de las instrucciones y con su marca de caché (2026-10-26): es igual
   // para todos los productos de la familia, y el trabajador los procesa seguidos, así que solo se paga entero una vez
