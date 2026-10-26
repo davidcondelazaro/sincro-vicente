@@ -56,12 +56,12 @@ Operaciones (los índices son los del perfil que te paso, «indice» de cada reg
 - replace_filter: index = regla a sustituir; value_json = la regla completa nueva (JSON con metafield, label, sources, method, format, ranges, table, note, subfamilies, min, max).
 - delete_filter: index = regla a quitar; value_json = "".
 - add_filter: index = regla tras la que va la nueva (null = al final); value_json = la regla completa.
-- set_section: section = product | title | meta_title | descriptions | subfamily_exceptions; value_json = la sección completa nueva, con la misma forma que la actual.
+- set_section: section = product | title | meta_title | descriptions | subfamily_exceptions | review; value_json = la sección completa nueva, con la misma forma que la actual (review: lista de reglas de revisión, ver ReviewRule en src/lib/mhd-importer/profile.ts).
 Cada regla nueva o cambiada lleva en «note» el motivo con la fecha «(juez, 2026-10-26)». En «why» de cada operación, el problema o la duda que resuelve. En «notas», lo que no se haya podido aplicar y por qué.`;
 const str = { type: "string" };
 const obj = (properties) => ({ type: "object", properties, required: Object.keys(properties), additionalProperties: false });
 const schema = obj({
-  ops: { type: "array", items: obj({ op: { type: "string", enum: ["replace_filter", "delete_filter", "add_filter", "set_section"] }, index: { anyOf: [{ type: "integer" }, { type: "null" }] }, section: { type: "string", enum: ["", "product", "title", "meta_title", "descriptions", "subfamily_exceptions"] }, value_json: str, why: str }) },
+  ops: { type: "array", items: obj({ op: { type: "string", enum: ["replace_filter", "delete_filter", "add_filter", "set_section"] }, index: { anyOf: [{ type: "integer" }, { type: "null" }] }, section: { type: "string", enum: ["", "product", "title", "meta_title", "descriptions", "subfamily_exceptions", "review"] }, value_json: str, why: str }) },
   notas: str,
 });
 
@@ -83,7 +83,11 @@ function applyOps(profile, ops, subfamilies) {
     try {
       if (op.op === "delete_filter") { if (!Number.isInteger(op.index) || !profile.filters[op.index]) throw new Error("índice inexistente"); deleted.add(op.index); continue; }
       const value = JSON.parse(op.value_json);
-      if (op.op === "set_section") { if (!(op.section in profile)) throw new Error(`sección ${op.section} desconocida`); sections[op.section] = value; continue; }
+      if (op.op === "set_section") {
+        if (!(op.section in profile) && op.section !== "review") throw new Error(`sección ${op.section} desconocida`);
+        if (op.section === "review") for (const rule of value) { if (!rule.label || !Array.isArray(rule.sources) || !["contiene", "tabla", "tramos", "fuera_de_lista"].includes(rule.method) || !Array.isArray(rule.table) || !Array.isArray(rule.ranges)) throw new Error(`regla de revisión mal formada: ${JSON.stringify(rule).slice(0, 120)}`); for (const code of rule.subfamilies ?? []) if (!subfamilies.has(code)) throw new Error(`subfamilia ${code} ajena`); }
+        sections[op.section] = value; continue;
+      }
       const rule = normalizeFilter(value); const problems = filterProblems(rule, subfamilies);
       if (problems.length) throw new Error(problems.join("; "));
       if (op.op === "replace_filter") { if (!Number.isInteger(op.index) || !profile.filters[op.index]) throw new Error("índice inexistente"); replaced.set(op.index, rule); }
