@@ -1,8 +1,9 @@
 // Pieza del importador: el procesador redacta título, meta título, descripciones, meta descripción y la frase de
 // Elvi (la vendedora) de un producto con un modelo pequeño, siguiendo el perfil de su familia. El código valida el
 // formato (y que no copie a MHD ni a Icecat), un revisor de datos comprueba cada afirmación contra las fuentes y, si
-// algo falla, se pide otra vez con los errores (hasta 3 intentos). La frase de Elvi pasa además por su propia revisión. Fuentes: solo MHD e Icecat. Decisiones del
-// 2026-10-23 en docs/IMPORTADOR_PRODUCTOS_MHD.md.
+// algo falla, se pide otra vez con los errores (hasta 3 intentos). La frase de Elvi pasa además por su propia revisión
+// y, desde el 2026-10-26, solo se escribe si se pide (fuera del masivo). Fuentes: solo MHD e Icecat. Decisiones del
+// 2026-10-23 y del 2026-10-26 en docs/IMPORTADOR_PRODUCTOS_MHD.md.
 import type Anthropic from "@anthropic-ai/sdk";
 import { costUsd, PROCESSOR_MODEL, type Usage } from "./ai";
 import type { IcecatSummary } from "./icecat";
@@ -22,10 +23,11 @@ const COPY_WORDS = 8;                 // secuencia de palabras seguidas que no p
 const FORBIDDEN = [/mihogardigital/i, /\bmhd\b/i, /mi hogar digital/i];
 
 const str = { type: "string" };
-const schema = { type: "object", additionalProperties: false, required: ["title", "meta_title", "short_description", "meta_description", "long_description_html", "elvi_tip"], properties: {
-  title: str, meta_title: str, short_description: str, meta_description: str, long_description_html: str,
-  elvi_tip: { type: "object", additionalProperties: false, required: ["text", "sources"], properties: { text: str, sources: { type: "array", items: { type: "object", additionalProperties: false, required: ["source", "value"], properties: { source: str, value: str } } } } },
-} };
+const elviSchema = { type: "object", additionalProperties: false, required: ["text", "sources"], properties: { text: str, sources: { type: "array", items: { type: "object", additionalProperties: false, required: ["source", "value"], properties: { source: str, value: str } } } } };
+const TEXT_FIELDS = ["title", "meta_title", "short_description", "meta_description", "long_description_html"];
+const schemaFor = (withElvi: boolean) => ({ type: "object", additionalProperties: false, required: withElvi ? [...TEXT_FIELDS, "elvi_tip"] : TEXT_FIELDS, properties: {
+  ...Object.fromEntries(TEXT_FIELDS.map((field) => [field, str])), ...(withElvi ? { elvi_tip: elviSchema } : {}),
+} });
 
 const SYSTEM = `Redactas fichas de producto para Electrónica Vicente, tienda de electrodomésticos de Burgos con tienda online. Escribes en español de España, de tú, con tono cercano y experto, como un buen dependiente que conoce el producto: frases cortas y claras, datos concretos («368 L», «39 dB») en vez de adjetivos («increíble», «revolucionaria»), sin exageraciones ni preguntas retóricas.
 Reglas:
@@ -37,9 +39,11 @@ Reglas:
 - Título: sigue la plantilla y los datos clave del perfil, unos 70 caracteres como máximo (nunca más de ${TITLE_MAX}). Marca escrita como la escribe la marca, el resto en minúscula normal salvo nombres propios, modelo exacto. Sin « | », sin repeticiones, sin compatibilidades ni códigos internos.
 - Meta título: para Google, unos 60 caracteres (nunca más de ${META_TITLE_MAX}), con lo que la gente busca delante.
 - Descripción corta: 2 frases en texto plano (unos 200-250 caracteres, nunca más de ${SHORT_MAX}). La primera engancha: el beneficio principal o para quién es, con un dato real del producto (no un adjetivo). La segunda da los datos clave.
-- Meta descripción: distinta de la descripción corta, entre 140 y 155 caracteres (nunca menos de ${META_DESCRIPTION.min} ni más de ${META_DESCRIPTION.max}), con lo esencial en los primeros 120: tipo, marca, modelo, 2-3 datos clave y lo que diferencia al producto. Sin precio.
-- Descripción larga: HTML sencillo. NO repitas el nombre del producto como titular (la ficha ya lo tiene). Empieza con un párrafo de entrada (<p>, 2-3 frases) que vende: para quién es y qué la hace buena elección. Después, 3-4 apartados con <h2> y un <p> cada uno (puedes usar <strong> y una lista <ul><li> si ayuda). Sin <h1>, <h3> ni <h4>, sin frase de cierre de relleno, sin estilos, enlaces, imágenes ni tablas de especificaciones (la ficha técnica se muestra aparte). Incluye los datos que el perfil manda destacar.
-- Elvi (elvi_tip): Elvi es la vendedora con inteligencia artificial de la tienda. No da consejos de uso ni recita la ficha: habla como una buena vendedora delante del cliente, de tú, en 3 o 4 frases (unos 300-450 caracteres). 1) Para quién es, por la situación del cliente («Si en casa ponéis lavadoras casi a diario…»). Siempre de tú en singular (nunca «vosotros», «os», «hacéis»). 2) Las 2 o 3 cosas que ella destacaría (las que el perfil manda destacar en esta categoría), cada una con su dato exacto y lo que supone para el cliente, solo si se deduce directamente del dato (9 kg → coladas grandes; 60 cm de ancho → hueco estándar; 39 dB → silencioso). 3) Un cierre honesto de vendedora (en qué se fijaría ella o qué comprobar antes de decidirse, p. ej. las medidas del hueco, con la medida exacta que dan los datos). No afirmes qué cabe o qué se puede hacer con el aparato («cabe un edredón», «un pollo entero», «para cuatro personas») si no lo dicen los datos. Ejemplo de tono: «Si haces la compra para toda la semana, este combi te va a dar mucho juego: son 368 L, con 279 para la nevera y 89 para el congelador, y lleva No Frost en los dos. Además es de los silenciosos, con 39 dB, algo que se agradece si la cocina está abierta al salón. Mide 203 cm de alto y 60 de ancho, así que antes de decidirte comprueba que te cabe en el hueco.» Sigue sin explicar qué hacen las tecnologías ni inventar beneficios. En «sources» pon los datos en que se apoya, con la clave exacta de «datos_con_clave» y su valor. Prohibido: instalación eléctrica, de gas o de agua, seguridad, salud, cifras de ahorro, garantías, compatibilidades, comparaciones con otros productos (nada de «de los más…», «de los silenciosos», «más que la media») y cualquier cifra que no esté en los datos. Si no hay nada que destacar con datos, deja text vacío y sources vacío.`;
+- Meta descripción: distinta de la descripción corta, entre 140 y 155 caracteres (nunca menos de ${META_DESCRIPTION.min} ni más de ${META_DESCRIPTION.max}), con lo esencial en los primeros 120. NO repitas el título ni el modelo: Google ya enseña el título encima, así que aprovecha el espacio para 2-3 datos clave, lo que diferencia al producto y para quién es. Sin precio.
+- Descripción larga: HTML sencillo. NO repitas el nombre del producto como titular (la ficha ya lo tiene). Empieza con un párrafo de entrada (<p>, 2-3 frases) que vende: para quién es y qué la hace buena elección. Después, 3-4 apartados con <h2> y un <p> cada uno (puedes usar <strong> y una lista <ul><li> si ayuda). Sin <h1>, <h3> ni <h4>, sin frase de cierre de relleno ni apartado final de resumen o lista que repita lo ya dicho, sin estilos, enlaces, imágenes ni tablas de especificaciones (la ficha técnica se muestra aparte). Incluye los datos que el perfil manda destacar.`;
+
+// Solo cuando se pide la frase de Elvi (fuera del masivo desde el 2026-10-26).
+const SYSTEM_ELVI = `- Elvi (elvi_tip): Elvi es la vendedora con inteligencia artificial de la tienda. No da consejos de uso ni recita la ficha: habla como una buena vendedora delante del cliente, de tú, en 3 o 4 frases (unos 300-450 caracteres). 1) Para quién es, por la situación del cliente («Si en casa ponéis lavadoras casi a diario…»). Siempre de tú en singular (nunca «vosotros», «os», «hacéis»). 2) Las 2 o 3 cosas que ella destacaría (las que el perfil manda destacar en esta categoría), cada una con su dato exacto y lo que supone para el cliente, solo si se deduce directamente del dato (9 kg → coladas grandes; 60 cm de ancho → hueco estándar; 39 dB → silencioso). 3) Un cierre honesto de vendedora (en qué se fijaría ella o qué comprobar antes de decidirse, p. ej. las medidas del hueco, con la medida exacta que dan los datos). No afirmes qué cabe o qué se puede hacer con el aparato («cabe un edredón», «un pollo entero», «para cuatro personas») si no lo dicen los datos. Ejemplo de tono: «Si haces la compra para toda la semana, este combi te va a dar mucho juego: son 368 L, con 279 para la nevera y 89 para el congelador, y lleva No Frost en los dos. Además es de los silenciosos, con 39 dB, algo que se agradece si la cocina está abierta al salón. Mide 203 cm de alto y 60 de ancho, así que antes de decidirte comprueba que te cabe en el hueco.» Sigue sin explicar qué hacen las tecnologías ni inventar beneficios. En «sources» pon los datos en que se apoya, con la clave exacta de «datos_con_clave» y su valor. Prohibido: instalación eléctrica, de gas o de agua, seguridad, salud, cifras de ahorro, garantías, compatibilidades, comparaciones con otros productos (nada de «de los más…», «de los silenciosos», «más que la media») y cualquier cifra que no esté en los datos. Si no hay nada que destacar con datos, deja text vacío y sources vacío.`;
 
 const strip = (html: string | null | undefined, max = 2500) => (html ?? "").replace(/<span[^>]*display:\s*none[^>]*>.*?<\/span>/gi, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
 const words = (text: string) => text.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/<[^>]+>/g, " ").split(/[^a-z0-9ñ]+/).filter(Boolean);
@@ -82,6 +86,10 @@ export function validateContent(content: ProductContent, brand: string, model: s
   if (content.short_description.length > SHORT_MAX) errors.push(`La descripción corta tiene ${content.short_description.length} caracteres (máximo ${SHORT_MAX}).`);
   if (content.meta_description.length < META_DESCRIPTION.min || content.meta_description.length > META_DESCRIPTION.max) errors.push(`La meta descripción tiene ${content.meta_description.length} caracteres (entre ${META_DESCRIPTION.min} y ${META_DESCRIPTION.max}).`);
   if (content.meta_description.trim() === content.short_description.trim()) errors.push("La meta descripción repite la descripción corta.");
+  // David, 2026-10-26: la meta descripción no repite el título ni el modelo (Google ya enseña el título encima).
+  const plain = (text: string) => text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
+  if (plain(content.meta_description).includes(plain(content.title))) errors.push("La meta descripción repite el título: Google ya lo enseña encima; usa el espacio para datos clave y lo que diferencia al producto.");
+  else if (model && plain(content.meta_description).includes(plain(model))) errors.push(`La meta descripción repite el modelo «${model}», que ya va en el título.`);
   if (brand && !content.title.includes(brand)) errors.push(`El título no lleva la marca escrita exactamente «${brand}».`);
   if (model && !content.title.toLowerCase().includes(model.toLowerCase())) errors.push(`El título no lleva el modelo exacto «${model}».`);
   if (/\|/.test(content.title)) errors.push("El título lleva « | ».");
@@ -94,11 +102,12 @@ export function validateContent(content: ProductContent, brand: string, model: s
   if (!longHtml.startsWith("<p>")) errors.push("La descripción larga debe empezar con un párrafo de entrada (<p>), sin titular.");
   if (!/<h2>/.test(longHtml)) errors.push("La descripción larga debe tener apartados con <h2>.");
   if (/<h[1345][\s>]/.test(longHtml)) errors.push("La descripción larga solo puede usar <h2> como titulares.");
+  if (/<h2>\s*(en\s+)?(resumen|datos clave|caracter[ií]sticas principales|lo m[aá]s destacado)/i.test(longHtml)) errors.push("La descripción larga no lleva apartado de resumen: la ficha técnica ya está aparte. Quítalo.");
   for (const field of ["short_description", "meta_description", "long_description_html"] as const) {
     const copied = copiedSequences(content[field], originals);
     if (copied.length) errors.push(`«${field}» copia frases de MHD o Icecat: «${copied.slice(0, 2).join("», «")}». Redáctalo con tus palabras.`);
   }
-  errors.push(...checkElviSources(content.elvi_tip, values));
+  if (content.elvi_tip) errors.push(...checkElviSources(content.elvi_tip, values));
   return errors;
 }
 
@@ -141,20 +150,22 @@ export function missingKeyData(title: string, profile: FamilyProfile, values: So
 // afirmación de los textos con los datos de origen y señala lo que no está en ellos o lo contradice.
 const factSchema = { type: "object", additionalProperties: false, required: ["problems"], properties: { problems: { type: "array", items: { type: "object", additionalProperties: false, required: ["field", "claim", "reason"], properties: { field: str, claim: str, reason: str } } } } };
 export async function factCheck(client: Anthropic, content: ProductContent, facts: unknown) {
-  const texts = { title: content.title, meta_title: content.meta_title, short_description: content.short_description, meta_description: content.meta_description, long_description: strip(content.long_description_html, 10_000), elvi: content.elvi_tip.text };
+  const texts = { title: content.title, meta_title: content.meta_title, short_description: content.short_description, meta_description: content.meta_description, long_description: strip(content.long_description_html, 10_000), ...(content.elvi_tip.text ? { elvi: content.elvi_tip.text } : {}) };
   const message = await client.messages.create({ model: PROCESSOR_MODEL, max_tokens: 3000, output_config: { effort: "medium", format: { type: "json_schema", schema: factSchema } }, messages: [{ role: "user", content: `Eres el revisor de datos de una tienda de electrodomésticos. Comprueba cada afirmación de estos textos de una ficha de producto contra los datos de origen.\n\nTextos (JSON):\n${JSON.stringify(texts)}\n\nDatos de origen (JSON: características y textos de referencia del fabricante y del proveedor):\n${JSON.stringify(facts)}\n\nSeñala en «problems» cada afirmación que: no esté en los datos; los contradiga; cambie su alcance (p. ej. «No Frost en el congelador» si los datos dicen que también en la nevera); o explique qué hace una tecnología o qué se consigue con ella cuando esa explicación no está en los textos de referencia («para no descongelar a mano», «ahorra agua»). Si dos fuentes dan valores distintos para el mismo dato (p. ej. 1400 rpm en MHD y 1351 rpm en Icecat), cualquiera de los dos tiene respaldo: no lo señales. En el campo «elvi» se permite leer un dato en términos prácticos cuando se deduce directamente de él (9 kg → coladas grandes; 60 cm de ancho → hueco estándar; 39 dB → silencioso; medidas → comprobar el hueco), pero no explicar qué hace una tecnología ni afirmar qué cabe o qué se puede hacer con el aparato («cabe un edredón», «para cuatro personas») si no lo dicen los datos. No señales el estilo, el tono ni frases genéricas sin datos («una buena elección para el día a día»). Si todo está bien, problems vacío. field: el campo; claim: la frase; reason: por qué, en una frase en español.` }] });
   const parsed = JSON.parse(message.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("")) as { problems: { field: string; claim: string; reason: string }[] };
   return { problems: parsed.problems, usage: message.usage };
 }
 
-export async function writeContent(client: Anthropic, input: { profile: FamilyProfile; listing: ListingProduct & { descripcion?: string | null }; detail: MhdProductDetail | null; icecat: IcecatSummary | null; metafields: Record<string, string | string[]>; values: SourceValues }) {
+// `model`: el modelo limpio (models.ts); sin él, el de MHD. `elvi`: escribir la frase de Elvi (por defecto no: fuera del
+// masivo desde el 2026-10-26, porque es lo que más rechaza el revisor y su valor no está medido).
+export async function writeContent(client: Anthropic, input: { profile: FamilyProfile; listing: ListingProduct & { descripcion?: string | null }; detail: MhdProductDetail | null; icecat: IcecatSummary | null; metafields: Record<string, string | string[]>; values: SourceValues; model?: string | null; elvi?: boolean }) {
   const { profile, listing, icecat, metafields } = input;
   // Hoja de datos única (facts.ts): la redacción y las revisiones solo ven un valor por dato.
   const values = buildFactSheet(profile, input.values, listing.cod_subfamilia);
   // Los valores de los filtros ya calculados también son datos de la ficha (p. ej. «2000 W» sacado de un «2W» de MHD, o
   // «Mueble de 50 cm» sacado del texto): sin ellos, esas cifras no se podrían escribir.
   for (const [key, value] of Object.entries(metafields)) values.set(`filtro:${key}`, Array.isArray(value) ? value.join(", ") : value);
-  const brand = brandAsWritten(listing, icecat); const model = listing.ref_proved ?? "";
+  const brand = brandAsWritten(listing, icecat); const model = input.model || listing.ref_proved || ""; const withElvi = input.elvi ?? false;
   const originals = [strip(listing.descripcion, 100_000), listing.descripcion_ampliada ?? "", icecat?.longSummary ?? "", icecat?.shortSummary ?? "", ...(icecat?.bulletPoints ?? [])].filter(Boolean);
   const data = {
     perfil: { producto: profile.product, titulo: profile.title, meta_titulo: profile.meta_title, descripciones: profile.descriptions },
@@ -168,13 +179,15 @@ export async function writeContent(client: Anthropic, input: { profile: FamilyPr
   let unsupported: { field: string; claim: string; reason: string }[] = [];
   for (let attempt = 0; attempt < 3; attempt += 1) {
     attempts += 1;
-    // El sistema y los datos del producto son iguales en el reintento: se cachean.
-    const message = await client.messages.create({ model: PROCESSOR_MODEL, max_tokens: 16000, system: SYSTEM, cache_control: { type: "ephemeral" }, output_config: { effort: "medium", format: { type: "json_schema", schema } }, messages });
+    // El sistema y los datos del producto son iguales en el reintento: se cachean. Razonamiento bajo (2026-10-26): con
+    // «medium» cada ficha gastaba 13.000-15.000 tokens de salida para ~1.300 caracteres de texto.
+    const message = await client.messages.create({ model: PROCESSOR_MODEL, max_tokens: 16000, system: withElvi ? `${SYSTEM}\n${SYSTEM_ELVI}` : SYSTEM, cache_control: { type: "ephemeral" }, output_config: { effort: "low", format: { type: "json_schema", schema: schemaFor(withElvi) } }, messages });
     usage.push(message.usage);
     if (message.stop_reason !== "end_turn") throw new Error(`La redacción terminó con ${message.stop_reason}.`);
     const text = message.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("");
-    content = JSON.parse(text) as ProductContent;
-    const texts = { title: content.title, meta_title: content.meta_title, short_description: content.short_description, meta_description: content.meta_description, long_description_html: content.long_description_html, elvi: content.elvi_tip.text };
+    const parsed = JSON.parse(text) as Omit<ProductContent, "elvi_tip"> & { elvi_tip?: ElviTip };
+    content = { ...parsed, elvi_tip: parsed.elvi_tip ?? { text: "", sources: [] } };
+    const texts = { title: content.title, meta_title: content.meta_title, short_description: content.short_description, meta_description: content.meta_description, long_description_html: content.long_description_html, ...(content.elvi_tip.text ? { elvi: content.elvi_tip.text } : {}) };
     errors = [...validateContent(content, brand, model, originals, values), ...missingKeyData(content.title, profile, values, listing.nombre_subfamilia, listing.cod_subfamilia), ...unsupportedNumbers(texts, values, [brand, model, listing.nombre_marca, icecat?.partCode, icecat?.modelName]).map((problem) => `Cifra sin respaldo: ${problem} Usa solo cifras de datos_con_clave.`)];
     // Solo se revisan los datos de una ficha que ya cumple el formato (ahorra llamadas).
     if (!errors.length) {
