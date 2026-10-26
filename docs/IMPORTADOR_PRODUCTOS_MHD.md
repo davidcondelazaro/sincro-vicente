@@ -57,6 +57,18 @@ Tras revisar el planteamiento (sesión del 24 al 26-10), David pidió dejarlo he
 - **Código:** modelo limpio (`models.ts`), tabla de marcas (`brands.ts`), exclusiones (maquetas, B1528, unidades sueltas de aire acondicionado), cola de revisión (`review.ts`: clase energética, diferencias de más del 20 %, precio frente a la mediana, modelo o marca dudosos; se guarda en `result.review_reasons`).
 - **Jueces** (`judges.ts`, `scripts/juzgar-familias.mjs`, `scripts/calibrar-jueces.mjs`): Claude y OpenAI revisan perfiles y dudas con el reglamento; solo se cierra una duda si coinciden los dos. Calibración en [CALIBRACION_JUECES.md](CALIBRACION_JUECES.md).
 
+## Metacampos de categoría de Shopify (estudiado 2026-10-26)
+
+Pregunta de David: ¿dan más flexibilidad o más datos en los filtros? **No.** Comprobado en la documentación y en la taxonomía de la tienda:
+
+- **Mismo límite:** Search & Discovery admite 25 filtros en total, estándar y propios sumados. Un atributo de categoría (p. ej. «Funciones de la freidora de aire») ocupa su hueco como cualquier `filtro.*`.
+- **Menos datos:** solo listas de valores cualitativos. No hay cifras con unidad (Shopify: «Unit of measurement and dimension type attribute aren't currently available»): ni capacidad, ni kg, ni rpm, ni pulgadas, ni litros, que son nuestros filtros principales. Lavadoras: color, patrón, montaje, alimentación, control, clase energética, tipo de carga, programas y características. Televisores: tecnología, resolución, plataforma Smart TV, HDR, VESA… sin tamaño.
+- **Valores fijos y traducción rara:** «Alimentado por CA», clase energética sin «Nueva», y atributos que no pintan nada (frigoríficos con «Mecanismo de apertura de la sombrilla»). Se pueden renombrar o añadir valores, pero no crear atributos.
+- **Sugerencias:** las rellena la IA de Shopify a partir del título, la descripción y las fotos, sin comprobar contra MHD ni Icecat; se confirman al guardar si no se tocan.
+- **Para qué sí sirven:** canales (Google, Shop, catálogo de Shopify para asistentes de IA), muestras de color en variantes e informes.
+- **Decisión propuesta:** no cambiar los filtros; más adelante, que el importador rellene unos pocos (color, clase energética, plataforma Smart TV, resolución) con los datos que ya calcula, para los canales.
+- **Hallazgo de paso, importante:** Search & Discovery **oculta los filtros en colecciones de más de 5.000 productos**. Con el catálogo de MHD, colecciones amplias como Electrodomésticos pueden pasar de ahí y quedarse sin filtros: tenerlo en cuenta en el árbol nuevo.
+
 ## Decisiones de David para todo el catálogo (2026-10-23)
 
 Salieron al revisar las dudas del perfil de Lavadoras (G01); el analista las recibe como reglas en las familias siguientes.
