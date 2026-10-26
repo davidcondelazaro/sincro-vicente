@@ -130,8 +130,17 @@ export function imageFilenames(base: string, kinds: ImageKind[]) {
 // Etiqueta energética como PNG normalizado (decidido 2026-10-23): sin bordes, fondo blanco y mismo alto para todas.
 // Fuente: el SVG oficial de MHD (vectorial, se renderiza a la resolución que haga falta) o una imagen de Icecat.
 export const LABEL_HEIGHT = 1600;
+// El SVG se dibuja a 150 ppp (2026-10-26): a 300 salían ~4.700×9.400 px para dejarlos en 1.600 de alto, y en Vercel
+// tardaba 20-28 s. Si a 150 no llega a 1,2 veces el alto final, se dibuja a 300.
+async function renderLabel(bytes: Uint8Array, isVector: boolean) {
+  if (!isVector) return sharp(bytes).flatten({ background: "#ffffff" }).png({ compressionLevel: 1 }).toBuffer();
+  const draft = await sharp(bytes, { density: 150 }).flatten({ background: "#ffffff" }).png({ compressionLevel: 1 }).toBuffer({ resolveWithObject: true });
+  if (draft.info.height >= LABEL_HEIGHT * 1.2) return draft.data;
+  return sharp(bytes, { density: 300 }).flatten({ background: "#ffffff" }).png({ compressionLevel: 1 }).toBuffer();
+}
+
 export async function normalizeEnergyLabel(bytes: Uint8Array, isVector: boolean) {
-  const rendered = await sharp(bytes, isVector ? { density: 300 } : {}).flatten({ background: "#ffffff" }).png().toBuffer();
+  const rendered = await renderLabel(bytes, isVector);
   const trimmed = await sharp(rendered).trim({ background: "#ffffff", threshold: 10 }).toBuffer();
   const out = await sharp(trimmed).resize({ height: LABEL_HEIGHT }).png({ compressionLevel: 9 }).toBuffer({ resolveWithObject: true });
   return { bytes: new Uint8Array(out.data), width: out.info.width, height: out.info.height };

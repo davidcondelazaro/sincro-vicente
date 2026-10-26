@@ -96,6 +96,32 @@ David prefiere procesar en producción para no depender de su ordenador, viendo 
 - **Archivos:** las fotos tratadas, etiquetas y vídeos van al almacenamiento de Supabase (cubo privado `importador`, migración `20261026140000`); la tabla `mhd_importer_media` guarda solo la ruta (`media-store.ts`). Antes iban en la tabla (~1,3 MB por producto).
 - **Probado en local (2026-10-26):** 4 productos a la vez, 3 bien en 30-42 s y 1 descartado (sin fotos en MHD ni Icecat). La redacción se lleva el 75 % del tiempo (29 s de media); colocar en la tienda 3,5 s, clasificar fotos 2 s y descargar fotos 1 s. ~0,005 $ por ficha. Con 4 a la vez salen unos 6 productos por minuto.
 
+### Velocidad del procesado (David, 2026-10-26: «nos lo vamos a tomar muy muy en serio»)
+
+Medido en producción con el banco de 41: 41 s por producto y 2,2 productos por minuto. A ese ritmo, las 29.873 fichas procesables serían unos 9 días. Cambios:
+
+- **Varios trabajadores y cola continua** (`jobs.ts`, migración `20261026170000`):
+  - Cada tanda dice cuántos trabajadores usa (`options.workers`, hasta 6, por defecto 2) y cuántos productos procesa cada uno a la vez (`options.concurrency`, hasta 12, por defecto 6).
+  - Cada trabajador ocupa un puesto (`mhd_importer_worker_slots`) y, si quedan puestos y trabajo, arranca otro.
+  - En cuanto termina un producto coge el siguiente, sin esperar al más lento.
+  - Los productos se reservan por familias, para aprovechar la caché de la redacción.
+- **Cero consultas a Shopify al procesar:** todo sale del espejo de la tienda; ver [ESPEJO_TIENDA_SHOPIFY.md](ESPEJO_TIENDA_SHOPIFY.md).
+- **Fotos antes de redactar:**
+  - Las fotos se revisan con el título de MHD. Si ninguna vale, el producto se descarta sin pagar la redacción.
+  - Las fotos descartadas salen en el registro con su motivo.
+  - Después van a la vez la redacción, el tratamiento de las fotos y la etiqueta energética.
+- **Etiqueta energética:** el SVG de EPREL se dibuja a 150 ppp (antes, a 300, salían 4.700 × 9.400 px). En Vercel tardaba de 21 a 28 s en televisores; ahora ~0,3 s.
+- **Caché de la redacción:** el perfil de la familia va en el sistema con su marca de caché. Desde el segundo producto de la familia se leen de la caché entre 5.000 y 21.000 tokens.
+- **Más potencia para el trabajador:** 3.009 MB en `vercel.json`.
+- **Fichas de MHD:**
+  - Al crear una tanda se piden a Supabase las que faltan (`mhd_import_start_codes`, migración `20261026160000`). MHD no contesta a las fichas pedidas desde Vercel (HTTP 500).
+  - Mientras se importan, los productos sin ficha esperan.
+  - El procesador lee la ficha guardada (`gather.ts`).
+- **Probado en local:**
+  - 12 productos con 2 trabajadores de 4, en 82 s (~9 por minuto, frente a 2,2).
+  - Pasos: colocar en la tienda 0,0 s (antes 2,7), dirección 0,0 s, etiqueta 0,3 s, tratar fotos 0,5 s, clasificar fotos 4,2 s. La redacción, 28 s, es ahora casi todo el tiempo.
+  - Siguiente paso: medir en producción con una familia de ~200 a 8, 16 y 24 a la vez, para ver dónde empiezan los límites de Anthropic, Icecat y Supabase.
+
 ## Metacampos de categoría de Shopify (estudiado 2026-10-26)
 
 Pregunta de David: ¿dan más flexibilidad o más datos en los filtros? **No.** Comprobado en la documentación y en la taxonomía de la tienda:

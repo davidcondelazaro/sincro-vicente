@@ -189,8 +189,15 @@ export async function writeContent(client: Anthropic, input: { profile: FamilyPr
   for (const [key, value] of Object.entries(metafields)) values.set(`filtro:${key}`, Array.isArray(value) ? value.join(", ") : value);
   const brand = brandAsWritten(listing, icecat); const model = input.model || listing.ref_proved || ""; const withElvi = input.elvi ?? false;
   const originals = [strip(listing.descripcion, 100_000), listing.descripcion_ampliada ?? "", icecat?.longSummary ?? "", icecat?.shortSummary ?? "", ...(icecat?.bulletPoints ?? [])].filter(Boolean);
+  // El perfil de la familia va en el sistema, detrás de las instrucciones y con su marca de caché (2026-10-26): es igual
+  // para todos los productos de la familia, y el trabajador los procesa seguidos, así que solo se paga entero una vez
+  // cada 5 minutos. En el mensaje van solo los datos del producto.
+  const perfil = { producto: profile.product, titulo: profile.title, meta_titulo: profile.meta_title, descripciones: profile.descriptions };
+  const system: Anthropic.TextBlockParam[] = [
+    { type: "text", text: withElvi ? `${SYSTEM}\n${SYSTEM_ELVI}` : SYSTEM },
+    { type: "text", text: `Perfil de la familia (JSON):\n${JSON.stringify(perfil)}`, cache_control: { type: "ephemeral" } },
+  ];
   const data = {
-    perfil: { producto: profile.product, titulo: profile.title, meta_titulo: profile.meta_title, descripciones: profile.descriptions },
     producto: { marca: brand, modelo: model, titulo_proveedor: listing.titulo, filtros_calculados: metafields },
     datos_con_clave: Object.fromEntries(values),
     textos_de_referencia: { mhd: strip(listing.descripcion), mhd_ampliada: listing.descripcion_ampliada, icecat_resumen: icecat?.longSummary, icecat_destacados: icecat?.bulletPoints },
@@ -203,9 +210,10 @@ export async function writeContent(client: Anthropic, input: { profile: FamilyPr
   const attemptErrors: string[][] = [];
   for (let attempt = 0; attempt < 3; attempt += 1) {
     attempts += 1;
-    // El sistema y los datos del producto son iguales en el reintento: se cachean. Razonamiento bajo (2026-10-26): con
+    // El sistema y el perfil se cachean entre productos de la familia (marca en el sistema); los datos del producto, entre
+    // reintentos (caché automática al final). Razonamiento bajo (2026-10-26): con
     // «medium» cada ficha gastaba 13.000-15.000 tokens de salida para ~1.300 caracteres de texto.
-    const message = await client.messages.create({ model: PROCESSOR_MODEL, max_tokens: 16000, system: withElvi ? `${SYSTEM}\n${SYSTEM_ELVI}` : SYSTEM, cache_control: { type: "ephemeral" }, output_config: { effort: "low", format: { type: "json_schema", schema: schemaFor(withElvi) } }, messages });
+    const message = await client.messages.create({ model: PROCESSOR_MODEL, max_tokens: 16000, system, cache_control: { type: "ephemeral" }, output_config: { effort: "low", format: { type: "json_schema", schema: schemaFor(withElvi) } }, messages });
     usage.push(message.usage);
     if (message.stop_reason !== "end_turn") throw new Error(`La redacción terminó con ${message.stop_reason}.`);
     const text = message.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("");

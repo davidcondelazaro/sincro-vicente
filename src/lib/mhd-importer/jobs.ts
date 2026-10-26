@@ -14,8 +14,9 @@ type Env = Record<string, string | undefined>;
 export type JobItem = { id: number; job_id: string; codigo: string; family_code: string | null; attempts: number };
 
 // Una llamada dura como mucho 300 s en Vercel: no se reservan productos nuevos pasados 150 s (un producto tarda hasta
-// ~2 min), y el turno caduca a los 290 s por si la llamada muere.
-export const WORKER = { budgetMs: 150_000, leaseSeconds: 290, itemLeaseSeconds: 600, concurrency: 4, maxAttempts: 2 };
+// ~2 min), y el puesto caduca a los 120 s sin latido por si la llamada muere. Por defecto, 2 trabajadores con 6
+// productos a la vez cada uno; cada tanda lo cambia (options.workers, hasta 6, y options.concurrency, hasta 12).
+export const WORKER = { budgetMs: 150_000, leaseSeconds: 120, itemLeaseSeconds: 600, workers: 2, concurrency: 6, maxAttempts: 2, mirrorMaxAgeHours: 6 };
 
 // Cliente con la clave secreta: el trabajador no tiene sesión de usuario. Vale la clave nueva (SUPABASE_SECRET_KEY) o
 // la antigua (SUPABASE_SERVICE_ROLE_KEY).
@@ -90,25 +91,54 @@ export async function processJobItem(deps: { db: SupabaseClient; config: Sources
   }
 }
 
-// Un turno del trabajador: mientras quede tiempo, reserva hasta `concurrency` productos y los procesa a la vez.
-// Devuelve si queda trabajo, para que la ruta se vuelva a llamar.
-export async function runWorkerTurn(env: Env, config: SourcesConfig) {
+// Un turno del trabajador (2026-10-26): coge un puesto libre (hasta `workers` a la vez) y procesa en cola continua:
+// en cuanto termina un producto coge otro, sin esperar al más lento, hasta `concurrency` a la vez. Si quedan puestos
+// libres y trabajo, llama a `spawn` para que arranque otro trabajador. El primero refresca antes el espejo de la tienda
+// si tiene más de 6 horas. Devuelve si queda trabajo, para que la ruta se vuelva a llamar.
+export async function runWorkerTurn(env: Env, config: SourcesConfig, spawn: () => void = () => undefined) {
   const db = workerClient(env);
-  const { data: token, error } = await db.rpc("mhd_importer_worker_acquire", { p_seconds: WORKER.leaseSeconds });
+  const { data: jobs } = await db.from("mhd_importer_jobs").select("options").in("status", ["en_cola", "en_curso"]).order("created_at").limit(1);
+  const options = (jobs?.[0]?.options ?? {}) as { workers?: number; concurrency?: number };
+  const workers = Math.min(6, Math.max(1, Number(options.workers ?? WORKER.workers)));
+  const concurrency = Math.min(12, Math.max(1, Number(options.concurrency ?? WORKER.concurrency)));
+  const { data: slots, error } = await db.rpc("mhd_importer_slot_acquire", { p_seconds: WORKER.leaseSeconds, p_max: workers });
   if (error) throw error;
-  if (!token) return { ran: false, processed: 0, more: false, reason: "Otra llamada tiene el turno." };
+  const slot = (slots as { slot: number; token: string }[] | null)?.[0];
+  if (!slot) return { ran: false, processed: 0, more: false, reason: "No hay puesto libre." };
+  const heartbeat = setInterval(() => { void db.rpc("mhd_importer_slot_heartbeat", { p_slot: slot.slot, p_token: slot.token, p_seconds: WORKER.leaseSeconds }).then(() => undefined); }, 30_000);
   const ai = new Anthropic({ apiKey: anthropicKey(env) });
   const started = Date.now(); let processed = 0; let more = false;
   try {
-    while (Date.now() - started < WORKER.budgetMs) {
-      const { data: jobs } = await db.from("mhd_importer_jobs").select("options").in("status", ["en_cola", "en_curso"]).order("created_at").limit(1);
-      const concurrency = Math.min(8, Math.max(1, Number((jobs?.[0]?.options as { concurrency?: number } | undefined)?.concurrency ?? WORKER.concurrency)));
-      const { data: items, error: claimError } = await db.rpc("mhd_importer_claim_items", { p_limit: concurrency, p_lease_seconds: WORKER.itemLeaseSeconds });
-      if (claimError) throw claimError;
-      if (!items?.length) break;
-      await Promise.all((items as JobItem[]).map((item) => processJobItem({ db, config, ai }, item)));
-      processed += items.length;
-      await db.from("mhd_importer_worker").update({ heartbeat_at: new Date().toISOString(), lease_until: new Date(Date.now() + WORKER.leaseSeconds * 1000).toISOString() }).eq("lease_token", token);
+    const { mirrorAgeHours, refreshShopifyMirror } = await import("../shopify-mirror");
+    const age = jobs?.length ? await mirrorAgeHours(db) : 0;
+    // Sin espejo todavía no se puede colocar nada: solo el primer puesto trabaja (lo llena) y los demás esperan al
+    // vigilante.
+    if (age === null && slot.slot !== 1) return { ran: false, processed: 0, more: false, reason: "Esperando al espejo de la tienda." };
+    if (jobs?.length && slot.slot === 1) {
+      if (age === null || age > WORKER.mirrorMaxAgeHours) {
+        const result = await refreshShopifyMirror(db, config.shopify).catch((caught: Error) => ({ error: caught.message }));
+        console.log(JSON.stringify({ productImporterWorker: "espejo", ...result }));
+      }
+    }
+    // Con el espejo listo, arranca otro trabajador si la tanda usa más de uno (ese, a su vez, arranca el siguiente).
+    if (jobs?.length && workers > 1) spawn();
+    const running = new Set<Promise<void>>(); let empty = false;
+    while (true) {
+      const canClaim = !empty && Date.now() - started < WORKER.budgetMs;
+      if (canClaim && running.size < concurrency) {
+        const { data: items, error: claimError } = await db.rpc("mhd_importer_claim_items", { p_limit: concurrency - running.size, p_lease_seconds: WORKER.itemLeaseSeconds });
+        if (claimError) throw claimError;
+        if (!items?.length) empty = true;
+        for (const item of (items ?? []) as JobItem[]) {
+          const task: Promise<void> = processJobItem({ db, config, ai }, item).finally(() => { running.delete(task); processed += 1; });
+          running.add(task);
+        }
+      }
+      if (!running.size && (empty || !canClaim)) break;
+      // Espera a que acabe alguno (o 3 s, para volver a mirar la cola si estaba vacía).
+      await Promise.race([...running, new Promise((resolve) => setTimeout(resolve, empty ? 3_000 : 60_000))]);
+      // Cola vacía: se vuelve a mirar mientras haya productos en marcha (pueden llegar reintentos).
+      if (empty && running.size) empty = false;
     }
     await db.rpc("mhd_importer_finish_jobs");
     // Queda trabajo si hay pendientes en tandas activas (las pausadas esperan).
@@ -117,7 +147,8 @@ export async function runWorkerTurn(env: Env, config: SourcesConfig) {
     const { count } = ids.length ? await db.from("mhd_importer_job_items").select("id", { count: "exact", head: true }).eq("status", "pendiente").in("job_id", ids) : { count: 0 };
     more = Boolean(count);
   } finally {
-    await db.rpc("mhd_importer_worker_release", { p_token: token });
+    clearInterval(heartbeat);
+    await db.rpc("mhd_importer_slot_release", { p_slot: slot.slot, p_token: slot.token });
   }
-  return { ran: true, processed, more };
+  return { ran: true, slot: slot.slot, processed, more };
 }

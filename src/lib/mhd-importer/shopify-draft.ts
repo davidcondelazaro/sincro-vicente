@@ -9,6 +9,7 @@ import { STORE_RULES, type ProcessedProduct } from "./processor";
 import { fetchIcecatDocument, type IcecatConfig } from "./sources";
 import { mediaBytes } from "./media-store";
 import { shopifyGraphql, type ShopifyConfig } from "./store-filters";
+import { MIRROR_PRODUCT_FIELDS, MIRROR_VARIANT_FIELDS, mirrorProduct } from "../shopify-mirror";
 
 // Regla de David (2026-10-26): los productos con revisión pendiente se suben igual, como borrador, y se revisan antes de
 // publicar. Llevan esta etiqueta mientras estén pendientes en la cola; al marcarlos «Está bien» se quita.
@@ -67,6 +68,12 @@ async function uploadOnce(deps: { db: SupabaseClient; shopify: ShopifyConfig }, 
   return id;
 }
 
+let locationsCache: { at: number; nodes: { id: string; name: string }[] } | null = null;
+async function storeLocations(shopify: ShopifyConfig) {
+  if (!locationsCache || Date.now() - locationsCache.at > 3_600_000) locationsCache = { at: Date.now(), nodes: (await shopifyGraphql<{ locations: { nodes: { id: string; name: string }[] } }>(shopify, `{ locations(first: 20) { nodes { id name } } }`)).locations.nodes };
+  return locationsCache.nodes;
+}
+
 export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: ShopifyConfig; icecat: IcecatConfig }, runId: string) {
   const { data: run, error } = await deps.db.from("mhd_importer_product_runs").select("id,status,result,shopify_product_id").eq("id", runId).single();
   if (error) throw error;
@@ -92,9 +99,12 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   // (dirección, estado, precio y precio tachado, SKU, venta sin stock, existencias, disponibilidad y prioridad).
   let refresh = false;
   if (!existingId && shop.variant.barcode) {
-    const found = (await shopifyGraphql<{ productVariants: { nodes: { product: { id: string } }[] } }>(deps.shopify, `query($q: String!) { productVariants(first: 2, query: $q) { nodes { product { id } } } }`, { q: `barcode:${shop.variant.barcode}` })).productVariants.nodes;
-    if (found.length > 1) throw new Error(`Hay más de un producto en Shopify con el EAN ${shop.variant.barcode}: revísalo a mano.`);
-    if (found[0]) { existingId = found[0].product.id; refresh = true; }
+    // En el espejo de la tienda (src/lib/shopify-mirror.ts), sin preguntar a Shopify.
+    const { data: found, error: mirrorError } = await deps.db.from("shopify_variants").select("product_id").eq("barcode", shop.variant.barcode);
+    if (mirrorError) throw new Error(`No se pudo leer el espejo de la tienda: ${mirrorError.message}`);
+    const products = [...new Set(found.map((row) => row.product_id as string))];
+    if (products.length > 1) throw new Error(`Hay más de un producto en Shopify con el EAN ${shop.variant.barcode}: revísalo a mano.`);
+    if (products[0]) { existingId = products[0]; refresh = true; }
   }
   type ExistingVariant = { id: string; price: string; compareAtPrice: string | null; sku: string | null; barcode: string | null; inventoryPolicy: string };
   const existing = existingId ? (await shopifyGraphql<{ product: { id: string; handle: string; status: string; variants: { nodes: ExistingVariant[] } } | null }>(deps.shopify, `query($id: ID!) { product(id: $id) { id handle status variants(first: 2) { nodes { id price compareAtPrice sku barcode inventoryPolicy } } } }`, { id: existingId })).product : null;
@@ -104,8 +114,8 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   const { data: media, error: mediaError } = await deps.db.from("mhd_importer_media").select("role,position,filename,content_type,bytes,storage_path,meta").eq("run_id", runId).order("position");
   if (mediaError) throw mediaError;
 
-  // Ubicaciones por nombre.
-  const locations = (await shopifyGraphql<{ locations: { nodes: { id: string; name: string }[] } }>(deps.shopify, `{ locations(first: 20) { nodes { id name } } }`)).locations.nodes;
+  // Ubicaciones por nombre (se leen una vez cada hora).
+  const locations = await storeLocations(deps.shopify);
   // Por nombre; si no aparece, el identificador fijo de STORE_RULES.locationIds (que también debe existir).
   const locationId = (name: string) => { const found = locations.find((location) => location.name === name) ?? locations.find((location) => location.id === STORE_RULES.locationIds[name]); if (!found) throw new Error(`No existe la ubicación «${name}» en Shopify.`); return found.id; };
 
@@ -163,10 +173,12 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
     productOptions: [{ name: "Title", values: [{ name: "Default Title" }] }],
     variants: [variant],
   };
-  const data = await shopifyGraphql<{ productSet: { product: { id: string; handle: string; status: string } | null; userErrors: UserError[] } }>(deps.shopify,
-    `mutation($input: ProductSetInput!, $identifier: ProductSetIdentifiers) { productSet(input: $input, identifier: $identifier, synchronous: true) { product { id handle status } userErrors { field message } } }`, { input, identifier: existing ? { id: existing.id } : null });
+  const data = await shopifyGraphql<{ productSet: { product: (Parameters<typeof mirrorProduct>[1]) | null; userErrors: UserError[] } }>(deps.shopify,
+    `mutation($input: ProductSetInput!, $identifier: ProductSetIdentifiers) { productSet(input: $input, identifier: $identifier, synchronous: true) { product { ${MIRROR_PRODUCT_FIELDS} variants(first: 10) { nodes { ${MIRROR_VARIANT_FIELDS} } } } userErrors { field message } } }`, { input, identifier: existing ? { id: existing.id } : null });
   check(data.productSet.userErrors, existing ? "Shopify no actualizó el producto" : "Shopify no creó el producto");
   const created = data.productSet.product!;
+  // Al espejo de la tienda en el momento, para que la siguiente subida o procesado ya lo vea.
+  await mirrorProduct(deps.db, created);
   // Al actualizar, productSet no borra los metacampos que ya no van (p. ej. la etiqueta, el EPREL o la ficha de Icecat
   // de otro modelo): se borran aquí los que gestiona el importador y esta vez no llevan valor.
   if (existing) {

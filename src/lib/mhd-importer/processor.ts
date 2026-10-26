@@ -15,13 +15,12 @@ import { cached } from "./cache";
 import { gatherProduct, type SourcesConfig } from "./gather";
 import { embeddableYoutubeVideos, icecatMetafield, summarizeIcecat, type IcecatSummary } from "./icecat";
 import { checkIcecatIdentity, labelMatches, labelText } from "./identity";
-import { classifyImages, imageFilenames, KIND_ALT, normalizeEnergyLabel, orderImages, pdfFirstPageToPng, prepareImages, processImage, slugify, type ClassifiedImage, type ImageKind } from "./images";
+import { classifyImages, imageFilenames, KIND_ALT, normalizeEnergyLabel, orderImages, pdfFirstPageToPng, prepareImages, processImage, slugify, type ImageKind } from "./images";
 import type { FamilyProfile } from "./profile";
 import { classifyVideos, prepareVideos, type VideoKind } from "./videos";
 import { noTrace, type Trace } from "./trace";
 import { applyProfile, discardReason, firstNumber, sourceValues, type AppliedRules, reviewReasons } from "./rules";
 import { fetchIcecatByModel, fetchIcecatDocument, fetchMhdMedia } from "./sources";
-import { shopifyGraphql } from "./store-filters";
 
 // Decisiones de David (2026-10-23), provisionales donde se indica.
 export const STORE_RULES = {
@@ -83,11 +82,21 @@ function weightKg(values: Map<string, string>) {
 
 // Dirección de la ficha (decidido 2026-10-23): tipo + marca + modelo; si existe, color, y en último caso -2, -3…
 // Una dirección que ya tiene este mismo producto (creado antes desde el importador) cuenta como libre.
-async function freeHandle(config: SourcesConfig, base: string, color: string | null, ownId: string | null) {
-  const exists = async (handle: string) => { const found = (await shopifyGraphql<{ productByIdentifier: { id: string } | null }>(config.shopify, `query($h: String!) { productByIdentifier(identifier: { handle: $h }) { id } }`, { h: handle })).productByIdentifier; return Boolean(found && found.id !== ownId); };
+// Desde el 2026-10-26 sin preguntar a Shopify: se mira el espejo de la tienda y las direcciones ya dadas por el
+// importador (mhd_importer_handles), que se reservan aquí para que dos productos de una tanda no se queden la misma.
+async function freeHandle(db: SupabaseClient, base: string, color: string | null, ownId: string | null, codigo: string) {
+  const take = async (handle: string) => {
+    const { data: inStore, error } = await db.from("shopify_products").select("product_id").eq("handle", handle);
+    if (error) throw new Error(`No se pudo leer el espejo de la tienda: ${error.message}`);
+    if (inStore.some((row) => row.product_id !== ownId)) return false;
+    await db.from("mhd_importer_handles").upsert({ handle, codigo }, { onConflict: "handle", ignoreDuplicates: true });
+    const { data: reserved, error: reserveError } = await db.from("mhd_importer_handles").select("codigo").eq("handle", handle).maybeSingle();
+    if (reserveError) throw new Error(`No se pudo reservar la dirección: ${reserveError.message}`);
+    return reserved?.codigo === codigo;
+  };
   const candidates = [base, ...(color ? [`${base}-${slugify(color)}`] : [])];
-  for (const handle of candidates) if (!(await exists(handle))) return handle;
-  for (let n = 2; n < 20; n += 1) if (!(await exists(`${base}-${n}`))) return `${base}-${n}`;
+  for (const handle of candidates) if (await take(handle)) return handle;
+  for (let n = 2; n < 20; n += 1) if (await take(`${base}-${n}`)) return `${base}-${n}`;
   throw new Error(`No hay dirección libre para ${base}.`);
 }
 
@@ -201,36 +210,43 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   }
   if (!prepared.images.length) { t.event("decision", "Descartes", "Descartado: sin imagen descargable (ni en MHD ni en Icecat)"); return { status: "discarded", reason: "Sin imagen descargable (ni en MHD ni en Icecat)", warnings }; }
 
-  const written = await t.step("Redactar textos (IA)", () => writeContent(deps.ai, { profile, listing, detail: gathered.detail, icecat, metafields: applied.metafields, values, model }), (result) => `${result.attempts} intento${result.attempts > 1 ? "s" : ""}${result.blocked ? " · bloqueada por el revisor de datos" : ""} · ${(result.costUsd ?? 0).toFixed(4)} $`);
-  for (const [index, errors] of written.attemptErrors.entries()) t.event("aviso", "Redactar textos (IA)", `Intento ${index + 1} rechazado: ${errors.join(" | ")}`.slice(0, 2000));
-  warnings.push(...written.errors.map((error) => `Validación del texto: ${error}`));
-  if (written.elviReview && !written.elviReview.ok) warnings.push(`Frase de Elvi descartada: ${written.elviReview.reason}`);
-  if (written.blocked) warnings.push("Ficha bloqueada: el revisor de datos encontró afirmaciones sin respaldo. Hay que rehacerla o revisarla antes de guardarla en Shopify.");
-  cost += written.costUsd ?? 0; usage.content = written.usage; usage.contentAttempts = written.attempts; usage.contentErrors = written.attemptErrors;
-
-  // Fotos: la IA dice qué vista es cada una; el código calcula el fondo, ordena y trata.
-  const classified = prepared.images.length ? await t.step("Clasificar fotos (IA)", () => classifyImages(deps.ai, written.content.title, prepared.images, listing.imagen), (result) => `${result.classified.length} fotos clasificadas`) : { classified: [] as ClassifiedImage[], costUsd: 0, usage: null };
+  // Fotos antes de redactar (2026-10-26): la IA dice qué vista es cada una con el título de MHD y el código calcula el
+  // fondo y ordena. Si ninguna vale, se descarta sin gastar la redacción.
+  const classified = await t.step("Clasificar fotos (IA)", () => classifyImages(deps.ai, listing.titulo ?? "", prepared.images, listing.imagen), (result) => `${result.classified.length} fotos clasificadas`);
   cost += classified.costUsd ?? 0; usage.images = classified.usage;
   let ordered = orderImages(classified.classified);
   // Si todas las de MHD se descartan al revisarlas (fondo negro, pequeñas…), se prueban las de Icecat comprobado.
   if (!ordered.keep.length && icecat?.gallery?.length && !prepared.images.some((image) => icecat.gallery.some((picture) => picture.url === image.url))) {
+    for (const image of ordered.dropped) t.event("aviso", "Clasificar fotos (IA)", `Foto de MHD descartada: ${image.reason} (${image.url})`);
     const fromIcecat = await prepareImages(icecat.gallery.map((picture) => picture.url).filter(Boolean));
     if (fromIcecat.images.length) {
-      const again = await classifyImages(deps.ai, written.content.title, fromIcecat.images, null);
+      const again = await classifyImages(deps.ai, listing.titulo ?? "", fromIcecat.images, null);
       cost += again.costUsd ?? 0;
       prepared = { images: [...prepared.images, ...fromIcecat.images], errors: prepared.errors };
       ordered = orderImages(again.classified);
       if (ordered.keep.length) { warnings.push(`Fotos de Icecat (${ordered.keep.length}): las de MHD no pasaron la revisión.`); t.event("decision", "Clasificar fotos (IA)", `Fotos de Icecat (${ordered.keep.length}): las de MHD no pasaron la revisión.`); }
     }
   }
+  for (const image of ordered.dropped) t.event("aviso", "Clasificar fotos (IA)", `Foto descartada: ${image.reason} (${image.url})`);
   if (!ordered.keep.length) { t.event("decision", "Descartes", "Descartado: sin imagen válida (todas descartadas al revisarlas)"); return { status: "discarded", reason: "Sin imagen válida (todas descartadas al revisarlas)", warnings }; }
+
+  // A la vez (2026-10-26): la redacción, el tratamiento de las fotos y la etiqueta energética no dependen entre sí.
+  const [written, treated, label] = await Promise.all([
+    t.step("Redactar textos (IA)", () => writeContent(deps.ai, { profile, listing, detail: gathered.detail, icecat, metafields: applied.metafields, values, model }), (result) => `${result.attempts} intento${result.attempts > 1 ? "s" : ""}${result.blocked ? " · bloqueada por el revisor de datos" : ""} · ${(result.costUsd ?? 0).toFixed(4)} $`),
+    t.step("Tratar fotos", () => Promise.all(ordered.keep.map(async (image) => ({ image, file: await processImage(prepared.images.find((item) => item.url === image.url)!.bytes, image) }))), (result) => `${result.length} fotos tratadas · ${ordered.dropped.length} descartadas`),
+    t.step("Etiqueta energética", () => energyLabelFile(deps.config, listing, icecat, [listing.ref_proved, ...(model !== listing.ref_proved ? [model] : []), ...(identity.check?.same ? [icecat?.partCode ?? null, icecat?.modelName ?? null] : [])], warnings).catch((caught: Error) => { warnings.push(`Etiqueta energética: ${caught.message}`); return null; }), (result) => (result ? `PNG desde ${result.source}` : "Sin etiqueta")),
+  ]);
+  for (const [index, errors] of written.attemptErrors.entries()) t.event("aviso", "Redactar textos (IA)", `Intento ${index + 1} rechazado: ${errors.join(" | ")}`.slice(0, 2000));
+  warnings.push(...written.errors.map((error) => `Validación del texto: ${error}`));
+  if (written.elviReview && !written.elviReview.ok) warnings.push(`Frase de Elvi descartada: ${written.elviReview.reason}`);
+  if (written.blocked) warnings.push("Ficha bloqueada: el revisor de datos encontró afirmaciones sin respaldo. Hay que rehacerla o revisarla antes de guardarla en Shopify.");
+  cost += written.costUsd ?? 0; usage.content = written.usage; usage.contentAttempts = written.attempts; usage.contentErrors = written.attemptErrors;
   const brand = brandChoice.brand;
   // Tipo para la dirección y los archivos: lo que va delante de la marca en el título («Freidora de aire»), porque en
   // familias amplias el nombre del perfil es genérico («pequeño electrodoméstico de preparación de alimentos»).
   const brandAt = written.content.title.toLowerCase().indexOf(brand.toLowerCase());
   const productType = (brandAt > 0 ? written.content.title.slice(0, brandAt).trim() : "") || profile.product.singular;
   const base = slugify(`${productType} ${brand} ${model}`);
-  const treated = await t.step("Tratar fotos", () => Promise.all(ordered.keep.map(async (image) => ({ image, file: await processImage(prepared.images.find((item) => item.url === image.url)!.bytes, image) }))), (result) => `${result.length} fotos tratadas · ${ordered.dropped.length} descartadas`);
   // Si la principal de MHD queda pequeña tras tratarla (< 800 px), pasa a principal la frontal o tres cuartos sobre
   // blanco más grande, si la hay (decidido 2026-10-23).
   const side = (entry: (typeof treated)[number]) => Math.max(entry.file.width, entry.file.height); // el lado largo: un combi es estrecho por naturaleza
@@ -248,7 +264,6 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   }
 
   // Etiqueta energética como PNG en su metacampo, fuera de la galería.
-  const label = await t.step("Etiqueta energética", () => energyLabelFile(deps.config, listing, icecat, [listing.ref_proved, ...(model !== listing.ref_proved ? [model] : []), ...(identity.check?.same ? [icecat?.partCode ?? null, icecat?.modelName ?? null] : [])], warnings).catch((caught: Error) => { warnings.push(`Etiqueta energética: ${caught.message}`); return null; }), (result) => (result ? `PNG desde ${result.source}` : "Sin etiqueta"));
   const labelFilename = label ? `${slugify(`${brand} ${model}`)}-etiqueta-energetica.png` : null;
   if (label && labelFilename) media.push({ role: "energy_label", position: 0, filename: labelFilename, contentType: "image/png", width: label.width, height: label.height, bytes: label.bytes, meta: { source: label.source } });
 
@@ -270,12 +285,14 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   // Colocación en las colecciones actuales (hermanas por EAN) y datos de Shopify.
   const vendor = brandChoice.vendor;
   const distinction = productDistinction(profile, values);
-  const classification = await t.step("Colocar en la tienda", () => classifyInStore(deps.config.shopify, { subfamilyEans: subfamilyEans.filter((ean) => ean !== listing.codigo_ean), distinction, distinctionNames: profile.product.distinctions.map((item) => item.name), vendor }), (result) => `Tipo «${result.productType ?? "sin tipo"}» · ${result.tags.length} etiquetas`);
+  const classification = await t.step("Colocar en la tienda", () => classifyInStore(deps.db, { subfamilyEans: subfamilyEans.filter((ean) => ean !== listing.codigo_ean), distinction, distinctionNames: profile.product.distinctions.map((item) => item.name), vendor }), (result) => `Tipo «${result.productType ?? "sin tipo"}» · ${result.tags.length} etiquetas`);
   warnings.push(...classification.notes);
     // Sin etiqueta buena no va «Energética»: con esa etiqueta y el metacampo vacío, el tema abriría la última foto.
   const tags = [...classification.tags, ...(label ? ["Energética"] : [])];
   const { data: previousRun } = await deps.db.from("mhd_importer_product_runs").select("shopify_product_id").eq("codigo", listing.codigo).not("shopify_product_id", "is", null).order("created_at", { ascending: false }).limit(1).maybeSingle();
-  const handle = await t.step("Dirección de la ficha", () => freeHandle(deps.config, base, typeof applied.metafields["filtro.color"] === "string" ? applied.metafields["filtro.color"] as string : null, previousRun?.shopify_product_id ?? null), (result) => result);
+  // El producto ya puede estar en la tienda (creado por el importador o de antes, por EAN): su dirección le vale.
+  const { data: storeMatch } = listing.codigo_ean ? await deps.db.from("shopify_variants").select("product_id").eq("barcode", listing.codigo_ean).limit(1).maybeSingle() : { data: null };
+  const handle = await t.step("Dirección de la ficha", () => freeHandle(deps.db, base, typeof applied.metafields["filtro.color"] === "string" ? applied.metafields["filtro.color"] as string : null, previousRun?.shopify_product_id ?? storeMatch?.product_id ?? null, listing.codigo), (result) => result);
   const sellWithoutStock = STORE_RULES.sellOutOfStockBrands.includes(vendor) && STORE_RULES.sellOutOfStockLines.includes(listing.cod_linea ?? "");
   // Opiniones que ya tenemos de este EAN (Trusted Shops) con el resumen de Elvi, para la sección «Opiniones».
   const technical = icecatMetafield(icecat, gathered.detail?.caracteristicas ?? [], youtube);
