@@ -36,7 +36,7 @@ Propuesta inicial:
 | --- | --- |
 | Precio, stock | Directo cada 30 min |
 | Fotos (huella de imágenes) | Rehacer solo las fotos |
-| Título o descripción (huella de contenido) | **No se rehacen** (David, 2026-10-26: «pienso que no»): nuestros textos salen de la ficha completa e Icecat, no del título de MHD. Queda en el histórico y sale en el resumen diario, por si alguien quiere reprocesarlo a mano. |
+| Título o descripción (huella de contenido) | Se vuelve a pedir la ficha de detalle y se comparan las características y los datos clave (medidas, capacidad, clase energética, modelo…) con los usados al redactar. **Si cambió algún dato, se rehacen los textos con la IA; si solo cambió la redacción de MHD, no**, y queda en el histórico y en el resumen diario (David, 2026-10-26: un cambio de texto puede esconder un cambio de datos). |
 | Familia o subfamilia | Recolocar en el árbol |
 | Marca, EAN o modelo | A revisión: puede ser otro producto |
 | Clase energética | Rehacer la etiqueta |
