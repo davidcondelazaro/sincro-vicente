@@ -26,7 +26,7 @@ Solo las altas y las modificaciones importantes piden el resto de datos (ficha d
 - **Correos:**
   - inmediato **solo con fallos graves**, también a david@aligeria.com: lectura de MHD fallida, freno de bajas, Anthropic sin saldo o con el tope de gasto alcanzado, Shopify rechazando la subida;
   - **resumen diario a las 9:00 (hora de España) a david@aligeria.com** (David, 2026-10-26), de las últimas 24 horas: altas, bajas y cambios; descartes con su motivo; lo que está en revisión; temas abiertos ya hablados.
-  - sincro-vicente debe enviar correos; los del chatbot se usaban y han dejado de salir: revisar por qué al montarlo.
+  - **Servicio: Resend**, el mismo que usa chatbot-vicente para las incidencias desde el 2026-10-11 (ver su `docs/gestion-sincro-vicente.md`). Hace falta `RESEND_API_KEY` en el entorno de sincro-vicente en Vercel (la pone David) y un remitente del dominio verificado. David dice que los correos del chatbot han dejado de salir: revisarlo al montarlo, porque comparten servicio.
 - **Freno general** del importador (`mhd_importer_brake_check`) también para las altas: si fallan 10 de los últimos 20, se pausa.
 
 ## Tipos de modificación (por decidir uno a uno)
@@ -45,5 +45,4 @@ Propuesta inicial:
 
 ## Pendiente de decidir
 
-- Servicio de correo.
 - El porcentaje del freno de bajas.
