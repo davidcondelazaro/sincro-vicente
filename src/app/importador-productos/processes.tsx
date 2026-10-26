@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 // cada paso y el registro de decisiones, avisos, errores y motivos de revisión.
 
 type JobStatus = "en_cola" | "en_curso" | "pausado" | "terminado" | "cancelado";
-type Job = { id: string; title: string; status: JobStatus; options: { concurrency?: number; workers?: number; upload?: boolean | "nuevos" }; created_by: string | null; created_at: string; started_at: string | null; finished_at: string | null; total: number; pendientes: number; en_curso: number; ok: number; descartados: number; errores: number; duracion_media_ms: number | null; coste_usd: number; ultima_actividad: string | null };
+type Job = { id: string; title: string; status: JobStatus; paused_reason?: string | null; options: { concurrency?: number; workers?: number; upload?: boolean | "nuevos" }; created_by: string | null; created_at: string; started_at: string | null; finished_at: string | null; total: number; pendientes: number; en_curso: number; ok: number; descartados: number; errores: number; duracion_media_ms: number | null; coste_usd: number; ultima_actividad: string | null };
 type Item = { id: number; codigo: string; family_code: string | null; status: "pendiente" | "en_curso" | "ok" | "descartado" | "error"; step: string | null; attempts: number; started_at: string | null; finished_at: string | null; duration_ms: number | null; cost_usd: number | null; run_id: string | null; error: string | null };
 type Step = { step: string; veces: number; media_ms: number; max_ms: number; errores: number };
 type LogEvent = { id: number; item_id: number | null; codigo: string | null; level: "info" | "decision" | "aviso" | "error" | "revision"; step: string; message: string; duration_ms: number | null; created_at: string };
@@ -96,6 +96,7 @@ function JobCard({ job, now, selected, onSelect, onAction }: { job: Job; now: nu
     </dl>
     <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
       <span className="text-xs text-zinc-500">Última actividad: {ago(job.ultima_actividad, now)} · coste {Number(job.coste_usd).toFixed(2).replace(".", ",")} $ · {job.options.workers ?? 1} × {job.options.concurrency ?? 4} a la vez{job.options.upload === "nuevos" ? " · sube a Shopify solo los nuevos" : job.options.upload ? " · sube a Shopify" : ""}</span>
+      {job.status === "pausado" && job.paused_reason && <span className="basis-full text-xs font-medium text-red-700">Pausada: {job.paused_reason}</span>}
       <span className="ml-auto flex flex-wrap gap-2">
         {(job.status === "en_cola" || job.status === "en_curso") && <button type="button" onClick={() => onAction("pausar")} className="h-8 rounded-lg border border-zinc-300 px-3 text-xs font-medium">Pausar</button>}
         {job.status === "pausado" && <button type="button" onClick={() => onAction("reanudar")} className="h-8 rounded-lg bg-zinc-900 px-3 text-xs font-medium text-white">Reanudar</button>}

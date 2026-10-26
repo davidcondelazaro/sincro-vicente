@@ -102,6 +102,13 @@ export async function processJobItem(deps: { db: SupabaseClient; config: Sources
     log.add({ level: "info", step: "Producto", message: `${result.status === "ok" ? `Hecho: ${result.product.content.title}` : `Descartado: ${result.reason}`} · ${Math.round(duration / 1000)} s`, durationMs: duration });
   } catch (caught) {
     const message = caught instanceof Error ? caught.message : typeof caught === "object" && caught && "message" in caught ? String((caught as { message: unknown }).message) : String(caught);
+    // Sin saldo en Anthropic: se pausan todas las tandas y el producto vuelve a la cola sin gastar intento.
+    if (/credit balance|billing|saldo/i.test(message)) {
+      await deps.db.rpc("mhd_importer_pause_all", { p_reason: `Anthropic no tiene saldo: ${message.slice(0, 200)}` });
+      log.add({ level: "error", step: "Producto", message: `Sin saldo en Anthropic: tandas pausadas. ${message}`, durationMs: Date.now() - started });
+      await deps.db.from("mhd_importer_job_items").update({ status: "pendiente", attempts: Math.max(0, item.attempts - 1), lease_until: null, step: null }).eq("id", item.id);
+      return;
+    }
     const retry = item.attempts < WORKER.maxAttempts;
     log.add({ level: "error", step: "Producto", message: `${message}${retry ? " · se reintenta" : ""}`, durationMs: Date.now() - started });
     await deps.db.from("mhd_importer_job_items").update(retry ? { status: "pendiente", error: message, lease_until: null, step: null } : { status: "error", error: message, finished_at: new Date().toISOString(), duration_ms: Date.now() - started, lease_until: null, step: null }).eq("id", item.id);

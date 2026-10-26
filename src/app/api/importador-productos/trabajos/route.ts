@@ -118,7 +118,7 @@ export async function POST(request: Request) {
         const { error } = await session.db.from("mhd_importer_job_items").update({ status: "pendiente", attempts: 0, error: null, finished_at: null }).eq("job_id", body.job).eq("status", "error");
         if (error) throw error;
       }
-      const { error } = await session.db.from("mhd_importer_jobs").update({ status: "en_curso", finished_at: null }).eq("id", body.job);
+      const { error } = await session.db.from("mhd_importer_jobs").update({ status: "en_curso", finished_at: null, paused_reason: null }).eq("id", body.job);
       if (error) throw error;
       await wakeWorker(request);
       return Response.json({ ok: true });
