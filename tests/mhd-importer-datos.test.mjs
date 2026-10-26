@@ -213,3 +213,14 @@ test("título: vale la referencia de MHD o el modelo comercial de Icecat (masivo
   assert.deepEqual(modelo(validateContent(ficha("Monitor Dell P2424HT de 24\""), "Dell", "DELL-P2424HT", [], new Map(), ["P2424HT"])), []);
   assert.deepEqual(modelo(validateContent(ficha("Lavadora Bosch WAN 24272 ES"), "Bosch", "WAN24272ES", [], new Map())), []);
 });
+
+test("título: los datos clave solo se exigen si son una cifra (masivo, 2026-10-26)", async () => {
+  const { missingKeyData } = await jiti.import("../src/lib/mhd-importer/content.ts");
+  const perfil = { title: { key_data: [{ name: "Conexión", sources: ["mhd:Conexión"] }, { name: "Capacidad", sources: ["mhd:Capacidad"] }] } };
+  const datos = (conexion, capacidad) => new Map([["mhd:conexión", conexion], ["mhd:capacidad", capacidad]]);
+  assert.deepEqual(missingKeyData("Auriculares JBL Tune 520BT", perfil, datos("Cableada (USB Tipo C), cable de 2,1 m", "")), []);
+  assert.deepEqual(missingKeyData("Auriculares JBL Tune 520BT", perfil, datos("Inalámbrica (Bluetooth Class 1)", "")), []);
+  assert.deepEqual(missingKeyData("Auriculares JBL Tune 520BT", perfil, datos("5,2", "")), []);
+  assert.equal(missingKeyData("Lavadora Bosch WAN24272ES", perfil, datos("", "9 kg")).length, 1);
+  assert.deepEqual(missingKeyData("Lavadora Bosch WAN24272ES de 9 kg", perfil, datos("", "9 kg")), []);
+});

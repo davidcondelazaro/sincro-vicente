@@ -174,8 +174,13 @@ export function missingKeyData(title: string, profile: FamilyProfile, values: So
   const inTitle = numbersIn(title);
   return profile.title.key_data.filter((item) => applies(item.name)).flatMap((item) => {
     const source = item.sources.find((key) => values.has(key.toLowerCase()));
-    const facts = source ? numbersIn(values.get(source.toLowerCase())!) : [];
-    if (!facts.length) return [];
+    const value = source ? values.get(source.toLowerCase())! : "";
+    // Solo datos que son una cifra (2026-10-26, masivo): «9 kg», «39,6 cm (15.6")», «1400 rpm». Un texto con alguna cifra
+    // dentro («Cableada (USB Tipo C), cable de 2,1 m», «Inalámbrica (Bluetooth Class 1)») obligaba a meter esa cifra en
+    // el título de los auriculares y rechazaba la ficha.
+    const leading = numbersIn(value)[0];
+    if (!leading || !value.trim().startsWith(leading.raw.split(/\s/)[0]) || (!leading.unit && leading.n < 10)) return [];
+    const facts = numbersIn(value);
     // Vale cualquiera de las cifras del dato («39,6 cm (15.6")» → 39,6 cm o 15,6"), con unidad equivalente si la hay.
     const ok = facts.some((fact) => inTitle.some((item_) => (fact.unit && item_.unit === fact.unit ? Math.abs(item_.base - fact.base) <= 0.011 * fact.base : Math.abs(item_.n - fact.n) <= 0.011 * fact.n)));
     return ok ? [] : [`El título no lleva el dato clave «${item.name}» (${values.get(source!.toLowerCase())}, de ${source}).`];
