@@ -317,7 +317,7 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   const elviModel = deps.elviModel ?? PROCESSOR_MODEL;
   const elviPage = { title: written.content.title, shortDescription: written.content.short_description, longDescriptionHtml: written.content.long_description_html, specifications: icecatMetafield(icecat, gathered.detail?.caracteristicas ?? [], [])?.specifications ?? null };
   const elviPromise = written.blocked ? Promise.resolve(null) : t.step("Frase de Elvi (IA)", () => writeElviForPage(deps.ai, elviModel, { perfil: { producto: profile.product, titulo: profile.title, descripciones: profile.descriptions }, page: elviPage }),
-    (result) => (result.tip.text ? `Aceptada (${elviModel})` : result.review ? "Rechazada por el revisor" : "Sin frase")).catch((caught: Error) => { warnings.push(`Frase de Elvi: ${caught.message}`); return null; });
+    (result) => (result.tip.text ? `Aceptada${result.attempts > 1 ? " en el segundo intento" : ""} (${elviModel})` : result.review ? `Rechazada por el revisor (${result.attempts} intentos)` : "Sin frase")).catch((caught: Error) => { warnings.push(`Frase de Elvi: ${caught.message}`); return null; });
   const { youtube, videoKinds, preparedVideos } = await t.step("Documentos y vídeos", async () => {
     const youtube = await embeddableYoutubeVideos(icecat?.youtubeIds ?? []);
     const videoKinds = await classifyVideos(deps.ai, { title: written.content.title, brand, model, series: icecat?.series ?? null }, icecat?.videos ?? []);

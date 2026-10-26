@@ -181,6 +181,9 @@ Medido en producción con el banco de 41: 41 s por producto y 2,2 productos por 
 - **Segunda prueba, banco de 41:**
   - Haiku: 39 aceptadas (~0,005 $ por ficha). Sonnet 5.5: 34 (~0,020 $).
   - Calidad parecida. Sonnet es algo más concreto, pero le rechazan más, por atribuir beneficios a tecnologías (limpieza hidrolítica → «menos trabajo»).
+- **Segundo intento** (David, 2026-10-26): si el revisor rechaza la frase, Elvi la reescribe una vez con el motivo. En los 5 rechazados de la prueba final, los 5 salen con Elvi.
+- **Decidido:** Haiku en el masivo.
+- **Canales de venta:** el importador no añadía los productos a «Online Store» y «Shop» (el importador antiguo sí lo hacía). Al activar un borrador no habría salido en la tienda. Desde el 2026-10-26 los añade al crearlos; los 30 borradores de las pruebas, a mano.
 - **Pendiente de decisión:** qué modelo se usa en el masivo (opción de la tanda `elviModel`: sin ella, Haiku).
 
 ## Metacampos de categoría de Shopify (estudiado 2026-10-26)

@@ -213,17 +213,30 @@ const ELVI_ON_PAGE = SYSTEM_ELVI.replace(/En «sources» pon los datos[^.]*\./, 
 
 export async function writeElviForPage(client: Anthropic, model: string, input: { perfil: unknown; page: ShopPage }) {
   const system = `Escribes la frase de Elvi para la ficha de un producto de Electrónica Vicente, tienda de electrodomésticos, en español de España. Todo lo que digas del producto tiene que estar en la ficha que se publica (título, descripciones y especificaciones técnicas); no uses nada más. Devuelve solo elvi_tip.\n${ELVI_ON_PAGE}\n\nPerfil de la familia (JSON):\n${JSON.stringify(input.perfil)}`;
-  const params = { model, max_tokens: 16000, system, output_config: { effort: "medium" as const, format: { type: "json_schema" as const, schema: { type: "object", additionalProperties: false, required: ["elvi_tip"], properties: { elvi_tip: elviSchema } } } }, messages: [{ role: "user" as const, content: `Ficha que se publica:\n${pageText(input.page)}\n\nEscribe la frase de Elvi.` }] };
-  const message = model === PROCESSOR_MODEL ? await client.messages.create(params) : await client.beta.messages.create({ ...params, betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" });
-  let cost = costUsd(message.model, message.usage) ?? 0;
   const empty: ElviTip = { text: "", sources: [] };
-  if (message.stop_reason === "refusal") return { tip: empty, review: null, costUsd: cost };
-  if (message.stop_reason !== "end_turn") throw new Error(`La frase de Elvi terminó con ${message.stop_reason}.`);
-  const tip = (JSON.parse(message.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("")) as { elvi_tip: ElviTip }).elvi_tip ?? empty;
-  if (!tip.text.trim()) return { tip: empty, review: null, costUsd: cost };
-  const review = await reviewElviTip(client, tip, input.page.title, pageText(input.page));
-  cost += costUsd(PROCESSOR_MODEL, review.usage) ?? 0;
-  return { tip: review.ok ? tip : empty, review: { ok: review.ok, reason: review.reason, ...(review.ok ? {} : { text: tip.text }) }, costUsd: cost };
+  let cost = 0;
+  const ask = async (request: string) => {
+    const params = { model, max_tokens: 16000, system, output_config: { effort: "medium" as const, format: { type: "json_schema" as const, schema: { type: "object", additionalProperties: false, required: ["elvi_tip"], properties: { elvi_tip: elviSchema } } } }, messages: [{ role: "user" as const, content: `Ficha que se publica:\n${pageText(input.page)}\n\n${request}` }] };
+    const message = model === PROCESSOR_MODEL ? await client.messages.create(params) : await client.beta.messages.create({ ...params, betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" });
+    cost += costUsd(message.model, message.usage) ?? 0;
+    if (message.stop_reason === "refusal") return empty;
+    if (message.stop_reason !== "end_turn") throw new Error(`La frase de Elvi terminó con ${message.stop_reason}.`);
+    return (JSON.parse(message.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("")) as { elvi_tip: ElviTip }).elvi_tip ?? empty;
+  };
+  const review = async (tip: ElviTip) => { const result = await reviewElviTip(client, tip, input.page.title, pageText(input.page)); cost += costUsd(PROCESSOR_MODEL, result.usage) ?? 0; return result; };
+  let tip = await ask("Escribe la frase de Elvi.");
+  if (!tip.text.trim()) return { tip: empty, review: null, attempts: 1, costUsd: cost };
+  let verdict = await review(tip);
+  // Si el revisor la rechaza, un segundo intento con su motivo (David, 2026-10-26); si vuelve a fallar, la ficha va sin Elvi.
+  let attempts = 1; const rejected: string[] = [];
+  if (!verdict.ok) {
+    rejected.push(`«${tip.text}» → ${verdict.reason}`);
+    attempts = 2;
+    tip = await ask(`Tu frase anterior fue: «${tip.text}». El revisor la rechazó por esto: ${verdict.reason}\nReescríbela corrigiendo exactamente eso, sin afirmar nada del producto que no esté en la ficha. Si no puedes, deja text vacío.`);
+    if (!tip.text.trim()) return { tip: empty, review: { ok: false, reason: verdict.reason, text: rejected[0] }, attempts, costUsd: cost };
+    verdict = await review(tip);
+  }
+  return { tip: verdict.ok ? tip : empty, review: { ok: verdict.ok, reason: verdict.ok && attempts === 2 ? `Aceptada en el segundo intento (el primero: ${rejected[0]})` : verdict.reason, ...(verdict.ok ? {} : { text: tip.text }) }, attempts, costUsd: cost };
 }
 
 // `model`: el modelo limpio (models.ts); sin él, el de MHD. `elvi`: escribir la frase de Elvi (por defecto sí:
