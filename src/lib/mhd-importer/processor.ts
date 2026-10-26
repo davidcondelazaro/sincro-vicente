@@ -163,7 +163,7 @@ async function subfamilyPrices(db: SupabaseClient, listing: Listing) {
   return { median: median(others), count: others.length };
 }
 
-export async function processProduct(deps: { db: SupabaseClient; config: SourcesConfig; ai: Anthropic; trace?: Trace; elviModel?: string }, listing: Listing, profileRow: { profile: FamilyProfile | null; status: string } | null, subfamilyEans: string[]): Promise<ProcessResult> {
+export async function processProduct(deps: { db: SupabaseClient; config: SourcesConfig; ai: Anthropic; trace?: Trace; elviModel?: string; noThinking?: boolean }, listing: Listing, profileRow: { profile: FamilyProfile | null; status: string } | null, subfamilyEans: string[]): Promise<ProcessResult> {
   const warnings: string[] = []; let cost = 0; const usage: Record<string, unknown> = {};
   // Cada paso queda en el registro con su duración (trace.ts); en las pruebas sueltas no se guarda.
   const t = deps.trace ?? noTrace;
@@ -274,7 +274,7 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
 
   // A la vez (2026-10-26): la redacción, el tratamiento de las fotos y la etiqueta energética no dependen entre sí.
   const [written, treated, label] = await Promise.all([
-    t.step("Redactar textos (IA)", () => writeContent(deps.ai, { profile, listing, detail: gathered.detail, icecat, metafields: applied.metafields, values, model, elvi: false }), (result) => `${result.attempts} intento${result.attempts > 1 ? "s" : ""}${result.blocked ? " · bloqueada por el revisor de datos" : ""} · ${(result.costUsd ?? 0).toFixed(4)} $`),
+    t.step("Redactar textos (IA)", () => writeContent(deps.ai, { profile, listing, detail: gathered.detail, icecat, metafields: applied.metafields, values, model, elvi: false, noThinking: deps.noThinking }), (result) => `${result.attempts} intento${result.attempts > 1 ? "s" : ""}${result.blocked ? " · bloqueada por el revisor de datos" : ""} · ${(result.costUsd ?? 0).toFixed(4)} $`),
     t.step("Tratar fotos", () => Promise.all(ordered.keep.map(async (image) => ({ image, file: await processImage(prepared.images.find((item) => item.url === image.url)!.bytes, image) }))), (result) => `${result.length} fotos tratadas · ${ordered.dropped.length} descartadas`),
     t.step("Etiqueta energética", () => energyLabelFile(deps.config, listing, icecat, [listing.ref_proved, ...(model !== listing.ref_proved ? [model] : []), ...(identity.check?.same ? [icecat?.partCode ?? null, icecat?.modelName ?? null] : [])], warnings).catch((caught: Error) => { warnings.push(`Etiqueta energética: ${caught.message}`); return null; }), (result) => (result ? `PNG desde ${result.source}` : "Sin etiqueta")),
   ]);

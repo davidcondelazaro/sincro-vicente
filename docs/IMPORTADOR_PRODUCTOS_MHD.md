@@ -186,6 +186,21 @@ Medido en producción con el banco de 41: 41 s por producto y 2,2 productos por 
 - **Canales de venta:** el importador no añadía los productos a «Online Store» y «Shop» (el importador antiguo sí lo hacía). Al activar un borrador no habría salido en la tienda. Desde el 2026-10-26 los añade al crearlos; los 30 borradores de las pruebas, a mano.
 - **Pendiente de decisión:** qué modelo se usa en el masivo (opción de la tanda `elviModel`: sin ella, Haiku).
 
+### Redactar sin razonamiento previo: descartado (prueba del 2026-10-26)
+
+La redacción genera ~5.000 tokens de salida por ficha para ~1.300 caracteres de texto (razonamiento interno más reintentos). Se probó desactivar el razonamiento (opción de tanda `noThinking`; Haiku 5.5 lo admite con esfuerzo bajo) con el banco de 41, en local y en las mismas condiciones:
+
+| | Con razonamiento | Sin razonamiento |
+|---|---|---|
+| A la primera | 28 | 14 |
+| Intentos por ficha | 1,37 | 1,93 |
+| Bloqueadas por el revisor de datos | 0 | 3 |
+| Con Elvi | 41 | 38 |
+| Redacción / producto | 21,9 s / 38,3 s | 18,8 s / 41,2 s |
+| Coste de los 41 | 0,249 $ | 0,208 $ |
+
+Sin razonamiento falla el doble y los reintentos se comen la ganancia: se queda el razonamiento. La velocidad del masivo sale de procesar más a la vez. Límites de la cuenta de Anthropic para Haiku: 1.000 peticiones, 2 M de tokens de entrada y 400.000 de salida por minuto. Con ~8.000 tokens de salida por producto, el techo es de unos 50 productos por minuto.
+
 ## Metacampos de categoría de Shopify (estudiado 2026-10-26)
 
 Pregunta de David: ¿dan más flexibilidad o más datos en los filtros? **No.** Comprobado en la documentación y en la taxonomía de la tienda:

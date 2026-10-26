@@ -241,7 +241,7 @@ export async function writeElviForPage(client: Anthropic, model: string, input: 
 
 // `model`: el modelo limpio (models.ts); sin él, el de MHD. `elvi`: escribir la frase de Elvi (por defecto sí:
 // David la reactivó el 2026-10-26, «tiene mucho valor»; si el revisor la rechaza, la ficha sigue sin ella).
-export async function writeContent(client: Anthropic, input: { profile: FamilyProfile; listing: ListingProduct & { descripcion?: string | null }; detail: MhdProductDetail | null; icecat: IcecatSummary | null; metafields: Record<string, string | string[]>; values: SourceValues; model?: string | null; elvi?: boolean; elviModel?: string }) {
+export async function writeContent(client: Anthropic, input: { profile: FamilyProfile; listing: ListingProduct & { descripcion?: string | null }; detail: MhdProductDetail | null; icecat: IcecatSummary | null; metafields: Record<string, string | string[]>; values: SourceValues; model?: string | null; elvi?: boolean; elviModel?: string; noThinking?: boolean }) {
   const { profile, listing, icecat, metafields } = input;
   // Hoja de datos única (facts.ts): la redacción y las revisiones solo ven un valor por dato.
   const values = buildFactSheet(profile, input.values, listing.cod_subfamilia);
@@ -274,7 +274,8 @@ export async function writeContent(client: Anthropic, input: { profile: FamilyPr
     // El sistema y el perfil se cachean entre productos de la familia (marca en el sistema); los datos del producto, entre
     // reintentos (caché automática al final). Razonamiento bajo (2026-10-26): con
     // «medium» cada ficha gastaba 13.000-15.000 tokens de salida para ~1.300 caracteres de texto.
-    const message = await client.messages.create({ model: PROCESSOR_MODEL, max_tokens: 16000, system, cache_control: { type: "ephemeral" }, output_config: { effort: "low", format: { type: "json_schema", schema: schemaFor(withElvi) } }, messages });
+    // `noThinking` (prueba del 2026-10-26): redactar sin razonamiento previo; Haiku 5.5 lo admite con esfuerzo bajo.
+    const message = await client.messages.create({ model: PROCESSOR_MODEL, max_tokens: 16000, system, cache_control: { type: "ephemeral" }, ...(input.noThinking ? { thinking: { type: "disabled" as const } } : {}), output_config: { effort: "low", format: { type: "json_schema", schema: schemaFor(withElvi) } }, messages });
     usage.push(message.usage);
     if (message.stop_reason !== "end_turn") throw new Error(`La redacción terminó con ${message.stop_reason}.`);
     const text = message.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("");
