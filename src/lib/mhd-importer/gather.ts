@@ -4,15 +4,23 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { cached } from "./cache";
 import type { ListingProduct, SampleProduct } from "./family";
 import { summarizeIcecat } from "./icecat";
-import { fetchIcecatByEan, fetchMhdProductDetail, type IcecatConfig, type MhdConfig } from "./sources";
+import { fetchIcecatByEan, fetchMhdProductDetail, type IcecatConfig, type MhdConfig, type MhdProductDetail } from "./sources";
 import { readFilterVocabulary, type FilterVocabulary, type ShopifyConfig } from "./store-filters";
 
 export type SourcesConfig = { mhd: MhdConfig; icecat: IcecatConfig; shopify: ShopifyConfig };
 const WEEK = 24 * 7;
 
+// Ficha de MHD: primero la que guarda la importación del catálogo (mhd_catalog_product_details) y, si no está, la de
+// la API. MHD no contesta a las fichas pedidas desde Vercel (HTTP 500, 2026-10-26): en producción tienen que estar
+// importadas antes (tipo «details_codes» para una tanda).
+async function storedDetail(db: SupabaseClient, codigo: string) {
+  const { data, error } = await db.from("mhd_catalog_product_details").select("source_payload").eq("codigo", codigo).not("source_payload", "is", null).maybeSingle();
+  return error || !data ? null : { status: 200, payload: data.source_payload as MhdProductDetail };
+}
+
 export async function gatherProduct(db: SupabaseClient, config: SourcesConfig, listing: ListingProduct): Promise<SampleProduct & { errors: string[] }> {
   const errors: string[] = [];
-  const detail = await cached(db, "mhd_detail", listing.codigo, WEEK, () => fetchMhdProductDetail(config.mhd, listing.codigo)).catch((error: Error) => { errors.push(error.message); return null; });
+  const detail = await storedDetail(db, listing.codigo) ?? await cached(db, "mhd_detail", listing.codigo, WEEK, () => fetchMhdProductDetail(config.mhd, listing.codigo)).catch((error: Error) => { errors.push(error.message); return null; });
   const icecat = listing.codigo_ean ? await cached(db, "icecat", listing.codigo_ean, WEEK, () => fetchIcecatByEan(config.icecat, listing.codigo_ean!)).catch((error: Error) => { errors.push(error.message); return null; }) : null;
   return { listing, detail: detail?.payload ?? null, icecat: summarizeIcecat(icecat?.payload ?? null, config.icecat.language), errors };
 }
