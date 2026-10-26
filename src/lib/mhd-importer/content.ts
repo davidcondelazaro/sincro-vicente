@@ -174,6 +174,8 @@ export async function writeContent(client: Anthropic, input: { profile: FamilyPr
   const usage: Usage[] = []; let content: ProductContent | null = null; let errors: string[] = []; let attempts = 0;
   const facts = { datos: data.datos_con_clave, textos_de_referencia: data.textos_de_referencia };
   let unsupported: { field: string; claim: string; reason: string }[] = [];
+  // Errores de cada intento fallido (2026-10-26): para ver qué provoca los reintentos.
+  const attemptErrors: string[][] = [];
   for (let attempt = 0; attempt < 3; attempt += 1) {
     attempts += 1;
     // El sistema y los datos del producto son iguales en el reintento: se cachean. Razonamiento bajo (2026-10-26): con
@@ -193,6 +195,7 @@ export async function writeContent(client: Anthropic, input: { profile: FamilyPr
       errors = unsupported.map((item) => `Dato sin respaldo en «${item.field}»: «${item.claim}» (${item.reason}). Quítalo o dilo exactamente como en los datos.`);
     }
     if (!errors.length) break;
+    attemptErrors.push(errors);
     messages.push({ role: "assistant", content: text }, { role: "user", content: `Corrige estos problemas y devuelve la ficha completa:\n- ${errors.join("\n- ")}` });
   }
   // Barreras del consejo de Elvi: si sigue citando datos que no cuadran o la revisión no lo aprueba, no se publica.
@@ -210,5 +213,5 @@ export async function writeContent(client: Anthropic, input: { profile: FamilyPr
   const isElvi = (error: string) => /«elvi»|«elvi_tip»/.test(error);
   if (errors.some((error) => unsupported_(error) && isElvi(error))) { content = { ...content!, elvi_tip: { text: "", sources: [] } }; elviReview = { ok: false, reason: "La frase tenía datos o cifras sin respaldo." }; errors = errors.filter((error) => !(unsupported_(error) && isElvi(error))); }
   const blocked = errors.some(unsupported_);
-  return { content: content!, errors, blocked, elviReview, attempts, usage: total, costUsd: costUsd(PROCESSOR_MODEL, total) };
+  return { content: content!, errors, blocked, elviReview, attempts, attemptErrors, usage: total, costUsd: costUsd(PROCESSOR_MODEL, total) };
 }

@@ -202,7 +202,7 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   warnings.push(...written.errors.map((error) => `Validación del texto: ${error}`));
   if (written.elviReview && !written.elviReview.ok) warnings.push(`Frase de Elvi descartada: ${written.elviReview.reason}`);
   if (written.blocked) warnings.push("Ficha bloqueada: el revisor de datos encontró afirmaciones sin respaldo. Hay que rehacerla o revisarla antes de guardarla en Shopify.");
-  cost += written.costUsd ?? 0; usage.content = written.usage; usage.contentAttempts = written.attempts;
+  cost += written.costUsd ?? 0; usage.content = written.usage; usage.contentAttempts = written.attempts; usage.contentErrors = written.attemptErrors;
 
   // Fotos: la IA dice qué vista es cada una; el código calcula el fondo, ordena y trata.
   const classified = prepared.images.length ? await classifyImages(deps.ai, written.content.title, prepared.images, listing.imagen) : { classified: [] as ClassifiedImage[], costUsd: 0, usage: null };

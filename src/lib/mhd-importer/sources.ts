@@ -46,8 +46,10 @@ export async function fetchIcecatByModel(config: IcecatConfig, brand: string, mo
   return response.ok ? { status: response.status, payload: body } : { status: response.status, payload: null };
 }
 
-// Las fotos de MHD (cdn.mihogardigital.es) y sus etiquetas (S3) devuelven 403 sin cabeceras de navegador y Referer.
-export const MHD_MEDIA_HEADERS = { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36", Accept: "image/avif,image/webp,image/*,*/*;q=0.8", Referer: "https://www.mihogardigital.es/" };
+// Las fotos de MHD (cdn.mihogardigital.es) y sus etiquetas (S3) solo se sirven a dominios autorizados (Referer). MHD (Ayco)
+// autorizó electronicavicente.com el 28-09-2026; electronica-vicente.myshopify.com y sincro-vicente.vercel.app, el 02-10,
+// pero el 2026-10-26 esos dos se comportaban como no autorizados (10 de 63 fotos bloqueadas): se usa el primero.
+export const MHD_MEDIA_HEADERS = { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36", Accept: "image/avif,image/webp,image/*,*/*;q=0.8", Referer: "https://electronicavicente.com/" };
 // La API de MHD da a menudo la foto del listado como `img/<archivo>` cuando el archivo está en `img/analyzed/mhd/<archivo>`
 // (comprobado el 2026-10-26: 63 de 120 fallan en la ruta de la API y las 63 están en la otra; su web usa la segunda).
 // S3 contesta 403 cuando el archivo no existe: se prueba la otra ruta antes de darla por perdida.
