@@ -48,8 +48,13 @@ export async function fetchIcecatByModel(config: IcecatConfig, brand: string, mo
 
 // Las fotos de MHD (cdn.mihogardigital.es) y sus etiquetas (S3) devuelven 403 sin cabeceras de navegador y Referer.
 export const MHD_MEDIA_HEADERS = { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36", Accept: "image/avif,image/webp,image/*,*/*;q=0.8", Referer: "https://www.mihogardigital.es/" };
+// La API de MHD da a menudo la foto del listado como `img/<archivo>` cuando el archivo está en `img/analyzed/mhd/<archivo>`
+// (comprobado el 2026-10-26: 63 de 120 fallan en la ruta de la API y las 63 están en la otra; su web usa la segunda).
+// S3 contesta 403 cuando el archivo no existe: se prueba la otra ruta antes de darla por perdida.
 export async function fetchMhdMedia(url: string) {
-  const response = await fetch(url, { headers: MHD_MEDIA_HEADERS, signal: AbortSignal.timeout(60_000) });
+  let response = await fetch(url, { headers: MHD_MEDIA_HEADERS, signal: AbortSignal.timeout(60_000) });
+  const analyzed = url.replace("cdn.mihogardigital.es/img/", "cdn.mihogardigital.es/img/analyzed/mhd/");
+  if (response.status === 403 && analyzed !== url && !url.includes("/img/analyzed/")) response = await fetch(analyzed, { headers: MHD_MEDIA_HEADERS, signal: AbortSignal.timeout(60_000) });
   if (!response.ok) throw new Error(`No se pudo descargar ${url} (HTTP ${response.status}).`);
   return { contentType: response.headers.get("content-type") ?? "application/octet-stream", bytes: new Uint8Array(await response.arrayBuffer()) };
 }
