@@ -24,8 +24,8 @@ Solo las altas y las modificaciones importantes piden el resto de datos (ficha d
   - **freno:** si de una vez desaparece más de un porcentaje pequeño del catálogo, no se archiva nada y se manda correo de fallo grave.
 - **Histórico:** una tabla con todo lo ocurrido a cada producto (alta, baja, cambio, qué se hizo y con qué resultado), **sin caducidad**. El registro del importador (`mhd_importer_events`) se borra a los 60 días; este no.
 - **Correos:**
-  - inmediato **solo con fallos graves**: lectura de MHD fallida, freno de bajas, Anthropic sin saldo o con el tope de gasto alcanzado, Shopify rechazando la subida;
-  - **resumen diario por la mañana** de las últimas 24 horas: altas, bajas y cambios; descartes con su motivo; lo que está en revisión; temas abiertos ya hablados.
+  - inmediato **solo con fallos graves**, también a david@aligeria.com: lectura de MHD fallida, freno de bajas, Anthropic sin saldo o con el tope de gasto alcanzado, Shopify rechazando la subida;
+  - **resumen diario a las 9:00 (hora de España) a david@aligeria.com** (David, 2026-10-26), de las últimas 24 horas: altas, bajas y cambios; descartes con su motivo; lo que está en revisión; temas abiertos ya hablados.
   - sincro-vicente debe enviar correos; los del chatbot se usaban y han dejado de salir: revisar por qué al montarlo.
 - **Freno general** del importador (`mhd_importer_brake_check`) también para las altas: si fallan 10 de los últimos 20, se pausa.
 
@@ -45,6 +45,5 @@ Propuesta inicial:
 
 ## Pendiente de decidir
 
-- Hora del resumen diario y destinatarios.
 - Servicio de correo.
 - El porcentaje del freno de bajas.
