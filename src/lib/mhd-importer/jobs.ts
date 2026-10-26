@@ -4,7 +4,7 @@
 // mientras quede trabajo; un vigilante de pg_cron la despierta si se para. Ver docs/IMPORTADOR_PRODUCTOS_MHD.md.
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { anthropicKey, PROCESSOR_MODEL } from "./ai";
+import { anthropicKey, ELVI_MODELS, PROCESSOR_MODEL } from "./ai";
 import type { SourcesConfig } from "./gather";
 import { saveRunMedia } from "./media-store";
 import { createShopifyDraft } from "./shopify-draft";
@@ -59,7 +59,7 @@ function familyData(db: SupabaseClient, family: string) {
   return familyCache.get(family)!;
 }
 
-export async function processJobItem(deps: { db: SupabaseClient; config: SourcesConfig; ai: Anthropic; upload?: boolean | "nuevos" }, item: JobItem) {
+export async function processJobItem(deps: { db: SupabaseClient; config: SourcesConfig; ai: Anthropic; upload?: boolean | "nuevos"; elviModel?: string }, item: JobItem) {
   const started = Date.now(); const log = itemLog(deps.db, item);
   try {
     const { data: listing, error } = await deps.db.rpc("mhd_importer_product", { p_codigo: item.codigo });
@@ -67,7 +67,7 @@ export async function processJobItem(deps: { db: SupabaseClient; config: Sources
     if (!listing) throw new Error(`MHD ya no tiene el producto ${item.codigo}.`);
     const { profileRow, family } = await familyData(deps.db, listing.cod_familia);
     const subfamilyEans = family.filter((entry) => entry.cod_subfamilia === listing.cod_subfamilia && entry.codigo_ean).map((entry) => entry.codigo_ean!);
-    const result = await processProduct({ ...deps, trace: log.trace }, listing, profileRow as Parameters<typeof processProduct>[2], subfamilyEans);
+    const result = await processProduct({ ...deps, trace: log.trace, elviModel: deps.elviModel }, listing, profileRow as Parameters<typeof processProduct>[2], subfamilyEans);
     const row: Record<string, unknown> = result.status === "ok"
       ? { codigo: listing.codigo, family_code: listing.cod_familia, status: "ok", result: result.product, warnings: result.warnings, model: PROCESSOR_MODEL, usage: result.usage, cost_usd: result.costUsd, created_by: "trabajador" }
       : { codigo: listing.codigo, family_code: listing.cod_familia, status: "discarded", discard_reason: result.reason, warnings: result.warnings, created_by: "trabajador" };
@@ -134,9 +134,9 @@ export async function runWorkerTurn(env: Env, config: SourcesConfig, spawn: () =
     // Con el espejo listo, arranca otro trabajador si la tanda usa más de uno (ese, a su vez, arranca el siguiente).
     if (jobs?.length && workers > 1) spawn();
     // Opciones de cada tanda (p. ej. «Subir a Shopify»), leídas una vez por turno.
-    const optionsByJob = new Map<string, Promise<{ upload?: boolean | "nuevos" }>>();
+    const optionsByJob = new Map<string, Promise<{ upload?: boolean | "nuevos"; elviModel?: string }>>();
     const jobOptions = (jobId: string) => {
-      if (!optionsByJob.has(jobId)) optionsByJob.set(jobId, Promise.resolve(db.from("mhd_importer_jobs").select("options").eq("id", jobId).single().then(({ data }) => (data?.options ?? {}) as { upload?: boolean | "nuevos" })));
+      if (!optionsByJob.has(jobId)) optionsByJob.set(jobId, Promise.resolve(db.from("mhd_importer_jobs").select("options").eq("id", jobId).single().then(({ data }) => (data?.options ?? {}) as { upload?: boolean | "nuevos"; elviModel?: string })));
       return optionsByJob.get(jobId)!;
     };
     const running = new Set<Promise<void>>(); let empty = false;
@@ -147,7 +147,7 @@ export async function runWorkerTurn(env: Env, config: SourcesConfig, spawn: () =
         if (claimError) throw claimError;
         if (!items?.length) empty = true;
         for (const item of (items ?? []) as JobItem[]) {
-          const task: Promise<void> = jobOptions(item.job_id).then((options) => processJobItem({ db, config, ai, upload: options.upload === "nuevos" ? "nuevos" : Boolean(options.upload) }, item)).finally(() => { running.delete(task); processed += 1; });
+          const task: Promise<void> = jobOptions(item.job_id).then((options) => processJobItem({ db, config, ai, upload: options.upload === "nuevos" ? "nuevos" : Boolean(options.upload), elviModel: options.elviModel === "sonnet" ? ELVI_MODELS.sonnet : undefined }, item)).finally(() => { running.delete(task); processed += 1; });
           running.add(task);
         }
       }

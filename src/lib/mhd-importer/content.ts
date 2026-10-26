@@ -46,7 +46,13 @@ Reglas:
 - Descripción larga: HTML sencillo. NO repitas el nombre del producto como titular (la ficha ya lo tiene). Empieza con un párrafo de entrada (<p>, 2-3 frases) que vende con datos: lo que distingue al producto y sus puntos fuertes. Después, 3-4 apartados con <h2> y un <p> cada uno (puedes usar una lista <ul><li> si ayuda). Sin <h1>, <h3> ni <h4>, sin frase de cierre de relleno ni apartado final de resumen o lista que repita lo ya dicho, sin estilos, enlaces, imágenes ni tablas de especificaciones (la ficha técnica se muestra aparte). Incluye los datos que el perfil manda destacar. Negritas (<strong>): entre 2 y 4 en toda la descripción, solo en los datos clave que el perfil manda destacar, cortos (el dato con su unidad o el nombre de la tecnología: «<strong>9 kg</strong>», «<strong>No Frost total</strong>», «<strong>clase A</strong>»), nunca frases enteras, etiquetas («Peso:») ni el mismo dato dos veces.`;
 
 // Solo cuando se pide la frase de Elvi (fuera del masivo desde el 2026-10-26).
-const SYSTEM_ELVI = `- Elvi (elvi_tip): Elvi es la vendedora con inteligencia artificial de la tienda. No da consejos de uso ni recita la ficha: habla como una buena vendedora delante del cliente, de tú, en 3 o 4 frases (unos 300-450 caracteres). 1) Para quién es, por la situación del cliente («Si en casa ponéis lavadoras casi a diario…»). Siempre de tú en singular (nunca «vosotros», «os», «hacéis»). 2) Las 2 o 3 cosas que ella destacaría (las que el perfil manda destacar en esta categoría), cada una con su dato exacto y lo que supone para el cliente, solo si se deduce directamente del dato (9 kg → coladas grandes; 60 cm de ancho → hueco estándar; 39 dB → silencioso). 3) Un cierre honesto de vendedora (en qué se fijaría ella o qué comprobar antes de decidirse, p. ej. las medidas del hueco, con la medida exacta que dan los datos). No afirmes qué cabe o qué se puede hacer con el aparato («cabe un edredón», «un pollo entero», «para cuatro personas») si no lo dicen los datos. Ejemplo de tono: «Si haces la compra para toda la semana, este combi te va a dar mucho juego: son 368 L, con 279 para la nevera y 89 para el congelador, y lleva No Frost en los dos. Además es de los silenciosos, con 39 dB, algo que se agradece si la cocina está abierta al salón. Mide 203 cm de alto y 60 de ancho, así que antes de decidirte comprueba que te cabe en el hueco.» Sigue sin explicar qué hacen las tecnologías ni inventar beneficios. En «sources» pon los datos en que se apoya, con la clave exacta de «datos_con_clave» y su valor. Prohibido: instalación eléctrica, de gas o de agua, seguridad, salud, cifras de ahorro, garantías, compatibilidades, comparaciones con otros productos (nada de «de los más…», «de los silenciosos», «más que la media») y cualquier cifra que no esté en los datos. Si no hay nada que destacar con datos, deja text vacío y sources vacío.`;
+const SYSTEM_ELVI = `- Elvi (elvi_tip): Elvi es la vendedora con inteligencia artificial de la tienda. No da consejos de uso ni recita la ficha: habla como una buena vendedora delante del cliente, de tú en singular (nunca «vosotros», «os», «hacéis»), en 3 o 4 frases (unos 300-450 caracteres).
+  1) Para quién es, por la situación del cliente («Si en casa ponéis lavadoras casi a diario…» no: «Si pones lavadoras casi a diario…»).
+  2) Las 2 o 3 cosas que ella destacaría (las que el perfil manda destacar en esta categoría), cada una con su dato exacto y lo que supone para el cliente, solo si se deduce directamente del dato (9 kg → coladas grandes; 39 dB → silencioso).
+  3) Un cierre honesto y variado: en qué se fijaría ella antes de decidirse según el producto (el consumo si la clase es baja, el ruido si es alto, la capacidad, las conexiones…). Habla del hueco y de sus medidas solo si el aparato va empotrado o integrado; si los datos dicen que no es integrable o es de libre instalación, nunca hables de hueco; en televisores, monitores y aparatos pequeños, tampoco. No cierres siempre con las medidas.
+  Precisión: cada dato como lo dan los datos. Si un dato es estimado, aproximado, «hasta» o un rango, dilo así («hasta 20 W», «unos 20 W»); no lo conviertas en exacto. No añadas detalles que los datos no dicen (dónde está un mando o una pantalla, materiales, colores, accesorios). No afirmes qué cabe o qué se puede hacer con el aparato («cabe un edredón», «un pollo entero», «para cuatro personas») si no lo dicen los datos. Sin explicar qué hacen las tecnologías ni inventar beneficios.
+  Ejemplo de tono: «Si haces la compra para toda la semana, este combi te va a dar mucho juego: son 368 L, con 279 para la nevera y 89 para el congelador, y lleva No Frost en los dos. Además marca 39 dB, algo que se agradece si la cocina está abierta al salón. Lo que yo miraría es su clase E: si lo vas a tener muchos años, compara el consumo con otros.»
+  En «sources» pon los datos en que se apoya, con la clave exacta de «datos_con_clave» y su valor. Prohibido: instalación eléctrica, de gas o de agua, seguridad, salud, cifras de ahorro, garantías, compatibilidades, comparaciones con otros productos (nada de «de los más…», «de los silenciosos», «más que la media») y cualquier cifra que no esté en los datos. Si no hay nada que destacar con datos, deja text vacío y sources vacío.`;
 
 const strip = (html: string | null | undefined, max = 2500) => (html ?? "").replace(/<span[^>]*display:\s*none[^>]*>.*?<\/span>/gi, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
 const words = (text: string) => text.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/<[^>]+>/g, " ").split(/[^a-z0-9ñ]+/).filter(Boolean);
@@ -178,16 +184,30 @@ export async function factCheck(client: Anthropic, content: ProductContent, fact
   return { problems: parsed.problems, usage: message.usage };
 }
 
+// La frase de Elvi en una llamada aparte, con el modelo que se elija (prueba del 2026-10-26: ¿escribe mejor un modelo de
+// más razonamiento?). Con Sonnet se pide respaldo en el servidor por si rechaza la petición.
+async function writeElviTip(client: Anthropic, model: string, input: { perfil: unknown; data: unknown; content: ProductContent }) {
+  const system = `Escribes la frase de Elvi para la ficha de un producto de Electrónica Vicente, tienda de electrodomésticos, en español de España. Devuelve solo elvi_tip.\n${SYSTEM_ELVI}\n\nPerfil de la familia (JSON):\n${JSON.stringify(input.perfil)}`;
+  const user = `Datos (JSON):\n${JSON.stringify(input.data)}\n\nFicha ya redactada (no la repitas): «${input.content.title}». ${input.content.short_description}\n\nEscribe la frase de Elvi.`;
+  const params = { model, max_tokens: 16000, system, output_config: { effort: "medium" as const, format: { type: "json_schema" as const, schema: { type: "object", additionalProperties: false, required: ["elvi_tip"], properties: { elvi_tip: elviSchema } } } }, messages: [{ role: "user" as const, content: user }] };
+  const message = model === PROCESSOR_MODEL ? await client.messages.create(params) : await client.beta.messages.create({ ...params, betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" });
+  const empty: ElviTip = { text: "", sources: [] };
+  if (message.stop_reason === "refusal") return { tip: empty, costUsd: costUsd(message.model, message.usage) };
+  if (message.stop_reason !== "end_turn") throw new Error(`La frase de Elvi terminó con ${message.stop_reason}.`);
+  const parsed = JSON.parse(message.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("")) as { elvi_tip: ElviTip };
+  return { tip: parsed.elvi_tip ?? empty, costUsd: costUsd(message.model, message.usage) };
+}
+
 // `model`: el modelo limpio (models.ts); sin él, el de MHD. `elvi`: escribir la frase de Elvi (por defecto sí:
 // David la reactivó el 2026-10-26, «tiene mucho valor»; si el revisor la rechaza, la ficha sigue sin ella).
-export async function writeContent(client: Anthropic, input: { profile: FamilyProfile; listing: ListingProduct & { descripcion?: string | null }; detail: MhdProductDetail | null; icecat: IcecatSummary | null; metafields: Record<string, string | string[]>; values: SourceValues; model?: string | null; elvi?: boolean }) {
+export async function writeContent(client: Anthropic, input: { profile: FamilyProfile; listing: ListingProduct & { descripcion?: string | null }; detail: MhdProductDetail | null; icecat: IcecatSummary | null; metafields: Record<string, string | string[]>; values: SourceValues; model?: string | null; elvi?: boolean; elviModel?: string }) {
   const { profile, listing, icecat, metafields } = input;
   // Hoja de datos única (facts.ts): la redacción y las revisiones solo ven un valor por dato.
   const values = buildFactSheet(profile, input.values, listing.cod_subfamilia);
   // Los valores de los filtros ya calculados también son datos de la ficha (p. ej. «2000 W» sacado de un «2W» de MHD, o
   // «Mueble de 50 cm» sacado del texto): sin ellos, esas cifras no se podrían escribir.
   for (const [key, value] of Object.entries(metafields)) values.set(`filtro:${key}`, Array.isArray(value) ? value.join(", ") : value);
-  const brand = brandAsWritten(listing, icecat); const model = input.model || listing.ref_proved || ""; const withElvi = input.elvi ?? true;
+  const brand = brandAsWritten(listing, icecat); const model = input.model || listing.ref_proved || ""; const withElvi = (input.elvi ?? true) && !input.elviModel;
   const originals = [strip(listing.descripcion, 100_000), listing.descripcion_ampliada ?? "", icecat?.longSummary ?? "", icecat?.shortSummary ?? "", ...(icecat?.bulletPoints ?? [])].filter(Boolean);
   // El perfil de la familia va en el sistema, detrás de las instrucciones y con su marca de caché (2026-10-26): es igual
   // para todos los productos de la familia, y el trabajador los procesa seguidos, así que solo se paga entero una vez
@@ -232,6 +252,13 @@ export async function writeContent(client: Anthropic, input: { profile: FamilyPr
     messages.push({ role: "assistant", content: text }, { role: "user", content: `Corrige estos problemas y devuelve la ficha completa:\n- ${errors.join("\n- ")}` });
   }
   // Barreras del consejo de Elvi: si sigue citando datos que no cuadran o la revisión no lo aprueba, no se publica.
+  // Elvi aparte (prueba del 2026-10-26): con otro modelo, una vez redactada la ficha y con los mismos datos.
+  let elviCost = 0;
+  if (input.elviModel && (input.elvi ?? true)) {
+    const separate = await writeElviTip(client, input.elviModel, { perfil, data, content: content! });
+    elviCost = separate.costUsd ?? 0;
+    content = { ...content!, elvi_tip: separate.tip };
+  }
   let elviReview: { ok: boolean; reason: string } | null = null;
   if (content!.elvi_tip.text.trim()) {
     if (checkElviSources(content!.elvi_tip, values).length) { elviReview = { ok: false, reason: "Cita datos que no cuadran con el producto." }; }
@@ -246,5 +273,5 @@ export async function writeContent(client: Anthropic, input: { profile: FamilyPr
   const isElvi = (error: string) => /«elvi»|«elvi_tip»/.test(error);
   if (errors.some((error) => unsupported_(error) && isElvi(error))) { content = { ...content!, elvi_tip: { text: "", sources: [] } }; elviReview = { ok: false, reason: "La frase tenía datos o cifras sin respaldo." }; errors = errors.filter((error) => !(unsupported_(error) && isElvi(error))); }
   const blocked = errors.some(unsupported_);
-  return { content: content!, errors, blocked, elviReview, attempts, attemptErrors, usage: total, costUsd: costUsd(PROCESSOR_MODEL, total) };
+  return { content: content!, errors, blocked, elviReview, attempts, attemptErrors, usage: total, costUsd: (costUsd(PROCESSOR_MODEL, total) ?? 0) + elviCost };
 }

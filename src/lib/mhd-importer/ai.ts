@@ -3,6 +3,8 @@ import type Anthropic from "@anthropic-ai/sdk";
 
 export const ANALYST_MODEL = "claude-opus-5-5";   // analista: una vez por familia
 export const PROCESSOR_MODEL = "claude-haiku-5-5"; // procesador: una vez por producto
+// Elvi aparte (prueba del 2026-10-26): con un modelo de más razonamiento, una vez redactada la ficha.
+export const ELVI_MODELS = { haiku: "claude-haiku-5-5", sonnet: "claude-sonnet-5-5" } as const;
 export const JUDGE_MODEL = "claude-opus-5-5";      // juez Claude: una vez por familia (ver judges.ts)
 export const MATCHER_MODEL = "claude-haiku-5-5";   // calibración de los jueces: empareja propuestas y cambios de David
 // El juez OpenAI usa el modelo de OPENAI_JUDGE_MODEL. Su precio no está aquí (no lo conocemos con seguridad): para
@@ -13,6 +15,7 @@ const PRICES: Record<string, { input: number; output: number; cacheRead: number;
   "claude-opus-5-5": { input: 4, output: 20, cacheRead: 0.2, cacheWrite: 5 },
   // Haiku 5.5 hasta 100K tokens de entrada (por encima, 0,50 / 2,50).
   "claude-haiku-5-5": { input: 0.1, output: 0.5, cacheRead: 0.01, cacheWrite: 0.125 },
+  "claude-sonnet-5-5": { input: 2, output: 10, cacheRead: 0.2, cacheWrite: 2.5 },
 };
 
 export type Usage = Pick<Anthropic.Usage, "input_tokens" | "output_tokens"> & { cache_read_input_tokens?: number | null; cache_creation_input_tokens?: number | null };
