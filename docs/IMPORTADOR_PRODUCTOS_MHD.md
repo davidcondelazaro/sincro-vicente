@@ -46,6 +46,17 @@ sincro-vicente ya lee de la API todo el catálogo de MHD a Supabase (tablas `mhd
 - [ ] **Experimento controlado:** un producto de MHD con todo el proceso (descarte, Icecat, contenido con IA, colección, filtros, imágenes, etiqueta energética) hasta dejarlo como **borrador** en Shopify. Antes, cerrar el título ideal.
 - [ ] **Informes** de cada ejecución: todo lo descartado y por qué (sin imagen, poca información, sin precio, sin dato clave), lo que no casa con ninguna categoría del árbol, y las demás anomalías (ver *Informes de la importación*).
 
+## Criterios sin depender de David: registro, diccionario y jueces (2026-10-26)
+
+Tras revisar el planteamiento (sesión del 24 al 26-10), David pidió dejarlo hecho en el día. Cambios:
+
+- **Registro de decisiones** (`mhd_importer_decisions`, migración `20261026090000`): cada regla y cada duda de los perfiles con pregunta, recomendación, decisión, quién y por qué. Se lee en [DECISIONES_IMPORTADOR.md](DECISIONES_IMPORTADOR.md), generado con `scripts/exportar-decisiones.mjs`. Las 258 dudas se repartieron en: resueltas por una regla (74, cerradas), para los jueces, arreglos de código, productos sueltos y negocio (10, con propuesta para Vicente).
+- **Reglas nuevas del 26-10:** excepción a «manda MHD» (campo que falla en el 20 % o más de una familia → Icecat primero, y vacío sin Icecat), meta descripción sin el título ni el modelo, Elvi fuera del masivo y sin apartado de resumen en la descripción larga. La primera, la segunda y la tercera son propuestas aplicadas por urgencia y revisables.
+- **Diccionario común** (`src/lib/mhd-importer/common.ts`, `scripts/aplicar-diccionario.mjs`): colores y clase energética en un solo sitio, volcados en los perfiles en borrador.
+- **Redacción:** razonamiento bajo, meta descripción sin título, sin resumen final, Elvi solo si se pide. El título sigue con IA: las plantillas de los perfiles son instrucciones en lenguaje natural y montarlo por código exige reescribirlas.
+- **Código:** modelo limpio (`models.ts`), tabla de marcas (`brands.ts`), exclusiones (maquetas, B1528, unidades sueltas de aire acondicionado), cola de revisión (`review.ts`: clase energética, diferencias de más del 20 %, precio frente a la mediana, modelo o marca dudosos; se guarda en `result.review_reasons`).
+- **Jueces** (`judges.ts`, `scripts/juzgar-familias.mjs`, `scripts/calibrar-jueces.mjs`): Claude y OpenAI revisan perfiles y dudas con el reglamento; solo se cierra una duda si coinciden los dos. Calibración en [CALIBRACION_JUECES.md](CALIBRACION_JUECES.md).
+
 ## Decisiones de David para todo el catálogo (2026-10-23)
 
 Salieron al revisar las dudas del perfil de Lavadoras (G01); el analista las recibe como reglas en las familias siguientes.

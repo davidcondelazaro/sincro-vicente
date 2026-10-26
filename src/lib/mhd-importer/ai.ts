@@ -3,6 +3,11 @@ import type Anthropic from "@anthropic-ai/sdk";
 
 export const ANALYST_MODEL = "claude-opus-5-5";   // analista: una vez por familia
 export const PROCESSOR_MODEL = "claude-haiku-5-5"; // procesador: una vez por producto
+export const JUDGE_MODEL = "claude-opus-5-5";      // juez Claude: una vez por familia (ver judges.ts)
+export const MATCHER_MODEL = "claude-haiku-5-5";   // calibración de los jueces: empareja propuestas y cambios de David
+// El juez OpenAI usa el modelo de OPENAI_JUDGE_MODEL. Su precio no está aquí (no lo conocemos con seguridad): para
+// esos modelos costUsd devuelve null y los scripts lo dicen. Si se añade, la clave es el nombre exacto del modelo que
+// devuelve la API, con los mismos campos (cacheRead = entrada en caché; cacheWrite = 0 en OpenAI).
 
 const PRICES: Record<string, { input: number; output: number; cacheRead: number; cacheWrite: number }> = {
   "claude-opus-5-5": { input: 4, output: 20, cacheRead: 0.2, cacheWrite: 5 },
