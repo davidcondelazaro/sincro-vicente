@@ -126,7 +126,10 @@ export async function POST(request: Request) {
         const { error } = await session.db.from("mhd_importer_job_items").update({ status: "pendiente", attempts: 0, error: null, finished_at: null }).eq("job_id", body.job).eq("status", "error");
         if (error) throw error;
       }
-      const { error } = await session.db.from("mhd_importer_jobs").update({ status: "en_curso", finished_at: null, paused_reason: null }).eq("id", body.job);
+      // Se apunta cuándo se reanuda: el freno automático solo cuenta los fallos desde entonces.
+      const { data: current, error: readError } = await session.db.from("mhd_importer_jobs").select("options").eq("id", body.job).single();
+      if (readError) throw readError;
+      const { error } = await session.db.from("mhd_importer_jobs").update({ status: "en_curso", finished_at: null, paused_reason: null, options: { ...(current.options ?? {}), resumed_at: new Date().toISOString() } }).eq("id", body.job);
       if (error) throw error;
       await wakeWorker(request);
       return Response.json({ ok: true });
