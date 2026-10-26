@@ -18,6 +18,7 @@ import { checkIcecatIdentity, labelMatches, labelText } from "./identity";
 import { classifyImages, imageFilenames, KIND_ALT, normalizeEnergyLabel, orderImages, pdfFirstPageToPng, prepareImages, processImage, slugify, type ClassifiedImage, type ImageKind } from "./images";
 import type { FamilyProfile } from "./profile";
 import { classifyVideos, prepareVideos, type VideoKind } from "./videos";
+import { noTrace, type Trace } from "./trace";
 import { applyProfile, discardReason, firstNumber, sourceValues, type AppliedRules, reviewReasons } from "./rules";
 import { fetchIcecatByModel, fetchIcecatDocument, fetchMhdMedia } from "./sources";
 import { shopifyGraphql } from "./store-filters";
@@ -152,21 +153,23 @@ async function subfamilyPrices(db: SupabaseClient, listing: Listing) {
   return { median: median(others), count: others.length };
 }
 
-export async function processProduct(deps: { db: SupabaseClient; config: SourcesConfig; ai: Anthropic }, listing: Listing, profileRow: { profile: FamilyProfile | null; status: string } | null, subfamilyEans: string[]): Promise<ProcessResult> {
+export async function processProduct(deps: { db: SupabaseClient; config: SourcesConfig; ai: Anthropic; trace?: Trace }, listing: Listing, profileRow: { profile: FamilyProfile | null; status: string } | null, subfamilyEans: string[]): Promise<ProcessResult> {
   const warnings: string[] = []; let cost = 0; const usage: Record<string, unknown> = {};
-  const gathered = await gatherProduct(deps.db, deps.config, listing);
+  // Cada paso queda en el registro con su duración (trace.ts); en las pruebas sueltas no se guarda.
+  const t = deps.trace ?? noTrace;
+  const gathered = await t.step("Reunir datos de MHD e Icecat", () => gatherProduct(deps.db, deps.config, listing), (result) => `Ficha de MHD: ${result.detail ? "sí" : "no"} · Icecat: ${result.icecat ? "sí" : "no"}`);
   warnings.push(...gathered.errors);
-  const identity = await verifiedIcecat(deps, listing, gathered.icecat, warnings);
+  const identity = await t.step("Comprobar el modelo de Icecat", () => verifiedIcecat(deps, listing, gathered.icecat, warnings), (result) => !gathered.icecat ? "Sin Icecat" : result.icecat ? "Icecat de nuestro modelo" : "Icecat de otro modelo: no se usa");
   cost += identity.costUsd;
   const reason = discardReason(listing, gathered.detail, identity.icecat);
-  if (reason) return { status: "discarded", reason, warnings };
+  if (reason) { t.event("decision", "Descartes", `Descartado: ${reason}`); return { status: "discarded", reason, warnings }; }
   if (!profileRow?.profile) throw new Error(`La familia ${listing.nombre_familia ?? listing.cod_familia} todavía no tiene perfil: analízala primero.`);
   if (profileRow.status !== "reviewed") warnings.push("El perfil de la familia aún no está revisado.");
   const profile = profileRow.profile; const icecat = identity.icecat;
 
   // Filtros por reglas (sin IA). La letra energética del listado de MHD completa la eficiencia si el perfil no la sacó.
   const values = sourceValues(gathered.detail, icecat, listing);
-  const applied = applyProfile(profile, values, listing.cod_subfamilia);
+  const applied = await t.step("Filtros por reglas", () => applyProfile(profile, values, listing.cod_subfamilia), (result) => `${Object.keys(result.metafields).length} filtros con valor${result.missing.length ? `, ${result.missing.length} sin dato` : ""}`);
   // Solo si la tabla de eficiencia del perfil usa la escala nueva («Nueva A»…); en hornos, campanas, cocinas o termos
   // (escala antigua, A+++…) no se pone (decidido 2026-10-26).
   const efficiencyRules = profile.filters.filter((rule) => rule.metafield === "features.eficiencia_energ_tica" && (!rule.subfamilies?.length || Boolean(listing.cod_subfamilia && rule.subfamilies.includes(listing.cod_subfamilia))));
@@ -181,31 +184,32 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   const modelChoice = resolveModel(listing, icecat); const brandChoice = resolveBrand(listing, icecat);
   const model = modelChoice.model ?? listing.ref_proved ?? listing.codigo;
   // Lo que va a revisión sale después como «Revisión: …»; aquí, solo los cambios que no necesitan revisión.
-  if (modelChoice.source === "icecat" && !modelChoice.needsReview) warnings.push(`Modelo: ${modelChoice.reason}`);
-  if (brandChoice.reason && !brandChoice.needsReview) warnings.push(`Marca: ${brandChoice.reason}`);
+  if (modelChoice.source === "icecat" && !modelChoice.needsReview) { warnings.push(`Modelo: ${modelChoice.reason}`); t.event("decision", "Modelo y marca", `Modelo: ${modelChoice.reason}`); }
+  if (brandChoice.reason && !brandChoice.needsReview) { warnings.push(`Marca: ${brandChoice.reason}`); t.event("decision", "Modelo y marca", `Marca: ${brandChoice.reason}`); }
 
   // Fotos antes de redactar (2026-10-26): sin ninguna descargable no se gasta la redacción. La foto principal del listado
   // de MHD (`img/<EAN>_…`) no existe en su servidor en buena parte del catálogo (S3 contesta 403, no es un bloqueo por IP);
   // las de la ficha (`img/analyzed/mhd/…`) sí. Si MHD no da ninguna, se usan las de Icecat comprobado.
   const photoUrls = gathered.detail?.fotos?.length ? gathered.detail.fotos : listing.imagen ? [listing.imagen] : [];
-  let prepared = await prepareImages(photoUrls);
+  let prepared = await t.step("Descargar fotos", () => prepareImages(photoUrls), (result) => `${result.images.length} de ${photoUrls.length} descargadas`);
   warnings.push(...prepared.errors.map((error) => error.replace(/\(HTTP 403\)/, "(HTTP 403: MHD no tiene esa foto en su servidor)")));
   if (!prepared.images.length && icecat?.gallery?.length) {
     const fromIcecat = await prepareImages(icecat.gallery.map((picture) => picture.url).filter(Boolean));
     warnings.push(...fromIcecat.errors);
-    if (fromIcecat.images.length) warnings.push(`Fotos de Icecat (${fromIcecat.images.length}): MHD no tiene ninguna descargable.`);
+    if (fromIcecat.images.length) { warnings.push(`Fotos de Icecat (${fromIcecat.images.length}): MHD no tiene ninguna descargable.`); t.event("decision", "Descargar fotos", `Fotos de Icecat (${fromIcecat.images.length}): MHD no tiene ninguna descargable.`); }
     prepared = fromIcecat;
   }
-  if (!prepared.images.length) return { status: "discarded", reason: "Sin imagen descargable (ni en MHD ni en Icecat)", warnings };
+  if (!prepared.images.length) { t.event("decision", "Descartes", "Descartado: sin imagen descargable (ni en MHD ni en Icecat)"); return { status: "discarded", reason: "Sin imagen descargable (ni en MHD ni en Icecat)", warnings }; }
 
-  const written = await writeContent(deps.ai, { profile, listing, detail: gathered.detail, icecat, metafields: applied.metafields, values, model });
+  const written = await t.step("Redactar textos (IA)", () => writeContent(deps.ai, { profile, listing, detail: gathered.detail, icecat, metafields: applied.metafields, values, model }), (result) => `${result.attempts} intento${result.attempts > 1 ? "s" : ""}${result.blocked ? " · bloqueada por el revisor de datos" : ""} · ${(result.costUsd ?? 0).toFixed(4)} $`);
+  for (const [index, errors] of written.attemptErrors.entries()) t.event("aviso", "Redactar textos (IA)", `Intento ${index + 1} rechazado: ${errors.join(" | ")}`.slice(0, 2000));
   warnings.push(...written.errors.map((error) => `Validación del texto: ${error}`));
   if (written.elviReview && !written.elviReview.ok) warnings.push(`Frase de Elvi descartada: ${written.elviReview.reason}`);
   if (written.blocked) warnings.push("Ficha bloqueada: el revisor de datos encontró afirmaciones sin respaldo. Hay que rehacerla o revisarla antes de guardarla en Shopify.");
   cost += written.costUsd ?? 0; usage.content = written.usage; usage.contentAttempts = written.attempts; usage.contentErrors = written.attemptErrors;
 
   // Fotos: la IA dice qué vista es cada una; el código calcula el fondo, ordena y trata.
-  const classified = prepared.images.length ? await classifyImages(deps.ai, written.content.title, prepared.images, listing.imagen) : { classified: [] as ClassifiedImage[], costUsd: 0, usage: null };
+  const classified = prepared.images.length ? await t.step("Clasificar fotos (IA)", () => classifyImages(deps.ai, written.content.title, prepared.images, listing.imagen), (result) => `${result.classified.length} fotos clasificadas`) : { classified: [] as ClassifiedImage[], costUsd: 0, usage: null };
   cost += classified.costUsd ?? 0; usage.images = classified.usage;
   let ordered = orderImages(classified.classified);
   // Si todas las de MHD se descartan al revisarlas (fondo negro, pequeñas…), se prueban las de Icecat comprobado.
@@ -216,17 +220,17 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
       cost += again.costUsd ?? 0;
       prepared = { images: [...prepared.images, ...fromIcecat.images], errors: prepared.errors };
       ordered = orderImages(again.classified);
-      if (ordered.keep.length) warnings.push(`Fotos de Icecat (${ordered.keep.length}): las de MHD no pasaron la revisión.`);
+      if (ordered.keep.length) { warnings.push(`Fotos de Icecat (${ordered.keep.length}): las de MHD no pasaron la revisión.`); t.event("decision", "Clasificar fotos (IA)", `Fotos de Icecat (${ordered.keep.length}): las de MHD no pasaron la revisión.`); }
     }
   }
-  if (!ordered.keep.length) return { status: "discarded", reason: "Sin imagen válida (todas descartadas al revisarlas)", warnings };
+  if (!ordered.keep.length) { t.event("decision", "Descartes", "Descartado: sin imagen válida (todas descartadas al revisarlas)"); return { status: "discarded", reason: "Sin imagen válida (todas descartadas al revisarlas)", warnings }; }
   const brand = brandChoice.brand;
   // Tipo para la dirección y los archivos: lo que va delante de la marca en el título («Freidora de aire»), porque en
   // familias amplias el nombre del perfil es genérico («pequeño electrodoméstico de preparación de alimentos»).
   const brandAt = written.content.title.toLowerCase().indexOf(brand.toLowerCase());
   const productType = (brandAt > 0 ? written.content.title.slice(0, brandAt).trim() : "") || profile.product.singular;
   const base = slugify(`${productType} ${brand} ${model}`);
-  const treated = await Promise.all(ordered.keep.map(async (image) => ({ image, file: await processImage(prepared.images.find((item) => item.url === image.url)!.bytes, image) })));
+  const treated = await t.step("Tratar fotos", () => Promise.all(ordered.keep.map(async (image) => ({ image, file: await processImage(prepared.images.find((item) => item.url === image.url)!.bytes, image) }))), (result) => `${result.length} fotos tratadas · ${ordered.dropped.length} descartadas`);
   // Si la principal de MHD queda pequeña tras tratarla (< 800 px), pasa a principal la frontal o tres cuartos sobre
   // blanco más grande, si la hay (decidido 2026-10-23).
   const side = (entry: (typeof treated)[number]) => Math.max(entry.file.width, entry.file.height); // el lado largo: un combi es estrecho por naturaleza
@@ -244,7 +248,7 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   }
 
   // Etiqueta energética como PNG en su metacampo, fuera de la galería.
-  const label = await energyLabelFile(deps.config, listing, icecat, [listing.ref_proved, ...(model !== listing.ref_proved ? [model] : []), ...(identity.check?.same ? [icecat?.partCode ?? null, icecat?.modelName ?? null] : [])], warnings).catch((caught: Error) => { warnings.push(`Etiqueta energética: ${caught.message}`); return null; });
+  const label = await t.step("Etiqueta energética", () => energyLabelFile(deps.config, listing, icecat, [listing.ref_proved, ...(model !== listing.ref_proved ? [model] : []), ...(identity.check?.same ? [icecat?.partCode ?? null, icecat?.modelName ?? null] : [])], warnings).catch((caught: Error) => { warnings.push(`Etiqueta energética: ${caught.message}`); return null; }), (result) => (result ? `PNG desde ${result.source}` : "Sin etiqueta"));
   const labelFilename = label ? `${slugify(`${brand} ${model}`)}-etiqueta-energetica.png` : null;
   if (label && labelFilename) media.push({ role: "energy_label", position: 0, filename: labelFilename, contentType: "image/png", width: label.width, height: label.height, bytes: label.bytes, meta: { source: label.source } });
 
@@ -252,10 +256,13 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   // comprobados; MP4 del producto o de la marca (provisional: es «de producto» si su descripción nombra el modelo).
   const docBase = slugify(`${brand} ${model}`);
   const documents = (icecat?.documents ?? []).filter((document) => STORE_RULES.documentTypes[document.type]).map((document) => ({ type: document.type, filename: `${docBase}-${STORE_RULES.documentTypes[document.type]}.pdf`, url: document.url, sizeBytes: document.sizeBytes }));
-  const youtube = await embeddableYoutubeVideos(icecat?.youtubeIds ?? []);
-  const videoKinds = await classifyVideos(deps.ai, { title: written.content.title, brand, model, series: icecat?.series ?? null }, icecat?.videos ?? []);
+  const { youtube, videoKinds, preparedVideos } = await t.step("Documentos y vídeos", async () => {
+    const youtube = await embeddableYoutubeVideos(icecat?.youtubeIds ?? []);
+    const videoKinds = await classifyVideos(deps.ai, { title: written.content.title, brand, model, series: icecat?.series ?? null }, icecat?.videos ?? []);
+    const preparedVideos = await prepareVideos(deps.config.icecat, icecat?.videos ?? [], videoKinds.kinds, { productBase: base, brand });
+    return { youtube, videoKinds, preparedVideos };
+  }, (result) => `${documents.length} documentos · ${result.youtube.length} vídeos de YouTube · ${result.preparedVideos.videos.length} MP4`);
   cost += videoKinds.costUsd ?? 0; usage.videos = videoKinds.usage;
-  const preparedVideos = await prepareVideos(deps.config.icecat, icecat?.videos ?? [], videoKinds.kinds, { productBase: base, brand });
   warnings.push(...preparedVideos.errors);
   for (const [position, video] of preparedVideos.videos.entries()) media.push({ role: "video", position, filename: video.filename, contentType: video.contentType, width: 0, height: 0, bytes: video.bytes, meta: { kind: video.kind, reason: video.reason, description: video.description, hash: video.hash, sourceUrl: video.url } });
   const mp4 = preparedVideos.videos.map((video) => ({ url: video.url, description: video.description, kind: video.kind, reason: video.reason, filename: video.filename, sizeBytes: video.sizeBytes, hash: video.hash }));
@@ -263,12 +270,12 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   // Colocación en las colecciones actuales (hermanas por EAN) y datos de Shopify.
   const vendor = brandChoice.vendor;
   const distinction = productDistinction(profile, values);
-  const classification = await classifyInStore(deps.config.shopify, { subfamilyEans: subfamilyEans.filter((ean) => ean !== listing.codigo_ean), distinction, distinctionNames: profile.product.distinctions.map((item) => item.name), vendor });
+  const classification = await t.step("Colocar en la tienda", () => classifyInStore(deps.config.shopify, { subfamilyEans: subfamilyEans.filter((ean) => ean !== listing.codigo_ean), distinction, distinctionNames: profile.product.distinctions.map((item) => item.name), vendor }), (result) => `Tipo «${result.productType ?? "sin tipo"}» · ${result.tags.length} etiquetas`);
   warnings.push(...classification.notes);
     // Sin etiqueta buena no va «Energética»: con esa etiqueta y el metacampo vacío, el tema abriría la última foto.
   const tags = [...classification.tags, ...(label ? ["Energética"] : [])];
   const { data: previousRun } = await deps.db.from("mhd_importer_product_runs").select("shopify_product_id").eq("codigo", listing.codigo).not("shopify_product_id", "is", null).order("created_at", { ascending: false }).limit(1).maybeSingle();
-  const handle = await freeHandle(deps.config, base, typeof applied.metafields["filtro.color"] === "string" ? applied.metafields["filtro.color"] as string : null, previousRun?.shopify_product_id ?? null);
+  const handle = await t.step("Dirección de la ficha", () => freeHandle(deps.config, base, typeof applied.metafields["filtro.color"] === "string" ? applied.metafields["filtro.color"] as string : null, previousRun?.shopify_product_id ?? null), (result) => result);
   const sellWithoutStock = STORE_RULES.sellOutOfStockBrands.includes(vendor) && STORE_RULES.sellOutOfStockLines.includes(listing.cod_linea ?? "");
   // Opiniones que ya tenemos de este EAN (Trusted Shops) con el resumen de Elvi, para la sección «Opiniones».
   const technical = icecatMetafield(icecat, gathered.detail?.caracteristicas ?? [], youtube);
@@ -298,6 +305,7 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
     ...reviewReasons(profile, values, listing.cod_subfamilia),
   ].filter((reason): reason is string => Boolean(reason));
   warnings.push(...review_reasons.map((reason) => `Revisión: ${reason}`));
+  for (const reason of review_reasons) t.event("revision", "Cola de revisión", reason);
 
   return {
     status: "ok", warnings, review_reasons, costUsd: cost, usage, media,

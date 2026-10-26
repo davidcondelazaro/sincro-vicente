@@ -7,6 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createHash } from "node:crypto";
 import { STORE_RULES, type ProcessedProduct } from "./processor";
 import { fetchIcecatDocument, type IcecatConfig } from "./sources";
+import { mediaBytes } from "./media-store";
 import { shopifyGraphql, type ShopifyConfig } from "./store-filters";
 
 // Regla de David (2026-10-26): los productos con revisión pendiente se suben igual, como borrador, y se revisan antes de
@@ -100,9 +101,8 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   // Un producto activo (publicado) nunca recibe lo de negocio del importador, lo haya creado él o no.
   if (existing?.status === "ACTIVE") refresh = true;
   if (refresh && existing && existing.variants.nodes.length !== 1) throw new Error("El producto que ya tiene la tienda tiene varias variantes: el refresco solo cubre productos de una variante.");
-  const { data: media, error: mediaError } = await deps.db.from("mhd_importer_media").select("role,position,filename,content_type,bytes,meta").eq("run_id", runId).order("position");
+  const { data: media, error: mediaError } = await deps.db.from("mhd_importer_media").select("role,position,filename,content_type,bytes,storage_path,meta").eq("run_id", runId).order("position");
   if (mediaError) throw mediaError;
-  const bytesOf = (value: unknown) => new Uint8Array(Buffer.from(String(value).replace(/^\\x/, ""), "hex"));
 
   // Ubicaciones por nombre.
   const locations = (await shopifyGraphql<{ locations: { nodes: { id: string; name: string }[] } }>(deps.shopify, `{ locations(first: 20) { nodes { id name } } }`)).locations.nodes;
@@ -111,11 +111,11 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
 
   // 1) Fotos de la galería, en su orden.
   const photos = (media ?? []).filter((item) => item.role === "image").sort((a, b) => a.position - b.position);
-  const photoUrls = await stagedUpload(deps.shopify, photos.map((item) => ({ filename: item.filename, mimeType: item.content_type, bytes: bytesOf(item.bytes), resource: "IMAGE" as const })));
+  const photoUrls = await stagedUpload(deps.shopify, await Promise.all(photos.map(async (item) => ({ filename: item.filename, mimeType: item.content_type, bytes: await mediaBytes(deps.db, item), resource: "IMAGE" as const }))));
   // 2) Etiqueta energética y PDF, como archivos para sus metacampos.
   const label = (media ?? []).find((item) => item.role === "energy_label");
   const pdfs = await Promise.all(product.documents.map(async (document) => ({ document, bytes: (await fetchIcecatDocument(deps.icecat, document.url)).bytes })));
-  const labelId = label ? await uploadOnce(deps, { filename: label.filename, mimeType: "image/png", bytes: bytesOf(label.bytes), resource: "IMAGE", kind: "etiqueta_energetica", alt: `Etiqueta energética ${shop.title}` }) : null;
+  const labelId = label ? await uploadOnce(deps, { filename: label.filename, mimeType: "image/png", bytes: await mediaBytes(deps.db, label), resource: "IMAGE", kind: "etiqueta_energetica", alt: `Etiqueta energética ${shop.title}` }) : null;
   const documentIds: string[] = [];
   for (const item of pdfs) documentIds.push(await uploadOnce(deps, { filename: item.document.filename, mimeType: "application/pdf", bytes: item.bytes, resource: "FILE", kind: "documento", sourceUrl: item.document.url }));
 
@@ -125,9 +125,9 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   const meta = (item: { meta: unknown }) => item.meta as Record<string, string>;
   const productVideos = videos.filter((item) => meta(item).kind === "producto").slice(0, 1);
   const brandVideos = videos.filter((item) => !productVideos.includes(item));
-  const productVideoUrls = await stagedUpload(deps.shopify, productVideos.map((item) => ({ filename: item.filename, mimeType: "video/mp4", bytes: bytesOf(item.bytes), resource: "VIDEO" as const })));
+  const productVideoUrls = await stagedUpload(deps.shopify, await Promise.all(productVideos.map(async (item) => ({ filename: item.filename, mimeType: "video/mp4", bytes: await mediaBytes(deps.db, item), resource: "VIDEO" as const }))));
   const videoIds: string[] = [];
-  for (const item of brandVideos) videoIds.push(await uploadOnce(deps, { filename: item.filename, mimeType: "video/mp4", bytes: bytesOf(item.bytes), resource: "VIDEO", kind: "video_marca", alt: meta(item).description || item.filename, sourceUrl: meta(item).sourceUrl ?? null }));
+  for (const item of brandVideos) videoIds.push(await uploadOnce(deps, { filename: item.filename, mimeType: "video/mp4", bytes: await mediaBytes(deps.db, item), resource: "VIDEO", kind: "video_marca", alt: meta(item).description || item.filename, sourceUrl: meta(item).sourceUrl ?? null }));
   const PRODUCT_VIEWS = new Set(["frontal", "tres_cuartos", "abierto", "lateral", "trasera"]);
   const photoFiles = photos.map((item, index) => ({ originalSource: photoUrls[index], alt: String(meta(item).alt ?? shop.title), filename: item.filename, contentType: "IMAGE" }));
   const productViews = photos.findIndex((item) => !PRODUCT_VIEWS.has(meta(item).kind));

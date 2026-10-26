@@ -1,8 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/proxy";
 
-// /api/shopify/portes: la llama Shopify en el pago (servicio de portes), sin sesión.
-const publicPaths = new Set(["/login", "/set-password", "/auth/logout", "/auth/confirm", "/api/shopify/portes"]);
+// /api/shopify/portes: la llama Shopify en el pago (servicio de portes), sin sesión. El trabajador del importador lo
+// llaman el vigilante de pg_cron y él mismo, sin sesión (solo procesa lo que ya está en la cola).
+const publicPaths = new Set(["/login", "/set-password", "/auth/logout", "/auth/confirm", "/api/shopify/portes", "/api/importador-productos/trabajos/trabajador"]);
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;

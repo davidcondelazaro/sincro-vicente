@@ -1,5 +1,6 @@
 import { importerSession } from "@/lib/mhd-importer/server";
 import { fetchMhdMedia } from "@/lib/mhd-importer/sources";
+import { mediaBytes } from "@/lib/mhd-importer/media-store";
 
 // Muestra en la web las fotos de una prueba: ?media=<id> sirve un archivo ya tratado (foto o etiqueta, guardado en
 // mhd_importer_media); ?url= sirve el original de MHD, que solo se entrega con cabeceras de navegador y Referer.
@@ -13,10 +14,9 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const mediaId = params.get("media");
   if (mediaId) {
-    const { data, error } = await session.db.from("mhd_importer_media").select("content_type,bytes").eq("id", mediaId).maybeSingle();
+    const { data, error } = await session.db.from("mhd_importer_media").select("content_type,bytes,storage_path").eq("id", mediaId).maybeSingle();
     if (error || !data) return new Response("No existe.", { status: 404 });
-    const hex = String(data.bytes).replace(/^\\x/, "");
-    return new Response(Buffer.from(hex, "hex"), { headers: { "Content-Type": data.content_type, "Cache-Control": "private, max-age=3600" } });
+    return new Response(Buffer.from(await mediaBytes(session.db, data)), { headers: { "Content-Type": data.content_type, "Cache-Control": "private, max-age=3600" } });
   }
   const url = params.get("url") ?? "";
   let host = ""; try { host = new URL(url).hostname; } catch { /* URL no válida */ }

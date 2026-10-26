@@ -16,6 +16,7 @@ const { processProduct } = await jiti.import("../src/lib/mhd-importer/processor.
 const { icecatConfigFromEnv, mhdConfigFromEnv } = await jiti.import("../src/lib/mhd-importer/sources.ts");
 const { shopifyConfigFromEnv } = await jiti.import("../src/lib/mhd-importer/store-filters.ts");
 const { anthropicKey } = await jiti.import("../src/lib/mhd-importer/ai.ts");
+const { saveRunMedia } = await jiti.import("../src/lib/mhd-importer/media-store.ts");
 
 const args = process.argv.slice(2);
 const option = (name) => { const at = args.indexOf(name); return at >= 0 ? args.splice(at, 2)[1] : null; };
@@ -64,8 +65,7 @@ await Promise.all(Array.from({ length: parallel }, async () => {
       const { data: saved, error: saveError } = await db.from("mhd_importer_product_runs").insert(row).select("id").single();
       if (saveError) throw saveError;
       if (result.status === "ok" && result.media.length) {
-        const { error: mediaError } = await db.from("mhd_importer_media").insert(result.media.map((file) => ({ run_id: saved.id, role: file.role, position: file.position, filename: file.filename, content_type: file.contentType, width: file.width, height: file.height, bytes: `\\x${Buffer.from(file.bytes).toString("hex")}`, meta: file.meta })));
-        if (mediaError) throw mediaError;
+        await saveRunMedia(db, saved.id, result.media);
       }
       cost += Number(result.costUsd ?? 0);
       console.log(`✓ ${codigo} ${listing.cod_familia} · ${result.status === "ok" ? result.product?.content?.title ?? "ok" : `descartado: ${result.reason}`} · ${Math.round((Date.now() - t) / 1000)} s`);

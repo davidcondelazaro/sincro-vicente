@@ -3,6 +3,7 @@ import { anthropicKey } from "@/lib/mhd-importer/ai";
 import { processProduct } from "@/lib/mhd-importer/processor";
 import { createShopifyDraft, updateShopifyTexts } from "@/lib/mhd-importer/shopify-draft";
 import { errorResponse, importerSession, sourcesConfig } from "@/lib/mhd-importer/server";
+import { saveRunMedia } from "@/lib/mhd-importer/media-store";
 
 // Importador de productos MHD: prueba de un producto. POST { codigo } (código de MHD o EAN) monta la ficha con el perfil
 // de su familia y la guarda en mhd_importer_product_runs, con las fotos tratadas y la etiqueta en mhd_importer_media,
@@ -60,8 +61,7 @@ export async function POST(request: Request) {
     const { data: saved, error: saveError } = await session.db.from("mhd_importer_product_runs").insert(row).select("id").single();
     if (saveError) throw saveError;
     if (result.status === "ok" && result.media.length) {
-      const { error: mediaError } = await session.db.from("mhd_importer_media").insert(result.media.map((file) => ({ run_id: saved.id, role: file.role, position: file.position, filename: file.filename, content_type: file.contentType, width: file.width, height: file.height, bytes: `\\x${Buffer.from(file.bytes).toString("hex")}`, meta: file.meta })));
-      if (mediaError) throw mediaError;
+      await saveRunMedia(session.db, saved.id, result.media);
     }
     const { data: run, error: readError } = await session.db.from("mhd_importer_product_runs").select(`*, media:mhd_importer_media(${MEDIA_FIELDS})`).eq("id", saved.id).single();
     if (readError) throw readError;
