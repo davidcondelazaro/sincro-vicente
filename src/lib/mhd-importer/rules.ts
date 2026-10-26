@@ -192,6 +192,9 @@ export function exclusionReason(listing: { ref_proved: string | null; titulo: st
   if (listing.cod_familia === "K01" || listing.cod_subfamilia?.startsWith("K01")) {
     const title = normalize(listing.titulo ?? "");
     if (/unidad (interior|exterior)/.test(title) && !/interior y exterior|exterior e interior/.test(title)) return "Unidad suelta de aire acondicionado: no se importa";
+    // La descripción ampliada de MHD que empieza por «UNIDAD INTERIOR …» o «UNIDAD EXTERIOR …» es la de una unidad sola
+    // (Daikin ATXF35F, Daitsu DS-12KTP-6; 2026-10-26): en K01 ningún equipo completo empieza así.
+    if (/^unidad (interior|exterior)\b/.test(normalize((listing.descripcion_ampliada ?? "").replace(/<[^>]+>/g, " ")).trim())) return "Unidad suelta de aire acondicionado: no se importa";
     const text = normalize(`${listing.descripcion ?? ""} ${listing.descripcion_ampliada ?? ""}`.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ");
     const ref = normalize(listing.ref_proved ?? "");
     const self = ref.length >= 4 ? text.match(new RegExp(`(?:^|[.!?]\\s*|\\b(?:la|esta|una|nueva)\\s+)unidad (interior|exterior)\\s+(?:modelo\\s+)?(?:[\\p{L}.-]+\\s+){0,2}${escape(ref)}(?![\\p{L}\\d])`, "u")) : null;
