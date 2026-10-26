@@ -117,12 +117,18 @@ export function validateContent(content: ProductContent, brand: string, model: s
   const plain = (text: string) => text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
   if (plain(content.meta_description).includes(plain(content.title))) errors.push("La meta descripción repite el título: Google ya lo enseña encima; usa el espacio para datos clave y lo que diferencia al producto.");
   else if (model && plain(content.meta_description).includes(plain(model))) errors.push(`La meta descripción repite el modelo «${model}», que ya va en el título.`);
-  if (brand && !content.title.includes(brand)) errors.push(`El título no lleva la marca escrita exactamente «${brand}».`);
+  // Sin distinguir mayúsculas (2026-10-26, masivo): «ASUS» frente a «Asus» de la tabla de marcas rechazaba fichas buenas.
+  if (brand && !content.title.toLowerCase().includes(brand.toLowerCase())) errors.push(`El título no lleva la marca «${brand}».`);
   // Vale la referencia de MHD o el modelo comercial de Icecat (2026-10-26, David): MHD da a veces la referencia interna del
   // fabricante («MR.JQG11.001» para el Acer X1827) o la mezcla con el color («MOTO BUDS+ BEACH SAND»), y forzarla en el
   // título rechazaba la mitad de los textos del masivo. Se compara sin espacios, guiones ni puntos.
   const bare = (text: string) => text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9+]/g, "");
-  const models = [model, ...altModels].filter((item): item is string => Boolean(item && bare(item).length >= 3));
+  // También sin el sufijo de país de HP («DG0N0ET#ABE» → «DG0N0ET») y con el nombre comercial corto de Icecat (sus tres
+  // primeras palabras si llevan alguna cifra: «EliteBook 8 G2i 16 inch Notebook…» → «EliteBook 8 G2i»). Masivo,
+  // 2026-10-26: en portátiles solo el 15 % de los textos salía a la primera por esto.
+  const shortName = (name: string) => { const words = name.trim().split(/\s+/); return words.length > 3 && words.slice(0, 3).some((word) => /\d/.test(word)) ? words.slice(0, 3).join(" ") : null; };
+  const candidates = [model, ...altModels].flatMap((item) => (item ? [item, item.split("#")[0], shortName(item)] : []));
+  const models = [...new Set(candidates.filter((item): item is string => Boolean(item && bare(item).length >= 3)))];
   if (model && !models.some((item) => bare(content.title).includes(bare(item)))) errors.push(`El título no lleva el modelo «${model}»${models.length > 1 ? ` ni «${models.slice(1).join("», «")}»` : ""}.`);
   if (/\|/.test(content.title)) errors.push("El título lleva « | ».");
   const titleWords = content.title.toLowerCase().split(/\s+/).filter((word) => word.length > 3);

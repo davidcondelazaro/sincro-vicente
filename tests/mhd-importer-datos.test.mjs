@@ -237,3 +237,13 @@ test("redirecciones: ruta vieja y a qué apunta (2026-10-26)", async () => {
   assert.equal(keyFor("/pulseras-de-actividad", null, null, ids).key_type, "categoria_vieja");
   assert.deepEqual(parseCsv('a,b\n"x, y",2\n'), [{ a: "x, y", b: "2" }]);
 });
+
+test("título: modelo con sufijo de país, nombre comercial corto y marca sin mayúsculas (masivo, 2026-10-26)", async () => {
+  const { validateContent } = await jiti.import("../src/lib/mhd-importer/content.ts");
+  const ficha = (title) => ({ title, meta_title: "x", short_description: "x", meta_description: "y".repeat(140), long_description_html: "<p>x</p><h2>x</h2>", elvi_tip: { text: "", sources: [] } });
+  const fallos = (errors) => errors.filter((error) => error.startsWith("El título no lleva"));
+  assert.deepEqual(fallos(validateContent(ficha("Portátil HP DG0N0ET de 16\""), "HP", "DG0N0ET#ABE", [], new Map())), []);
+  assert.deepEqual(fallos(validateContent(ficha("Portátil HP EliteBook 8 G2i de 16\""), "HP", "DG0N0ET#ABE", [], new Map(), ["EliteBook 8 G2i 16 inch Notebook Next Gen AI PC", "DG0N0ET"])), []);
+  assert.deepEqual(fallos(validateContent(ficha("Portátil ASUS Vivobook 15 X1504"), "Asus", "X1504", [], new Map())), []);
+  assert.equal(fallos(validateContent(ficha("Portátil HP de 16\""), "HP", "DG0N0ET#ABE", [], new Map(), ["EliteBook 8 G2i 16 inch Notebook"])).length, 1);
+});
