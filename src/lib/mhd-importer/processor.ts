@@ -184,6 +184,20 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   if (modelChoice.source === "icecat" && !modelChoice.needsReview) warnings.push(`Modelo: ${modelChoice.reason}`);
   if (brandChoice.reason && !brandChoice.needsReview) warnings.push(`Marca: ${brandChoice.reason}`);
 
+  // Fotos antes de redactar (2026-10-26): sin ninguna descargable no se gasta la redacción. La foto principal del listado
+  // de MHD (`img/<EAN>_…`) no existe en su servidor en buena parte del catálogo (S3 contesta 403, no es un bloqueo por IP);
+  // las de la ficha (`img/analyzed/mhd/…`) sí. Si MHD no da ninguna, se usan las de Icecat comprobado.
+  const photoUrls = gathered.detail?.fotos?.length ? gathered.detail.fotos : listing.imagen ? [listing.imagen] : [];
+  let prepared = await prepareImages(photoUrls);
+  warnings.push(...prepared.errors.map((error) => error.replace(/\(HTTP 403\)/, "(HTTP 403: MHD no tiene esa foto en su servidor)")));
+  if (!prepared.images.length && icecat?.gallery?.length) {
+    const fromIcecat = await prepareImages(icecat.gallery.map((picture) => picture.url).filter(Boolean));
+    warnings.push(...fromIcecat.errors);
+    if (fromIcecat.images.length) warnings.push(`Fotos de Icecat (${fromIcecat.images.length}): MHD no tiene ninguna descargable.`);
+    prepared = fromIcecat;
+  }
+  if (!prepared.images.length) return { status: "discarded", reason: "Sin imagen descargable (ni en MHD ni en Icecat)", warnings };
+
   const written = await writeContent(deps.ai, { profile, listing, detail: gathered.detail, icecat, metafields: applied.metafields, values, model });
   warnings.push(...written.errors.map((error) => `Validación del texto: ${error}`));
   if (written.elviReview && !written.elviReview.ok) warnings.push(`Frase de Elvi descartada: ${written.elviReview.reason}`);
@@ -191,9 +205,6 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   cost += written.costUsd ?? 0; usage.content = written.usage; usage.contentAttempts = written.attempts;
 
   // Fotos: la IA dice qué vista es cada una; el código calcula el fondo, ordena y trata.
-  const photoUrls = gathered.detail?.fotos?.length ? gathered.detail.fotos : listing.imagen ? [listing.imagen] : [];
-  const prepared = await prepareImages(photoUrls);
-  warnings.push(...prepared.errors);
   const classified = prepared.images.length ? await classifyImages(deps.ai, written.content.title, prepared.images, listing.imagen) : { classified: [] as ClassifiedImage[], costUsd: 0, usage: null };
   cost += classified.costUsd ?? 0; usage.images = classified.usage;
   const ordered = orderImages(classified.classified);
