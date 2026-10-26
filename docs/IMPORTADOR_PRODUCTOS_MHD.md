@@ -46,6 +46,8 @@ sincro-vicente ya lee de la API todo el catálogo de MHD a Supabase (tablas `mhd
 - [ ] **Experimento controlado:** un producto de MHD con todo el proceso (descarte, Icecat, contenido con IA, colección, filtros, imágenes, etiqueta energética) hasta dejarlo como **borrador** en Shopify. Antes, cerrar el título ideal.
 - [ ] **Informes** de cada ejecución: todo lo descartado y por qué (sin imagen, poca información, sin precio, sin dato clave), lo que no casa con ninguna categoría del árbol, y las demás anomalías (ver *Informes de la importación*).
 
+**Colocación al subir a Shopify, con el árbol nuevo (2026-10-26).** En Shopify ya existen los metacampos de producto `custom.apartado`, `custom.grupo`, `custom.familia` (handle de la colección; sirven como condición de colección automática) y `custom.mhd_subfamilia` (código de MHD tal cual, p. ej. `H1001`). Se rellenan desde la subfamilia: `store_mhd_subfamily_map.collection_handle` es la familia; en `store_collections`, su `parent_handle` es el grupo y su `apartado_handle` el apartado. Las colecciones aún no existen en Shopify (detalle en la nota compartida `arbol-colecciones-cruce.md` y en `theme-enterprise-vicente/docs/arbol-colecciones-mhd.md`).
+
 Las sincronizaciones periódicas que siguen al masivo (altas, bajas, cambios, precio y stock) están diseñadas en `SINCRONIZACIONES_MHD.md`.
 
 ## Lo aprendido en el masivo (2026-10-26)
