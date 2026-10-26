@@ -36,7 +36,7 @@ Propuesta inicial:
 | --- | --- |
 | Precio, stock | Directo cada 30 min |
 | Fotos (huella de imágenes) | Rehacer solo las fotos |
-| Título o descripción (huella de contenido) | ¿Rehacer los textos? |
+| Título o descripción (huella de contenido) | **No se rehacen** (David, 2026-10-26: «pienso que no»): nuestros textos salen de la ficha completa e Icecat, no del título de MHD. Queda en el histórico y sale en el resumen diario, por si alguien quiere reprocesarlo a mano. |
 | Familia o subfamilia | Recolocar en el árbol |
 | Marca, EAN o modelo | A revisión: puede ser otro producto |
 | Clase energética | Rehacer la etiqueta |
