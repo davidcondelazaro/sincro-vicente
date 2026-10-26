@@ -4,14 +4,14 @@ Diseño acordado con David para mantener la tienda al día una vez terminado el 
 
 ## Qué se hace y cada cuánto
 
-**Se lee siempre todo y se compara aquí** (David, 2026-10-26): no se usan los filtros por fecha de MHD. Así no dependemos de que MHD actualice bien sus fechas, no hay cursor de «última lectura» que se pueda desajustar y, si una lectura falla, la siguiente lo recoge todo. Cada producto guarda sus huellas (precio, stock, contenido, fotos; y entrega, por separar): se calculan las nuevas y se actúa sobre las que cambian. Volumen: unos 3 GB al día descargados en total.
+**Una sola fuente: el listado simple de productos de MHD (`/products`), descargado entero, y la comparación la hacemos nosotros** (David, 2026-10-26: «no quiero que dependamos de que nos digan que se ha modificado»). No se usan los filtros por fecha ni los endpoints `/prices` y `/stocks`: el listado ya trae precio, stock, portes y servicios. Cada producto guarda sus huellas (precio, stock, contenido, fotos y entrega); se calculan las nuevas y se actúa sobre las que cambian. Si una lectura falla, la siguiente lo recoge todo.
 
-| Cada | Qué | Lectura de MHD (medida el 2026-10-26) |
-| --- | --- | --- |
-| 30 min | Precio y stock directos a Shopify, sin IA | `/prices` y `/stocks` completos: ~9 s cada uno, mucho más ligeros que el listado de productos |
-| 1 hora | Altas (códigos nuevos: todo el proceso del importador), bajas (códigos que faltan: archivar y redirigir), modificaciones según su tipo (abajo) y opciones de entrega | `/products` completo: 30.961 productos, ~33 s y 125 MB; trae también precio y stock, que sirven de comprobación |
+| Cada | Qué |
+| --- | --- |
+| 30 min | Lectura completa del listado (30.961 productos, ~24-33 s, 125 MB medidos el 2026-10-26). Precio, stock y opciones de entrega directos a Shopify, sin IA. |
+| 1 hora | Con la última lectura: altas (códigos nuevos: todo el proceso del importador), bajas (códigos que faltan en dos lecturas seguidas: archivar y redirigir) y modificaciones según su tipo (abajo). |
 
-Solo las altas y las modificaciones importantes piden el resto de datos (ficha de detalle, Icecat…). Los filtros por fecha (`fecha_modificacion_*`) quedan documentados en `API_MHD.md` por si algún día hiciera falta ir más rápido.
+Solo las altas y las modificaciones importantes piden el resto de datos (ficha de detalle, Icecat, IA). Volumen: unos 6 GB al día descargados, porque MHD manda las descripciones largas (80 de los 125 MB) y **no comprime sus respuestas**: pedirle gzip en el informe para MHD (lo dejaría en ~15 MB). Los filtros por fecha (`fecha_modificacion_*`) quedan documentados en `API_MHD.md` por si algún día hicieran falta.
 
 ## Decisiones
 
@@ -40,7 +40,7 @@ Propuesta inicial:
 | Familia o subfamilia | **Se recoloca solo en el árbol nuevo** (David, 2026-10-26): metacampos de apartado, grupo y familia, colecciones y migas de pan. Se recalculan también los filtros (`filtro.*`), que dependen de la familia. La dirección del producto no cambia, así que no hace falta redirección. |
 | Marca, EAN o modelo | **A revisión, sin tocar nada** (David, 2026-10-26): puede ser otro producto con el mismo código. Sale en el resumen diario. |
 | Clase energética | **Todo lo que depende de ella** (David, 2026-10-26): la etiqueta energética (`custom.etiqueta_energetica`), la ficha de información del producto de la UE y el enlace a EPREL (`custom.documentos`, `custom.eprel`), el filtro de eficiencia y la etiqueta «Energética». Como es un dato clave, también se rehacen los textos (regla de los cambios de datos). Si la etiqueta nueva no casa con el modelo, a revisión. |
-| Opciones de entrega | **Se actualizan solas, siempre** (David, 2026-10-26: «esta parte es importantísima»): portes, subida, instalación y retirada del viejo, con sus precios, al metacampo `custom.opciones_entrega`, sin IA. Hoy esos campos van dentro de la huella «precio» (`mhd_hash_parts`), pero `/prices` no los devuelve. Se detectan **cada hora con el listado completo de `/products`** (medido el 2026-10-26: 30.961 productos en 4 páginas de 9.999, **33 s y 125 MB**; trae los siete campos de portes y servicios), sin depender de qué fecha cambie MHD. Conviene separarlos en una huella propia. Sale en el resumen diario. Si un servicio desaparece o su precio sube mucho, aviso en el resumen. |
+| Opciones de entrega | **Se actualizan solas, siempre** (David, 2026-10-26: «esta parte es importantísima»): portes, subida, instalación y retirada del viejo, con sus precios, al metacampo `custom.opciones_entrega`, sin IA. Se detectan en cada lectura del listado (cada 30 min), que trae los siete campos de portes y servicios. Hoy van dentro de la huella «precio» (`mhd_hash_parts`): conviene separarlos en una huella propia. Sale en el resumen diario. Si un servicio desaparece o su precio sube mucho, aviso en el resumen. |
 
 ## Pendiente de decidir
 
