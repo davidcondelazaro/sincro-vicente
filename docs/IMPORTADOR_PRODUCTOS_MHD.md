@@ -57,6 +57,18 @@ Tras revisar el planteamiento (sesión del 24 al 26-10), David pidió dejarlo he
 - **Código:** modelo limpio (`models.ts`), tabla de marcas (`brands.ts`), exclusiones (maquetas, B1528, unidades sueltas de aire acondicionado), cola de revisión (`review.ts`: clase energética, diferencias de más del 20 %, precio frente a la mediana, modelo o marca dudosos; se guarda en `result.review_reasons`).
 - **Jueces** (`judges.ts`, `scripts/juzgar-familias.mjs`, `scripts/calibrar-jueces.mjs`): Claude y OpenAI revisan perfiles y dudas con el reglamento; solo se cierra una duda si coinciden los dos. Calibración en [CALIBRACION_JUECES.md](CALIBRACION_JUECES.md).
 
+### Un solo juez y correcciones aplicadas (2026-10-26)
+
+- **Un solo juez, Claude** (David: «hagamos caso en todo al juez»). La calibración mostró que el juez falla por lo que no ve, no por lo que decide; un segundo juez con consenso solo frenaría. La clave de OpenAI no hace falta; `judges.ts` la sigue admitiendo.
+- **Juicio de las 133 familias** por API (`scripts/juzgar-familias.mjs --todas`): 24,9 $. **Correcciones** con subagentes de Claude Code, sin coste de API: `scripts/aplicar-juicio.mjs --exportar` deja el juicio de cada familia, el subagente escribe las operaciones y `--ops … --guardar` las valida, compara la cobertura y guarda. Resultado: 132 perfiles corregidos, 866 operaciones, ninguna rechazada, ~25 filtros que bajan más de un 30 % (todos pedidos por el juez), 104 de las 108 dudas de los jueces cerradas. Cada corrección queda en `mhd_importer_judgements` (purpose `correccion`) con el perfil anterior.
+- **Contra lo que decidió David:** en lavadoras (G01) el juez quitó la característica «Inverter» (115 → 0) por tenerla el 93 % de la familia. Se puede deshacer con el perfil anterior guardado.
+- **Pendientes que salen de las correcciones:**
+  - [ ] **Cola de revisión desde el perfil:** muchos arreglos dicen «a revisión» (productos mal clasificados, fichas cruzadas, marcas de otra empresa), pero el perfil no tiene cómo mandar un producto a revisión: hoy solo queda escrito en `product`, `subfamily_exceptions` o `descriptions`. Hace falta un campo de reglas de revisión en el perfil que el procesador aplique.
+  - [ ] **`questions` de los perfiles:** no se actualizan con las operaciones; muchas ya están resueltas en el registro. Vaciarlas o sincronizarlas con `mhd_importer_decisions`.
+  - [ ] **Shopify (con permiso de David):** añadir «Catálisis» a las opciones de `filtro.limpieza`; que la colección «Placas Eléctricas Portátiles» use la característica «Portátil».
+  - [ ] **Código:** `filtro.tramo_pantalla` no lo calcula el importador; `combinedColor` combina colores aunque el perfil separe las fuentes (K45); el modelo literal que exige la validación del título choca con los modelos de Icecat (940, S65).
+  - [ ] **Dudas abiertas para los jueces:** 3 de catálogo (modelo de los videojuegos, modelos cortados, marca corregida por el título) e I60:165.
+
 ## Metacampos de categoría de Shopify (estudiado 2026-10-26)
 
 Pregunta de David: ¿dan más flexibilidad o más datos en los filtros? **No.** Comprobado en la documentación y en la taxonomía de la tienda:
