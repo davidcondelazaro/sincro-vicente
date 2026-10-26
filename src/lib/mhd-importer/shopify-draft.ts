@@ -159,6 +159,11 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
       // Un documento que no se puede subir (p. ej. de más de 20 MB) no impide subir el producto (David, 2026-10-26).
       const uploaded = await Promise.all(product.documents.map(async (document) => {
         try {
+          // Icecat dice lo que pesa: si ya se sabe que no cabe, ni se descarga (un PDF de 35 MB tardaba 20-40 s).
+          if (document.sizeBytes && document.sizeBytes > SHOPIFY_MAX_FILE_BYTES) {
+            t.event("aviso", "Shopify: etiqueta y documentos", `${document.filename}: demasiado grande para Shopify (${mb(document.sizeBytes)} según Icecat; máximo 20 MB): no se sube.`);
+            return null;
+          }
           const fitted = fitDocument((await fetchIcecatDocument(deps.icecat, document.url)).bytes);
           if (fitted.note) t.event(fitted.bytes ? "decision" : "aviso", "Shopify: etiqueta y documentos", `${document.filename}: ${fitted.note}`);
           if (!fitted.bytes) return null;
