@@ -57,6 +57,7 @@ David: «tenemos que ir aprendiendo de todo esto». Cada regla que actúa mucho 
 | «¿Es el mismo modelo en Icecat?» fallaba | La respuesta se cortaba (400 tokens de salida, con el razonamiento dentro) en modelos enrevesados: monitores, informática | Margen de 2.000 tokens (y 3.000 en las otras comprobaciones cortas). Solo se paga lo que se usa. |
 | Fotos con fondo negro descartadas | 47 de 122 televisores perdían fotos de marca; unos auriculares Razer se quedaban sin ninguna | Se quedan (David: «son todas válidas»), detrás de las de fondo blanco. Reprocesados los 65 afectados. |
 | Solo el 39 % de los textos salía a la primera | 792 rechazos por «cifra sin respaldo» (4 de cada 5 falsos: la cifra estaba en el texto de MHD o Icecat) y 489 por «el título no lleva el modelo exacto» (referencias internas como «MR.JQG11.001» en lugar del modelo «X1827») | Las cifras valen si están en cualquier fuente; el título vale con la referencia de MHD o el modelo comercial de Icecat, comparados sin espacios ni guiones. |
+| Auriculares: «el título no lleva el dato clave Conexión» | La comprobación buscaba la cifra dentro del texto («Inalámbrica (Bluetooth Class 1)» → exigía un «1»; «cable de 2,1 m» → «2,1 m»). Tras los dos arreglos anteriores, los textos a la primera pasaron del 37 % al 42 % y este era el siguiente motivo | Los datos clave solo se exigen en el título si son una cifra («9 kg», «1400 rpm», «15,6"»). |
 
 ## Criterios sin depender de David: registro, diccionario y jueces (2026-10-26)
 
