@@ -59,7 +59,7 @@ function familyData(db: SupabaseClient, family: string) {
   return familyCache.get(family)!;
 }
 
-export async function processJobItem(deps: { db: SupabaseClient; config: SourcesConfig; ai: Anthropic; upload?: boolean }, item: JobItem) {
+export async function processJobItem(deps: { db: SupabaseClient; config: SourcesConfig; ai: Anthropic; upload?: boolean | "nuevos" }, item: JobItem) {
   const started = Date.now(); const log = itemLog(deps.db, item);
   try {
     const { data: listing, error } = await deps.db.rpc("mhd_importer_product", { p_codigo: item.codigo });
@@ -82,7 +82,10 @@ export async function processJobItem(deps: { db: SupabaseClient; config: Sources
     // Tandas con «Subir a Shopify» (2026-10-26): el producto se sube en borrador al momento, con el tiempo de cada parte.
     // Si la subida falla, el producto queda procesado y el error en el registro y en su detalle.
     let uploadError: string | null = null;
-    if (deps.upload && result.status === "ok") {
+    // «nuevos»: solo los que la tienda aún no tiene (por EAN, en el espejo); los demás no se tocan.
+    const inStore = deps.upload === "nuevos" && result.status === "ok" && result.product.ean ? (await deps.db.from("shopify_variants").select("product_id").eq("barcode", result.product.ean).limit(1).maybeSingle()).data : null;
+    if (inStore) log.add({ level: "decision", step: "Subir a Shopify", message: `Ya está en la tienda (${inStore.product_id}): no se sube, la tanda solo sube los nuevos.` });
+    if (deps.upload && result.status === "ok" && !inStore) {
       await log.trace.step("Subir a Shopify", () => createShopifyDraft({ db: deps.db, shopify: deps.config.shopify, icecat: deps.config.icecat, trace: log.trace }, saved.id), (draft) => `${draft.updated ? "Actualizado" : "Creado"} en ${draft.status === "DRAFT" ? "borrador" : draft.status} · ${draft.files.photos} fotos`)
         .catch((caught: Error) => { uploadError = `Procesado, pero no se subió a Shopify: ${caught.message}`; });
     }
@@ -131,9 +134,9 @@ export async function runWorkerTurn(env: Env, config: SourcesConfig, spawn: () =
     // Con el espejo listo, arranca otro trabajador si la tanda usa más de uno (ese, a su vez, arranca el siguiente).
     if (jobs?.length && workers > 1) spawn();
     // Opciones de cada tanda (p. ej. «Subir a Shopify»), leídas una vez por turno.
-    const optionsByJob = new Map<string, Promise<{ upload?: boolean }>>();
+    const optionsByJob = new Map<string, Promise<{ upload?: boolean | "nuevos" }>>();
     const jobOptions = (jobId: string) => {
-      if (!optionsByJob.has(jobId)) optionsByJob.set(jobId, Promise.resolve(db.from("mhd_importer_jobs").select("options").eq("id", jobId).single().then(({ data }) => (data?.options ?? {}) as { upload?: boolean })));
+      if (!optionsByJob.has(jobId)) optionsByJob.set(jobId, Promise.resolve(db.from("mhd_importer_jobs").select("options").eq("id", jobId).single().then(({ data }) => (data?.options ?? {}) as { upload?: boolean | "nuevos" })));
       return optionsByJob.get(jobId)!;
     };
     const running = new Set<Promise<void>>(); let empty = false;
@@ -144,7 +147,7 @@ export async function runWorkerTurn(env: Env, config: SourcesConfig, spawn: () =
         if (claimError) throw claimError;
         if (!items?.length) empty = true;
         for (const item of (items ?? []) as JobItem[]) {
-          const task: Promise<void> = jobOptions(item.job_id).then((options) => processJobItem({ db, config, ai, upload: Boolean(options.upload) }, item)).finally(() => { running.delete(task); processed += 1; });
+          const task: Promise<void> = jobOptions(item.job_id).then((options) => processJobItem({ db, config, ai, upload: options.upload === "nuevos" ? "nuevos" : Boolean(options.upload) }, item)).finally(() => { running.delete(task); processed += 1; });
           running.add(task);
         }
       }

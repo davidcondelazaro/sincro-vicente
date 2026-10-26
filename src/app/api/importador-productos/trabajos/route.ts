@@ -51,7 +51,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const session = await importerSession();
   if (!session) return Response.json({ error: "Necesitas iniciar sesión." }, { status: 401 });
-  const body = await request.json().catch(() => ({})) as { action?: string; job?: string; title?: string; families?: string[]; codes?: string[]; bench?: boolean; workers?: number; concurrency?: number; skipDone?: boolean; upload?: boolean };
+  const body = await request.json().catch(() => ({})) as { action?: string; job?: string; title?: string; families?: string[]; codes?: string[]; bench?: boolean; workers?: number; concurrency?: number; skipDone?: boolean; upload?: boolean | "nuevos" };
   try {
     if (body.action === "espejo") {
       // Se refresca después de contestar: tarda de segundos a pocos minutos.
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
       }
       if (!codes.length) return Response.json({ error: "La tanda no tiene productos." }, { status: 400 });
       const title = body.title?.trim() || (body.bench ? "Banco de prueba" : body.families?.length ? `Familias ${body.families.join(", ")}` : `${codes.length} productos`);
-      const { data: job, error } = await session.db.from("mhd_importer_jobs").insert({ title, created_by: session.email, options: { families: body.families ?? null, bench: Boolean(body.bench), codes: body.codes?.length ?? 0, workers: Math.min(6, Math.max(1, Number(body.workers ?? 2))), concurrency: Math.min(12, Math.max(1, Number(body.concurrency ?? 6))), skipDone: Boolean(body.skipDone), upload: Boolean(body.upload) } }).select("id").single();
+      const { data: job, error } = await session.db.from("mhd_importer_jobs").insert({ title, created_by: session.email, options: { families: body.families ?? null, bench: Boolean(body.bench), codes: body.codes?.length ?? 0, workers: Math.min(6, Math.max(1, Number(body.workers ?? 2))), concurrency: Math.min(12, Math.max(1, Number(body.concurrency ?? 6))), skipDone: Boolean(body.skipDone), upload: body.upload === "nuevos" ? "nuevos" : Boolean(body.upload) } }).select("id").single();
       if (error) throw error;
       for (let i = 0; i < codes.length; i += 500) {
         const { error: itemsError } = await session.db.from("mhd_importer_job_items").insert(codes.slice(i, i + 500).map((item) => ({ job_id: job.id, codigo: item.codigo, family_code: item.family_code })));
