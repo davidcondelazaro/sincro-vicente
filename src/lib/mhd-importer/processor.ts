@@ -5,7 +5,8 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import sharp from "sharp";
 import { classifyInStore, productDistinction, type Classification } from "./classification";
-import { writeContent, type ProductContent } from "./content";
+import { PROCESSOR_MODEL } from "./ai";
+import { writeContent, writeElviForPage, type ProductContent } from "./content";
 import { resolveBrand, type BrandChoice } from "./brands";
 import { sourceDisagreements } from "./facts";
 import { resolveModel, type ModelChoice } from "./models";
@@ -47,7 +48,7 @@ export type ProcessedProduct = {
   modelChoice: ModelChoice; brandChoice: BrandChoice;
   review_reasons: string[];        // cola de revisión a mano (review.ts); el producto se procesa igual
   family: { code: string | null; name: string | null; subfamilyCode: string | null; subfamilyName: string | null; profileStatus: string };
-  content: ProductContent; elviReview: { ok: boolean; reason: string } | null;
+  content: ProductContent; elviReview: { ok: boolean; reason: string; text?: string } | null;
   contentBlocked: boolean;         // el revisor de datos encontró afirmaciones sin respaldo: no se guarda en Shopify
   shopify: {
     title: string; handle: string; status: "DRAFT"; vendor: string; productType: string | null; tags: string[]; category: Classification["category"];
@@ -273,13 +274,12 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
 
   // A la vez (2026-10-26): la redacción, el tratamiento de las fotos y la etiqueta energética no dependen entre sí.
   const [written, treated, label] = await Promise.all([
-    t.step("Redactar textos (IA)", () => writeContent(deps.ai, { profile, listing, detail: gathered.detail, icecat, metafields: applied.metafields, values, model, elviModel: deps.elviModel }), (result) => `${result.attempts} intento${result.attempts > 1 ? "s" : ""}${result.blocked ? " · bloqueada por el revisor de datos" : ""} · ${(result.costUsd ?? 0).toFixed(4)} $`),
+    t.step("Redactar textos (IA)", () => writeContent(deps.ai, { profile, listing, detail: gathered.detail, icecat, metafields: applied.metafields, values, model, elvi: false }), (result) => `${result.attempts} intento${result.attempts > 1 ? "s" : ""}${result.blocked ? " · bloqueada por el revisor de datos" : ""} · ${(result.costUsd ?? 0).toFixed(4)} $`),
     t.step("Tratar fotos", () => Promise.all(ordered.keep.map(async (image) => ({ image, file: await processImage(prepared.images.find((item) => item.url === image.url)!.bytes, image) }))), (result) => `${result.length} fotos tratadas · ${ordered.dropped.length} descartadas`),
     t.step("Etiqueta energética", () => energyLabelFile(deps.config, listing, icecat, [listing.ref_proved, ...(model !== listing.ref_proved ? [model] : []), ...(identity.check?.same ? [icecat?.partCode ?? null, icecat?.modelName ?? null] : [])], warnings).catch((caught: Error) => { warnings.push(`Etiqueta energética: ${caught.message}`); return null; }), (result) => (result ? `PNG desde ${result.source}` : "Sin etiqueta")),
   ]);
   for (const [index, errors] of written.attemptErrors.entries()) t.event("aviso", "Redactar textos (IA)", `Intento ${index + 1} rechazado: ${errors.join(" | ")}`.slice(0, 2000));
   warnings.push(...written.errors.map((error) => `Validación del texto: ${error}`));
-  if (written.elviReview && !written.elviReview.ok) warnings.push(`Frase de Elvi descartada: ${written.elviReview.reason}`);
   if (written.blocked) warnings.push("Ficha bloqueada: el revisor de datos encontró afirmaciones sin respaldo. Hay que rehacerla o revisarla antes de guardarla en Shopify.");
   cost += written.costUsd ?? 0; usage.content = written.usage; usage.contentAttempts = written.attempts; usage.contentErrors = written.attemptErrors;
   const brand = brandChoice.brand;
@@ -312,6 +312,12 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   // comprobados; MP4 del producto o de la marca (provisional: es «de producto» si su descripción nombra el modelo).
   const docBase = slugify(`${brand} ${model}`);
   const documents = (icecat?.documents ?? []).filter((document) => STORE_RULES.documentTypes[document.type]).map((document) => ({ type: document.type, filename: `${docBase}-${STORE_RULES.documentTypes[document.type]}.pdf`, url: document.url, sizeBytes: document.sizeBytes }));
+  // Elvi en cuanto están los textos (David, 2026-10-26), a la vez que documentos y vídeos: escribe y se revisa con lo que va
+  // a Shopify (título, descripciones y especificaciones técnicas). Con Sonnet si la tanda lo pide.
+  const elviModel = deps.elviModel ?? PROCESSOR_MODEL;
+  const elviPage = { title: written.content.title, shortDescription: written.content.short_description, longDescriptionHtml: written.content.long_description_html, specifications: icecatMetafield(icecat, gathered.detail?.caracteristicas ?? [], [])?.specifications ?? null };
+  const elviPromise = written.blocked ? Promise.resolve(null) : t.step("Frase de Elvi (IA)", () => writeElviForPage(deps.ai, elviModel, { perfil: { producto: profile.product, titulo: profile.title, descripciones: profile.descriptions }, page: elviPage }),
+    (result) => (result.tip.text ? `Aceptada (${elviModel})` : result.review ? "Rechazada por el revisor" : "Sin frase")).catch((caught: Error) => { warnings.push(`Frase de Elvi: ${caught.message}`); return null; });
   const { youtube, videoKinds, preparedVideos } = await t.step("Documentos y vídeos", async () => {
     const youtube = await embeddableYoutubeVideos(icecat?.youtubeIds ?? []);
     const videoKinds = await classifyVideos(deps.ai, { title: written.content.title, brand, model, series: icecat?.series ?? null }, icecat?.videos ?? []);
@@ -319,6 +325,10 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
     return { youtube, videoKinds, preparedVideos };
   }, (result) => `${documents.length} documentos · ${result.youtube.length} vídeos de YouTube · ${result.preparedVideos.videos.length} MP4`);
   cost += videoKinds.costUsd ?? 0; usage.videos = videoKinds.usage;
+  const elvi = await elviPromise;
+  cost += elvi?.costUsd ?? 0;
+  if (elvi?.review && !elvi.review.ok) warnings.push(`Frase de Elvi descartada: ${elvi.review.reason}${elvi.review.text ? ` Frase: «${elvi.review.text}»` : ""}`);
+  const content = { ...written.content, elvi_tip: elvi?.tip ?? { text: "", sources: [] } };
   warnings.push(...preparedVideos.errors);
   for (const [position, video] of preparedVideos.videos.entries()) media.push({ role: "video", position, filename: video.filename, contentType: video.contentType, width: 0, height: 0, bytes: video.bytes, meta: { kind: video.kind, reason: video.reason, description: video.description, hash: video.hash, sourceUrl: video.url } });
   const mp4 = preparedVideos.videos.map((video) => ({ url: video.url, description: video.description, kind: video.kind, reason: video.reason, filename: video.filename, sizeBytes: video.sizeBytes, hash: video.hash }));
@@ -346,7 +356,7 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
     ...(listing.opciones_entrega ? [{ namespace: "custom", key: "opciones_entrega", type: "json", value: json(listing.opciones_entrega) }] : []),
     ...(icecat?.eprelId ? [{ namespace: "custom", key: "eprel", type: "single_line_text_field", value: icecat.eprelId }] : []),
     ...(technical ? [{ namespace: "custom", key: "icecat", type: "json", value: json(technical) }] : []),
-    ...(written.content.elvi_tip.text.trim() ? [{ namespace: "custom", key: "consejo_elvi", type: "multi_line_text_field", value: written.content.elvi_tip.text.trim() }] : []),
+    ...(content.elvi_tip.text.trim() ? [{ namespace: "custom", key: "consejo_elvi", type: "multi_line_text_field", value: content.elvi_tip.text.trim() }] : []),
     ...Object.entries(applied.metafields).map(([key, value]) => { const [namespace, name] = key.split("."); return { namespace, key: name, type: LISTS.has(key) ? "list.single_line_text_field" : "single_line_text_field", value: Array.isArray(value) ? json(value) : value }; }),
   ];
   if (!icecat?.eprelId && (label || listing.letra_eficiencia)) warnings.push("Sin código EPREL en Icecat.");
@@ -371,7 +381,7 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
     product: {
       codigo: listing.codigo, ean: listing.codigo_ean, model, brand, modelChoice, brandChoice, review_reasons,
       family: { code: listing.cod_familia, name: listing.nombre_familia, subfamilyCode: listing.cod_subfamilia, subfamilyName: listing.nombre_subfamilia, profileStatus: profileRow.status },
-      content: written.content, elviReview: written.elviReview, contentBlocked: written.blocked,
+      content, elviReview: elvi?.review ?? null, contentBlocked: written.blocked,
       shopify: {
         title: written.content.title, handle, status: "DRAFT", vendor, productType: classification.productType, tags, category: classification.category,
         descriptionHtml: written.content.long_description_html, seo: { title: written.content.meta_title, description: written.content.meta_description },

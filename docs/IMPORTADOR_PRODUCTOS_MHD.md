@@ -168,6 +168,21 @@ Medido en producción con el banco de 41: 41 s por producto y 2,2 productos por 
   - 10075231: 2 fotos de MHD sustituidas por las mismas en 2.400 px.
   - 10069104: Icecat solo tiene fotos de 350 px, así que usa la mejor y va a revisión.
 
+### Elvi: con qué se escribe y quién la revisa (David, 2026-10-26)
+
+- **Primera prueba, banco de 41:**
+  - Haiku dentro de la redacción: 28 aceptadas. Sonnet 5.5 aparte: 19.
+  - Sonnet no salía peor por el modelo. El revisor rechazaba justo lo que le pedimos a Elvi (la situación del cliente: «si vives solo», «para la compra de la semana») y no veía los textos de MHD e Icecat que sí veía ella. Por ejemplo, «pantalla en la puerta» está en la descripción de MHD.
+- **Cambios:**
+  - Elvi se escribe en cuanto están los textos, en un paso aparte (`writeElviForPage`, a la vez que documentos y vídeos), con lo que va a Shopify: título, descripción corta, descripción larga y especificaciones técnicas. Su revisor la comprueba contra eso mismo. Si está en la ficha, lo puede decir.
+  - El revisor acepta la situación del cliente como hipótesis y la opinión de vendedora, pero no nada del producto que no esté en la ficha.
+  - Instrucciones: el hueco solo en integrables, cierres variados y los datos estimados como tales.
+  - La frase rechazada se guarda en el aviso, para poder revisar al revisor.
+- **Segunda prueba, banco de 41:**
+  - Haiku: 39 aceptadas (~0,005 $ por ficha). Sonnet 5.5: 34 (~0,020 $).
+  - Calidad parecida. Sonnet es algo más concreto, pero le rechazan más, por atribuir beneficios a tecnologías (limpieza hidrolítica → «menos trabajo»).
+- **Pendiente de decisión:** qué modelo se usa en el masivo (opción de la tanda `elviModel`: sin ella, Haiku).
+
 ## Metacampos de categoría de Shopify (estudiado 2026-10-26)
 
 Pregunta de David: ¿dan más flexibilidad o más datos en los filtros? **No.** Comprobado en la documentación y en la taxonomía de la tienda:

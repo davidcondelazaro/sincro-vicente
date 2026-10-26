@@ -141,8 +141,11 @@ export function validateContent(content: ProductContent, brand: string, model: s
 
 // Segunda opinión sobre el consejo de Elvi, de una llamada que no lo escribió: si duda, el consejo no se publica.
 const reviewSchema = { type: "object", additionalProperties: false, required: ["ok", "reason"], properties: { ok: { type: "boolean" }, reason: str } };
+// Revisor de la frase de Elvi. Desde el 2026-10-26 (David) acepta que hable de la situación del cliente como hipótesis
+// («si pones lavadoras a diario…») y que opine como vendedora; sigue rechazando cualquier cosa del producto que no esté
+// en los datos.
 export async function reviewElviTip(client: Anthropic, tip: ElviTip, productName: string, facts: unknown) {
-  const message = await client.messages.create({ model: PROCESSOR_MODEL, max_tokens: 1500, output_config: { effort: "low", format: { type: "json_schema", schema: reviewSchema } }, messages: [{ role: "user", content: `Revisa esta frase que se va a publicar en la ficha del producto «${productName}» de una tienda de electrodomésticos, firmado por su asistente de IA:\n«${tip.text}»\n\nDatos del producto (JSON):\n${JSON.stringify(facts)}\n\nEs la frase de venta de la vendedora de la tienda. Si dos fuentes dan valores distintos para un dato (p. ej. 1400 rpm en MHD y 1351 rpm en Icecat), cualquiera de los dos vale. Puede leer un dato en términos prácticos si se deduce directamente de él (9 kg → coladas grandes; 39 dB → silencioso; medidas → comprobar el hueco), pero no afirmar qué cabe o qué se puede hacer («cabe un edredón», «para cuatro personas») si no lo dicen los datos. Responde ok=true solo si: cada dato que menciona está en los datos y con el mismo alcance, no explica tecnologías con afirmaciones que no estén en los datos, no exagera, vende con honestidad y no puede causar un problema (nada de instalación eléctrica, de gas o de agua, seguridad, salud, cifras de ahorro, garantías, compatibilidades ni comparaciones). En reason, una frase en español.` }] });
+  const message = await client.messages.create({ model: PROCESSOR_MODEL, max_tokens: 1500, output_config: { effort: "low", format: { type: "json_schema", schema: reviewSchema } }, messages: [{ role: "user", content: `Revisa esta frase que se va a publicar en la ficha del producto «${productName}» de una tienda de electrodomésticos, firmado por su asistente de IA:\n«${tip.text}»\n\nFicha que se publica (lo que dice de ella tiene que estar aquí):\n${typeof facts === "string" ? facts : JSON.stringify(facts)}\n\nEs la frase de venta de la vendedora de la tienda. Si dos fuentes dan valores distintos para un dato (p. ej. 1400 rpm en MHD y 1351 rpm en Icecat), cualquiera de los dos vale. Puede leer un dato en términos prácticos si se deduce directamente de él (9 kg → coladas grandes; 39 dB → silencioso; medidas → comprobar el hueco), pero no afirmar qué cabe o qué se puede hacer («cabe un edredón», «para cuatro personas») si no lo dicen los datos. Distingue entre hablar del cliente y afirmar algo del producto: plantear la situación del cliente como hipótesis («si pones lavadoras casi a diario», «si vives solo», «si haces la compra para toda la semana», «si cocinas a menudo») está permitido y es lo que hace una vendedora, siempre que no convierta esa situación en una afirmación sobre el producto que los datos no respalden («caben todas tus sartenes», «suficiente para cuatro»). También vale su opinión de vendedora sobre qué mirar o qué destacar («es lo que yo miraría», «lo que más destacaría»). Responde ok=true solo si: cada dato que menciona está en los datos y con el mismo alcance, no explica tecnologías con afirmaciones que no estén en los datos, no exagera, vende con honestidad y no puede causar un problema (nada de instalación eléctrica, de gas o de agua, seguridad, salud, cifras de ahorro, garantías, compatibilidades ni comparaciones). En reason, una frase en español.` }] });
   const parsed = JSON.parse(message.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("")) as { ok: boolean; reason: string };
   return { ...parsed, usage: message.usage };
 }
@@ -196,6 +199,31 @@ async function writeElviTip(client: Anthropic, model: string, input: { perfil: u
   if (message.stop_reason !== "end_turn") throw new Error(`La frase de Elvi terminó con ${message.stop_reason}.`);
   const parsed = JSON.parse(message.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("")) as { elvi_tip: ElviTip };
   return { tip: parsed.elvi_tip ?? empty, costUsd: costUsd(message.model, message.usage) };
+}
+
+// Elvi con lo que va a Shopify (David, 2026-10-26: «ambos tienen que ver lo que va para Shopify»): se escribe después
+// de la ficha, con el título, la descripción corta, la larga y las especificaciones técnicas, y su revisor la comprueba
+// contra eso mismo. Si está en la ficha, Elvi puede decirlo; si no, no.
+export type ShopPage = { title: string; shortDescription: string; longDescriptionHtml: string; specifications: Record<string, Record<string, string>> | null };
+function pageText(page: ShopPage) {
+  const specs = Object.entries(page.specifications ?? {}).flatMap(([group, items]) => Object.entries(items).map(([name, value]) => `- ${group} › ${name}: ${value}`));
+  return `Título: ${page.title}\nDescripción corta: ${page.shortDescription}\nDescripción larga: ${strip(page.longDescriptionHtml, 8000)}\nEspecificaciones técnicas:\n${specs.length ? specs.join("\n") : "(ninguna)"}`;
+}
+const ELVI_ON_PAGE = SYSTEM_ELVI.replace(/En «sources» pon los datos[^.]*\./, "En «sources» pon los datos de la ficha en que se apoya: en key, la sección («Especificaciones técnicas › Capacidad», «Descripción larga»…) y en value, el dato tal como aparece.");
+
+export async function writeElviForPage(client: Anthropic, model: string, input: { perfil: unknown; page: ShopPage }) {
+  const system = `Escribes la frase de Elvi para la ficha de un producto de Electrónica Vicente, tienda de electrodomésticos, en español de España. Todo lo que digas del producto tiene que estar en la ficha que se publica (título, descripciones y especificaciones técnicas); no uses nada más. Devuelve solo elvi_tip.\n${ELVI_ON_PAGE}\n\nPerfil de la familia (JSON):\n${JSON.stringify(input.perfil)}`;
+  const params = { model, max_tokens: 16000, system, output_config: { effort: "medium" as const, format: { type: "json_schema" as const, schema: { type: "object", additionalProperties: false, required: ["elvi_tip"], properties: { elvi_tip: elviSchema } } } }, messages: [{ role: "user" as const, content: `Ficha que se publica:\n${pageText(input.page)}\n\nEscribe la frase de Elvi.` }] };
+  const message = model === PROCESSOR_MODEL ? await client.messages.create(params) : await client.beta.messages.create({ ...params, betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" });
+  let cost = costUsd(message.model, message.usage) ?? 0;
+  const empty: ElviTip = { text: "", sources: [] };
+  if (message.stop_reason === "refusal") return { tip: empty, review: null, costUsd: cost };
+  if (message.stop_reason !== "end_turn") throw new Error(`La frase de Elvi terminó con ${message.stop_reason}.`);
+  const tip = (JSON.parse(message.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("")) as { elvi_tip: ElviTip }).elvi_tip ?? empty;
+  if (!tip.text.trim()) return { tip: empty, review: null, costUsd: cost };
+  const review = await reviewElviTip(client, tip, input.page.title, pageText(input.page));
+  cost += costUsd(PROCESSOR_MODEL, review.usage) ?? 0;
+  return { tip: review.ok ? tip : empty, review: { ok: review.ok, reason: review.reason, ...(review.ok ? {} : { text: tip.text }) }, costUsd: cost };
 }
 
 // `model`: el modelo limpio (models.ts); sin él, el de MHD. `elvi`: escribir la frase de Elvi (por defecto sí:
@@ -259,11 +287,12 @@ export async function writeContent(client: Anthropic, input: { profile: FamilyPr
     elviCost = separate.costUsd ?? 0;
     content = { ...content!, elvi_tip: separate.tip };
   }
-  let elviReview: { ok: boolean; reason: string } | null = null;
+  let elviReview: { ok: boolean; reason: string; text?: string } | null = null;
   if (content!.elvi_tip.text.trim()) {
     if (checkElviSources(content!.elvi_tip, values).length) { elviReview = { ok: false, reason: "Cita datos que no cuadran con el producto." }; }
     else { const review = await reviewElviTip(client, content!.elvi_tip, content!.title, data.datos_con_clave); usage.push(review.usage); elviReview = { ok: review.ok, reason: review.reason }; }
-    if (!elviReview.ok) content = { ...content!, elvi_tip: { text: "", sources: [] } };
+    // La frase rechazada se guarda en el aviso, para poder revisar al revisor.
+    if (!elviReview.ok) { elviReview = { ...elviReview, text: content!.elvi_tip.text }; content = { ...content!, elvi_tip: { text: "", sources: [] } }; }
   }
   errors = errors.filter((error) => !error.startsWith("El consejo de Elvi"));
   const total = usage.reduce((sum, item) => ({ input_tokens: sum.input_tokens + item.input_tokens, output_tokens: sum.output_tokens + item.output_tokens, cache_read_input_tokens: (sum.cache_read_input_tokens ?? 0) + (item.cache_read_input_tokens ?? 0), cache_creation_input_tokens: (sum.cache_creation_input_tokens ?? 0) + (item.cache_creation_input_tokens ?? 0) }), { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 });
