@@ -46,6 +46,8 @@ sincro-vicente ya lee de la API todo el catálogo de MHD a Supabase (tablas `mhd
 - [ ] **Experimento controlado:** un producto de MHD con todo el proceso (descarte, Icecat, contenido con IA, colección, filtros, imágenes, etiqueta energética) hasta dejarlo como **borrador** en Shopify. Antes, cerrar el título ideal.
 - [ ] **Informes** de cada ejecución: todo lo descartado y por qué (sin imagen, poca información, sin precio, sin dato clave), lo que no casa con ninguna categoría del árbol, y las demás anomalías (ver *Informes de la importación*).
 
+Las sincronizaciones periódicas que siguen al masivo (altas, bajas, cambios, precio y stock) están diseñadas en `SINCRONIZACIONES_MHD.md`.
+
 ## Lo aprendido en el masivo (2026-10-26)
 
 David: «tenemos que ir aprendiendo de todo esto». Cada regla que actúa mucho en el masivo se revisa con datos (cuántos productos, en qué familias, una muestra) antes de darla por buena.

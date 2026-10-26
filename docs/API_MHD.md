@@ -22,15 +22,21 @@ Los listados son paginados (`page` > 0, `pageSize` < 10000) y devuelven
 Los errores devuelven `{ success: false, errors }`, donde `errors` puede ser un
 texto o un array de textos. Las fechas son milisegundos epoch.
 
+## Cambios desde una fecha (comprobado el 2026-10-26)
+
+`/prices`, `/stocks` y `/products` aceptan su `fecha_modificacion_*` en milisegundos epoch y devuelven solo lo cambiado desde entonces. No está en la documentación oficial. Otros nombres (`desde`, `fecha_desde`…) no filtran. Prueba y script en `~/Desarrollo/Pruebas API MHD` (`docs/API_MHD_smoke_tests.md`, `scripts/prueba_filtros_fecha.py`).
+
+Volumen el 2026-10-26 (30.961 códigos): precios 63/hora y 1.162/día; stock 517/hora y 3.964/día; productos 4/hora y 450/día. Una página de 10.000 precios tarda ~3 s: el listado completo de códigos se lee en ~9 s. Es la base de las sincronizaciones periódicas (`SINCRONIZACIONES_MHD.md`).
+
 ## Endpoints
 
 | Área | Método | Ruta | Notas |
 | --- | --- | --- | --- |
 | Categorías | GET | `/categories`, `/categories/:cd_familia` | Filtros `nivel` (1 líneas, 2 familias, 3 subfamilias), `padre`, `activo`, `visible`. |
 | Marcas | GET | `/brands`, `/brands/:cd_marca` | Filtros `nombre`, `activo`, `validada`. |
-| Productos | GET | `/products`, `/products/:codigo` | Filtros `codigo_ean`, `cod_linea`, `cod_familia`, `cod_subfamilia`, `cd_marca`, `busqueda`. |
-| Precios | GET | `/prices` | `codigo`, `pvp`, `pvp_antes`, `triple_neto`, `iva`, `fecha_modificacion_precio`. |
-| Stocks | GET | `/stocks` | `codigo`, `stock`, `fecha_modificacion_stock`. |
+| Productos | GET | `/products`, `/products/:codigo` | Filtros `codigo_ean`, `cod_linea`, `cod_familia`, `cod_subfamilia`, `cd_marca`, `busqueda` y `fecha_modificacion_producto` (epoch ms: solo los modificados desde esa fecha). |
+| Precios | GET | `/prices` | `codigo`, `pvp`, `pvp_antes`, `triple_neto`, `iva`, `fecha_modificacion_precio`. Filtro `fecha_modificacion_precio` (epoch ms): solo lo cambiado desde esa fecha. |
+| Stocks | GET | `/stocks` | `codigo`, `stock`, `fecha_modificacion_stock`. Filtro `fecha_modificacion_stock` (epoch ms): solo lo cambiado desde esa fecha. |
 | Países | GET | `/countries`, `/countries/:codigo` | Filtros `nombre`, `visible`, `envio`, `iso_2`. |
 | Provincias | GET | `/provinces`, `/provinces/:id` | Filtros `id_pais`, `nombre`, `visible`. |
 | Estados de pedido | GET | `/order-states`, `/order-states/:codigo` | Catálogo de estados (ver abajo). |
