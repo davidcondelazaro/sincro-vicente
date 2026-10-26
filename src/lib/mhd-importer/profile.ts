@@ -15,6 +15,11 @@ export type ValueRule = {
 // números válidos en la unidad de la fuente (vacío = sin límite); fuera de ese rango la fuente se ignora y se pasa a
 // la siguiente (p. ej. «1,45W» de MHD en una freidora de 1450 W, o «500L» en una picadora).
 export type FilterRule = ValueRule & { metafield: string; label: string; note: string; subfamilies?: string[]; min?: string; max?: string };
+// Reglas de revisión (2026-10-26): mandan el producto a la cola de revisión a mano cuando se cumplen; el producto se
+// procesa igual. Mismos métodos que los filtros (`contiene`, `tabla`, `tramos` con sus fuentes, min y max: hay revisión
+// si la regla da un valor no vacío) más `fuera_de_lista`: hay revisión si la primera fuente con dato no casa (contiene)
+// con ninguna fila (p. ej. la categoría de Icecat no es de las de la familia). `label` es el motivo que se lee en la cola.
+export type ReviewRule = { label: string; sources: string[]; method: "contiene" | "tabla" | "tramos" | "fuera_de_lista"; table: { source: string; value: string }[]; ranges: { from: string; to: string; value: string }[]; subfamilies?: string[]; min?: string; max?: string; note?: string };
 export type FamilyProfile = {
   product: { singular: string; plural: string; distinctions: { name: string; sources: string[]; how_to_name: string }[] };
   title: { template: string; key_data: { name: string; sources: string[]; format: string }[]; examples: string[]; avoid: string[] };
@@ -22,6 +27,7 @@ export type FamilyProfile = {
   filters: FilterRule[];
   descriptions: { short: string; long: string; highlight: string[]; avoid: string[] };
   subfamily_exceptions: { subfamily: string; changes: string }[];
+  review?: ReviewRule[];           // cola de revisión (opcional en los perfiles anteriores al 2026-10-26)
   questions: string[];             // dudas que debe decidir David
 };
 
@@ -42,6 +48,11 @@ export function familyProfileSchema() {
     }) },
     descriptions: obj({ short: str, long: str, highlight: strings, avoid: strings }),
     subfamily_exceptions: { type: "array", items: obj({ subfamily: str, changes: str }) },
+    review: { type: "array", items: obj({
+      label: str, sources: strings, method: { type: "string", enum: ["contiene", "tabla", "tramos", "fuera_de_lista"] },
+      table: { type: "array", items: obj({ source: str, value: str }) }, ranges: { type: "array", items: obj({ from: str, to: str, value: str }) },
+      subfamilies: strings, min: str, max: str, note: str,
+    }) },
     questions: strings,
   });
 }

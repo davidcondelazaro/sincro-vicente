@@ -2,7 +2,7 @@
 // a los datos de un producto, y decide los descartes. Funciones puras, sin IA. Ver profile.ts.
 import type { IcecatSummary } from "./icecat";
 import type { ListingProduct } from "./family";
-import type { FamilyProfile, FilterRule, ValueRule } from "./profile";
+import type { FamilyProfile, FilterRule, ReviewRule, ValueRule } from "./profile";
 import type { MhdProductDetail } from "./sources";
 
 export type SourceValues = Map<string, string>;
@@ -16,7 +16,7 @@ export type AppliedRules = {
 // Claves de las fuentes: «mhd:<característica>» e «icecat:<sección>|<característica>», en minúsculas para comparar.
 // «texto:descripcion» junta la descripción de MHD y el resumen y destacados de Icecat, para reglas «contiene» que
 // buscan nombres comerciales (p. ej. «i-DOS» → Autodosificador).
-export function sourceValues(detail: MhdProductDetail | null, icecat: IcecatSummary | null, listing?: { descripcion?: string | null; descripcion_ampliada?: string | null; nombre_subfamilia?: string | null }): SourceValues {
+export function sourceValues(detail: MhdProductDetail | null, icecat: IcecatSummary | null, listing?: { descripcion?: string | null; descripcion_ampliada?: string | null; nombre_subfamilia?: string | null; titulo?: string | null }): SourceValues {
   const values: SourceValues = new Map();
   if (listing?.nombre_subfamilia) values.set("mhd:subfamilia", listing.nombre_subfamilia.trim());
   const text = [listing?.descripcion, listing?.descripcion_ampliada, icecat?.longSummary, ...(icecat?.bulletPoints ?? [])].filter(Boolean).join(" ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
@@ -28,6 +28,10 @@ export function sourceValues(detail: MhdProductDetail | null, icecat: IcecatSumm
     values.set(key, !current ? value : current.split(", ").includes(value) ? current : `${current}, ${value}`);
   }
   for (const [group, features] of Object.entries(icecat?.specifications ?? {})) for (const [name, value] of Object.entries(features)) values.set(`icecat:${group}|${name}`.toLowerCase(), value.trim());
+  // Categoría y título de Icecat (2026-10-26): para nombrar y para mandar a revisión los productos mal clasificados.
+  if (icecat?.category) values.set("icecat:categoria", icecat.category.trim());
+  if (icecat?.title) values.set("icecat:titulo", icecat.title.trim());
+  if (listing?.titulo?.trim()) values.set("mhd:titulo", listing.titulo.trim());
   return values;
 }
 
@@ -162,6 +166,23 @@ function combinedColor(rule: FilterRule, values: SourceValues): AppliedValue | n
   return first;
 }
 const COMBINED_FEATURES: [string, string[]][] = [["Dispensador de agua y hielo", ["Dispensador de agua", "Dispensador de hielo"]]];
+
+// Cola de revisión del perfil (2026-10-26): un motivo por cada regla que se cumple.
+export function reviewReasons(profile: FamilyProfile, values: SourceValues, subfamily?: string | null): string[] {
+  const reasons: string[] = [];
+  for (const rule of profile.review ?? []) {
+    if (rule.subfamilies?.length && !(subfamily && rule.subfamilies.includes(subfamily))) continue;
+    if (rule.method === "fuera_de_lista") {
+      const source = rule.sources.find((key) => values.has(key.toLowerCase()));
+      const value = source ? values.get(source.toLowerCase())! : null;
+      if (value && !rule.table.some((row) => containsPositive(value, row.source))) reasons.push(`${rule.label} (${source}: «${value}»)`);
+      continue;
+    }
+    const applied = applyValueRule(rule as ReviewRule & { method: "contiene" | "tabla" | "tramos" }, values);
+    if (applied && applied.value.trim() && applied.value.trim() !== "-") reasons.push(`${rule.label} (${applied.source}: ${applied.value})`);
+  }
+  return [...new Set(reasons)];
+}
 
 // Descartes (decididos 2026-10-22): sin imagen, se descarta; sin información suficiente ni en MHD ni en Icecat, también.
 // Regla de David del 2026-10-24 (docs/FILTROS_DESDE_MHD.md §7.5): tampoco se importan las maquetas, las unidades sueltas de

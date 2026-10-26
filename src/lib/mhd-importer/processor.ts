@@ -18,7 +18,7 @@ import { checkIcecatIdentity, labelMatches, labelText } from "./identity";
 import { classifyImages, imageFilenames, KIND_ALT, normalizeEnergyLabel, orderImages, pdfFirstPageToPng, prepareImages, processImage, slugify, type ClassifiedImage, type ImageKind } from "./images";
 import type { FamilyProfile } from "./profile";
 import { classifyVideos, prepareVideos, type VideoKind } from "./videos";
-import { applyProfile, discardReason, firstNumber, sourceValues, type AppliedRules } from "./rules";
+import { applyProfile, discardReason, firstNumber, sourceValues, type AppliedRules, reviewReasons } from "./rules";
 import { fetchIcecatByModel, fetchIcecatDocument, fetchMhdMedia } from "./sources";
 import { shopifyGraphql } from "./store-filters";
 
@@ -295,6 +295,7 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
     priceReason(listing.pvp, prices?.median ?? null, prices?.count ?? 0),
     modelChoice.needsReview ? `Modelo: ${modelChoice.reason}` : null,
     brandChoice.needsReview ? `Marca: ${brandChoice.reason}` : null,
+    ...reviewReasons(profile, values, listing.cod_subfamilia),
   ].filter((reason): reason is string => Boolean(reason));
   warnings.push(...review_reasons.map((reason) => `Revisión: ${reason}`));
 

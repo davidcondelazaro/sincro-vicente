@@ -152,3 +152,19 @@ test("cola de revisión: clase energética y precio", () => {
   assert.equal(priceReason(250, 200, 10), null);
   assert.equal(priceReason(5000, 200, 2), null); // con pocos precios en la subfamilia no se compara
 });
+
+test("reglas de revisión del perfil", async () => {
+  const { reviewReasons } = await jiti.import("../src/lib/mhd-importer/rules.ts");
+  const profile = { filters: [], review: [
+    { label: "Categoría de Icecat ajena a la familia", sources: ["icecat:categoria"], method: "fuera_de_lista", table: [{ source: "fundas", value: "" }, { source: "protectores", value: "" }], ranges: [] },
+    { label: "Maqueta o réplica", sources: ["mhd:titulo"], method: "contiene", table: [{ source: "réplica", value: "Réplica" }], ranges: [] },
+    { label: "Precio de pack", sources: ["mhd:Unidades"], method: "tramos", table: [], ranges: [{ from: "10", to: "", value: "Pack grande" }], subfamilies: ["S4001"] },
+  ] };
+  const values = new Map([["icecat:categoria", "Smartphones"], ["mhd:titulo", "Funda transparente iPhone"], ["mhd:unidades", "12"]]);
+  const reasons = reviewReasons(profile, values, "S4050");
+  assert.equal(reasons.length, 1);
+  assert.match(reasons[0], /Categoría de Icecat ajena/);
+  assert.equal(reviewReasons(profile, new Map([["icecat:categoria", "Fundas para teléfonos móviles"]]), "S4001").length, 0);
+  assert.equal(reviewReasons(profile, new Map([["mhd:unidades", "12"]]), "S4001").length, 1);
+  assert.equal(reviewReasons({ filters: [] }, values, null).length, 0);
+});
