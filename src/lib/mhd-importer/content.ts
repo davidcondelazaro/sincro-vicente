@@ -9,6 +9,7 @@ import { costUsd, PROCESSOR_MODEL, type Usage } from "./ai";
 import type { IcecatSummary } from "./icecat";
 import type { ListingProduct } from "./family";
 import type { FamilyProfile } from "./profile";
+import { resolveBrand } from "./brands";
 import { buildFactSheet, numbersIn, unsupportedNumbers } from "./facts";
 import type { SourceValues } from "./rules";
 import type { MhdProductDetail } from "./sources";
@@ -48,14 +49,10 @@ const SYSTEM_ELVI = `- Elvi (elvi_tip): Elvi es la vendedora con inteligencia ar
 const strip = (html: string | null | undefined, max = 2500) => (html ?? "").replace(/<span[^>]*display:\s*none[^>]*>.*?<\/span>/gi, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
 const words = (text: string) => text.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/<[^>]+>/g, " ").split(/[^a-z0-9ñ]+/).filter(Boolean);
 
-// Grafía de la marca (decidido 2026-10-23): como la escribe la marca, con Icecat de referencia. Sin Icecat, la de MHD
-// en formato normal: siglas de hasta 4 letras en mayúsculas (AEG, LG, HP) y el resto con la inicial en mayúscula
-// (HYUNDAI → Hyundai). Pendiente: una tabla de marcas revisada una vez para las excepciones (De'Longhi, iRobot…).
+// Grafía de la marca (decidido 2026-10-23): como la escribe la marca, con Icecat de referencia; la tabla de marcas, las
+// licencias y los distribuidores, en brands.ts (2026-10-26).
 export function brandAsWritten(listing: ListingProduct, icecat: IcecatSummary | null) {
-  if (icecat?.brand) return icecat.brand;
-  const brand = (listing.nombre_marca ?? "").trim();
-  if (/^[A-Za-z0-9]{2,4}$/.test(brand)) return brand.toUpperCase();
-  return brand.toLowerCase().replace(/(^|[\s-])\p{L}/gu, (match) => match.toUpperCase());
+  return resolveBrand(listing, icecat).brand;
 }
 
 // Secuencias de N palabras seguidas que el texto comparte con los de MHD o Icecat.

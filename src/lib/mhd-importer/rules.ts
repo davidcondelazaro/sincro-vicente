@@ -134,7 +134,9 @@ export function applyProfile(profile: FamilyProfile, values: SourceValues, subfa
       continue;
     }
     const applied = rule.metafield === "filtro.color" ? combinedColor(rule, values) : applyValueRule(rule, values, true);
-    if (!applied) { missing.push(rule.label ? `${rule.metafield} (${rule.label})` : rule.metafield); continue; }
+    // Los filtros de lista (conectividad, características, más especificaciones) no cuentan como «sin dato»: no tener WiFi
+    // no es un dato que falte (decidido 2026-10-26). Solo avisan los de un valor.
+    if (!applied) { if (!LISTS.has(rule.metafield)) missing.push(rule.label ? `${rule.metafield} (${rule.label})` : rule.metafield); continue; }
     if (applied.value.trim() === "-") { close(rule); continue; }
     if (LISTS.has(rule.metafield) && isClosed(rule.metafield, applied.value)) continue;
     // Más especificaciones: siempre «Dato valor».
@@ -162,12 +164,40 @@ function combinedColor(rule: FilterRule, values: SourceValues): AppliedValue | n
 const COMBINED_FEATURES: [string, string[]][] = [["Dispensador de agua y hielo", ["Dispensador de agua", "Dispensador de hielo"]]];
 
 // Descartes (decididos 2026-10-22): sin imagen, se descarta; sin información suficiente ni en MHD ni en Icecat, también.
-export function discardReason(listing: ListingProduct & { descripcion?: string | null }, detail: MhdProductDetail | null, icecat: IcecatSummary | null): string | null {
+// Regla de David del 2026-10-24 (docs/FILTROS_DESDE_MHD.md §7.5): tampoco se importan las maquetas, las unidades sueltas de
+// aire acondicionado ni los productos de salud sexual.
+export function discardReason(listing: ListingProduct & { descripcion?: string | null; cod_familia?: string | null }, detail: MhdProductDetail | null, icecat: IcecatSummary | null): string | null {
+  const excluded = exclusionReason(listing);
+  if (excluded) return excluded;
   const photos = detail?.fotos?.length ? detail.fotos : listing.imagen ? [listing.imagen] : [];
   if (!photos.length) return "Sin imagen";
   const mhdText = `${listing.descripcion ?? ""} ${listing.descripcion_ampliada ?? ""}`.replace(/<[^>]+>/g, " ").trim();
   const mhdFeatures = detail?.caracteristicas?.length ?? 0;
   const icecatFeatures = Object.values(icecat?.specifications ?? {}).reduce((total, group) => total + Object.keys(group).length, 0);
   if (mhdText.length < 80 && mhdFeatures < 3 && icecatFeatures < 5) return "Sin información suficiente (ni en MHD ni en Icecat)";
+  return null;
+}
+
+// Exclusiones por tipo de producto (regla de David del 2026-10-24). Maquetas: «DUMMY» o «MAQUETA» en el modelo o el título
+// (Samsung «DUMMY S26 MAQUETA»). Salud sexual: subfamilia B1528. Aire acondicionado (familia K01): la unidad exterior o
+// interior sola, que el título dice («Unidad exterior») o la descripción nombra como el propio producto con su modelo
+// exacto («La unidad interior Daikin XX35…», no uno que solo empiece igual). Los equipos completos también hablan de su
+// unidad interior («su unidad interior mide…», «con unidad interior HB35XU0AG», «la unidad exterior completa el
+// conjunto») o se venden como «Split 1x1», y esos sí se importan. Ante la duda, no se descarta.
+const MOCKUP = /(?<![\p{L}\d])(dummy|maqueta)(?![\p{L}\d])/iu;
+const SPLIT_SET = /\b[1-5]\s*x\s*[1-5]\b|conjunto|kit completo|interior y exterior|interior \+ exterior|exterior e interior/i;
+export function exclusionReason(listing: { ref_proved: string | null; titulo: string | null; cod_subfamilia: string | null; cod_familia?: string | null; descripcion?: string | null; descripcion_ampliada?: string | null }): string | null {
+  if (MOCKUP.test(listing.ref_proved ?? "") || MOCKUP.test(listing.titulo ?? "")) return "Maqueta (DUMMY): no se importa";
+  if (listing.cod_subfamilia === "B1528") return "Salud sexual: no se importa";
+  if (listing.cod_familia === "K01" || listing.cod_subfamilia?.startsWith("K01")) {
+    const title = normalize(listing.titulo ?? "");
+    if (/unidad (interior|exterior)/.test(title) && !/interior y exterior|exterior e interior/.test(title)) return "Unidad suelta de aire acondicionado: no se importa";
+    const text = normalize(`${listing.descripcion ?? ""} ${listing.descripcion_ampliada ?? ""}`.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ");
+    const ref = normalize(listing.ref_proved ?? "");
+    const self = ref.length >= 4 ? text.match(new RegExp(`(?:^|[.!?]\\s*|\\b(?:la|esta|una|nueva)\\s+)unidad (interior|exterior)\\s+(?:modelo\\s+)?(?:[\\p{L}.-]+\\s+){0,2}${escape(ref)}(?![\\p{L}\\d])`, "u")) : null;
+    // Si la descripción habla también de la otra unidad («la unidad exterior completa el conjunto»), es el equipo completo.
+    const other = self?.[1] === "interior" ? "exterior" : "interior";
+    if (self && !SPLIT_SET.test(title) && !SPLIT_SET.test(text) && !new RegExp(`\\b${other}\\b`).test(text)) return "Unidad suelta de aire acondicionado: no se importa";
+  }
   return null;
 }

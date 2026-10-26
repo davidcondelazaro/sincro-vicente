@@ -48,6 +48,19 @@ export function buildFactSheet(profile: FamilyProfile, values: SourceValues, sub
     }
   }
   for (const [source, ok] of bounded) if (!ok) losers.add(source);
+  // Medidas y peso (regla de David del 2026-10-24: si MHD e Icecat no cuadran, manda MHD): Icecat va primero por sus mm,
+  // pero si su cifra no cuadra con la de MHD y la de MHD es razonable, gana MHD. Una cifra absurda («845cm» de alto en
+  // MHD, «209 kg» en Icecat) no gana nunca si la otra es razonable.
+  for (const group of groups.slice(0, DEFAULT_GROUPS.length)) {
+    const icecat = group.sources.find((source) => source.startsWith("icecat:") && values.has(source) && !losers.has(source));
+    const mhd = group.sources.find((source) => source.startsWith("mhd:") && values.has(source) && !losers.has(source));
+    if (!icecat || !mhd) continue;
+    const a = measure(values.get(mhd)!); const b = measure(values.get(icecat)!);
+    if (!a || !b || a.unit !== b.unit) continue;
+    if (!sane(b)) losers.add(icecat);
+    else if (!sane(a)) losers.add(mhd);
+    else if ((relativeDifference(values.get(mhd)!, values.get(icecat)!) ?? 0) > MAX_DIFFERENCE) losers.add(icecat);
+  }
   for (const group of groups) {
     const winner = group.sources.find((source) => values.has(source) && !losers.has(source));
     if (winner) for (const source of group.sources) if (source !== winner) losers.add(source);
@@ -60,7 +73,7 @@ export function buildFactSheet(profile: FamilyProfile, values: SourceValues, sub
 const UNITS: Record<string, [string, number]> = {
   mm: ["m", 0.001], cm: ["m", 0.01], m: ["m", 1], km: ["m", 1000], g: ["kg", 0.001], kg: ["kg", 1], ml: ["l", 0.001], l: ["l", 1], litros: ["l", 1],
   w: ["w", 1], kw: ["w", 1000], kwh: ["kwh", 1], wh: ["kwh", 0.001], rpm: ["rpm", 1], db: ["db", 1], "°c": ["c", 1], "ºc": ["c", 1],
-  min: ["min", 1], minutos: ["min", 1], h: ["min", 60], horas: ["min", 60], v: ["v", 1], hz: ["hz", 1], "%": ["%", 1], "\"": ["in", 1], pulgadas: ["in", 1],
+  min: ["min", 1], minutos: ["min", 1], h: ["min", 60], horas: ["min", 60], v: ["v", 1], hz: ["hz", 1], "%": ["%", 1], "\"": ["m", 0.0254], "”": ["m", 0.0254], "''": ["m", 0.0254], pulgadas: ["m", 0.0254], pulg: ["m", 0.0254],
   mb: ["gb", 0.001], gb: ["gb", 1], tb: ["gb", 1000], "mb/s": ["mb/s", 1], "gb/s": ["mb/s", 1000], mbps: ["mbps", 1], gbps: ["mbps", 1000], "mbit/s": ["mbps", 1], "gbit/s": ["mbps", 1000],
   mp: ["mp", 1], mah: ["mah", 1], dpi: ["dpi", 1], ppp: ["dpi", 1], va: ["va", 1], kva: ["va", 1000], lm: ["lm", 1], "lúmenes": ["lm", 1],
   bar: ["bar", 1], "l/min": ["l/min", 1], "l/h": ["l/h", 1], "m³/h": ["m3/h", 1], "m3/h": ["m3/h", 1], "m²": ["m2", 1], m2: ["m2", 1], "l/día": ["l/dia", 1], hojas: ["hojas", 1],
@@ -68,6 +81,11 @@ const UNITS: Record<string, [string, number]> = {
 // Las unidades largas primero, para que «kwh» no se quede en «kw» ni «mb/s» en «mb».
 const UNIT_PATTERN = Object.keys(UNITS).sort((a, b) => b.length - a.length).map((unit) => unit.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")).join("|");
 const NUMBER = new RegExp(`(?<![\\p{L}\\d.,])(\\d{1,3}(?:\\.\\d{3})+|\\d+(?:[.,]\\d+)?)\\s*(${UNIT_PATTERN})?(?![\\p{L}\\d])`, "giu");
+
+// Cifras razonables de medidas (en metros) y peso (en kg): fuera de esto, el dato es un error de la fuente.
+const SANE: Record<string, [number, number]> = { m: [0.001, 5], kg: [0.001, 500] };
+const measure = (text: string) => numbersIn(text).find((item) => item.unit && SANE[item.unit]) ?? null;
+const sane = (item: { unit: string | null; base: number }) => { const range = item.unit ? SANE[item.unit] : null; return !range || (item.base >= range[0] && item.base <= range[1]); };
 
 export function numbersIn(text: string) {
   const found: { raw: string; n: number; unit: string | null; base: number }[] = [];
@@ -108,4 +126,40 @@ export function unsupportedNumbers(texts: Record<string, string>, sheet: SourceV
     }
   }
   return [...new Set(problems)];
+}
+
+// Diferencia relativa entre la cifra de MHD y la de Icecat (sobre la de MHD), en la misma magnitud («60cm» frente a
+// «598 mm» = 0,3 %). Las cifras enteras de MHD son redondeos («1Kg» frente a «0,25 kg»): menos de una unidad de
+// diferencia no cuenta. Sin cifras comparables (distinta magnitud, o una con unidad y otra sin ella): null.
+export const MAX_DIFFERENCE = 0.2; // regla de David del 2026-10-24: más de un 20 % va a revisión
+export function relativeDifference(mhdText: string, icecatText: string) {
+  const a = numbersIn(mhdText)[0]; const b = numbersIn(icecatText)[0];
+  if (!a || !b || a.unit !== b.unit) return null;
+  const factor = a.n ? a.base / a.n : 1; // de la unidad de MHD a la base
+  const other = b.base / (factor || 1);
+  if (Number.isInteger(a.n) && Math.abs(a.n - other) < 1) return 0;
+  if (!a.n) return other ? 1 : 0;
+  return Math.abs(a.n - other) / Math.abs(a.n);
+}
+
+// Datos clave del título y filtros numéricos en los que MHD e Icecat difieren más de un 20 % (para la cola de revisión).
+// Solo cuentan los valores dentro de los límites de la regla (`min`/`max`): los absurdos ya se descartan en la hoja.
+export function sourceDisagreements(profile: FamilyProfile, values: SourceValues, subfamily?: string | null) {
+  const found: { name: string; mhd: string; icecat: string; difference: number }[] = []; const seen = new Set<string>();
+  const items = [
+    ...profile.title.key_data.map((item) => ({ name: item.name, sources: item.sources, min: null, max: null })),
+    ...profile.filters.filter((rule) => rule.metafield !== "filtro.caracteristicas" && (rule.method === "numero_exacto" || rule.method === "tramos") && (!rule.subfamilies?.length || Boolean(subfamily && rule.subfamilies.includes(subfamily))))
+      .map((rule) => ({ name: rule.label || rule.metafield, sources: rule.sources, min: bound(rule.min), max: bound(rule.max) })),
+  ];
+  for (const item of items) {
+    const within = (source: string) => { const raw = values.get(source.toLowerCase()); const n = raw ? firstNumber(raw) : null; return n !== null && (item.min === null || n >= item.min) && (item.max === null || n <= item.max); };
+    const mhd = item.sources.find((source) => source.toLowerCase().startsWith("mhd:") && within(source));
+    const icecat = item.sources.find((source) => source.toLowerCase().startsWith("icecat:") && within(source));
+    if (!mhd || !icecat || seen.has(`${mhd}|${icecat}`.toLowerCase())) continue;
+    seen.add(`${mhd}|${icecat}`.toLowerCase());
+    const a = values.get(mhd.toLowerCase())!; const b = values.get(icecat.toLowerCase())!;
+    const difference = relativeDifference(a, b);
+    if (difference !== null && difference > MAX_DIFFERENCE) found.push({ name: item.name, mhd: a, icecat: b, difference });
+  }
+  return found;
 }
