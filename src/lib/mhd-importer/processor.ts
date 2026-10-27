@@ -10,7 +10,7 @@ import { writeContent, writeElviForPage, type ProductContent } from "./content";
 import { resolveBrand, type BrandChoice } from "./brands";
 import { sourceDisagreements } from "./facts";
 import { resolveModel, type ModelChoice } from "./models";
-import { energyClassReason } from "./review";
+import { energyClassReason, energyLetter } from "./review";
 import type { ListingProduct } from "./family";
 import { cached } from "./cache";
 import { gatherProduct, type SourcesConfig } from "./gather";
@@ -21,7 +21,7 @@ import type { FamilyProfile } from "./profile";
 import { classifyVideos, prepareVideos, type VideoKind } from "./videos";
 import { noTrace, type Trace } from "./trace";
 import { applyProfile, discardReason, firstNumber, sourceValues, type AppliedRules, reviewReasons } from "./rules";
-import { fetchIcecatByModel, fetchIcecatDocument, fetchMhdMedia } from "./sources";
+import { fetchEprelClass, fetchIcecatByModel, fetchIcecatDocument, fetchMhdMedia } from "./sources";
 
 // Decisiones de David (2026-10-23), provisionales donde se indica.
 export const STORE_RULES = {
@@ -160,6 +160,13 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   if (!profileRow?.profile) throw new Error(`La familia ${listing.nombre_familia ?? listing.cod_familia} todavía no tiene perfil: analízala primero.`);
   if (profileRow.status !== "reviewed") warnings.push("El perfil de la familia aún no está revisado.");
   const profile = profileRow.profile; const icecat = identity.icecat;
+  // Clase energética oficial (David, 2026-10-27): con EPREL manda la de EPREL. MHD da a veces la HDR de los televisores
+  // («G» con SDR «E») y Icecat, la de solo lavado de las lavasecadoras o la escala antigua («A++»).
+  const eprel = icecat?.eprelId ? await t.step("Clase energética de EPREL", () => fetchEprelClass(icecat.eprelId!), (result) => (result ? `${result.energyClass} (${result.productGroup ?? "?"})` : "Sin respuesta: se usa la de MHD")) : null;
+  if (eprel) {
+    if (energyLetter(listing.letra_eficiencia) !== eprel.energyClass) warnings.push(`Clase energética: MHD dice «${listing.letra_eficiencia ?? "—"}» y EPREL «${eprel.energyClass}»: se usa la de EPREL.`);
+    listing = { ...listing, letra_eficiencia: eprel.energyClass };
+  }
 
   // Filtros por reglas (sin IA). La letra energética del listado de MHD completa la eficiencia si el perfil no la sacó.
   const values = sourceValues(gathered.detail, icecat, listing);
@@ -377,7 +384,7 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   if (smallPhotoReason) warnings.push(smallPhotoReason);
   const review_reasons = [
     logoPhotoReason,
-    energyClassReason(listing.letra_eficiencia, icecat),
+    eprel ? null : energyClassReason(listing.letra_eficiencia, icecat),
     ...sourceDisagreements(profile, values, listing.cod_subfamilia).map((item) => `${item.name}: MHD dice «${item.mhd}» e Icecat «${item.icecat}» (${Math.round(item.difference * 100)} % de diferencia).`),
     modelChoice.needsReview ? `Modelo: ${modelChoice.reason}` : null,
     brandChoice.needsReview ? `Marca: ${brandChoice.reason}` : null,

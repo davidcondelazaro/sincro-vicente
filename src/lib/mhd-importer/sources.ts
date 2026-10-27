@@ -74,3 +74,14 @@ export async function fetchIcecatDocument(config: IcecatConfig, url: string) {
   if (!response.ok) throw new Error(`No se pudo descargar ${url} de Icecat (HTTP ${response.status}).`);
   return { contentType: response.headers.get("content-type") ?? "application/octet-stream", bytes: new Uint8Array(await response.arrayBuffer()) };
 }
+
+// Clase energética oficial de EPREL (David, 2026-10-27: manda siempre que el producto tenga EPREL). API pública, sin clave.
+// `energyClass` es la principal de la etiqueta: la SDR en televisores, la de lavado y secado en lavasecadoras. Sin
+// respuesta o sin letra: null (se sigue con la de MHD).
+export async function fetchEprelClass(eprelId: string): Promise<{ energyClass: string; productGroup: string | null; model: string | null } | null> {
+  const response = await fetch(`https://eprel.ec.europa.eu/api/product/${encodeURIComponent(eprelId)}`, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(20_000) }).catch(() => null);
+  if (!response?.ok) return null;
+  const data = await response.json().catch(() => null) as { energyClass?: string; productGroup?: string; modelIdentifier?: string } | null;
+  const energyClass = data?.energyClass?.trim().toUpperCase() ?? "";
+  return /^(A\+{1,3}|[A-G])$/.test(energyClass) ? { energyClass, productGroup: data?.productGroup ?? null, model: data?.modelIdentifier ?? null } : null;
+}
