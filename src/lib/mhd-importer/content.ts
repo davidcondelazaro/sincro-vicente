@@ -105,6 +105,12 @@ export function checkElviSources(tip: ElviTip, values: SourceValues) {
   });
 }
 
+// Sin modelo (2026-10-27): el código interno del proveedor no puede salir en el título.
+function noCodeInTitle(title: string, code: string | null | undefined) {
+  const bare = (text: string) => text.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return code && bare(code).length >= 5 && bare(title).includes(bare(code)) ? [`El título lleva la referencia del proveedor «${code}»: este producto va sin modelo.`] : [];
+}
+
 export function validateContent(content: ProductContent, brand: string, model: string, originals: string[], values: SourceValues, altModels: (string | null | undefined)[] = []): string[] {
   const errors: string[] = [];
   if (content.title.length > TITLE_MAX) errors.push(`El título tiene ${content.title.length} caracteres (máximo ${TITLE_MAX}).`);
@@ -255,16 +261,17 @@ export async function writeElviForPage(client: Anthropic, model: string, input: 
   return { tip: verdict.ok ? tip : empty, review: { ok: verdict.ok, reason: verdict.ok && attempts === 2 ? `Aceptada en el segundo intento (el primero: ${rejected[0]})` : verdict.reason, ...(verdict.ok ? {} : { text: tip.text }) }, attempts, costUsd: cost };
 }
 
-// `model`: el modelo limpio (models.ts); sin él, el de MHD. `elvi`: escribir la frase de Elvi (por defecto sí:
+// `model`: el modelo limpio (models.ts); sin él, el de MHD. `noModel`: el producto va sin modelo (código interno o
+// compatibilidad de un accesorio, 2026-10-27): el título no lleva el código; si es un accesorio, sí para qué aparato es. `elvi`: escribir la frase de Elvi (por defecto sí:
 // David la reactivó el 2026-10-26, «tiene mucho valor»; si el revisor la rechaza, la ficha sigue sin ella).
-export async function writeContent(client: Anthropic, input: { profile: FamilyProfile; listing: ListingProduct & { descripcion?: string | null }; detail: MhdProductDetail | null; icecat: IcecatSummary | null; metafields: Record<string, string | string[]>; values: SourceValues; model?: string | null; elvi?: boolean; elviModel?: string; noThinking?: boolean }) {
+export async function writeContent(client: Anthropic, input: { profile: FamilyProfile; listing: ListingProduct & { descripcion?: string | null }; detail: MhdProductDetail | null; icecat: IcecatSummary | null; metafields: Record<string, string | string[]>; values: SourceValues; model?: string | null; noModel?: { code: string | null; compatibleWith: string | null }; elvi?: boolean; elviModel?: string; noThinking?: boolean }) {
   const { profile, listing, icecat, metafields } = input;
   // Hoja de datos única (facts.ts): la redacción y las revisiones solo ven un valor por dato.
   const values = buildFactSheet(profile, input.values, listing.cod_subfamilia);
   // Los valores de los filtros ya calculados también son datos de la ficha (p. ej. «2000 W» sacado de un «2W» de MHD, o
   // «Mueble de 50 cm» sacado del texto): sin ellos, esas cifras no se podrían escribir.
   for (const [key, value] of Object.entries(metafields)) values.set(`filtro:${key}`, Array.isArray(value) ? value.join(", ") : value);
-  const brand = brandAsWritten(listing, icecat); const model = input.model || listing.ref_proved || ""; const withElvi = (input.elvi ?? true) && !input.elviModel;
+  const brand = brandAsWritten(listing, icecat); const model = input.noModel ? "" : input.model || listing.ref_proved || ""; const withElvi = (input.elvi ?? true) && !input.elviModel;
   const originals = [strip(listing.descripcion, 100_000), listing.descripcion_ampliada ?? "", icecat?.longSummary ?? "", icecat?.shortSummary ?? "", ...(icecat?.bulletPoints ?? [])].filter(Boolean);
   // El perfil de la familia va en el sistema, detrás de las instrucciones y con su marca de caché (2026-10-26): es igual
   // para todos los productos de la familia, y el trabajador los procesa seguidos, así que solo se paga entero una vez
@@ -275,9 +282,12 @@ export async function writeContent(client: Anthropic, input: { profile: FamilyPr
     { type: "text", text: `Perfil de la familia (JSON):\n${JSON.stringify(perfil)}`, cache_control: { type: "ephemeral" } },
   ];
   const data = {
-    producto: { marca: brand, modelo: model, titulo_proveedor: listing.titulo, filtros_calculados: metafields },
+    producto: { marca: brand, modelo: model, titulo_proveedor: listing.titulo, filtros_calculados: metafields,
+      ...(input.noModel ? { sin_modelo: input.noModel.compatibleWith
+        ? `Este producto no tiene modelo propio: es un accesorio para «${input.noModel.compatibleWith}». Pon en el título para qué aparato es, bien escrito (p. ej. «para iPhone 17 Air»), y ningún código del proveedor.`
+        : `Este producto no tiene modelo del fabricante: no pongas en el título ni en los textos la referencia del proveedor${input.noModel.code ? ` «${input.noModel.code}»` : ""} ni ningún otro código.` } : {}) },
     datos_con_clave: Object.fromEntries(values),
-    textos_de_referencia: { mhd: strip(listing.descripcion), mhd_ampliada: listing.descripcion_ampliada, icecat_resumen: icecat?.longSummary, icecat_destacados: icecat?.bulletPoints },
+    textos_de_referencia: { mhd: strip(listing.descripcion), mhd_ampliada: listing.descripcion_ampliada, ...(input.noModel?.compatibleWith ? { mhd_compatible_con: input.noModel.compatibleWith } : {}), icecat_resumen: icecat?.longSummary, icecat_destacados: icecat?.bulletPoints },
   };
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: `Datos (JSON):\n${JSON.stringify(data)}\n\nRedacta la ficha.` }];
   const usage: Usage[] = []; let content: ProductContent | null = null; let errors: string[] = []; let attempts = 0;
@@ -298,7 +308,7 @@ export async function writeContent(client: Anthropic, input: { profile: FamilyPr
     const parsed = JSON.parse(text) as Omit<ProductContent, "elvi_tip"> & { elvi_tip?: ElviTip };
     content = { ...parsed, long_description_html: normalizeBold(parsed.long_description_html ?? ""), elvi_tip: parsed.elvi_tip ?? { text: "", sources: [] } };
     const texts = { title: content.title, meta_title: content.meta_title, short_description: content.short_description, meta_description: content.meta_description, long_description_html: content.long_description_html, ...(content.elvi_tip.text ? { elvi: content.elvi_tip.text } : {}) };
-    errors = [...validateContent(content, brand, model, originals, values, [icecat?.modelName, icecat?.partCode]), ...missingKeyData(content.title, profile, values, listing.nombre_subfamilia, listing.cod_subfamilia), ...unsupportedNumbers(texts, values, [brand, model, listing.nombre_marca, icecat?.partCode, icecat?.modelName], [listing.titulo, strip(listing.descripcion), listing.descripcion_ampliada, icecat?.title, icecat?.shortSummary, icecat?.longSummary, ...(icecat?.bulletPoints ?? [])]).map((problem) => `Cifra sin respaldo: ${problem} Usa solo cifras de los datos o de los textos de referencia.`)];
+    errors = [...validateContent(content, brand, model, originals, values, [icecat?.modelName, icecat?.partCode]), ...noCodeInTitle(content.title, input.noModel?.code), ...missingKeyData(content.title, profile, values, listing.nombre_subfamilia, listing.cod_subfamilia), ...unsupportedNumbers(texts, values, [brand, model, listing.nombre_marca, icecat?.partCode, icecat?.modelName], [listing.titulo, strip(listing.descripcion), listing.descripcion_ampliada, icecat?.title, icecat?.shortSummary, icecat?.longSummary, ...(icecat?.bulletPoints ?? [])]).map((problem) => `Cifra sin respaldo: ${problem} Usa solo cifras de los datos o de los textos de referencia.`)];
     // Solo se revisan los datos de una ficha que ya cumple el formato (ahorra llamadas).
     if (!errors.length) {
       const checked = await factCheck(client, content, facts); usage.push(checked.usage);

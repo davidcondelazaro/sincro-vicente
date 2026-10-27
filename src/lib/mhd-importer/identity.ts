@@ -45,6 +45,18 @@ export async function checkIcecatIdentity(client: Anthropic, product: { title: s
   return { ...parsed, method: "ia" as const, costUsd: costUsd(PROCESSOR_MODEL, message.usage) ?? 0 };
 }
 
+// Modelo del fabricante en la descripción de MHD (David, 2026-10-27): cuando la referencia de MHD es un código interno
+// («DSP0000017290»), su descripción a veces nombra el modelo real («ALTAVOZ BLUETOOTH FOREVER BS - 10», «UNYKACH MK212
+// PRO», «NANOCABLE 10.02.0013»). Solo vale si está tal cual en el texto (sin mirar espacios ni signos) y lleva cifras.
+const textSchema = { type: "object", additionalProperties: false, required: ["model"], properties: { model: { type: "string" } } };
+export async function findModelInText(client: Anthropic, product: { brand: string; title: string; code: string; text: string }) {
+  const message = await createStreamed(client, { model: PROCESSOR_MODEL, max_tokens: 2000, output_config: { effort: "low", format: { type: "json_schema", schema: textSchema } }, messages: [{ role: "user", content: `Texto del proveedor de un producto de la marca ${product.brand} («${product.title}»):\n«${product.text}»\n\n¿Nombra el texto el modelo del fabricante (p. ej. «BS-10», «MK212 PRO», «10.02.0013»)? Responde en model el modelo tal como aparece en el texto, sin la marca, el tipo de producto, el color ni las medidas; o vacío si no lo nombra. No valen la referencia del proveedor «${product.code}» ni otros códigos del proveedor (dos o tres letras seguidas de muchas cifras), un EAN ni el nombre de otro aparato con el que sea compatible.` }] });
+  const parsed = JSON.parse(message.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("")) as { model: string };
+  const found = parsed.model.trim(); const bare = normalizeModel(found);
+  const ok = bare.length >= 3 && /\d/.test(bare) && bare !== normalizeModel(product.code) && normalizeModel(product.text).includes(bare);
+  return { model: ok ? found : null, proposed: found || null, costUsd: costUsd(PROCESSOR_MODEL, message.usage) ?? 0 };
+}
+
 // Texto de la etiqueta: del SVG (elementos <text>) o del PDF (MuPDF). Una imagen no se puede leer: devuelve null.
 export async function labelText(bytes: Uint8Array, kind: "svg" | "pdf" | "image") {
   if (kind === "svg") {

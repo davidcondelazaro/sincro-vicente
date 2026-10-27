@@ -15,7 +15,7 @@ import type { ListingProduct } from "./family";
 import { cached } from "./cache";
 import { gatherProduct, type SourcesConfig } from "./gather";
 import { embeddableYoutubeVideos, icecatMetafield, summarizeIcecat, type IcecatSummary } from "./icecat";
-import { checkIcecatIdentity, labelMatches, labelText } from "./identity";
+import { checkIcecatIdentity, findModelInText, labelMatches, labelText } from "./identity";
 import { classifyImages, imageFilenames, KIND_ALT, normalizeEnergyLabel, orderImages, pdfFirstPageToPng, prepareImages, processImage, sameVisual, sha1, slugify, type ImageKind } from "./images";
 import type { FamilyProfile } from "./profile";
 import { classifyVideos, prepareVideos, type VideoKind } from "./videos";
@@ -175,10 +175,18 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   if (applied.missing.length) warnings.push(`Filtros sin dato en MHD ni Icecat: ${[...new Set(applied.missing)].join(", ")}.`);
 
   // Modelo limpio (models.ts) y marca (brands.ts): para el título, la dirección, la referencia y los nombres de archivo.
-  const modelChoice = resolveModel(listing, icecat); const brandChoice = resolveBrand(listing, icecat);
-  const model = modelChoice.model ?? listing.ref_proved ?? listing.codigo;
+  let modelChoice = resolveModel(listing, icecat); const brandChoice = resolveBrand(listing, icecat);
+  // Código interno del proveedor (2026-10-27): se busca el modelo real en la descripción de MHD; si no está, sin modelo.
+  const mhdText = [listing.descripcion, listing.descripcion_ampliada].map((html) => (html ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()).filter(Boolean).join(" ").slice(0, 3000);
+  if (modelChoice.dropped === "internal" && mhdText.length > 40) {
+    const found = await t.step("Modelo en la descripción (IA)", () => findModelInText(deps.ai, { brand: listing.nombre_marca ?? "", title: listing.titulo ?? "", code: listing.ref_proved ?? "", text: mhdText }), (result) => (result.model ? `«${result.model}»` : result.proposed ? `«${result.proposed}» no está tal cual: sin modelo` : "No lo nombra"));
+    cost += found.costUsd;
+    modelChoice = resolveModel(listing, icecat, found.model);
+  }
+  const model = modelChoice.model ?? (modelChoice.dropped ? "" : listing.ref_proved ?? listing.codigo);
+  const noModel = modelChoice.dropped && !modelChoice.model ? { code: modelChoice.dropped === "internal" ? listing.ref_proved : null, compatibleWith: modelChoice.dropped === "compatibility" ? listing.ref_proved : null } : undefined;
   // Lo que va a revisión sale después como «Revisión: …»; aquí, solo los cambios que no necesitan revisión.
-  if (modelChoice.source === "icecat" && !modelChoice.needsReview) { warnings.push(`Modelo: ${modelChoice.reason}`); t.event("decision", "Modelo y marca", `Modelo: ${modelChoice.reason}`); }
+  if ((modelChoice.source === "icecat" || modelChoice.dropped) && !modelChoice.needsReview) { warnings.push(`Modelo: ${modelChoice.reason}`); t.event("decision", "Modelo y marca", `Modelo: ${modelChoice.reason}`); }
   if (brandChoice.reason && !brandChoice.needsReview) { warnings.push(`Marca: ${brandChoice.reason}`); t.event("decision", "Modelo y marca", `Marca: ${brandChoice.reason}`); }
 
   // Fotos antes de redactar (2026-10-26): sin ninguna descargable no se gasta la redacción. La foto principal del listado
@@ -270,7 +278,7 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
 
   // A la vez (2026-10-26): la redacción, el tratamiento de las fotos y la etiqueta energética no dependen entre sí.
   const [written, treated, label] = await Promise.all([
-    t.step("Redactar textos (IA)", () => writeContent(deps.ai, { profile, listing, detail: gathered.detail, icecat, metafields: applied.metafields, values, model, elvi: false, noThinking: deps.noThinking }), (result) => `${result.attempts} intento${result.attempts > 1 ? "s" : ""}${result.blocked ? " · bloqueada por el revisor de datos" : ""} · ${(result.costUsd ?? 0).toFixed(4)} $`),
+    t.step("Redactar textos (IA)", () => writeContent(deps.ai, { profile, listing, detail: gathered.detail, icecat, metafields: applied.metafields, values, model, noModel, elvi: false, noThinking: deps.noThinking }), (result) => `${result.attempts} intento${result.attempts > 1 ? "s" : ""}${result.blocked ? " · bloqueada por el revisor de datos" : ""} · ${(result.costUsd ?? 0).toFixed(4)} $`),
     t.step("Tratar fotos", () => Promise.all(ordered.keep.map(async (image) => ({ image, file: await processImage(prepared.images.find((item) => item.url === image.url)!.bytes, image) }))), (result) => `${result.length} fotos tratadas · ${ordered.dropped.length} descartadas`),
     t.step("Etiqueta energética", () => energyLabelFile(deps.config, listing, icecat, [listing.ref_proved, ...(model !== listing.ref_proved ? [model] : []), ...(identity.check?.same ? [icecat?.partCode ?? null, icecat?.modelName ?? null] : [])], warnings).catch((caught: Error) => { warnings.push(`Etiqueta energética: ${caught.message}`); return null; }), (result) => (result ? `PNG desde ${result.source}` : "Sin etiqueta")),
   ]);
@@ -283,7 +291,9 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   // familias amplias el nombre del perfil es genérico («pequeño electrodoméstico de preparación de alimentos»).
   const brandAt = written.content.title.toLowerCase().indexOf(brand.toLowerCase());
   const productType = (brandAt > 0 ? written.content.title.slice(0, brandAt).trim() : "") || profile.product.singular;
-  const base = slugify(`${productType} ${brand} ${model}`);
+  // Sin modelo, la dirección sale del título (lo distingue: tipo, marca, medidas, color o el aparato del accesorio).
+  const base = slugify(model ? `${productType} ${brand} ${model}` : written.content.title);
+  const fileBase = model ? slugify(`${brand} ${model}`) : base;
   // Si la principal de MHD queda pequeña tras tratarla (< 800 px), pasa a principal la frontal o tres cuartos sobre
   // blanco más grande, si la hay (decidido 2026-10-23).
   const side = (entry: (typeof treated)[number]) => Math.max(entry.file.width, entry.file.height); // el lado largo: un combi es estrecho por naturaleza
@@ -304,12 +314,12 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   }
 
   // Etiqueta energética como PNG en su metacampo, fuera de la galería.
-  const labelFilename = label ? `${slugify(`${brand} ${model}`)}-etiqueta-energetica.png` : null;
+  const labelFilename = label ? `${fileBase}-etiqueta-energetica.png` : null;
   if (label && labelFilename) media.push({ role: "energy_label", position: 0, filename: labelFilename, contentType: "image/png", width: label.width, height: label.height, bytes: label.bytes, meta: { source: label.source } });
 
   // Documentos: ficha UE y manual (decidido 2026-10-23), con nombre normalizado. Vídeos: YouTube en español
   // comprobados; MP4 del producto o de la marca (provisional: es «de producto» si su descripción nombra el modelo).
-  const docBase = slugify(`${brand} ${model}`);
+  const docBase = fileBase;
   const documents = (icecat?.documents ?? []).filter((document) => STORE_RULES.documentTypes[document.type]).map((document) => ({ type: document.type, filename: `${docBase}-${STORE_RULES.documentTypes[document.type]}.pdf`, url: document.url, sizeBytes: document.sizeBytes }));
   // Elvi en cuanto están los textos (David, 2026-10-26), a la vez que documentos y vídeos: escribe y se revisa con lo que va
   // a Shopify (título, descripciones y especificaciones técnicas). Con Sonnet si la tanda lo pide.
@@ -349,7 +359,7 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   // Opiniones que ya tenemos de este EAN (Trusted Shops) con el resumen de Elvi, para la sección «Opiniones».
   const technical = icecatMetafield(icecat, gathered.detail?.caracteristicas ?? [], youtube);
   const metafields: MetafieldInput[] = [
-    { namespace: "custom", key: "referencia", type: "single_line_text_field", value: model },
+    ...(model ? [{ namespace: "custom", key: "referencia", type: "single_line_text_field", value: model }] : []),
     { namespace: "custom", key: "prioridad", type: "number_integer", value: String(STORE_RULES.priority) },
     { namespace: "custom", key: "disponibilidad_con_stock", type: "single_line_text_field", value: STORE_RULES.availabilityInStock },
     { namespace: "custom", key: "disponibilidad_sin_stock", type: "single_line_text_field", value: STORE_RULES.availabilityOutOfStock },

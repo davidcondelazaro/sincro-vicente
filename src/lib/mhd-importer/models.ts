@@ -5,11 +5,14 @@
 // GLACIE») o es una descripción que repite tipo y marca («TRUST VOLANTE GXT-289», «PROTECTOR APPLE IPH»).
 // Regla: si el de MHD sirve, el de MHD limpio; si no y hay Icecat comprobado (identity.ts), el modelo de Icecat (o su
 // código o nombre comercial); si no, a revisión con el mejor que haya. El SKU sigue siendo el `codigo` de MHD.
+// Excepción (David, 2026-10-27, cola de revisión): un código interno del proveedor o la compatibilidad de un accesorio no
+// van a revisión. Si la descripción de MHD nombra el modelo del fabricante (identity.ts, `findModelInText`), ese; si no,
+// el producto va sin modelo: ni en el título ni en la dirección.
 // Funciones puras, sin IA.
 import type { IcecatSummary } from "./icecat";
 import { normalizeModel } from "./identity";
 
-export type ModelChoice = { model: string | null; source: "mhd" | "icecat" | null; needsReview: boolean; reason: string };
+export type ModelChoice = { model: string | null; source: "mhd" | "icecat" | "texto" | null; needsReview: boolean; reason: string; dropped?: "internal" | "compatibility" };
 export type ModelListing = { ref_proved: string | null; titulo: string | null; nombre_marca: string | null; codigo_ean?: string | null; cod_subfamilia?: string | null };
 
 const MHD_REF_MAX = 25; // MHD corta `ref_proved` a 25 caracteres
@@ -112,7 +115,7 @@ function icecatModel(icecat: IcecatSummary, brand: string) {
   return null;
 }
 
-export function resolveModel(listing: ModelListing, icecat: IcecatSummary | null): ModelChoice {
+export function resolveModel(listing: ModelListing, icecat: IcecatSummary | null, fromText: string | null = null): ModelChoice {
   const raw = (listing.ref_proved ?? "").trim(); const brand = listing.nombre_marca ?? "";
   const game = listing.cod_subfamilia === "50150" || /^videojuego/i.test(listing.titulo ?? "");
   const mhd = raw ? cleanModelText(raw, brand, { title: listing.titulo, ean: listing.codigo_ean, game }) : { text: "", problem: "está vacío", notes: [] as string[] };
@@ -122,6 +125,12 @@ export function resolveModel(listing: ModelListing, icecat: IcecatSummary | null
     return { model: fromIcecat.text, source: "icecat", needsReview: false, reason: "El código de MHD es el de Icecat: se escribe como Icecat." };
   if (!mhd.problem) return { model: mhd.text, source: "mhd", needsReview: false, reason: mhd.notes.length ? `Modelo de MHD limpio (${mhd.notes.join(", ")}).` : "Modelo de MHD tal cual." };
   if (fromIcecat) return { model: fromIcecat.text, source: "icecat", needsReview: false, reason: `El modelo de MHD «${raw}» ${mhd.problem}: se usa el ${fromIcecat.from} de Icecat.` };
+  const dropped = mhd.problem === "es un código interno del proveedor" ? "internal" as const : mhd.problem === "es la compatibilidad de un accesorio, no un modelo" ? "compatibility" as const : null;
+  if (dropped) {
+    const found = fromText ? cleanModelText(fromText, brand, { ean: listing.codigo_ean }) : null;
+    if (found && !found.problem && /\d/.test(found.text)) return { model: found.text, source: "texto", needsReview: false, reason: `El modelo de MHD «${raw}» ${mhd.problem}: se usa «${found.text}», que nombra la descripción de MHD.`, dropped };
+    return { model: null, source: null, needsReview: false, reason: `El modelo de MHD «${raw}» ${mhd.problem}: el producto va sin modelo (ni en el título ni en la dirección).`, dropped };
+  }
   // A revisión: el de MHD casi tal cual (sin símbolos), para que la dirección y la referencia no queden vacías.
   return { model: raw.replace(/[®™©?\uFFFD]/g, "").replace(/\s+/g, " ").trim() || null, source: raw ? "mhd" : null, needsReview: true, reason: `El modelo de MHD «${raw}» ${mhd.problem} y no hay Icecat comprobado: hay que revisarlo.` };
 }

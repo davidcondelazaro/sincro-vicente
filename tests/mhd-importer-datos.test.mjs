@@ -32,16 +32,16 @@ test("modelo: el de MHD limpio cuando sirve", () => {
   for (const ref of ["729R", "9655N", "531", "EX 60.1 4G AI AL DR CI", "B650 GAMING X AX V2 G10"]) assert.deepEqual([model(ref).model, model(ref).needsReview], [ref, false], ref);
   assert.equal(model("MOUSE CARVE", "Trust").model, "CARVE");
   assert.equal(model("MIG 2325 EN 23 L INOX", "Orbegozo").model, "MIG 2325 EN");
-  assert.equal(model("PROTECTOR MOTOROLA MOTO G", "JC").needsReview, true);
+  assert.deepEqual([model("PROTECTOR MOTOROLA MOTO G", "JC").model, model("PROTECTOR MOTOROLA MOTO G", "JC").dropped], [null, "compatibility"]);
   const game = model("THE LAST OF US PART I", "Sony", "Videojuego Sony The Last of Us Part I");
   assert.equal(game.model, "THE LAST OF US PART I"); assert.equal(game.needsReview, false);
   const clean = model("BCS200BK BLACK", "Kodak");
   assert.equal(clean.source, "mhd"); assert.equal(clean.needsReview, false);
 });
 
-test("modelo: códigos internos, EAN, caracteres rotos y descripciones van a Icecat o a revisión", () => {
-  for (const ref of ["HO0232210", "HO21253017", "VE10541245", "TV90504220", "DSP0000018101", "8445123456789", "Z?MO® XT3", "PROTECTOR APPLE IPH", "DISPENSADOR DE JABON", "TAPADERA 20 CM", "APPLE IPHONE 17 AIR"]) {
-    const choice = model(ref, ref.startsWith("APPLE") ? "JC" : "Xiaomi");
+test("modelo: EAN, caracteres rotos y descripciones van a Icecat o a revisión", () => {
+  for (const ref of ["8445123456789", "Z?MO® XT3", "DISPENSADOR DE JABON", "TAPADERA 20 CM"]) {
+    const choice = model(ref, "Xiaomi");
     assert.equal(choice.needsReview, true, ref); assert.ok(choice.reason.length > 10, ref);
   }
   assert.equal(model("Z?MO® XT3", "Garmin").model, "ZMO XT3"); // sin Icecat: el de MHD sin símbolos, para la dirección
@@ -51,8 +51,21 @@ test("modelo: códigos internos, EAN, caracteres rotos y descripciones van a Ice
   assert.equal(model("Z?MO® XT3", "Garmin", "", icecat("zūmo XT3", "010-03862-10", "Garmin")).model, "zūmo XT3");
   const same = model("HX404241", "Philips", "", icecat("HX4042/41", "HX4042/41", "Philips"));
   assert.deepEqual([same.model, same.source, same.needsReview], ["HX4042/41", "icecat", false]);
-  // Un ASIN o un nombre con guion delante en Icecat no sirven.
-  assert.equal(model("VE10541245", "Amazon", "", icecat("-KINDLE CW", "B0DJGCX6Q2", "Amazon")).needsReview, true);
+  // Un ASIN o un nombre con guion delante en Icecat no sirven: sin modelo.
+  assert.deepEqual([model("VE10541245", "Amazon", "", icecat("-KINDLE CW", "B0DJGCX6Q2", "Amazon")).model, model("VE10541245", "Amazon", "", icecat("-KINDLE CW", "B0DJGCX6Q2", "Amazon")).needsReview], [null, false]);
+});
+
+test("modelo: código interno o compatibilidad sin Icecat, sin modelo o el de la descripción (2026-10-27)", () => {
+  for (const ref of ["HO0232210", "HO21253017", "VE10541245", "TV90504220", "DSP0000018101", "MGS0000028700", "CA20504928"]) {
+    const choice = model(ref, "Xiaomi");
+    assert.deepEqual([choice.model, choice.needsReview, choice.dropped], [null, false, "internal"], ref);
+  }
+  for (const ref of ["PROTECTOR APPLE IPH", "APPLE IPHONE 17 AIR", "SAMSUNG GALAXY A57"]) assert.deepEqual([model(ref, "JC").model, model(ref, "JC").needsReview, model(ref, "JC").dropped], [null, false, "compatibility"], ref);
+  const found = resolveModel({ ref_proved: "UK505445", nombre_marca: "Unykach", titulo: "", codigo_ean: "8445123456789" }, null, "MK212 PRO");
+  assert.deepEqual([found.model, found.source, found.needsReview], ["MK212 PRO", "texto", false]);
+  // Lo que encuentre la IA también se limpia y tiene que ser un modelo: sin cifras o una compatibilidad, no vale.
+  assert.equal(resolveModel({ ref_proved: "UK505445", nombre_marca: "Unykach", titulo: "" }, null, "SLIM").model, null);
+  assert.equal(resolveModel({ ref_proved: "JC123456", nombre_marca: "JC", titulo: "" }, null, "IPHONE 15").model, null);
 });
 
 test("marca: tabla de equivalencias, licencias, siglas y correcciones", () => {
