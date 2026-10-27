@@ -177,8 +177,26 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
     // En el espejo de la tienda (src/lib/shopify-mirror.ts), sin preguntar a Shopify.
     const { data: found, error: mirrorError } = await deps.db.from("shopify_variants").select("product_id").eq("barcode", shop.variant.barcode);
     if (mirrorError) throw new Error(`No se pudo leer el espejo de la tienda: ${mirrorError.message}`);
-    const products = [...new Set(found.map((row) => row.product_id as string))];
-    if (products.length > 1) throw new Error(`Hay más de un producto en Shopify con el EAN ${shop.variant.barcode}: revísalo a mano.`);
+    let products = [...new Set(found.map((row) => row.product_id as string))];
+    // Varios con el mismo EAN (duplicados de la tienda antigua; en MHD no se repite ninguno): se refresca uno y los demás
+    // se archivan (David, 2026-10-27). Se queda el activo; si no, el borrador; y entre iguales, el más antiguo.
+    if (products.length > 1) {
+      const { data: rows, error: rowsError } = await deps.db.from("shopify_products").select("product_id,status,shopify_created_at").in("product_id", products);
+      if (rowsError) throw new Error(`No se pudo leer el espejo de la tienda: ${rowsError.message}`);
+      const rank = (status: string) => ({ ACTIVE: 0, DRAFT: 1 } as Record<string, number>)[status] ?? 2;
+      const ordered = [...(rows ?? [])].sort((a, b) => rank(a.status) - rank(b.status) || String(a.shopify_created_at).localeCompare(String(b.shopify_created_at)));
+      const keep = ordered[0]?.product_id ?? products[0];
+      const others = products.filter((id) => id !== keep);
+      await t.step("Duplicados por EAN", async () => {
+        for (const id of others) {
+          const archived = await shopifyGraphql<{ productUpdate: { userErrors: UserError[] } }>(deps.shopify, `mutation($p: ProductUpdateInput!) { productUpdate(product: $p) { userErrors { field message } } }`, { p: { id, status: "ARCHIVED" } });
+          check(archived.productUpdate.userErrors, "Shopify no archivó el duplicado");
+          await deps.db.from("shopify_products").update({ status: "ARCHIVED" }).eq("product_id", id);
+        }
+        return others.length;
+      }, (count) => `EAN ${shop.variant.barcode} en ${count + 1} productos: se refresca ${keep.split("/").pop()} y se ${count === 1 ? "archiva el otro" : `archivan los otros ${count}`}`);
+      products = [keep];
+    }
     if (products[0]) { existingId = products[0]; refresh = true; }
   }
   type ExistingVariant = { id: string; price: string; compareAtPrice: string | null; sku: string | null; barcode: string | null; inventoryPolicy: string };

@@ -68,9 +68,15 @@ export async function processJobItem(deps: { db: SupabaseClient; config: Sources
     // Tanda «solo subir» (2026-10-27): la última prueba correcta del producto se sube a Shopify sin volver a procesarla
     // (sin IA). Es la subida masiva, y sirve para medir cuánto tarda cada producto y cuánto paralelismo aguanta Shopify.
     if (deps.upload === "solo") {
-      const { data: run, error: runError } = await deps.db.from("mhd_importer_product_runs").select("id").eq("codigo", item.codigo).eq("status", "ok").order("created_at", { ascending: false }).limit(1).maybeSingle();
+      const { data: run, error: runError } = await deps.db.from("mhd_importer_product_runs").select("id,blocked:result->contentBlocked").eq("codigo", item.codigo).eq("status", "ok").order("created_at", { ascending: false }).limit(1).maybeSingle();
       if (runError) throw runError;
       if (!run) throw new Error(`El producto ${item.codigo} no tiene ninguna prueba correcta: hay que procesarlo antes.`);
+      // Lo que el procesado dejó sin publicar no es un fallo de la subida (David, 2026-10-27): va a descartados, no a
+      // errores, para que los errores sean solo los de Shopify.
+      if (run.blocked === true) {
+        await deps.db.from("mhd_importer_job_items").update({ status: "descartado", finished_at: new Date().toISOString(), duration_ms: Date.now() - started, cost_usd: 0, run_id: run.id, error: "Bloqueada en el procesado (afirmaciones sin respaldo): no se sube hasta rehacer el texto.", lease_until: null, step: null }).eq("id", item.id);
+        return;
+      }
       const draft = await log.trace.step("Subir a Shopify", () => createShopifyDraft({ db: deps.db, shopify: deps.config.shopify, icecat: deps.config.icecat, trace: log.trace }, run.id), (result) => `${result.updated ? "Actualizado" : "Creado"} · ${result.status === "ACTIVE" ? "activo" : "borrador"} · ${result.files.photos} fotos`);
       const duration = Date.now() - started;
       await deps.db.from("mhd_importer_job_items").update({ status: "ok", finished_at: new Date().toISOString(), duration_ms: duration, cost_usd: 0, run_id: run.id, error: null, lease_until: null, step: null }).eq("id", item.id);
