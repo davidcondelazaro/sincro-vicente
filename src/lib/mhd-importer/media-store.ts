@@ -68,11 +68,11 @@ export async function mediaBytes(db: SupabaseClient, row: { storage_path?: strin
   if (row.storage_path) {
     const path = row.storage_path;
     for (let attempt = 1; ; attempt += 1) {
-      const result = await withDownloadSlot(async () => {
+      const result = await withDownloadSlot(async (): Promise<{ bytes: Uint8Array; error: null } | { bytes: null; error: string }> => {
         const { data, error } = await db.storage.from(MEDIA_BUCKET).download(path);
-        return error || !data ? { error: error?.message ?? "sin datos" } : { bytes: new Uint8Array(await data.arrayBuffer()) };
+        return error || !data ? { bytes: null, error: error?.message ?? "sin datos" } : { bytes: new Uint8Array(await data.arrayBuffer()), error: null };
       });
-      if ("bytes" in result) return result.bytes;
+      if (result.bytes) return result.bytes;
       if (attempt >= 5 || !/too many connections|timeout|ECONNRESET|fetch failed/i.test(result.error)) throw new Error(`No se pudo leer ${path}: ${result.error}`);
       await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** (attempt - 1) + Math.random() * 500));
     }
