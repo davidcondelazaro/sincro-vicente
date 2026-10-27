@@ -307,11 +307,11 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   const tags = [...new Set([...shop.tags, ...(existing?.tags ?? [])].filter((tag) => KEEP_TAGS.has(tag)).concat(reviewPending ? [REVIEW_TAG] : []))];
   const category = SHOPIFY_CATEGORY_BY_FAMILY[placement.familia] ?? shop.category?.id ?? null;
   // Dirección (decidido por David el 2026-10-26): todos estrenan la del importador, también los que ya tenía la tienda
-  // (activos, refrescados o archivados que vuelven). Si cambia, Shopify redirige la antigua a la nueva
-  // (`redirectNewHandle`); las de PrestaShop se cargan aparte, directas a la nueva (docs/REDIRECCIONES.md).
+  // (activos, refrescados o archivados que vuelven). La dirección intermedia de Shopify no se redirige (la tienda nunca
+  // ha estado abierta): solo la URL original de PrestaShop, directa a la nueva, con el resto (docs/REDIRECCIONES.md).
   const handle = shop.handle;
   const input = {
-    title: shop.title, handle, ...(existing && existing.handle !== handle ? { redirectNewHandle: true } : {}), status, vendor: shop.vendor, productType: placement.familyTitle, tags,
+    title: shop.title, handle, status, vendor: shop.vendor, productType: placement.familyTitle, tags,
     ...(category ? { category } : {}), descriptionHtml: shop.descriptionHtml, seo: shop.seo, metafields: finalMetafields,
     files: galleryFiles,
     productOptions: [{ name: "Title", values: [{ name: "Default Title" }] }],
