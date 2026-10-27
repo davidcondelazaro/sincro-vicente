@@ -242,7 +242,8 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
     }
   }
   // Si todas son pequeñas (David, 2026-10-26): no se descarta el producto; se usa la mejor (una vista del producto si la
-  // hay, y la más grande) y va a la cola de revisión con el motivo «Foto pequeña».
+  // hay, y la más grande). Desde el 2026-10-27 ya no va a la cola de revisión (David, al ver las 975 del masivo: «yo las
+  // daría todas por buenas»); queda como aviso «Foto pequeña» para el resumen y el informe a MHD.
   let smallPhotoReason: string | null = null;
   if (!ordered.keep.length) {
     const views = (image: { kind: string }) => (image.kind === "frontal" || image.kind === "tres_cuartos" ? 0 : 1);
@@ -250,7 +251,7 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
     if (best) {
       ordered = { keep: [best], dropped: ordered.dropped.filter((image) => image !== best) };
       smallPhotoReason = `Foto pequeña: todas las fotos miden menos de 500 px; se usa la mejor (${best.width}×${best.height}).`;
-      t.event("decision", "Clasificar fotos (IA)", `Se usa una foto pequeña (${best.width}×${best.height}): no hay otra válida. Va a revisión.`);
+      t.event("decision", "Clasificar fotos (IA)", `Se usa una foto pequeña (${best.width}×${best.height}): no hay otra válida.`);
     }
   }
   // Si solo hay logos (2026-10-27, masivo): en el software (antivirus en descarga) la única foto es la caja con el logo, y
@@ -363,8 +364,8 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   if (!label && (listing.letra_eficiencia || listing.img_ficha_eficiencia)) warnings.push("Producto con clase energética y sin etiqueta válida: se publica sin etiqueta.");
 
   // Cola de revisión (regla de David del 2026-10-24): el producto se monta igual, pero alguien tiene que mirarlo.
+  if (smallPhotoReason) warnings.push(smallPhotoReason);
   const review_reasons = [
-    smallPhotoReason,
     logoPhotoReason,
     energyClassReason(listing.letra_eficiencia, icecat),
     ...sourceDisagreements(profile, values, listing.cod_subfamilia).map((item) => `${item.name}: MHD dice «${item.mhd}» e Icecat «${item.icecat}» (${Math.round(item.difference * 100)} % de diferencia).`),
