@@ -142,6 +142,8 @@ async function releaseProductRedirects(deps: { db: SupabaseClient; shopify: Shop
 // Etiquetas que se conservan al pisar un producto (David, 2026-10-27): de ellas cuelgan las colecciones Ofertas,
 // Promociones y Novedades. Las demás (las de categoría del árbol viejo, SuperOferta, Descatalogado…) se quitan.
 const KEEP_TAGS = new Set(["Oferta", "Promociones", "Novedad"]);
+// Subida de vídeos mp4 a Shopify (ver la parte de vídeos de createShopifyDraft).
+const UPLOAD_VIDEOS = false;
 
 export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: ShopifyConfig; icecat: IcecatConfig; trace?: Trace }, runId: string) {
   const t = deps.trace ?? noTrace;
@@ -198,7 +200,10 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   // sola vez: si su huella ya está en mhd_importer_shopify_files, se reutiliza.
   const photos = (media ?? []).filter((item) => item.role === "image").sort((a, b) => a.position - b.position);
   const label = (media ?? []).find((item) => item.role === "energy_label");
-  const videos = (media ?? []).filter((item) => item.role === "video").sort((a, b) => a.position - b.position);
+  // Vídeos mp4 parados (David, 2026-10-27): el plan de desarrollo de Shopify admite 250 vídeos alojados y ya están
+  // llenos. Con el plan Advanced (5.000) se vuelve a poner a true y se suben en una pasada aparte para los productos
+  // que los tienen. Los de YouTube no cuentan: van enlazados en `custom.icecat`.
+  const videos = UPLOAD_VIDEOS ? (media ?? []).filter((item) => item.role === "video").sort((a, b) => a.position - b.position) : [];
   const meta = (item: { meta: unknown }) => item.meta as Record<string, string>;
   const productVideos = videos.filter((item) => meta(item).kind === "producto").slice(0, 1);
   const brandVideos = videos.filter((item) => !productVideos.includes(item));
