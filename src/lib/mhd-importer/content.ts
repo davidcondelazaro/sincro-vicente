@@ -262,9 +262,10 @@ export async function writeElviForPage(client: Anthropic, model: string, input: 
 }
 
 // `model`: el modelo limpio (models.ts); sin él, el de MHD. `noModel`: el producto va sin modelo (código interno o
-// compatibilidad de un accesorio, 2026-10-27): el título no lleva el código; si es un accesorio, sí para qué aparato es. `elvi`: escribir la frase de Elvi (por defecto sí:
+// compatibilidad de un accesorio, 2026-10-27): el título no lleva el código; si es un accesorio, sí para qué aparato es.
+// `internalCode`: la referencia interna del proveedor, que nunca va en el título aunque haya modelo («Braun iO 4S CP04332106»). `elvi`: escribir la frase de Elvi (por defecto sí:
 // David la reactivó el 2026-10-26, «tiene mucho valor»; si el revisor la rechaza, la ficha sigue sin ella).
-export async function writeContent(client: Anthropic, input: { profile: FamilyProfile; listing: ListingProduct & { descripcion?: string | null }; detail: MhdProductDetail | null; icecat: IcecatSummary | null; metafields: Record<string, string | string[]>; values: SourceValues; model?: string | null; noModel?: { code: string | null; compatibleWith: string | null }; elvi?: boolean; elviModel?: string; noThinking?: boolean }) {
+export async function writeContent(client: Anthropic, input: { profile: FamilyProfile; listing: ListingProduct & { descripcion?: string | null }; detail: MhdProductDetail | null; icecat: IcecatSummary | null; metafields: Record<string, string | string[]>; values: SourceValues; model?: string | null; noModel?: { code: string | null; compatibleWith: string | null }; internalCode?: string | null; elvi?: boolean; elviModel?: string; noThinking?: boolean }) {
   const { profile, listing, icecat, metafields } = input;
   // Hoja de datos única (facts.ts): la redacción y las revisiones solo ven un valor por dato.
   const values = buildFactSheet(profile, input.values, listing.cod_subfamilia);
@@ -308,7 +309,7 @@ export async function writeContent(client: Anthropic, input: { profile: FamilyPr
     const parsed = JSON.parse(text) as Omit<ProductContent, "elvi_tip"> & { elvi_tip?: ElviTip };
     content = { ...parsed, long_description_html: normalizeBold(parsed.long_description_html ?? ""), elvi_tip: parsed.elvi_tip ?? { text: "", sources: [] } };
     const texts = { title: content.title, meta_title: content.meta_title, short_description: content.short_description, meta_description: content.meta_description, long_description_html: content.long_description_html, ...(content.elvi_tip.text ? { elvi: content.elvi_tip.text } : {}) };
-    errors = [...validateContent(content, brand, model, originals, values, [icecat?.modelName, icecat?.partCode]), ...noCodeInTitle(content.title, input.noModel?.code), ...missingKeyData(content.title, profile, values, listing.nombre_subfamilia, listing.cod_subfamilia), ...unsupportedNumbers(texts, values, [brand, model, listing.nombre_marca, icecat?.partCode, icecat?.modelName], [listing.titulo, strip(listing.descripcion), listing.descripcion_ampliada, icecat?.title, icecat?.shortSummary, icecat?.longSummary, ...(icecat?.bulletPoints ?? [])]).map((problem) => `Cifra sin respaldo: ${problem} Usa solo cifras de los datos o de los textos de referencia.`)];
+    errors = [...validateContent(content, brand, model, originals, values, [icecat?.modelName, icecat?.partCode]), ...noCodeInTitle(content.title, input.noModel?.code ?? input.internalCode), ...missingKeyData(content.title, profile, values, listing.nombre_subfamilia, listing.cod_subfamilia), ...unsupportedNumbers(texts, values, [brand, model, listing.nombre_marca, icecat?.partCode, icecat?.modelName], [listing.titulo, strip(listing.descripcion), listing.descripcion_ampliada, icecat?.title, icecat?.shortSummary, icecat?.longSummary, ...(icecat?.bulletPoints ?? [])]).map((problem) => `Cifra sin respaldo: ${problem} Usa solo cifras de los datos o de los textos de referencia.`)];
     // Solo se revisan los datos de una ficha que ya cumple el formato (ahorra llamadas).
     if (!errors.length) {
       const checked = await factCheck(client, content, facts); usage.push(checked.usage);
