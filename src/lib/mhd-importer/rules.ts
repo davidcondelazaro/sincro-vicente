@@ -47,7 +47,8 @@ export function firstNumber(text: string) {
   if (/^[1-9]\d{0,2},\d{3}$/.test(raw) && THOUSANDS_UNITS.test(after)) return Number(raw.replace(",", ""));
   return Number(/^\d{1,3}(\.\d{3})+$/.test(raw) ? raw.replaceAll(".", "") : raw.replace(",", "."));
 }
-const THOUSANDS_UNITS = /^\s*(w|va|lm|l[uú]menes|mah|dpi|ppp|rpm|mbps|tazas|horas|h)(?![\p{L}])/iu;
+// Ampliada el 2026-10-27: «1,007 m³/h» de una campana Balay se leía 1 m³/h y la ficha salía con el filtro equivocado.
+const THOUSANDS_UNITS = /^\s*(w|va|lm|l[uú]menes|mah|dpi|ppp|rpm|mbps|tazas|horas|h|m³\/h|m3\/h|gb|mb\/s|mbit\/s|l\/h|hojas|p[aá]ginas)(?![\p{L}])/iu;
 const formatNumber = (n: number) => String(Math.round(n * 100) / 100).replace(".", ",");
 const normalize = (text: string) => text.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

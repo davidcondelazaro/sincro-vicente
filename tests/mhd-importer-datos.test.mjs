@@ -132,6 +132,14 @@ test("diferencias de más de un 20 % entre MHD e Icecat", () => {
   assert.equal(relativeDifference("60cm", "598 mm") < 0.01, true);
   assert.equal(relativeDifference("9 kg", "7 kg") > 0.2, true);
   assert.equal(relativeDifference("9 kg", "60 cm"), null);
+  // 2026-10-27: unidades, listas, ceros y datos que no son el mismo.
+  assert.equal(relativeDifference("12 meses", "1 año(s)"), 0);
+  assert.equal(relativeDifference("4,000 GB", "4 TB"), 0);
+  assert.equal(relativeDifference("800 ppp / 1200 ppp / 1600 ppp", "1600 DPI"), 0);
+  assert.equal(relativeDifference("4 TB", "0 GB"), null);
+  assert.equal(relativeDifference("5 dispositivos", "1 licencia(s)"), null);
+  assert.equal(relativeDifference("1,007 m³/h", "1007 m³/h"), 0);
+  assert.equal(relativeDifference("802 m³/h", "340 m³/h") > 0.2, true);
   const p = profile([rule("filtro.capacidad", ["mhd:Capacidad", "icecat:Rendimiento|Capacidad"], { format: "{n} kg", min: "1", max: "30" })], [{ name: "Centrifugado", sources: ["mhd:Centrifugado", "icecat:Rendimiento|Velocidad"], format: "" }]);
   const found = sourceDisagreements(p, new Map([["mhd:capacidad", "9Kg"], ["icecat:rendimiento|capacidad", "7 kg"], ["mhd:centrifugado", "1400 rpm"], ["icecat:rendimiento|velocidad", "1351 rpm"]]));
   assert.deepEqual(found.map((item) => item.name), ["filtro.capacidad"]);

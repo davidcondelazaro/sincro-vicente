@@ -382,10 +382,12 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
 
   // Cola de revisión (regla de David del 2026-10-24): el producto se monta igual, pero alguien tiene que mirarlo.
   if (smallPhotoReason) warnings.push(smallPhotoReason);
+  // Cifras que no cuadran entre MHD e Icecat (David, 2026-10-27): ya no van a revisión, quedan como aviso para el resumen
+  // diario y el informe a MHD. Casi siempre miden cosas distintas (caudal intensivo o normal, potencia de pico o RMS).
+  for (const item of sourceDisagreements(profile, values, listing.cod_subfamilia)) warnings.push(`Cifras: ${item.name}: MHD dice «${item.mhd}» e Icecat «${item.icecat}» (${Math.round(item.difference * 100)} % de diferencia).`);
   const review_reasons = [
     logoPhotoReason,
     eprel ? null : energyClassReason(listing.letra_eficiencia, icecat),
-    ...sourceDisagreements(profile, values, listing.cod_subfamilia).map((item) => `${item.name}: MHD dice «${item.mhd}» e Icecat «${item.icecat}» (${Math.round(item.difference * 100)} % de diferencia).`),
     modelChoice.needsReview ? `Modelo: ${modelChoice.reason}` : null,
     brandChoice.needsReview ? `Marca: ${brandChoice.reason}` : null,
     ...reviewReasons(profile, values, listing.cod_subfamilia),

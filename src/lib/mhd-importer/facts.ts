@@ -76,6 +76,9 @@ const UNITS: Record<string, [string, number]> = {
   min: ["min", 1], minutos: ["min", 1], h: ["min", 60], horas: ["min", 60], v: ["v", 1], hz: ["hz", 1], "%": ["%", 1], "\"": ["m", 0.0254], "”": ["m", 0.0254], "''": ["m", 0.0254], pulgadas: ["m", 0.0254], pulg: ["m", 0.0254],
   mb: ["gb", 0.001], gb: ["gb", 1], tb: ["gb", 1000], "mb/s": ["mb/s", 1], "gb/s": ["mb/s", 1000], mbps: ["mbps", 1], gbps: ["mbps", 1000], "mbit/s": ["mbps", 1], "gbit/s": ["mbps", 1000],
   mp: ["mp", 1], mah: ["mah", 1], dpi: ["dpi", 1], ppp: ["dpi", 1], va: ["va", 1], kva: ["va", 1000], lm: ["lm", 1], "lúmenes": ["lm", 1],
+  // Cola de revisión, 2026-10-27: «12 meses» = «1 año»; licencias, dispositivos y rebanadas no se comparan con otra cosa.
+  mes: ["mes", 1], meses: ["mes", 1], "año": ["mes", 12], "años": ["mes", 12], licencia: ["licencia", 1], licencias: ["licencia", 1],
+  dispositivo: ["dispositivo", 1], dispositivos: ["dispositivo", 1], usuarios: ["dispositivo", 1], rebanadas: ["rebanada", 1],
   bar: ["bar", 1], "l/min": ["l/min", 1], "l/h": ["l/h", 1], "m³/h": ["m3/h", 1], "m3/h": ["m3/h", 1], "m²": ["m2", 1], m2: ["m2", 1], "l/día": ["l/dia", 1], hojas: ["hojas", 1],
 };
 // Las unidades largas primero, para que «kwh» no se quede en «kw» ni «mb/s» en «mb».
@@ -136,9 +139,17 @@ export function unsupportedNumbers(texts: Record<string, string>, sheet: SourceV
 // «598 mm» = 0,3 %). Las cifras enteras de MHD son redondeos («1Kg» frente a «0,25 kg»): menos de una unidad de
 // diferencia no cuenta. Sin cifras comparables (distinta magnitud, o una con unidad y otra sin ella): null.
 export const MAX_DIFFERENCE = 0.2; // regla de David del 2026-10-24: más de un 20 % va a revisión
+// Con varias cifras («800 / 1200 / 1600 PPP», «750W / 1250W / 2000W») vale la que más se acerque. Un 0 es que la
+// fuente no tiene el dato (Icecat «0 GB», «0 W»): no se compara (2026-10-27).
 export function relativeDifference(mhdText: string, icecatText: string) {
-  const a = numbersIn(mhdText)[0]; const b = numbersIn(icecatText)[0];
-  if (!a || !b || a.unit !== b.unit) return null;
+  const all = numbersIn(mhdText); const others = numbersIn(icecatText);
+  const b = others[0]; if (!b || !b.n) return null;
+  const candidates = all.filter((item) => item.n && item.unit === b.unit);
+  if (!candidates.length) return null;
+  const differences = candidates.map((a) => singleDifference(a, b));
+  return Math.min(...differences);
+}
+function singleDifference(a: ReturnType<typeof numbersIn>[number], b: ReturnType<typeof numbersIn>[number]) {
   const factor = a.n ? a.base / a.n : 1; // de la unidad de MHD a la base
   const other = b.base / (factor || 1);
   if (Number.isInteger(a.n) && Math.abs(a.n - other) < 1) return 0;
