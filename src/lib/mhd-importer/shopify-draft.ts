@@ -272,7 +272,9 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   // traer (se reactivan y se les quita la redirección, abajo). En borrador solo lo que tiene algo pendiente: la cola de
   // revisión o «Avisar a MHD» (hasta que se decida qué hacer con ellos). Un producto que ya estaba activo sigue activo.
   const status = existing?.status === "ACTIVE" ? "ACTIVE" : reviewPending || decision?.status === "avisar_mhd" ? "DRAFT" : "ACTIVE";
-  const tags = [...new Set([...shop.tags, ...(existing?.tags ?? []).filter((tag) => KEEP_TAGS.has(tag)), ...(reviewPending ? [REVIEW_TAG] : [])])];
+  // También se filtran las de la prueba guardada: las procesadas antes del 27-10 traen las de categoría del árbol viejo
+  // («Televisores», «TV OLED») y «Energética».
+  const tags = [...new Set([...shop.tags, ...(existing?.tags ?? [])].filter((tag) => KEEP_TAGS.has(tag)).concat(reviewPending ? [REVIEW_TAG] : []))];
   const category = SHOPIFY_CATEGORY_BY_FAMILY[placement.familia] ?? shop.category?.id ?? null;
   // Un borrador aún puede cambiar de dirección; un producto activo (o refrescado) conserva la suya.
   // Un archivado que vuelve también conserva la suya: es la URL que ya conocen Google y los clientes.
