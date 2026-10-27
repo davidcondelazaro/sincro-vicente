@@ -65,9 +65,15 @@ function familyData(db: SupabaseClient, family: string) {
 export async function processJobItem(deps: { db: SupabaseClient; config: SourcesConfig; ai: Anthropic; upload?: boolean | "nuevos"; elviModel?: string; noThinking?: boolean }, item: JobItem) {
   const started = Date.now(); const log = itemLog(deps.db, item);
   try {
-    const { data: listing, error } = await deps.db.rpc("mhd_importer_product", { p_codigo: item.codigo });
+    const { data: fromMhd, error } = await deps.db.rpc("mhd_importer_product", { p_codigo: item.codigo });
     if (error) throw error;
-    if (!listing) throw new Error(`MHD ya no tiene el producto ${item.codigo}.`);
+    if (!fromMhd) throw new Error(`MHD ya no tiene el producto ${item.codigo}.`);
+    // Recolocación (David, 2026-10-27): si MHD lo tiene en una subfamilia equivocada, manda la nuestra (perfil, filtros,
+    // título y colocación en el árbol nuevo).
+    const { data: moved, error: movedError } = await deps.db.from("mhd_importer_subfamily_overrides").select("cod_familia,nombre_familia,cod_subfamilia,nombre_subfamilia,mhd_cod_subfamilia").eq("codigo", item.codigo).maybeSingle();
+    if (movedError) throw movedError;
+    const listing = moved ? { ...fromMhd, cod_familia: moved.cod_familia, nombre_familia: moved.nombre_familia ?? fromMhd.nombre_familia, cod_subfamilia: moved.cod_subfamilia, nombre_subfamilia: moved.nombre_subfamilia ?? fromMhd.nombre_subfamilia } : fromMhd;
+    if (moved) log.add({ level: "decision", step: "Recolocación", message: `MHD lo tiene en «${fromMhd.nombre_subfamilia ?? fromMhd.cod_subfamilia}»; se procesa como «${listing.nombre_subfamilia ?? listing.cod_subfamilia}».` });
     const { profileRow, family } = await familyData(deps.db, listing.cod_familia);
     const subfamilyEans = family.filter((entry) => entry.cod_subfamilia === listing.cod_subfamilia && entry.codigo_ean).map((entry) => entry.codigo_ean!);
     const result = await processProduct({ ...deps, trace: log.trace, elviModel: deps.elviModel, noThinking: deps.noThinking }, listing, profileRow as Parameters<typeof processProduct>[2], subfamilyEans);
