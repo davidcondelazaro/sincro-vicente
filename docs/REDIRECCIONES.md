@@ -29,5 +29,6 @@ Copias de `theme-enterprise-vicente/reference/redirecciones/` (ver `data/redirec
 - **Marca:** a su página de marca; si no existe, a `/pages/marcas`.
 - **Nunca** a la portada por defecto ni en cadena.
 - Las bajas de MHD (archivar + redirigir) añaden su fila con la misma lógica (`SINCRONIZACIONES_MHD.md`).
+- **Productos que vuelven** (David, 2026-10-27): si un producto archivado se reactiva porque MHD lo vuelve a traer, su URL `/products/<handle>` deja de redirigirse (la subida borra esa redirección en Shopify y descarta su fila) y sus URLs viejas vuelven a apuntar a la ficha, porque «sigue vivo». El destino de un producto se calcula siempre con su estado en ese momento, no con el que tenía al archivarse.
 
 Estados: propuesta → revisada → cargada (en Shopify), o descartada.

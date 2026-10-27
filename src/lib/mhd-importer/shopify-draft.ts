@@ -126,6 +126,19 @@ async function treePlacement(db: SupabaseClient, subfamily: string | null) {
   return subfamily ? treeCache.bySubfamily.get(subfamily) ?? null : null;
 }
 
+async function releaseProductRedirects(deps: { db: SupabaseClient; shopify: ShopifyConfig }, handle: string) {
+  const path = `/products/${handle}`;
+  const found = await shopifyGraphql<{ urlRedirects: { nodes: { id: string; path: string }[] } }>(deps.shopify, `query($q: String!) { urlRedirects(first: 10, query: $q) { nodes { id path } } }`, { q: `path:"${path}"` });
+  const own = found.urlRedirects.nodes.filter((item) => item.path === path);
+  for (const item of own) {
+    const data = await shopifyGraphql<{ urlRedirectDelete: { userErrors: UserError[] } }>(deps.shopify, `mutation($id: ID!) { urlRedirectDelete(id: $id) { userErrors { field message } } }`, { id: item.id });
+    check(data.urlRedirectDelete.userErrors, `Shopify no quitó la redirección de ${path}`);
+  }
+  const { error } = await deps.db.from("store_redirects").update({ status: "descartada", note: `El producto vuelve a estar en la tienda (${new Date().toISOString().slice(0, 10)}): su URL ya no se redirige.`, updated_at: new Date().toISOString() }).eq("origin", path);
+  if (error) throw new Error(`No se pudo actualizar la base de redirecciones: ${error.message}`);
+  return own.length;
+}
+
 // Etiquetas que se conservan al pisar un producto (David, 2026-10-27): de ellas cuelgan las colecciones Ofertas,
 // Promociones y Novedades. Las demás (las de categoría del árbol viejo, SuperOferta, Descatalogado…) se quitan.
 const KEEP_TAGS = new Set(["Oferta", "Promociones", "Novedad"]);
@@ -255,14 +268,15 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
         optionValues: [{ optionName: "Title", name: "Default Title" }], price: shop.variant.price, sku: shop.variant.sku, barcode: shop.variant.barcode, inventoryPolicy: shop.variant.inventoryPolicy,
         inventoryItem: { tracked: true, ...(shop.variant.weightKg ? { measurement: { weight: { value: shop.variant.weightKg, unit: "KILOGRAMS" } } } : {}) },
         inventoryQuantities: shop.inventory.map((item) => ({ locationId: locationId(item.location), name: "available", quantity: item.quantity })) };
-  // Estado (David, 2026-10-27): los productos nuevos de la subida van activos. En borrador solo lo que tiene algo
-  // pendiente: la cola de revisión o «Avisar a MHD» (hasta que se decida qué hacer con ellos). Un producto que ya
-  // estaba activo sigue activo y uno archivado sigue archivado.
-  const status = existing?.status === "ACTIVE" || existing?.status === "ARCHIVED" ? existing.status : reviewPending || decision?.status === "avisar_mhd" ? "DRAFT" : "ACTIVE";
+  // Estado (David, 2026-10-27): los productos nuevos de la subida van activos, y también los archivados que MHD vuelve a
+  // traer (se reactivan y se les quita la redirección, abajo). En borrador solo lo que tiene algo pendiente: la cola de
+  // revisión o «Avisar a MHD» (hasta que se decida qué hacer con ellos). Un producto que ya estaba activo sigue activo.
+  const status = existing?.status === "ACTIVE" ? "ACTIVE" : reviewPending || decision?.status === "avisar_mhd" ? "DRAFT" : "ACTIVE";
   const tags = [...new Set([...shop.tags, ...(existing?.tags ?? []).filter((tag) => KEEP_TAGS.has(tag)), ...(reviewPending ? [REVIEW_TAG] : [])])];
   const category = SHOPIFY_CATEGORY_BY_FAMILY[placement.familia] ?? shop.category?.id ?? null;
   // Un borrador aún puede cambiar de dirección; un producto activo (o refrescado) conserva la suya.
-  const handle = existing && (refresh || existing.status === "ACTIVE") ? existing.handle : shop.handle;
+  // Un archivado que vuelve también conserva la suya: es la URL que ya conocen Google y los clientes.
+  const handle = existing && (refresh || existing.status === "ACTIVE" || existing.status === "ARCHIVED") ? existing.handle : shop.handle;
   const input = {
     title: shop.title, handle, status, vendor: shop.vendor, productType: placement.familyTitle, tags,
     ...(category ? { category } : {}), descriptionHtml: shop.descriptionHtml, seo: shop.seo, metafields: finalMetafields,
@@ -271,13 +285,17 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
     variants: [variant],
   };
   const data = await t.step("Shopify: crear el producto", () => shopifyGraphql<{ productSet: { product: (Parameters<typeof mirrorProduct>[1]) | null; userErrors: UserError[] } }>(deps.shopify,
-    `mutation($input: ProductSetInput!, $identifier: ProductSetIdentifiers) { productSet(input: $input, identifier: $identifier, synchronous: true) { product { ${MIRROR_PRODUCT_FIELDS} variants(first: 10) { nodes { ${MIRROR_VARIANT_FIELDS} } } } userErrors { field message } } }`, { input, identifier: existing ? { id: existing.id } : null }), (result) => (result.productSet.product ? `${existing ? "actualizado" : "creado"} ${status === "ACTIVE" ? "activo" : status === "DRAFT" ? "en borrador" : "archivado"}` : null));
+    `mutation($input: ProductSetInput!, $identifier: ProductSetIdentifiers) { productSet(input: $input, identifier: $identifier, synchronous: true) { product { ${MIRROR_PRODUCT_FIELDS} variants(first: 10) { nodes { ${MIRROR_VARIANT_FIELDS} } } } userErrors { field message } } }`, { input, identifier: existing ? { id: existing.id } : null }), (result) => (result.productSet.product ? `${existing ? "actualizado" : "creado"} ${status === "ACTIVE" ? "activo" : "en borrador"}` : null));
   check(data.productSet.userErrors, existing ? "Shopify no actualizó el producto" : "Shopify no creó el producto");
   const created = data.productSet.product!;
   // Canales de venta: todos, también al pisar un producto que ya estaba (publicar en un canal en el que ya está no hace
   // nada). Sin canal no se puede previsualizar el borrador (da 404); estar en el canal no lo enseña al cliente mientras
   // siga en borrador.
   await t.step("Shopify: canales de venta", () => publishToStoreChannels(deps.shopify, created.id), () => `${channelsCache?.ids.length ?? 0} canales`);
+  // Archivado que vuelve (David, 2026-10-27): al archivarlo, su URL se redirigió a su colección; esa redirección se
+  // borra en Shopify y se descarta en la base de redirecciones (docs/REDIRECCIONES.md), para que la URL vuelva a ser
+  // la del producto.
+  if (existing?.status === "ARCHIVED") await t.step("Redirecciones del producto reactivado", () => releaseProductRedirects(deps, created.handle), (removed) => `${removed} redirecciones quitadas`);
   // Al espejo de la tienda en el momento, para que la siguiente subida o procesado ya lo vea.
   await mirrorProduct(deps.db, created);
   // Al actualizar, productSet no borra los metacampos que ya no van (p. ej. la etiqueta, el EPREL o la ficha de Icecat
