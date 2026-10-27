@@ -82,6 +82,7 @@ export async function fetchEprelClass(eprelId: string): Promise<{ energyClass: s
   const response = await fetch(`https://eprel.ec.europa.eu/api/product/${encodeURIComponent(eprelId)}`, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(20_000) }).catch(() => null);
   if (!response?.ok) return null;
   const data = await response.json().catch(() => null) as { energyClass?: string; productGroup?: string; modelIdentifier?: string } | null;
-  const energyClass = data?.energyClass?.trim().toUpperCase() ?? "";
+  // La escala antigua llega como «AP», «APP», «APPP» (A+, A++, A+++).
+  const energyClass = (data?.energyClass?.trim().toUpperCase() ?? "").replace(/^A(P{1,3})$/, (_, plus: string) => `A${"+".repeat(plus.length)}`);
   return /^(A\+{1,3}|[A-G])$/.test(energyClass) ? { energyClass, productGroup: data?.productGroup ?? null, model: data?.modelIdentifier ?? null } : null;
 }
