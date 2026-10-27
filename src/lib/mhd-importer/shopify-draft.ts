@@ -104,20 +104,22 @@ export async function publishToStoreChannels(shopify: ShopifyConfig, productId: 
 // Colocación en el árbol nuevo (docs/IMPORTADOR_PRODUCTOS_MHD.md, «Colocación al subir»): la subfamilia de MHD (o la
 // nuestra si está recolocada) da la familia; en store_collections, su padre es el grupo y su apartado, el apartado. Se
 // leen una vez por hora. Sin familia del árbol el producto no se sube: quedaría fuera de todas las colecciones.
-let treeCache: { at: number; bySubfamily: Map<string, { apartado: string; grupo: string; familia: string }> } | null = null;
+// El tipo de producto de Shopify es el nombre de la familia (David, 2026-10-27): sale como filtro «Categoría» en las
+// colecciones y el «Tipo» de la ficha enlaza a su familia.
+let treeCache: { at: number; bySubfamily: Map<string, { apartado: string; grupo: string; familia: string; familyTitle: string }> } | null = null;
 async function treePlacement(db: SupabaseClient, subfamily: string | null) {
   if (!treeCache || Date.now() - treeCache.at > 3_600_000) {
     const [{ data: map, error: mapError }, { data: collections, error: collectionsError }] = await Promise.all([
       db.from("store_mhd_subfamily_map").select("mhd_subfamily_code,collection_handle").not("collection_handle", "is", null),
-      db.from("store_collections").select("handle,parent_handle,apartado_handle"),
+      db.from("store_collections").select("handle,title,parent_handle,apartado_handle"),
     ]);
     if (mapError) throw mapError;
     if (collectionsError) throw collectionsError;
-    const byHandle = new Map((collections as { handle: string; parent_handle: string | null; apartado_handle: string | null }[]).map((row) => [row.handle, row]));
-    const bySubfamily = new Map<string, { apartado: string; grupo: string; familia: string }>();
+    const byHandle = new Map((collections as { handle: string; title: string; parent_handle: string | null; apartado_handle: string | null }[]).map((row) => [row.handle, row]));
+    const bySubfamily = new Map<string, { apartado: string; grupo: string; familia: string; familyTitle: string }>();
     for (const row of map as { mhd_subfamily_code: string; collection_handle: string }[]) {
       const family = byHandle.get(row.collection_handle);
-      if (family?.parent_handle && family.apartado_handle) bySubfamily.set(row.mhd_subfamily_code, { apartado: family.apartado_handle, grupo: family.parent_handle, familia: row.collection_handle });
+      if (family?.parent_handle && family.apartado_handle) bySubfamily.set(row.mhd_subfamily_code, { apartado: family.apartado_handle, grupo: family.parent_handle, familia: row.collection_handle, familyTitle: family.title });
     }
     treeCache = { at: Date.now(), bySubfamily };
   }
@@ -258,7 +260,7 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   // Un borrador aún puede cambiar de dirección; un producto activo (o refrescado) conserva la suya.
   const handle = existing && (refresh || existing.status === "ACTIVE") ? existing.handle : shop.handle;
   const input = {
-    title: shop.title, handle, status: existing?.status ?? "DRAFT", vendor: shop.vendor, productType: shop.productType ?? "", tags,
+    title: shop.title, handle, status: existing?.status ?? "DRAFT", vendor: shop.vendor, productType: placement.familyTitle, tags,
     ...(category ? { category } : {}), descriptionHtml: shop.descriptionHtml, seo: shop.seo, metafields: finalMetafields,
     files: galleryFiles,
     productOptions: [{ name: "Title", values: [{ name: "Default Title" }] }],
