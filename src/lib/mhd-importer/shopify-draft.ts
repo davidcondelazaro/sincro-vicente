@@ -8,6 +8,7 @@ import { createHash } from "node:crypto";
 import { STORE_RULES, type ProcessedProduct } from "./processor";
 import { fetchIcecatDocument, type IcecatConfig } from "./sources";
 import { mediaBytes } from "./media-store";
+import { SHOPIFY_CATEGORY_BY_FAMILY } from "./shopify-categories";
 import { noTrace, type Trace } from "./trace";
 import { shopifyGraphql, type ShopifyConfig } from "./store-filters";
 import { MIRROR_PRODUCT_FIELDS, MIRROR_VARIANT_FIELDS, mirrorProduct } from "../shopify-mirror";
@@ -100,6 +101,33 @@ export async function publishToStoreChannels(shopify: ShopifyConfig, productId: 
   check(data.publishablePublish.userErrors, "Shopify no añadió el producto a sus canales de venta");
 }
 
+// Colocación en el árbol nuevo (docs/IMPORTADOR_PRODUCTOS_MHD.md, «Colocación al subir»): la subfamilia de MHD (o la
+// nuestra si está recolocada) da la familia; en store_collections, su padre es el grupo y su apartado, el apartado. Se
+// leen una vez por hora. Sin familia del árbol el producto no se sube: quedaría fuera de todas las colecciones.
+let treeCache: { at: number; bySubfamily: Map<string, { apartado: string; grupo: string; familia: string }> } | null = null;
+async function treePlacement(db: SupabaseClient, subfamily: string | null) {
+  if (!treeCache || Date.now() - treeCache.at > 3_600_000) {
+    const [{ data: map, error: mapError }, { data: collections, error: collectionsError }] = await Promise.all([
+      db.from("store_mhd_subfamily_map").select("mhd_subfamily_code,collection_handle").not("collection_handle", "is", null),
+      db.from("store_collections").select("handle,parent_handle,apartado_handle"),
+    ]);
+    if (mapError) throw mapError;
+    if (collectionsError) throw collectionsError;
+    const byHandle = new Map((collections as { handle: string; parent_handle: string | null; apartado_handle: string | null }[]).map((row) => [row.handle, row]));
+    const bySubfamily = new Map<string, { apartado: string; grupo: string; familia: string }>();
+    for (const row of map as { mhd_subfamily_code: string; collection_handle: string }[]) {
+      const family = byHandle.get(row.collection_handle);
+      if (family?.parent_handle && family.apartado_handle) bySubfamily.set(row.mhd_subfamily_code, { apartado: family.apartado_handle, grupo: family.parent_handle, familia: row.collection_handle });
+    }
+    treeCache = { at: Date.now(), bySubfamily };
+  }
+  return subfamily ? treeCache.bySubfamily.get(subfamily) ?? null : null;
+}
+
+// Etiquetas que se conservan al pisar un producto (David, 2026-10-27): de ellas cuelgan las colecciones Ofertas,
+// Promociones y Novedades. Las demás (las de categoría del árbol viejo, SuperOferta, Descatalogado…) se quitan.
+const KEEP_TAGS = new Set(["Oferta", "Promociones", "Novedad"]);
+
 export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: ShopifyConfig; icecat: IcecatConfig; trace?: Trace }, runId: string) {
   const t = deps.trace ?? noTrace;
   const { data: run, error } = await deps.db.from("mhd_importer_product_runs").select("id,status,result,shopify_product_id").eq("id", runId).single();
@@ -114,6 +142,8 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   const { data: queued, error: queueError } = await deps.db.from("mhd_importer_review_queue").select("pending").eq("codigo", product.codigo).maybeSingle();
   if (queueError) throw queueError;
   const reviewPending = Boolean(queued?.pending);
+  const placement = await t.step("Colocación en el árbol", () => treePlacement(deps.db, product.family.subfamilyCode), (result) => (result ? `${result.apartado} › ${result.grupo} › ${result.familia}` : "Sin familia del árbol"));
+  if (!placement) throw new Error(`La subfamilia ${product.family.subfamilyName ?? product.family.subfamilyCode} no tiene familia en el árbol nuevo: no se sube.`);
   // ¿Ya existe en Shopify? Primero la propia prueba; si no, cualquier prueba anterior del mismo código de MHD.
   let existingId = run.shopify_product_id as string | null;
   if (!existingId) {
@@ -134,7 +164,7 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
     if (products[0]) { existingId = products[0]; refresh = true; }
   }
   type ExistingVariant = { id: string; price: string; compareAtPrice: string | null; sku: string | null; barcode: string | null; inventoryPolicy: string };
-  const existing = existingId ? (await shopifyGraphql<{ product: { id: string; handle: string; status: string; variants: { nodes: ExistingVariant[] } } | null }>(deps.shopify, `query($id: ID!) { product(id: $id) { id handle status variants(first: 2) { nodes { id price compareAtPrice sku barcode inventoryPolicy } } } }`, { id: existingId })).product : null;
+  const existing = existingId ? (await shopifyGraphql<{ product: { id: string; handle: string; status: string; tags: string[]; variants: { nodes: ExistingVariant[] } } | null }>(deps.shopify, `query($id: ID!) { product(id: $id) { id handle status tags variants(first: 2) { nodes { id price compareAtPrice sku barcode inventoryPolicy } } } }`, { id: existingId })).product : null;
   // Un producto activo (publicado) nunca recibe lo de negocio del importador, lo haya creado él o no.
   if (existing?.status === "ACTIVE") refresh = true;
   if (refresh && existing && existing.variants.nodes.length !== 1) throw new Error("El producto que ya tiene la tienda tiene varias variantes: el refresco solo cubre productos de una variante.");
@@ -204,6 +234,11 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
     ...(labelId ? [{ namespace: "custom", key: "etiqueta_energetica", type: "file_reference", value: labelId }] : []),
     ...(documentIds.length ? [{ namespace: "custom", key: "documentos", type: "list.file_reference", value: JSON.stringify(documentIds) }] : []),
     ...(videoIds.length ? [{ namespace: "custom", key: "videos", type: "list.file_reference", value: JSON.stringify(videoIds) }] : []),
+    // Árbol nuevo: siempre los cuatro (productSet borra los que no se envían).
+    { namespace: "custom", key: "apartado", type: "single_line_text_field", value: placement.apartado },
+    { namespace: "custom", key: "grupo", type: "single_line_text_field", value: placement.grupo },
+    { namespace: "custom", key: "familia", type: "single_line_text_field", value: placement.familia },
+    ...(product.family.subfamilyCode ? [{ namespace: "custom", key: "mhd_subfamilia", type: "single_line_text_field", value: product.family.subfamilyCode }] : []),
   ];
   const KEEP_ON_REFRESH = new Set(["custom.disponibilidad_con_stock", "custom.disponibilidad_sin_stock", "custom.prioridad"]);
   // productSet deja el producto solo con los metacampos que se le pasan: en el refresco, los que se conservan se
@@ -218,11 +253,13 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
         optionValues: [{ optionName: "Title", name: "Default Title" }], price: shop.variant.price, sku: shop.variant.sku, barcode: shop.variant.barcode, inventoryPolicy: shop.variant.inventoryPolicy,
         inventoryItem: { tracked: true, ...(shop.variant.weightKg ? { measurement: { weight: { value: shop.variant.weightKg, unit: "KILOGRAMS" } } } : {}) },
         inventoryQuantities: shop.inventory.map((item) => ({ locationId: locationId(item.location), name: "available", quantity: item.quantity })) };
+  const tags = [...new Set([...shop.tags, ...(existing?.tags ?? []).filter((tag) => KEEP_TAGS.has(tag)), ...(reviewPending ? [REVIEW_TAG] : [])])];
+  const category = SHOPIFY_CATEGORY_BY_FAMILY[placement.familia] ?? shop.category?.id ?? null;
   // Un borrador aún puede cambiar de dirección; un producto activo (o refrescado) conserva la suya.
   const handle = existing && (refresh || existing.status === "ACTIVE") ? existing.handle : shop.handle;
   const input = {
-    title: shop.title, handle, status: existing?.status ?? "DRAFT", vendor: shop.vendor, productType: shop.productType ?? "", tags: reviewPending ? [...shop.tags, REVIEW_TAG] : shop.tags,
-    ...(shop.category ? { category: shop.category.id } : {}), descriptionHtml: shop.descriptionHtml, seo: shop.seo, metafields: finalMetafields,
+    title: shop.title, handle, status: existing?.status ?? "DRAFT", vendor: shop.vendor, productType: shop.productType ?? "", tags,
+    ...(category ? { category } : {}), descriptionHtml: shop.descriptionHtml, seo: shop.seo, metafields: finalMetafields,
     files: galleryFiles,
     productOptions: [{ name: "Title", values: [{ name: "Default Title" }] }],
     variants: [variant],
