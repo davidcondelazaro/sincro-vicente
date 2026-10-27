@@ -43,8 +43,12 @@ const DEVICE_WORDS: Record<string, string> = { APPLE: "APPLE", APPL: "APPLE", IP
 const foreignDevice = (text: string, brand: string) => words(plain(text)).some((word) => { const owner = DEVICE_WORDS[word.replace(/[^A-Z0-9]/g, "")]; return owner !== undefined && (!owner || !plain(brand).replace(/[^A-Z0-9]/g, "").includes(owner)); });
 
 // Códigos que no son modelos: internos de MHD (dos letras y 6-9 cifras, «DSP…»), ASIN de Amazon, EAN o números largos.
-export function isInternalCode(text: string, ean?: string | null) {
+// Excepto en las marcas cuyas referencias reales tienen esa forma (2026-10-27: el grupo SEB, «LS340800», «XA254010», y el
+// de BSH, «HZ638070»): sin esta excepción se quedaban sin modelo 12 productos de Moulinex, Krups, Tefal, Rowenta y Siemens.
+const SIX_DIGIT_BRANDS = new Set(["MOULINEX", "KRUPS", "TEFAL", "ROWENTA", "CALOR", "SEB", "SIEMENS", "BOSCH", "BALAY", "NEFF", "GAGGENAU"]);
+export function isInternalCode(text: string, ean?: string | null, brand?: string | null) {
   const code = text.trim().toUpperCase();
+  if (/^[A-Z]{2}\d{6}$/.test(code) && SIX_DIGIT_BRANDS.has(plain(brand ?? "").replace(/[^A-Z]/g, ""))) return false;
   return /^[A-Z]{2}\d{6,9}$/.test(code) || /^DSP\d{6,}$/.test(code) || /^MGS\d{4,}$/.test(code) || (/^B0[0-9A-Z]{8}$/.test(code) && /[A-Z]/.test(code.slice(2)))
     || /^\d{12,14}$/.test(code) || Boolean(ean && normalizeModel(code) === normalizeModel(ean));
 }
@@ -54,7 +58,7 @@ export function isInternalCode(text: string, ean?: string | null) {
 export function cleanModelText(raw: string, brand: string, options: { title?: string | null; ean?: string | null; game?: boolean } = {}): { text: string; problem: string | null; notes: string[] } {
   const notes: string[] = [];
   let text = raw.trim();
-  if (isInternalCode(text, options.ean)) return { text, problem: /^\d+$/.test(text) ? "es un EAN o un número largo" : "es un código interno del proveedor", notes };
+  if (isInternalCode(text, options.ean, brand)) return { text, problem: /^\d+$/.test(text) ? "es un EAN o un número largo" : "es un código interno del proveedor", notes };
   const broken = /[?�]/.test(text);
   text = text.replace(/[®™©]/g, "").replace(/[?�]/g, "");
   if (options.game) return { text: text.replace(/\s+/g, " ").trim(), problem: null, notes: ["nombre del juego"] };

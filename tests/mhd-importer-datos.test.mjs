@@ -61,6 +61,9 @@ test("modelo: código interno o compatibilidad sin Icecat, sin modelo o el de la
     assert.deepEqual([choice.model, choice.needsReview, choice.dropped], [null, false, "internal"], ref);
   }
   for (const ref of ["PROTECTOR APPLE IPH", "APPLE IPHONE 17 AIR", "SAMSUNG GALAXY A57", "PROTECTOR DE LENTE / APPL"]) assert.deepEqual([model(ref, "JC").model, model(ref, "JC").needsReview, model(ref, "JC").dropped], [null, false, "compatibility"], ref);
+  // Referencias reales con forma de código interno (grupo SEB y BSH): son el modelo.
+  for (const [ref, brand] of [["LS340800", "Moulinex"], ["XA254010", "Tefal"], ["EA870810", "Krups"], ["WB406120", "Rowenta"], ["HZ638070", "Siemens"]]) assert.deepEqual([model(ref, brand).model, model(ref, brand).needsReview], [ref, false], ref);
+  assert.equal(model("AB123014", "Abysm").model, null);
   const found = resolveModel({ ref_proved: "UK505445", nombre_marca: "Unykach", titulo: "", codigo_ean: "8445123456789" }, null, "MK212 PRO");
   assert.deepEqual([found.model, found.source, found.needsReview], ["MK212 PRO", "texto", false]);
   // Lo que encuentre la IA también se limpia y tiene que ser un modelo: sin cifras o una compatibilidad, no vale.
