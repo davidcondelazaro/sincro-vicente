@@ -199,7 +199,9 @@ export function discardReason(listing: ListingProduct & { descripcion?: string |
   const excluded = exclusionReason(listing);
   if (excluded) return excluded;
   const photos = detail?.fotos?.length ? detail.fotos : listing.imagen ? [listing.imagen] : [];
-  if (!photos.length) return "Sin imagen";
+  // Sin fotos en MHD pero con galería en Icecat (comprobado que es el mismo modelo), se usan las de Icecat (2026-10-27:
+  // se descartaban 223 productos que Icecat tenía con galería completa).
+  if (!photos.length && !icecat?.gallery?.length) return "Sin imagen";
   const mhdText = `${listing.descripcion ?? ""} ${listing.descripcion_ampliada ?? ""}`.replace(/<[^>]+>/g, " ").trim();
   const mhdFeatures = detail?.caracteristicas?.length ?? 0;
   const icecatFeatures = Object.values(icecat?.specifications ?? {}).reduce((total, group) => total + Object.keys(group).length, 0);

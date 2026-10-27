@@ -255,3 +255,9 @@ test("Icecat: referencia interna de MHD que no sale en su título (masivo, 2026-
   assert.equal(looksInternal("DT80T-053", { partCode: "DT80F-305", modelName: null }), false);
   assert.equal(looksInternal(null, { partCode: "X", modelName: null }), false);
 });
+
+test("descartes: sin fotos en MHD pero con galería en Icecat no se descarta (masivo, 2026-10-27)", () => {
+  const base = { codigo: "1", codigo_ean: "1", nombre_marca: "X", nombre_subfamilia: null, pvp: 1, stock: 1, imagen: "", letra_eficiencia: null, img_ficha_eficiencia: null, descripcion_ampliada: "x".repeat(200), ref_proved: "A1", titulo: "", cod_subfamilia: "S01" };
+  assert.equal(discardReason(base, null, null), "Sin imagen");
+  assert.equal(discardReason(base, null, { gallery: [{ url: "https://icecat/a.jpg" }], specifications: {} }), null);
+});
