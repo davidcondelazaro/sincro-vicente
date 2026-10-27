@@ -198,6 +198,8 @@ export function reviewReasons(profile: FamilyProfile, values: SourceValues, subf
 export function discardReason(listing: ListingProduct & { descripcion?: string | null; cod_familia?: string | null }, detail: MhdProductDetail | null, icecat: IcecatSummary | null): string | null {
   const excluded = exclusionReason(listing);
   if (excluded) return excluded;
+  // Sin precio no se publica (David, 2026-10-27: «solo hay que descartar si algo llega con precio 0»).
+  if (!(Number(listing.pvp) > 0)) return "Sin precio o con precio 0";
   const photos = detail?.fotos?.length ? detail.fotos : listing.imagen ? [listing.imagen] : [];
   // Sin fotos en MHD pero con galería en Icecat (comprobado que es el mismo modelo), se usan las de Icecat (2026-10-27:
   // se descartaban 223 productos que Icecat tenía con galería completa).

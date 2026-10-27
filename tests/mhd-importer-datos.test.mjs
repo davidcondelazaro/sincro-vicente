@@ -9,7 +9,7 @@ const { resolveModel } = await jiti.import("../src/lib/mhd-importer/models.ts");
 const { resolveBrand, writtenBrand } = await jiti.import("../src/lib/mhd-importer/brands.ts");
 const { buildFactSheet, numbersIn, unsupportedNumbers, relativeDifference, sourceDisagreements } = await jiti.import("../src/lib/mhd-importer/facts.ts");
 const { applyProfile, discardReason, exclusionReason } = await jiti.import("../src/lib/mhd-importer/rules.ts");
-const { energyClassReason, median, priceReason } = await jiti.import("../src/lib/mhd-importer/review.ts");
+const { energyClassReason, median } = await jiti.import("../src/lib/mhd-importer/review.ts");
 
 const model = (ref, brand = "X", titulo = "", icecat = null, extra = {}) => resolveModel({ ref_proved: ref, nombre_marca: brand, titulo, codigo_ean: "8445123456789", ...extra }, icecat);
 const icecat = (modelName, partCode, brand = "X") => ({ modelName, partCode, brand });
@@ -145,12 +145,6 @@ test("cola de revisión: clase energética y precio", () => {
   assert.equal(energyClassReason("A", { specifications: { x: { "Clase de eficiencia energética (SDR)": "F", "Clase de eficiencia energética (HDR)": "G" } } }) !== null, true);
   assert.equal(energyClassReason(null, withClass("A")), null);
   assert.equal(median([300, 100, 0, null, 200]), 200);
-  assert.match(priceReason(0, 200, 10), /Sin precio/);
-  assert.match(priceReason(null, 200, 10), /Sin precio/);
-  assert.match(priceReason(1001, 200, 10), /más de 5 veces/);
-  assert.match(priceReason(39, 200, 10), /quinta parte/);
-  assert.equal(priceReason(250, 200, 10), null);
-  assert.equal(priceReason(5000, 200, 2), null); // con pocos precios en la subfamilia no se compara
 });
 
 test("reglas de revisión del perfil", async () => {
@@ -260,4 +254,11 @@ test("descartes: sin fotos en MHD pero con galería en Icecat no se descarta (ma
   const base = { codigo: "1", codigo_ean: "1", nombre_marca: "X", nombre_subfamilia: null, pvp: 1, stock: 1, imagen: "", letra_eficiencia: null, img_ficha_eficiencia: null, descripcion_ampliada: "x".repeat(200), ref_proved: "A1", titulo: "", cod_subfamilia: "S01" };
   assert.equal(discardReason(base, null, null), "Sin imagen");
   assert.equal(discardReason(base, null, { gallery: [{ url: "https://icecat/a.jpg" }], specifications: {} }), null);
+});
+
+test("precio: solo se descarta con precio 0 o sin precio (David, 2026-10-27)", () => {
+  const base = { codigo: "1", codigo_ean: "1", nombre_marca: "X", nombre_subfamilia: null, stock: 1, imagen: "https://x/a.jpg", letra_eficiencia: null, img_ficha_eficiencia: null, descripcion_ampliada: "x".repeat(200), ref_proved: "A1", titulo: "", cod_subfamilia: "S01" };
+  assert.equal(discardReason({ ...base, pvp: 0 }, null, null), "Sin precio o con precio 0");
+  assert.equal(discardReason({ ...base, pvp: null }, null, null), "Sin precio o con precio 0");
+  assert.equal(discardReason({ ...base, pvp: 4 }, null, null), null);
 });

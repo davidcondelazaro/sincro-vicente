@@ -10,7 +10,7 @@ import { writeContent, writeElviForPage, type ProductContent } from "./content";
 import { resolveBrand, type BrandChoice } from "./brands";
 import { sourceDisagreements } from "./facts";
 import { resolveModel, type ModelChoice } from "./models";
-import { energyClassReason, median, priceReason } from "./review";
+import { energyClassReason } from "./review";
 import type { ListingProduct } from "./family";
 import { cached } from "./cache";
 import { gatherProduct, type SourcesConfig } from "./gather";
@@ -145,22 +145,6 @@ async function verifiedIcecat(deps: { db: SupabaseClient; config: SourcesConfig;
   }
   warnings.push("Icecat no tiene nuestro modelo: ficha técnica solo con MHD y sin etiqueta de Icecat.");
   return { icecat: null, costUsd: check.costUsd, check };
-}
-
-// Mediana del PVP de la subfamilia (sin el propio producto) para la revisión de precios. Se lee el listado de la familia
-// con la función del importador (las tablas mhd_catalog_* solo las lee service_role) y se guarda 10 minutos en memoria,
-// así un lote de la misma familia la calcula una sola vez.
-const familyPrices = new Map<string, { at: number; rows: Promise<{ codigo: string; cod_subfamilia: string | null; pvp: number | null }[]> }>();
-async function subfamilyPrices(db: SupabaseClient, listing: Listing) {
-  if (!listing.cod_familia || !listing.cod_subfamilia) return null;
-  let entry = familyPrices.get(listing.cod_familia);
-  if (!entry || Date.now() - entry.at > 10 * 60_000) {
-    const rows = Promise.resolve(db.rpc("mhd_importer_family_listing", { p_family_code: listing.cod_familia })).then(({ data, error }) => { if (error) throw new Error(error.message); return (data ?? []) as { codigo: string; cod_subfamilia: string | null; pvp: number | null }[]; });
-    entry = { at: Date.now(), rows }; familyPrices.set(listing.cod_familia, entry);
-    rows.catch(() => familyPrices.delete(listing.cod_familia!));
-  }
-  const others = (await entry.rows).filter((row) => row.cod_subfamilia === listing.cod_subfamilia && row.codigo !== listing.codigo && Number(row.pvp) > 0).map((row) => Number(row.pvp));
-  return { median: median(others), count: others.length };
 }
 
 export async function processProduct(deps: { db: SupabaseClient; config: SourcesConfig; ai: Anthropic; trace?: Trace; elviModel?: string; noThinking?: boolean }, listing: Listing, profileRow: { profile: FamilyProfile | null; status: string } | null, subfamilyEans: string[]): Promise<ProcessResult> {
@@ -379,13 +363,11 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   if (!label && (listing.letra_eficiencia || listing.img_ficha_eficiencia)) warnings.push("Producto con clase energética y sin etiqueta válida: se publica sin etiqueta.");
 
   // Cola de revisión (regla de David del 2026-10-24): el producto se monta igual, pero alguien tiene que mirarlo.
-  const prices = await subfamilyPrices(deps.db, listing).catch((caught: Error) => { warnings.push(`Mediana de precios: ${caught.message}`); return null; });
   const review_reasons = [
     smallPhotoReason,
     logoPhotoReason,
     energyClassReason(listing.letra_eficiencia, icecat),
     ...sourceDisagreements(profile, values, listing.cod_subfamilia).map((item) => `${item.name}: MHD dice «${item.mhd}» e Icecat «${item.icecat}» (${Math.round(item.difference * 100)} % de diferencia).`),
-    priceReason(listing.pvp, prices?.median ?? null, prices?.count ?? 0),
     modelChoice.needsReview ? `Modelo: ${modelChoice.reason}` : null,
     brandChoice.needsReview ? `Marca: ${brandChoice.reason}` : null,
     ...reviewReasons(profile, values, listing.cod_subfamilia),
