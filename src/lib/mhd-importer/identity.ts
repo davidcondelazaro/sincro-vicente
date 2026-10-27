@@ -22,9 +22,13 @@ const schema = { type: "object", additionalProperties: false, required: ["same",
 // modelo de Icecat (soportes «TV90306487», «VC321231» frente a «WM-70T-03»). Con ella, la IA rechazaba fichas buenas por
 // «la referencia no coincide» (1 de cada 4 soportes). Un modelo parecido pero distinto («DT80T-053» y «DT80F-305»)
 // comparte tramos y sigue con la comprobación estricta.
-export function looksInternal(ref: string | null, icecat: Pick<IcecatSummary, "partCode" | "modelName">) {
+export function looksInternal(ref: string | null, icecat: Pick<IcecatSummary, "partCode" | "modelName">, title = "") {
   const model = normalizeModel(ref);
   if (model.length < 4) return false;
+  // Los códigos internos de MHD tienen forma fija: dos letras y seis o más cifras («TV9032318», «CN11537911»). Un modelo
+  // del fabricante que sale en el título («Lavadora Bosch WAN24272ES») no es interno aunque no se parezca al de Icecat:
+  // ahí Icecat es otro producto.
+  if (!/^[A-Z]{2}\d{6,}$/.test(model) && normalizeModel(title).includes(model)) return false;
   const others = [icecat.partCode, icecat.modelName].map(normalizeModel).filter((value) => value.length >= 4);
   for (let i = 0; i + 4 <= model.length; i += 1) if (others.some((other) => other.includes(model.slice(i, i + 4)))) return false;
   return true;
@@ -32,9 +36,9 @@ export function looksInternal(ref: string | null, icecat: Pick<IcecatSummary, "p
 
 export async function checkIcecatIdentity(client: Anthropic, product: { title: string; brand: string; ref: string | null }, icecat: IcecatSummary, byEan = true) {
   if (sameModel(product.ref, icecat)) return { same: true, method: "modelo" as const, reason: "El modelo coincide.", costUsd: 0 };
-  const internal = looksInternal(product.ref, icecat);
+  const internal = looksInternal(product.ref, icecat, product.title);
   const guide = byEan && internal
-    ? `Icecat se ha encontrado por el mismo EAN que el producto de MHD. La referencia de MHD (${product.ref}) es un código interno del proveedor que no se parece al modelo del fabricante, así que NO la compares con el modelo de Icecat. Decide por la marca, el tipo de producto y lo que diga el título de MHD (medidas, pulgadas, capacidad, color, modelo si lo nombra). Responde same=false solo si hay una contradicción clara: otro tipo de producto, otra marca, otra medida o capacidad, otro color que diga el título, u otro modelo que nombre el título de MHD.`
+    ? `Icecat se ha encontrado por el mismo EAN que el producto de MHD. La referencia de MHD (${product.ref}) es un código interno del proveedor que no se parece al modelo del fabricante, así que NO la compares con el modelo de Icecat. Decide por la marca y lo que diga el título de MHD (medidas, pulgadas, capacidad, color, modelo si lo nombra). Ojo: el título de MHD se monta solo con el nombre de su subfamilia, la marca y ese código, así que el tipo suele ser genérico o impreciso («Accesorio informático», «Refrigerador PC portátil» para una refrigeración líquida de procesador, «Soporte» para una almohadilla): eso no es una contradicción si Icecat describe un producto concreto de la misma área. Si el título solo da un tipo genérico («Accesorio informático», «Accesorio», «Componente»), cualquier producto de informática, redes o electrónica de esa marca encaja. Responde same=false solo si hay una contradicción clara: un producto de otra área sin relación (p. ej. una lámpara frente a una herramienta, un televisor frente a una lavadora), otra marca, otra medida o capacidad, otro color que diga el título, u otro modelo que nombre el título de MHD.`
     : `La referencia puede ser un código interno del proveedor. Responde same=true solo si es el mismo modelo, aunque se nombre o codifique distinto. Otro modelo, otra capacidad u otro juego es same=false.`;
   const message = await createStreamed(client, { model: PROCESSOR_MODEL, max_tokens: 2000, output_config: { effort: "low", format: { type: "json_schema", schema } }, messages: [{ role: "user", content: `¿Son el mismo producto (mismo modelo)?\nMHD: «${product.title}» (marca ${product.brand}, referencia ${product.ref ?? "sin referencia"}).\nIcecat: «${icecat.title ?? ""}» (marca ${icecat.brand ?? ""}, código ${icecat.partCode ?? ""}, modelo ${icecat.modelName ?? ""}).\n${guide} En reason, una frase en español.` }] });
   const parsed = JSON.parse(message.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("")) as { same: boolean; reason: string };

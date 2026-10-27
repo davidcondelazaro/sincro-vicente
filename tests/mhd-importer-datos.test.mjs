@@ -248,6 +248,9 @@ test("Icecat: referencia interna de MHD que no sale en su título (masivo, 2026-
   assert.equal(looksInternal("VC321239", { partCode: "WM-A-VESA200200-01", modelName: null }), true);
   assert.equal(looksInternal("DT80T-053", { partCode: "DT80F-305", modelName: null }), false);
   assert.equal(looksInternal(null, { partCode: "X", modelName: null }), false);
+  // Modelo del fabricante en el título: no es interno aunque no se parezca al de Icecat.
+  assert.equal(looksInternal("WAN24272ES", { partCode: "WGG244A0ES", modelName: null }, "Lavadora Bosch WAN24272ES 9 kg"), false);
+  assert.equal(looksInternal("VC321239", { partCode: "WM-A-VESA200200-01", modelName: null }, "Soporte Gembird VC321239"), true);
 });
 
 test("descartes: sin fotos en MHD pero con galería en Icecat no se descarta (masivo, 2026-10-27)", () => {
