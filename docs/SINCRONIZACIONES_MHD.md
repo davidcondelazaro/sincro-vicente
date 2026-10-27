@@ -13,7 +13,7 @@ Diseño acordado con David para mantener la tienda al día una vez terminado el 
 
 El listado no permite pedir menos campos (probados 9 nombres de parámetro) y trae las dos descripciones largas: 2,7 de los 4 KB de media por producto; la ficha de detalle solo añade características (0,27 KB) y galería (0,31 KB). Lo que se descarga (~3,3 GB al día) no se guarda: cada producto tiene una sola fila con su última versión (todo el catálogo de MHD ocupa ~370 MB) y el histórico solo apunta los cambios.
 
-Solo las altas y las modificaciones importantes piden la ficha de detalle (una petición por producto: con todo el catálogo, ~44 min), Icecat e IA. Peticiones a MHD enviadas el 2026-10-26 (fichas por lotes, gzip, elegir campos, bajas explícitas, qué cambia cada fecha…): si llegan, se simplifica.
+Solo las altas y las modificaciones importantes piden la ficha de detalle (una petición por producto: con todo el catálogo, ~44 min), Icecat e IA. Peticiones a MHD enviadas el 2026-10-26 (fichas por lotes, gzip, elegir campos, bajas explícitas, qué cambia cada fecha…): si llegan, se simplifica. **Fichas por lotes: MHD dice que no** (2026-10-27, porque afecta a su sistema de producción), así que la ficha de detalle se sigue pidiendo de una en una y solo para altas y cambios.
 
 ## Decisiones
 
