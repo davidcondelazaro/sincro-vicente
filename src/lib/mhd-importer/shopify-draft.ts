@@ -306,11 +306,12 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   // («Televisores», «TV OLED») y «Energética».
   const tags = [...new Set([...shop.tags, ...(existing?.tags ?? [])].filter((tag) => KEEP_TAGS.has(tag)).concat(reviewPending ? [REVIEW_TAG] : []))];
   const category = SHOPIFY_CATEGORY_BY_FAMILY[placement.familia] ?? shop.category?.id ?? null;
-  // Un borrador aún puede cambiar de dirección; un producto activo (o refrescado) conserva la suya.
-  // Un archivado que vuelve también conserva la suya: es la URL que ya conocen Google y los clientes.
-  const handle = existing && (refresh || existing.status === "ACTIVE" || existing.status === "ARCHIVED") ? existing.handle : shop.handle;
+  // Dirección (decidido por David el 2026-10-26): todos estrenan la del importador, también los que ya tenía la tienda
+  // (activos, refrescados o archivados que vuelven). Si cambia, Shopify redirige la antigua a la nueva
+  // (`redirectNewHandle`); las de PrestaShop se cargan aparte, directas a la nueva (docs/REDIRECCIONES.md).
+  const handle = shop.handle;
   const input = {
-    title: shop.title, handle, status, vendor: shop.vendor, productType: placement.familyTitle, tags,
+    title: shop.title, handle, ...(existing && existing.handle !== handle ? { redirectNewHandle: true } : {}), status, vendor: shop.vendor, productType: placement.familyTitle, tags,
     ...(category ? { category } : {}), descriptionHtml: shop.descriptionHtml, seo: shop.seo, metafields: finalMetafields,
     files: galleryFiles,
     productOptions: [{ name: "Title", values: [{ name: "Default Title" }] }],
