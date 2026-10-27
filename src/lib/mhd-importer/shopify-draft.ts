@@ -255,19 +255,23 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
         optionValues: [{ optionName: "Title", name: "Default Title" }], price: shop.variant.price, sku: shop.variant.sku, barcode: shop.variant.barcode, inventoryPolicy: shop.variant.inventoryPolicy,
         inventoryItem: { tracked: true, ...(shop.variant.weightKg ? { measurement: { weight: { value: shop.variant.weightKg, unit: "KILOGRAMS" } } } : {}) },
         inventoryQuantities: shop.inventory.map((item) => ({ locationId: locationId(item.location), name: "available", quantity: item.quantity })) };
+  // Estado (David, 2026-10-27): los productos nuevos de la subida van activos. En borrador solo lo que tiene algo
+  // pendiente: la cola de revisión o «Avisar a MHD» (hasta que se decida qué hacer con ellos). Un producto que ya
+  // estaba activo sigue activo y uno archivado sigue archivado.
+  const status = existing?.status === "ACTIVE" || existing?.status === "ARCHIVED" ? existing.status : reviewPending || decision?.status === "avisar_mhd" ? "DRAFT" : "ACTIVE";
   const tags = [...new Set([...shop.tags, ...(existing?.tags ?? []).filter((tag) => KEEP_TAGS.has(tag)), ...(reviewPending ? [REVIEW_TAG] : [])])];
   const category = SHOPIFY_CATEGORY_BY_FAMILY[placement.familia] ?? shop.category?.id ?? null;
   // Un borrador aún puede cambiar de dirección; un producto activo (o refrescado) conserva la suya.
   const handle = existing && (refresh || existing.status === "ACTIVE") ? existing.handle : shop.handle;
   const input = {
-    title: shop.title, handle, status: existing?.status ?? "DRAFT", vendor: shop.vendor, productType: placement.familyTitle, tags,
+    title: shop.title, handle, status, vendor: shop.vendor, productType: placement.familyTitle, tags,
     ...(category ? { category } : {}), descriptionHtml: shop.descriptionHtml, seo: shop.seo, metafields: finalMetafields,
     files: galleryFiles,
     productOptions: [{ name: "Title", values: [{ name: "Default Title" }] }],
     variants: [variant],
   };
   const data = await t.step("Shopify: crear el producto", () => shopifyGraphql<{ productSet: { product: (Parameters<typeof mirrorProduct>[1]) | null; userErrors: UserError[] } }>(deps.shopify,
-    `mutation($input: ProductSetInput!, $identifier: ProductSetIdentifiers) { productSet(input: $input, identifier: $identifier, synchronous: true) { product { ${MIRROR_PRODUCT_FIELDS} variants(first: 10) { nodes { ${MIRROR_VARIANT_FIELDS} } } } userErrors { field message } } }`, { input, identifier: existing ? { id: existing.id } : null }), (result) => (result.productSet.product ? (existing ? "actualizado" : "creado en borrador") : null));
+    `mutation($input: ProductSetInput!, $identifier: ProductSetIdentifiers) { productSet(input: $input, identifier: $identifier, synchronous: true) { product { ${MIRROR_PRODUCT_FIELDS} variants(first: 10) { nodes { ${MIRROR_VARIANT_FIELDS} } } } userErrors { field message } } }`, { input, identifier: existing ? { id: existing.id } : null }), (result) => (result.productSet.product ? `${existing ? "actualizado" : "creado"} ${status === "ACTIVE" ? "activo" : status === "DRAFT" ? "en borrador" : "archivado"}` : null));
   check(data.productSet.userErrors, existing ? "Shopify no actualizó el producto" : "Shopify no creó el producto");
   const created = data.productSet.product!;
   // Canales de venta: todos, también al pisar un producto que ya estaba (publicar en un canal en el que ya está no hace
