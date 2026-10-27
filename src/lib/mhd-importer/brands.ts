@@ -31,6 +31,19 @@ const NOT_ACRONYMS = new Set(["NOX", "BOX", "SUN", "SOL", "MIO"]);
 const LICENSES: Record<string, string[] | "*"> = {
   PNY: ["HP"], ORIGINSTORAGE: "*", OMADA: ["TPLINK"], NOX: ["KROM"], ENGELAXIL: ["YOUIN", "ENGEL"], SUPERIORELECTRONICS: ["YOUIN"],
   SILVERELECTRONICS: ["SILVERSANZ"], POSIFLEX: ["10POS"], ARDISTEL: "*",
+  // Misma casa o submarca (cola de revisión, David, 2026-10-27): la de MHD está bien.
+  KEEPOUT: ["APPROX"], ALIENWARE: ["DELL"], BEATSBYDRDRE: ["APPLE"], BEATS: ["APPLE"], CABLEXPERT: ["GEMBIRD"], XPG: ["ADATA"],
+  MONIX: ["BRA"], NESCAFE: ["DOLCEGUSTO", "NESTLE"], NESTLE: ["DOLCEGUSTO", "NESCAFE"], ACT: ["ATC"], HYPER: ["TARGUS"],
+  TARGUS: ["HYPER"], TPLINK: ["MERCUSYS"], FRANKE: ["MEPAMSA"], ELECTROLUX: ["ZANUSSI", "AEG"], ORALB: ["BRAUN"], SHARK: ["NINJA"],
+  GIGABYTE: ["AORUS"], ASTROGAMING: ["LOGITECH"], KASASMART: ["TPLINK"], GAMERSTORM: ["DEEPCOOL"], LACIE: ["SEAGATE"],
+  DEEPGAMING: ["COOLBOX"], MARSGAMING: ["TACENS"], GEORGEFOREMAN: ["RUSSELLHOBBS"], SMARTWARES: ["TRISTAR"], BELLISSIMA: ["IMETEC"],
+  LOR: ["PHILIPS"],
+};
+// Marca equivocada en MHD (cola de revisión, David, 2026-10-27): con Icecat comprobado y una de estas marcas, manda la de
+// Icecat («Philips» en planchas Remington, «Apple» en memorias Emtec, «Canon» en tintas HP). Clave: marca de MHD.
+const MHD_MISTAKES: Record<string, string[] | "*"> = {
+  PHILIPS: ["REMINGTON"], JBL: ["REMINGTON"], JC: ["REMINGTON"], APPLE: ["EMTEC", "FRITZ"], CANON: ["HP"], GIGABYTE: ["ASUS"],
+  TRUST: ["BELKIN"], EPOSSENNHEISER: ["TUCANO"], PNY: ["HP"], OEM: "*",
 };
 // Marcas de impresora con las que MHD da de alta los cartuchos compatibles de Dayma (modelo «M-…»).
 const PRINTER_BRANDS = new Set(["BROTHER", "HP", "EPSON", "CANON", "SAMSUNG", "LEXMARK", "KYOCERA", "XEROX", "RICOH", "OKI", "DAYMA"]);
@@ -71,6 +84,8 @@ export function resolveBrand(listing: BrandListing, icecat: IcecatSummary | null
   if (a && b && (a.includes(b) || b.includes(a))) return { brand: a.length <= b.length ? fromMhd : fromIcecat, vendor, needsReview: false, reason: null };
   const license = LICENSES[icecatKey];
   if (license === "*" || license?.includes(mhdKey)) return { brand: fromMhd, vendor, needsReview: false, reason: `Icecat pone «${icecat.brand}» (licencia o distribuidor): manda la marca de MHD.` };
+  const mistake = MHD_MISTAKES[mhdKey];
+  if (mistake === "*" || mistake?.includes(icecatKey)) return { brand: fromIcecat, vendor: fromIcecat.toUpperCase(), needsReview: false, reason: `MHD pone «${mhd}», pero es de «${fromIcecat}» según Icecat: va en el informe para MHD.` };
   // MHD con una marca equivocada y la de Icecat en el título («Marshall» en un Savio): la de Icecat.
   if (inTitle(icecat.brand, listing.titulo) || inTitle(fromIcecat, listing.titulo)) return { brand: fromIcecat, vendor: fromIcecat.toUpperCase(), needsReview: false, reason: `MHD pone «${mhd}», pero el título y Icecat dicen «${fromIcecat}».` };
   return { brand: fromMhd, vendor, needsReview: true, reason: `La marca de Icecat («${icecat.brand}») no aparece en la marca ni en el título de MHD («${mhd}»): se deja la de MHD.` };

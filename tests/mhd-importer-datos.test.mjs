@@ -76,6 +76,12 @@ test("marca: tabla de equivalencias, licencias, siglas y correcciones", () => {
   assert.equal(brand("Sony", "Sony Interactive Entertainment").brand, "Sony");
   assert.deepEqual([brand("HP", "PNY").brand, brand("HP", "PNY").needsReview], ["HP", false]);
   assert.equal(brand("Honeywell", "Origin Storage").brand, "Honeywell");
+  // Cola de revisión, 2026-10-27: misma casa (manda MHD) y marca equivocada en MHD (manda Icecat).
+  assert.deepEqual([brand("Dell", "Alienware").brand, brand("Dell", "Alienware").needsReview], ["Dell", false]);
+  assert.deepEqual([brand("Apple", "Beats by Dr. Dre").brand, brand("Apple", "Beats by Dr. Dre").needsReview], ["Apple", false]);
+  assert.deepEqual([brand("Philips", "Remington").brand, brand("Philips", "Remington").vendor, brand("Philips", "Remington").needsReview], ["Remington", "REMINGTON", false]);
+  assert.deepEqual([brand("OEM", "Medisana").brand, brand("OEM", "Medisana").needsReview], ["Medisana", false]);
+  assert.equal(brand("Vivanco", "Titan").needsReview, true);
   assert.equal(brand("Jata", "JATA").brand, "Jata");
   assert.equal(brand("Cata", "CATA").brand, "Cata");
   assert.equal(brand("NOX", "NOX").brand, "Nox");
@@ -83,8 +89,9 @@ test("marca: tabla de equivalencias, licencias, siglas y correcciones", () => {
   assert.equal(brand("AEG", "AEG").brand, "AEG");
   assert.equal(brand("Kingston", "Kingston Technology").brand, "Kingston");
   assert.equal(brand("Delonghi", "De'Longhi").brand, "De'Longhi");
-  const wrong = brand("Zanussi", "Electrolux", "Lavadora ZANUSSI ZWF8");
+  const wrong = brand("Zanussi", "Beko", "Lavadora ZANUSSI ZWF8");
   assert.deepEqual([wrong.brand, wrong.vendor, wrong.needsReview], ["Zanussi", "ZANUSSI", true]);
+  assert.deepEqual([brand("Zanussi", "Electrolux").brand, brand("Zanussi", "Electrolux").needsReview], ["Zanussi", false]); // mismo grupo (2026-10-27)
   const fixed = brand("Marshall", "Savio", "Cable Savio CL-1");
   assert.deepEqual([fixed.brand, fixed.vendor, fixed.needsReview], ["Savio", "SAVIO", false]);
   assert.deepEqual([brand("Brother", null, "Cartucho Impresora DAYMA M-LC223C", "M-LC223C").brand, brand("HP", null, "Tóner", "M-CE505A/280A").vendor], ["Dayma", "DAYMA"]);
