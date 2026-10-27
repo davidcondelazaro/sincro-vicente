@@ -46,6 +46,8 @@ async function visualHashOf(bytes: Uint8Array) {
 }
 export function sameVisual(a: string, b: string) { let differ = 0; for (let i = 0; i < a.length; i += 1) if (a[i] !== b[i]) differ += 1; return differ <= 8; }
 
+const MAX_SOURCE_SIDE = 3072; // de sobra para publicar a 2.048 (MAX_SIDE); medido: 129 MB frente a 665 MB con una de 10.000×10.000
+
 // `fetcher`: cómo se descarga (MHD con sus cabeceras; Icecat por el proxy de Pladisel, porque sin él inishop.com
 // contesta 403 a más de la mitad de sus fotos).
 export async function prepareImages(urls: string[], source: "mhd" | "icecat" = "mhd", fetcher: (url: string) => Promise<{ contentType: string; bytes: Uint8Array }> = fetchMhdMedia): Promise<{ images: PreparedImage[]; errors: string[] }> {
@@ -57,8 +59,12 @@ export async function prepareImages(urls: string[], source: "mhd" | "icecat" = "
       if (seen.has(hash)) continue; // misma imagen con otra URL
       seen.add(hash);
       const meta = await sharp(media.bytes).metadata();
-      const thumbnail = (await sharp(media.bytes).resize(384, 384, { fit: "inside" }).flatten({ background: "#ffffff" }).jpeg({ quality: 70 }).toBuffer()).toString("base64");
-      images.push({ url, contentType: media.contentType, width: meta.width ?? 0, height: meta.height ?? 0, bytes: media.bytes, hash, thumbnail, background: await backgroundOf(media.bytes), source, visualHash: await visualHashOf(media.bytes) });
+      // Icecat trae fotos de hasta 10.000×10.000: recortar el margen blanco a ese tamaño dejaba sin memoria al trabajador
+      // y con él caían los demás productos en curso (2026-10-27, reproceso). Se reducen nada más bajarlas; la huella y las
+      // medidas siguen siendo las del original.
+      const bytes = Math.max(meta.width ?? 0, meta.height ?? 0) > MAX_SOURCE_SIDE ? new Uint8Array(await sharp(media.bytes).resize(MAX_SOURCE_SIDE, MAX_SOURCE_SIDE, { fit: "inside" }).toBuffer()) : media.bytes;
+      const thumbnail = (await sharp(bytes).resize(384, 384, { fit: "inside" }).flatten({ background: "#ffffff" }).jpeg({ quality: 70 }).toBuffer()).toString("base64");
+      images.push({ url, contentType: media.contentType, width: meta.width ?? 0, height: meta.height ?? 0, bytes, hash, thumbnail, background: await backgroundOf(bytes), source, visualHash: await visualHashOf(bytes) });
     } catch (caught) { errors.push(caught instanceof Error ? caught.message : `No se pudo leer ${url}`); }
   }
   return { images, errors };
