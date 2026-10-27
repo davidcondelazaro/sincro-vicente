@@ -53,11 +53,29 @@ export async function pruneOlderRunMedia(db: SupabaseClient, codigo: string, kee
 }
 
 // Contenido de un archivo: del almacenamiento o, en las filas antiguas, de la propia tabla (bytea en hexadecimal).
+// Descargas del almacén a la vez por trabajador (subida masiva, 2026-10-27): cada producto pedía todas sus fotos y
+// vídeos de golpe y, con 8 productos en paralelo, el almacén de Supabase se quedaba sin conexiones («Too many
+// connections issued to the database»). Se limitan y, si aun así contesta eso, se reintenta con espera.
+const MAX_DOWNLOADS = 6;
+let downloading = 0; const waiting: (() => void)[] = [];
+async function withDownloadSlot<T>(task: () => Promise<T>) {
+  if (downloading >= MAX_DOWNLOADS) await new Promise<void>((resolve) => waiting.push(resolve));
+  downloading += 1;
+  try { return await task(); } finally { downloading -= 1; waiting.shift()?.(); }
+}
+
 export async function mediaBytes(db: SupabaseClient, row: { storage_path?: string | null; bytes?: string | null }): Promise<Uint8Array> {
   if (row.storage_path) {
-    const { data, error } = await db.storage.from(MEDIA_BUCKET).download(row.storage_path);
-    if (error || !data) throw new Error(`No se pudo leer ${row.storage_path}: ${error?.message ?? "sin datos"}`);
-    return new Uint8Array(await data.arrayBuffer());
+    const path = row.storage_path;
+    for (let attempt = 1; ; attempt += 1) {
+      const result = await withDownloadSlot(async () => {
+        const { data, error } = await db.storage.from(MEDIA_BUCKET).download(path);
+        return error || !data ? { error: error?.message ?? "sin datos" } : { bytes: new Uint8Array(await data.arrayBuffer()) };
+      });
+      if ("bytes" in result) return result.bytes;
+      if (attempt >= 5 || !/too many connections|timeout|ECONNRESET|fetch failed/i.test(result.error)) throw new Error(`No se pudo leer ${path}: ${result.error}`);
+      await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** (attempt - 1) + Math.random() * 500));
+    }
   }
   const hex = String(row.bytes ?? "");
   return Uint8Array.from(Buffer.from(hex.startsWith("\\x") ? hex.slice(2) : hex, "hex"));
