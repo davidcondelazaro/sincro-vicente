@@ -139,7 +139,7 @@ async function verifiedIcecat(deps: { db: SupabaseClient; config: SourcesConfig;
     const byModel = await cached(deps.db, "icecat", `modelo:${listing.nombre_marca}:${ref}`.toUpperCase(), 24 * 7, () => fetchIcecatByModel(deps.config.icecat, listing.nombre_marca!, ref)).catch(() => null);
     const found = summarizeIcecat(byModel?.payload ?? null, deps.config.icecat.language);
     if (found) {
-      const recheck = await checkIcecatIdentity(deps.ai, product, found);
+      const recheck = await checkIcecatIdentity(deps.ai, product, found, false);
       if (recheck.same) { warnings.push(`Icecat encontrado por marca y modelo: «${found.title}».`); return { icecat: found, costUsd: check.costUsd + recheck.costUsd, check: recheck }; }
     }
   }
@@ -269,6 +269,17 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
       t.event("decision", "Clasificar fotos (IA)", `Se usa una foto pequeña (${best.width}×${best.height}): no hay otra válida. Va a revisión.`);
     }
   }
+  // Si solo hay logos (2026-10-27, masivo): en el software (antivirus en descarga) la única foto es la caja con el logo, y
+  // descartarlo dejaba fuera 36 productos. Se usa el logo más grande y el producto va a revisión.
+  let logoPhotoReason: string | null = null;
+  if (!ordered.keep.length) {
+    const logo = [...new Set([...ordered.dropped, ...mhdDropped])].filter((image) => image.reason === "Icono o logo").sort((a, b) => b.width * b.height - a.width * a.height)[0];
+    if (logo) {
+      ordered = { keep: [logo], dropped: ordered.dropped.filter((image) => image !== logo) };
+      logoPhotoReason = "Solo logos: no hay otra foto que la del logo o la caja; se usa esa.";
+      t.event("decision", "Clasificar fotos (IA)", `Se usa una foto de logo (${logo.width}×${logo.height}): no hay otra. Va a revisión.`);
+    }
+  }
   for (const image of ordered.dropped) t.event("aviso", "Clasificar fotos (IA)", `Foto descartada: ${image.reason} (${image.url})`);
   if (!ordered.keep.length) { t.event("decision", "Descartes", "Descartado: sin imagen válida (todas descartadas al revisarlas)"); return { status: "discarded", reason: "Sin imagen válida (todas descartadas al revisarlas)", warnings }; }
 
@@ -371,6 +382,7 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   const prices = await subfamilyPrices(deps.db, listing).catch((caught: Error) => { warnings.push(`Mediana de precios: ${caught.message}`); return null; });
   const review_reasons = [
     smallPhotoReason,
+    logoPhotoReason,
     energyClassReason(listing.letra_eficiencia, icecat),
     ...sourceDisagreements(profile, values, listing.cod_subfamilia).map((item) => `${item.name}: MHD dice «${item.mhd}» e Icecat «${item.icecat}» (${Math.round(item.difference * 100)} % de diferencia).`),
     priceReason(listing.pvp, prices?.median ?? null, prices?.count ?? 0),

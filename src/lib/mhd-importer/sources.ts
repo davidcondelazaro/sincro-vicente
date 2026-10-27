@@ -25,13 +25,18 @@ export async function fetchMhdProductDetail(config: MhdConfig, codigo: string): 
   return { status: response.status, payload: body.data };
 }
 
+export const ICECAT_TEMPORARY = "Icecat no está disponible temporalmente";
+
 // Icecat por EAN. Full Icecat solo responde a IPs autorizadas: se sale por el proxy de Pladisel (IP fija) si está configurado.
 export async function fetchIcecatByEan(config: IcecatConfig, ean: string): Promise<FetchResult<Record<string, unknown>>> {
   const query = new URLSearchParams({ UserName: config.username, Language: config.language, GTIN: ean, app_key: config.appKey });
   const response = await fetch(`${config.proxyUrl || "https://live.icecat.biz/api"}?${query}`, { headers: config.proxyUrl ? { "X-Proxy-Token": config.proxyToken ?? "" } : undefined, signal: AbortSignal.timeout(30_000) });
   if (response.status === 401) throw new Error("Icecat o el proxy de Pladisel rechazaron las credenciales.");
   if (response.status === 403) throw new Error("Icecat rechazó la IP de salida (producto Full Icecat con IP no autorizada).");
-  if (response.status === 429 || response.status >= 500) throw new Error(`Icecat no está disponible temporalmente (${response.status}).`);
+  // Límite de llamadas (429) y caídas (5xx) se distinguen (2026-10-27: a las 02:52 hubo 4 minutos de 502 del proxy y no
+  // se sabía si era agotamiento de llamadas). Las dos son temporales: el producto se reintenta, no sigue sin Icecat.
+  if (response.status === 429) throw new Error(`${ICECAT_TEMPORARY}: límite de llamadas de Icecat alcanzado (429).`);
+  if (response.status >= 500) throw new Error(`${ICECAT_TEMPORARY}: Icecat o el proxy de Pladisel no responden (${response.status}).`);
   const body = await response.json().catch(() => null) as Record<string, unknown> | null;
   // 400/404 «The GTIN can not be found» es lo normal para un EAN que Icecat no tiene.
   return response.ok ? { status: response.status, payload: body } : { status: response.status, payload: null };

@@ -247,3 +247,11 @@ test("título: modelo con sufijo de país, nombre comercial corto y marca sin ma
   assert.deepEqual(fallos(validateContent(ficha("Portátil ASUS Vivobook 15 X1504"), "Asus", "X1504", [], new Map())), []);
   assert.equal(fallos(validateContent(ficha("Portátil HP de 16\""), "HP", "DG0N0ET#ABE", [], new Map(), ["EliteBook 8 G2i 16 inch Notebook"])).length, 1);
 });
+
+test("Icecat: referencia interna de MHD que no sale en su título (masivo, 2026-10-27)", async () => {
+  const { looksInternal } = await jiti.import("../src/lib/mhd-importer/identity.ts");
+  assert.equal(looksInternal("TV9032318", { partCode: "MS-D1-01", modelName: "MS-D1-01" }), true);
+  assert.equal(looksInternal("VC321239", { partCode: "WM-A-VESA200200-01", modelName: null }), true);
+  assert.equal(looksInternal("DT80T-053", { partCode: "DT80F-305", modelName: null }), false);
+  assert.equal(looksInternal(null, { partCode: "X", modelName: null }), false);
+});

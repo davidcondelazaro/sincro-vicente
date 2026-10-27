@@ -12,6 +12,8 @@ export const WARNING_KINDS: WarningKind[] = [
   { tipo: "foto_no_descargada", nombre: "Foto que no se pudo descargar", destino: "interno", test: /No se pudo descargar .*\.(jpe?g|png|webp|gif)/i },
   { tipo: "descarte_sin_foto", nombre: "Descartado: sin foto", destino: "mhd", test: /Descartado: sin imagen/i },
   { tipo: "descarte_exclusion", nombre: "Descartado por exclusión (maqueta, unidad suelta…)", destino: "interno", test: /^Descartado/ },
+  { tipo: "solo_logos", nombre: "Solo logos: se usa el logo", destino: "revisar", test: /Solo logos|foto de logo/i },
+  { tipo: "icecat_no_responde", nombre: "Icecat no responde o límite de llamadas", destino: "interno", test: /Icecat no está disponible temporalmente/ },
   { tipo: "foto_pequena", nombre: "Foto pequeña", destino: "revisar", test: /foto pequeña|Foto pequeña|Demasiado pequeña|foto principal queda pequeña/i },
   { tipo: "foto_descartada", nombre: "Foto descartada al revisarla", destino: "interno", test: /^Foto (de MHD )?descartada/ },
   { tipo: "fotos_icecat", nombre: "Fotos completadas o sustituidas con Icecat", destino: "interno", test: /Fotos de Icecat|sustituida por la misma de Icecat/ },

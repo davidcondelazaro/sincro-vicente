@@ -5,7 +5,7 @@
 // una llamada pequeña compara los títulos. 3) Si es otro producto, se busca en Icecat por marca y modelo; si tampoco,
 // el producto sigue sin Icecat y se publica igual (sin etiqueta si no hay una buena).
 import type Anthropic from "@anthropic-ai/sdk";
-import { costUsd, PROCESSOR_MODEL } from "./ai";
+import { costUsd, createStreamed, PROCESSOR_MODEL } from "./ai";
 import type { IcecatSummary } from "./icecat";
 
 export const normalizeModel = (value: string | null | undefined) => (value ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -18,9 +18,25 @@ export function sameModel(ref: string | null, icecat: IcecatSummary) {
 
 const schema = { type: "object", additionalProperties: false, required: ["same", "reason"], properties: { same: { type: "boolean" }, reason: { type: "string" } } };
 
-export async function checkIcecatIdentity(client: Anthropic, product: { title: string; brand: string; ref: string | null }, icecat: IcecatSummary) {
+// Referencia interna de MHD (2026-10-27): un código del proveedor que no comparte ni cuatro caracteres seguidos con el
+// modelo de Icecat (soportes «TV90306487», «VC321231» frente a «WM-70T-03»). Con ella, la IA rechazaba fichas buenas por
+// «la referencia no coincide» (1 de cada 4 soportes). Un modelo parecido pero distinto («DT80T-053» y «DT80F-305»)
+// comparte tramos y sigue con la comprobación estricta.
+export function looksInternal(ref: string | null, icecat: Pick<IcecatSummary, "partCode" | "modelName">) {
+  const model = normalizeModel(ref);
+  if (model.length < 4) return false;
+  const others = [icecat.partCode, icecat.modelName].map(normalizeModel).filter((value) => value.length >= 4);
+  for (let i = 0; i + 4 <= model.length; i += 1) if (others.some((other) => other.includes(model.slice(i, i + 4)))) return false;
+  return true;
+}
+
+export async function checkIcecatIdentity(client: Anthropic, product: { title: string; brand: string; ref: string | null }, icecat: IcecatSummary, byEan = true) {
   if (sameModel(product.ref, icecat)) return { same: true, method: "modelo" as const, reason: "El modelo coincide.", costUsd: 0 };
-  const message = await client.messages.create({ model: PROCESSOR_MODEL, max_tokens: 2000, output_config: { effort: "low", format: { type: "json_schema", schema } }, messages: [{ role: "user", content: `¿Son el mismo producto (mismo modelo)?\nMHD: «${product.title}» (marca ${product.brand}, referencia ${product.ref ?? "sin referencia"}; la referencia puede ser un código interno del proveedor).\nIcecat: «${icecat.title ?? ""}» (marca ${icecat.brand ?? ""}, código ${icecat.partCode ?? ""}, modelo ${icecat.modelName ?? ""}).\nResponde same=true solo si es el mismo modelo, aunque se nombre o codifique distinto. Otro modelo, otra capacidad u otro juego es same=false. En reason, una frase en español.` }] });
+  const internal = looksInternal(product.ref, icecat);
+  const guide = byEan && internal
+    ? `Icecat se ha encontrado por el mismo EAN que el producto de MHD. La referencia de MHD (${product.ref}) es un código interno del proveedor que no se parece al modelo del fabricante, así que NO la compares con el modelo de Icecat. Decide por la marca, el tipo de producto y lo que diga el título de MHD (medidas, pulgadas, capacidad, color, modelo si lo nombra). Responde same=false solo si hay una contradicción clara: otro tipo de producto, otra marca, otra medida o capacidad, otro color que diga el título, u otro modelo que nombre el título de MHD.`
+    : `La referencia puede ser un código interno del proveedor. Responde same=true solo si es el mismo modelo, aunque se nombre o codifique distinto. Otro modelo, otra capacidad u otro juego es same=false.`;
+  const message = await createStreamed(client, { model: PROCESSOR_MODEL, max_tokens: 2000, output_config: { effort: "low", format: { type: "json_schema", schema } }, messages: [{ role: "user", content: `¿Son el mismo producto (mismo modelo)?\nMHD: «${product.title}» (marca ${product.brand}, referencia ${product.ref ?? "sin referencia"}).\nIcecat: «${icecat.title ?? ""}» (marca ${icecat.brand ?? ""}, código ${icecat.partCode ?? ""}, modelo ${icecat.modelName ?? ""}).\n${guide} En reason, una frase en español.` }] });
   const parsed = JSON.parse(message.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("")) as { same: boolean; reason: string };
   return { ...parsed, method: "ia" as const, costUsd: costUsd(PROCESSOR_MODEL, message.usage) ?? 0 };
 }

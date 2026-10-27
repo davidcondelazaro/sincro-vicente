@@ -4,7 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { cached } from "./cache";
 import type { ListingProduct, SampleProduct } from "./family";
 import { summarizeIcecat } from "./icecat";
-import { fetchIcecatByEan, fetchMhdProductDetail, type IcecatConfig, type MhdConfig, type MhdProductDetail } from "./sources";
+import { fetchIcecatByEan, fetchMhdProductDetail, ICECAT_TEMPORARY, type IcecatConfig, type MhdConfig, type MhdProductDetail } from "./sources";
 import { readFilterVocabulary, type FilterVocabulary, type ShopifyConfig } from "./store-filters";
 
 export type SourcesConfig = { mhd: MhdConfig; icecat: IcecatConfig; shopify: ShopifyConfig };
@@ -21,7 +21,9 @@ async function storedDetail(db: SupabaseClient, codigo: string) {
 export async function gatherProduct(db: SupabaseClient, config: SourcesConfig, listing: ListingProduct): Promise<SampleProduct & { errors: string[] }> {
   const errors: string[] = [];
   const detail = await storedDetail(db, listing.codigo) ?? await cached(db, "mhd_detail", listing.codigo, WEEK, () => fetchMhdProductDetail(config.mhd, listing.codigo)).catch((error: Error) => { errors.push(error.message); return null; });
-  const icecat = listing.codigo_ean ? await cached(db, "icecat", listing.codigo_ean, WEEK, () => fetchIcecatByEan(config.icecat, listing.codigo_ean!)).catch((error: Error) => { errors.push(error.message); return null; }) : null;
+  // Si Icecat no responde (límite de llamadas o caída), el producto falla y se reintenta más tarde: seguir sin Icecat le
+  // quitaría especificaciones, fotos y documentos sin que nadie se enterase (2026-10-27).
+  const icecat = listing.codigo_ean ? await cached(db, "icecat", listing.codigo_ean, WEEK, () => fetchIcecatByEan(config.icecat, listing.codigo_ean!)).catch((error: Error) => { if (error.message.startsWith(ICECAT_TEMPORARY) || /fetch failed|timeout|aborted/i.test(error.message)) throw error; errors.push(error.message); return null; }) : null;
   return { listing, detail: detail?.payload ?? null, icecat: summarizeIcecat(icecat?.payload ?? null, config.icecat.language), errors };
 }
 
