@@ -356,8 +356,9 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   const vendor = brandChoice.vendor;
   const distinction = productDistinction(profile, values);
   const classification: Classification = { productType: null, tags: [], category: null, siblings: 0, distinction, brandCollection: null, notes: [] };
-    // Sin etiqueta buena no va «Energética»: con esa etiqueta y el metacampo vacío, el tema abriría la última foto.
-  const tags = [...classification.tags, ...(label ? ["Energética"] : [])];
+  // Sin etiqueta «Energética» (David, 2026-10-27): el tema enseña la etiqueta energética con los metacampos
+  // (`features.eficiencia_energ_tica` y `custom.etiqueta_energetica`); la etiqueta solo la necesitan los productos antiguos.
+  const tags = [...classification.tags];
   const { data: previousRun } = await deps.db.from("mhd_importer_product_runs").select("shopify_product_id").eq("codigo", listing.codigo).not("shopify_product_id", "is", null).order("created_at", { ascending: false }).limit(1).maybeSingle();
   // El producto ya puede estar en la tienda (creado por el importador o de antes, por EAN): su dirección le vale.
   const { data: storeMatch } = listing.codigo_ean ? await deps.db.from("shopify_variants").select("product_id").eq("barcode", listing.codigo_ean).limit(1).maybeSingle() : { data: null };
