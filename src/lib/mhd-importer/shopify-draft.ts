@@ -167,8 +167,9 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
     existingId = previous?.shopify_product_id ?? null;
   }
   // Si no lo creó el importador, se busca por EAN: es un producto que ya tenía la tienda y se REFRESCA (decidido
-  // 2026-10-23): se pisa el contenido (título, SEO, textos, fotos, filtros y metacampos) y se conserva lo de negocio
-  // (dirección, estado, precio y precio tachado, SKU, venta sin stock, existencias, disponibilidad y prioridad).
+  // 2026-10-23): se pisa el contenido (título, SEO, textos, fotos, filtros y metacampos) y se conserva la dirección, la
+  // disponibilidad y la prioridad. Desde el 2026-10-27 también reciben de MHD el precio, el stock, el SKU (código de
+  // MHD), el EAN y la venta sin stock (ver la variante, abajo).
   let refresh = false;
   if (!existingId && shop.variant.barcode) {
     // En el espejo de la tienda (src/lib/shopify-mirror.ts), sin preguntar a Shopify.
@@ -261,13 +262,19 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   const keptValues = refresh && existing ? (await shopifyGraphql<{ product: { metafields: { nodes: { namespace: string; key: string; type: string; value: string }[] } } }>(deps.shopify, `query($id: ID!) { product(id: $id) { metafields(first: 100) { nodes { namespace key type value } } } }`, { id: existing.id })).product.metafields.nodes.filter((item) => KEEP_ON_REFRESH.has(`${item.namespace}.${item.key}`)) : [];
   const finalMetafields = refresh ? [...metafields.filter((item) => !KEEP_ON_REFRESH.has(`${item.namespace}.${item.key}`)), ...keptValues] : metafields;
   const current = existing?.variants.nodes[0];
-  const variant = refresh && current
-    ? { id: current.id, optionValues: [{ optionName: "Title", name: "Default Title" }], price: current.price, compareAtPrice: current.compareAtPrice, sku: current.sku ?? "", barcode: current.barcode ?? shop.variant.barcode, inventoryPolicy: current.inventoryPolicy,
-        inventoryItem: { tracked: true, ...(shop.variant.weightKg ? { measurement: { weight: { value: shop.variant.weightKg, unit: "KILOGRAMS" } } } : {}) } }
-    : { ...(current ? { id: current.id } : {}),
-        optionValues: [{ optionName: "Title", name: "Default Title" }], price: shop.variant.price, sku: shop.variant.sku, barcode: shop.variant.barcode, inventoryPolicy: shop.variant.inventoryPolicy,
-        inventoryItem: { tracked: true, ...(shop.variant.weightKg ? { measurement: { weight: { value: shop.variant.weightKg, unit: "KILOGRAMS" } } } : {}) },
-        inventoryQuantities: shop.inventory.map((item) => ({ locationId: locationId(item.location), name: "available", quantity: item.quantity })) };
+  // Precio, stock, SKU y EAN de MHD en todo lo que se sube (David, 2026-10-27), también al pisar un producto que ya
+  // estaba: el SKU tiene que ser el código de MHD porque los pedidos se le mandan con él (mhd-order-lines.ts), y los
+  // productos de antes llevaban la referencia del fabricante. Precio y stock, los del último listado de MHD leído; sin
+  // precio tachado (no es oferta: la oferta es la etiqueta).
+  const { data: fresh, error: freshError } = await deps.db.from("mhd_catalog_products").select("pvp,stock").eq("codigo", product.codigo).maybeSingle();
+  if (freshError) throw freshError;
+  const price = fresh?.pvp ? Number(fresh.pvp).toFixed(2) : shop.variant.price;
+  const stock = fresh ? Math.max(0, Math.trunc(Number(fresh.stock ?? 0))) : null;
+  const inventory = shop.inventory.map((item, index) => ({ ...item, quantity: index === 0 && stock !== null ? stock : item.quantity }));
+  const variant = { ...(current ? { id: current.id } : {}),
+    optionValues: [{ optionName: "Title", name: "Default Title" }], price, compareAtPrice: null, sku: shop.variant.sku, barcode: shop.variant.barcode ?? current?.barcode ?? null, inventoryPolicy: shop.variant.inventoryPolicy,
+    inventoryItem: { tracked: true, ...(shop.variant.weightKg ? { measurement: { weight: { value: shop.variant.weightKg, unit: "KILOGRAMS" } } } : {}) },
+    inventoryQuantities: inventory.map((item) => ({ locationId: locationId(item.location), name: "available", quantity: item.quantity })) };
   // Estado (David, 2026-10-27): los productos nuevos de la subida van activos, y también los archivados que MHD vuelve a
   // traer (se reactivan y se les quita la redirección, abajo). En borrador solo lo que tiene algo pendiente: la cola de
   // revisión o «Avisar a MHD» (hasta que se decida qué hacer con ellos). Un producto que ya estaba activo sigue activo.
