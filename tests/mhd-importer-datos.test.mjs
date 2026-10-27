@@ -60,7 +60,7 @@ test("modelo: código interno o compatibilidad sin Icecat, sin modelo o el de la
     const choice = model(ref, "Xiaomi");
     assert.deepEqual([choice.model, choice.needsReview, choice.dropped], [null, false, "internal"], ref);
   }
-  for (const ref of ["PROTECTOR APPLE IPH", "APPLE IPHONE 17 AIR", "SAMSUNG GALAXY A57"]) assert.deepEqual([model(ref, "JC").model, model(ref, "JC").needsReview, model(ref, "JC").dropped], [null, false, "compatibility"], ref);
+  for (const ref of ["PROTECTOR APPLE IPH", "APPLE IPHONE 17 AIR", "SAMSUNG GALAXY A57", "PROTECTOR DE LENTE / APPL"]) assert.deepEqual([model(ref, "JC").model, model(ref, "JC").needsReview, model(ref, "JC").dropped], [null, false, "compatibility"], ref);
   const found = resolveModel({ ref_proved: "UK505445", nombre_marca: "Unykach", titulo: "", codigo_ean: "8445123456789" }, null, "MK212 PRO");
   assert.deepEqual([found.model, found.source, found.needsReview], ["MK212 PRO", "texto", false]);
   // Lo que encuentre la IA también se limpia y tiene que ser un modelo: sin cifras o una compatibilidad, no vale.

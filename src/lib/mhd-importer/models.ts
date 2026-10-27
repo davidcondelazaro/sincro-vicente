@@ -39,7 +39,7 @@ const CONNECTORS = new Set(["DE", "DEL"]);
 // («GALAXY WATCH8 44MM»: el tamaño distingue el modelo).
 const TRAILING_MEASURE = /\s+\d+(?:[.,]\d+)?\s*(?:ML|CL|L|LITROS|BAR|BARES|W|KG|G|CM|V)$/i;
 // Marcas de otros aparatos: si aparecen, el «modelo» es la compatibilidad de un accesorio («PROTECTOR APPLE IPH»).
-const DEVICE_WORDS: Record<string, string> = { APPLE: "APPLE", IPHONE: "APPLE", IPHON: "APPLE", IPH: "APPLE", IPAD: "APPLE", AIRPODS: "APPLE", MACBOOK: "APPLE", SAMSUNG: "SAMSUNG", GALAXY: "SAMSUNG", XIAOMI: "XIAOMI", REDMI: "XIAOMI", HUAWEI: "HUAWEI", OPPO: "OPPO", MOTOROLA: "MOTOROLA", MOTO: "MOTOROLA", PIXEL: "GOOGLE", HONOR: "HONOR", REALME: "REALME", ONEPLUS: "ONEPLUS", NOKIA: "NOKIA", PS5: "SONY", PS4: "SONY", PLAYSTATION: "SONY", XBOX: "MICROSOFT", NINTENDO: "NINTENDO", PARA: "" };
+const DEVICE_WORDS: Record<string, string> = { APPLE: "APPLE", APPL: "APPLE", IPHONE: "APPLE", IPHON: "APPLE", IPH: "APPLE", IPAD: "APPLE", AIRPODS: "APPLE", MACBOOK: "APPLE", SAMSUNG: "SAMSUNG", GALAXY: "SAMSUNG", XIAOMI: "XIAOMI", REDMI: "XIAOMI", HUAWEI: "HUAWEI", OPPO: "OPPO", MOTOROLA: "MOTOROLA", MOTO: "MOTOROLA", PIXEL: "GOOGLE", HONOR: "HONOR", REALME: "REALME", ONEPLUS: "ONEPLUS", NOKIA: "NOKIA", PS5: "SONY", PS4: "SONY", PLAYSTATION: "SONY", XBOX: "MICROSOFT", NINTENDO: "NINTENDO", PARA: "" };
 const foreignDevice = (text: string, brand: string) => words(plain(text)).some((word) => { const owner = DEVICE_WORDS[word.replace(/[^A-Z0-9]/g, "")]; return owner !== undefined && (!owner || !plain(brand).replace(/[^A-Z0-9]/g, "").includes(owner)); });
 
 // Códigos que no son modelos: internos de MHD (dos letras y 6-9 cifras, «DSP…»), ASIN de Amazon, EAN o números largos.
@@ -71,7 +71,10 @@ export function cleanModelText(raw: string, brand: string, options: { title?: st
   text = text.replace(/[*]+/g, " ").replace(/\s+/g, " ").replace(/[\s/+-]+$/, "").trim();
   // Compatibilidad tras « / » («MONARCH PRO / APPLE IPHON»): se queda lo de delante.
   const slash = text.split(/\s+\/\s+/);
-  if (slash.length > 1 && foreignDevice(slash.slice(1).join(" "), brand)) { text = slash[0]; notes.push("sin la compatibilidad"); }
+  const slashCompat = slash.length > 1 && foreignDevice(slash.slice(1).join(" "), brand);
+  if (slashCompat) { text = slash[0]; notes.push("sin la compatibilidad"); }
+  // El corte a 25 caracteres puede haberse llevado ya la compatibilidad («PROTECTOR DE LENTE / APPL»).
+  const rawSlash = raw.trim().split(/\s+\/\s+/); const cutCompat = slashCompat || (rawSlash.length > 1 && foreignDevice(rawSlash.slice(1).join(" "), brand));
   // Palabras de tipo y marca al principio («TRUST VOLANTE GXT-289» → «GXT-289»; «PACK 6 MXPRO PURE» → «MXPRO PURE»).
   const brandWords = words(plain(brand).replace(/[^A-Z0-9 ]/g, " "));
   let list = words(text); let typed = false; let connector = false;
@@ -92,7 +95,8 @@ export function cleanModelText(raw: string, brand: string, options: { title?: st
   if (!text || !/[\p{L}\d]{2,}/u.test(text)) return { text, problem: "no queda modelo tras limpiarlo", notes };
   if (foreignDevice(text, brand)) return { text, problem: "es la compatibilidad de un accesorio, no un modelo", notes };
   // «DISPENSADOR DE JABON» es una descripción; «MOUSE CARVE» (Trust Carve), un nombre comercial.
-  if (typed && connector && !hasDigit(text)) return { text, problem: "es una descripción («tipo de producto»), no un modelo", notes };
+  // Con la compatibilidad detrás («PROTECTOR DE LENTE / APPL»), es un accesorio sin modelo propio.
+  if (typed && connector && !hasDigit(text)) return { text, problem: cutCompat ? "es la compatibilidad de un accesorio, no un modelo" : "es una descripción («tipo de producto»), no un modelo", notes };
   if (/^\d+(?:[.,]\d+)?\s*(?:CM|MM|ML|CL|L|W|KG|G|V|GB|TB|M|BAR|BARES|UDS?)$/i.test(text)) return { text, problem: "es solo una medida", notes };
   return { text, problem: null, notes };
 }
