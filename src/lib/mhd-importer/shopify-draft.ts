@@ -91,10 +91,12 @@ async function storeLocations(shopify: ShopifyConfig) {
   return locationsCache.nodes;
 }
 
-let channelsCache: string[] | null = null;
+// Todos los canales de venta de la tienda (David, 2026-10-27: «activar el producto en todos los canales»). Hoy son
+// «Online Store» y «Shop»; si se instala otro (Google, Meta, punto de venta), entra solo. Se leen una vez por hora.
+let channelsCache: { at: number; ids: string[] } | null = null;
 export async function publishToStoreChannels(shopify: ShopifyConfig, productId: string) {
-  channelsCache ??= (await shopifyGraphql<{ publications: { nodes: { id: string; name: string }[] } }>(shopify, `{ publications(first: 20) { nodes { id name } } }`)).publications.nodes.filter((item) => ["Online Store", "Shop"].includes(item.name)).map((item) => item.id);
-  const data = await shopifyGraphql<{ publishablePublish: { userErrors: UserError[] } }>(shopify, `mutation($id: ID!, $input: [PublicationInput!]!) { publishablePublish(id: $id, input: $input) { userErrors { field message } } }`, { id: productId, input: channelsCache.map((publicationId) => ({ publicationId })) });
+  if (!channelsCache || Date.now() - channelsCache.at > 3_600_000) channelsCache = { at: Date.now(), ids: (await shopifyGraphql<{ publications: { nodes: { id: string }[] } }>(shopify, `{ publications(first: 50) { nodes { id } } }`)).publications.nodes.map((item) => item.id) };
+  const data = await shopifyGraphql<{ publishablePublish: { userErrors: UserError[] } }>(shopify, `mutation($id: ID!, $input: [PublicationInput!]!) { publishablePublish(id: $id, input: $input) { userErrors { field message } } }`, { id: productId, input: channelsCache.ids.map((publicationId) => ({ publicationId })) });
   check(data.publishablePublish.userErrors, "Shopify no añadió el producto a sus canales de venta");
 }
 
@@ -229,9 +231,10 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
     `mutation($input: ProductSetInput!, $identifier: ProductSetIdentifiers) { productSet(input: $input, identifier: $identifier, synchronous: true) { product { ${MIRROR_PRODUCT_FIELDS} variants(first: 10) { nodes { ${MIRROR_VARIANT_FIELDS} } } } userErrors { field message } } }`, { input, identifier: existing ? { id: existing.id } : null }), (result) => (result.productSet.product ? (existing ? "actualizado" : "creado en borrador") : null));
   check(data.productSet.userErrors, existing ? "Shopify no actualizó el producto" : "Shopify no creó el producto");
   const created = data.productSet.product!;
-  // Canales de venta (2026-10-26): como los productos activos, en «Online Store» y «Shop». Sin canal no se puede
-  // previsualizar el borrador (da 404); estar en el canal no lo enseña al cliente mientras siga en borrador.
-  if (!existing || existing.status === "DRAFT") await t.step("Shopify: canales de venta", () => publishToStoreChannels(deps.shopify, created.id), () => "Online Store y Shop");
+  // Canales de venta: todos, también al pisar un producto que ya estaba (publicar en un canal en el que ya está no hace
+  // nada). Sin canal no se puede previsualizar el borrador (da 404); estar en el canal no lo enseña al cliente mientras
+  // siga en borrador.
+  await t.step("Shopify: canales de venta", () => publishToStoreChannels(deps.shopify, created.id), () => `${channelsCache?.ids.length ?? 0} canales`);
   // Al espejo de la tienda en el momento, para que la siguiente subida o procesado ya lo vea.
   await mirrorProduct(deps.db, created);
   // Al actualizar, productSet no borra los metacampos que ya no van (p. ej. la etiqueta, el EPREL o la ficha de Icecat
