@@ -62,9 +62,21 @@ function familyData(db: SupabaseClient, family: string) {
   return familyCache.get(family)!;
 }
 
-export async function processJobItem(deps: { db: SupabaseClient; config: SourcesConfig; ai: Anthropic; upload?: boolean | "nuevos"; elviModel?: string; noThinking?: boolean }, item: JobItem) {
+export async function processJobItem(deps: { db: SupabaseClient; config: SourcesConfig; ai: Anthropic; upload?: boolean | "nuevos" | "solo"; elviModel?: string; noThinking?: boolean }, item: JobItem) {
   const started = Date.now(); const log = itemLog(deps.db, item);
   try {
+    // Tanda «solo subir» (2026-10-27): la última prueba correcta del producto se sube a Shopify sin volver a procesarla
+    // (sin IA). Es la subida masiva, y sirve para medir cuánto tarda cada producto y cuánto paralelismo aguanta Shopify.
+    if (deps.upload === "solo") {
+      const { data: run, error: runError } = await deps.db.from("mhd_importer_product_runs").select("id").eq("codigo", item.codigo).eq("status", "ok").order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (runError) throw runError;
+      if (!run) throw new Error(`El producto ${item.codigo} no tiene ninguna prueba correcta: hay que procesarlo antes.`);
+      const draft = await log.trace.step("Subir a Shopify", () => createShopifyDraft({ db: deps.db, shopify: deps.config.shopify, icecat: deps.config.icecat, trace: log.trace }, run.id), (result) => `${result.updated ? "Actualizado" : "Creado"} · ${result.status === "ACTIVE" ? "activo" : "borrador"} · ${result.files.photos} fotos`);
+      const duration = Date.now() - started;
+      await deps.db.from("mhd_importer_job_items").update({ status: "ok", finished_at: new Date().toISOString(), duration_ms: duration, cost_usd: 0, run_id: run.id, error: null, lease_until: null, step: null }).eq("id", item.id);
+      log.add({ level: "info", step: "Producto", message: `Subido: ${draft.handle} · ${Math.round(duration / 1000)} s`, durationMs: duration });
+      return;
+    }
     const { data: fromMhd, error } = await deps.db.rpc("mhd_importer_product", { p_codigo: item.codigo });
     if (error) throw error;
     if (!fromMhd) throw new Error(`MHD ya no tiene el producto ${item.codigo}.`);
@@ -170,9 +182,9 @@ export async function runWorkerTurn(env: Env, config: SourcesConfig, spawn: () =
     // Con el espejo listo, arranca otro trabajador si la tanda usa más de uno (ese, a su vez, arranca el siguiente).
     if (jobs?.length && workers > 1) spawn();
     // Opciones de cada tanda (p. ej. «Subir a Shopify»), leídas una vez por turno.
-    const optionsByJob = new Map<string, Promise<{ upload?: boolean | "nuevos"; elviModel?: string; noThinking?: boolean }>>();
+    const optionsByJob = new Map<string, Promise<{ upload?: boolean | "nuevos" | "solo"; elviModel?: string; noThinking?: boolean }>>();
     const jobOptions = (jobId: string) => {
-      if (!optionsByJob.has(jobId)) optionsByJob.set(jobId, Promise.resolve(db.from("mhd_importer_jobs").select("options").eq("id", jobId).single().then(({ data }) => (data?.options ?? {}) as { upload?: boolean | "nuevos"; elviModel?: string; noThinking?: boolean })));
+      if (!optionsByJob.has(jobId)) optionsByJob.set(jobId, Promise.resolve(db.from("mhd_importer_jobs").select("options").eq("id", jobId).single().then(({ data }) => (data?.options ?? {}) as { upload?: boolean | "nuevos" | "solo"; elviModel?: string; noThinking?: boolean })));
       return optionsByJob.get(jobId)!;
     };
     const running = new Set<Promise<void>>(); let empty = false;
@@ -183,7 +195,7 @@ export async function runWorkerTurn(env: Env, config: SourcesConfig, spawn: () =
         if (claimError) throw claimError;
         if (!items?.length) empty = true;
         for (const item of (items ?? []) as JobItem[]) {
-          const task: Promise<void> = jobOptions(item.job_id).then((options) => processJobItem({ db, config, ai, upload: options.upload === "nuevos" ? "nuevos" : Boolean(options.upload), elviModel: options.elviModel === "sonnet" ? ELVI_MODELS.sonnet : undefined, noThinking: Boolean(options.noThinking) }, item)).finally(() => { running.delete(task); processed += 1; });
+          const task: Promise<void> = jobOptions(item.job_id).then((options) => processJobItem({ db, config, ai, upload: options.upload === "nuevos" || options.upload === "solo" ? options.upload : Boolean(options.upload), elviModel: options.elviModel === "sonnet" ? ELVI_MODELS.sonnet : undefined, noThinking: Boolean(options.noThinking) }, item)).finally(() => { running.delete(task); processed += 1; });
           running.add(task);
         }
       }
