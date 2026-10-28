@@ -19,7 +19,7 @@ async function event(db: SupabaseClient, kind: string, detail: Record<string, un
 
 // Última lectura terminada de precios y stock de MHD, si es reciente y completa.
 async function latestRead(db: SupabaseClient) {
-  const { data: runs, error } = await db.from("mhd_catalog_import_runs").select("id,entities,entity_progress,status,last_activity_at").eq("status", "completed").contains("entities", ["prices", "stock"]).order("last_activity_at", { ascending: false }).limit(1);
+  const { data: runs, error } = await db.from("mhd_catalog_import_runs").select("id,entities,entity_progress,status,last_activity_at").eq("status", "completed").contains("entities", ["prices", "stock"]).not("last_activity_at", "is", null).order("last_activity_at", { ascending: false, nullsFirst: false }).limit(1);
   if (error) throw error;
   const run = runs?.[0] as { id: string; entity_progress: Record<string, { total?: number; done?: number }>; last_activity_at: string } | undefined;
   if (!run) return { ok: false as const, reason: "No hay ninguna lectura de precios y stock terminada." };
