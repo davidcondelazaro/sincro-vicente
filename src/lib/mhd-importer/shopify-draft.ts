@@ -360,12 +360,21 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   const current = existing?.variants.nodes[0];
   // Precio, stock, SKU y EAN de MHD en todo lo que se sube (David, 2026-10-27), también al pisar un producto que ya
   // estaba: el SKU tiene que ser el código de MHD porque los pedidos se le mandan con él (mhd-order-lines.ts), y los
-  // productos de antes llevaban la referencia del fabricante. Precio y stock, los del último listado de MHD leído; sin
-  // precio tachado (no es oferta: la oferta es la etiqueta).
-  const { data: fresh, error: freshError } = await deps.db.from("mhd_catalog_products").select("pvp,stock").eq("codigo", product.codigo).maybeSingle();
-  if (freshError) throw freshError;
-  const price = fresh?.pvp ? Number(fresh.pvp).toFixed(2) : shop.variant.price;
-  const stock = fresh ? Math.max(0, Math.trunc(Number(fresh.stock ?? 0))) : null;
+  // productos de antes llevaban la referencia del fabricante. Precio y stock, los de la última lectura de /prices y
+  // /stocks de MHD (2026-10-28: el `pvp` del listado no es el de su web en ~17.500 productos); si no están, los del
+  // listado. Sin precio tachado (no es oferta: la oferta es la etiqueta).
+  const [{ data: priceRow, error: priceError }, { data: stockRow, error: stockError }, { data: listed, error: listedError }] = await Promise.all([
+    deps.db.from("mhd_catalog_prices").select("pvp").eq("codigo", product.codigo).maybeSingle(),
+    deps.db.from("mhd_catalog_stock").select("stock").eq("codigo", product.codigo).maybeSingle(),
+    deps.db.from("mhd_catalog_products").select("pvp,stock").eq("codigo", product.codigo).maybeSingle(),
+  ]);
+  if (priceError) throw priceError;
+  if (stockError) throw stockError;
+  if (listedError) throw listedError;
+  const freshPrice = Number(priceRow?.pvp ?? 0) > 0 ? Number(priceRow!.pvp) : Number(listed?.pvp ?? 0) > 0 ? Number(listed!.pvp) : null;
+  const freshStock = stockRow ? stockRow.stock : listed ? listed.stock : null;
+  const price = freshPrice ? freshPrice.toFixed(2) : shop.variant.price;
+  const stock = freshStock !== null ? Math.max(0, Math.trunc(Number(freshStock ?? 0))) : null;
   const inventory = shop.inventory.map((item, index) => ({ ...item, quantity: index === 0 && stock !== null ? stock : item.quantity }));
   const variant = { ...(current ? { id: current.id } : {}),
     optionValues: [{ optionName: "Title", name: "Default Title" }], price, compareAtPrice: null, sku: shop.variant.sku, barcode: shop.variant.barcode ?? current?.barcode ?? null, inventoryPolicy: shop.variant.inventoryPolicy,
@@ -405,6 +414,9 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   if (existing?.status === "ARCHIVED") await t.step("Redirecciones del producto reactivado", () => releaseProductRedirects(deps, created.handle), (removed) => `${removed} redirecciones quitadas`);
   // Al espejo de la tienda en el momento, para que la siguiente subida o procesado ya lo vea.
   await mirrorProduct(deps.db, created);
+  // Lo enviado de precio y stock, para que la sincronización de cada 30 min no lo vuelva a mandar (price-stock-sync.ts).
+  const sentVariant = created.variants.nodes[0] as { id: string; inventoryItem?: { id: string } | null } | undefined;
+  if (sentVariant?.inventoryItem?.id) await deps.db.from("mhd_shopify_price_stock").upsert({ codigo: product.codigo, product_id: created.id, variant_id: sentVariant.id, inventory_item_id: sentVariant.inventoryItem.id, price: Number(price), stock, sent_at: new Date().toISOString() });
   // Al actualizar, productSet no borra los metacampos que ya no van (p. ej. la etiqueta, el EPREL o la ficha de Icecat
   // de otro modelo): se borran aquí los que gestiona el importador y esta vez no llevan valor.
   if (existing) {
