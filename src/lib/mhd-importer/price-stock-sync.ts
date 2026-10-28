@@ -11,7 +11,7 @@ type Change = { codigo: string; product_id: string; variant_id: string; inventor
 type UserError = { field?: string[] | null; message: string };
 
 // Seguros: la lectura tiene que ser reciente y completa (una a medias parecería que han cambiado o faltan miles).
-export const PRICE_STOCK_SYNC = { maxReadAgeMinutes: 90, minRows: 25_000, stockBatch: 250, priceConcurrency: 5, budgetMs: 240_000 };
+export const PRICE_STOCK_SYNC = { maxReadAgeMinutes: 90, minRows: 25_000, stockBatch: 250, priceConcurrency: 5, budgetMs: 240_000, bulkFrom: 1000 };
 
 async function event(db: SupabaseClient, kind: string, detail: Record<string, unknown>, codigo: string | null = null) {
   await db.from("mhd_sync_events").insert({ sync: "precio-stock", kind, codigo, detail });
@@ -37,9 +37,15 @@ export async function syncPriceStock(deps: { db: SupabaseClient; shopify: Shopif
     if (!options.dryRun) await event(deps.db, "freno", { reason: read.reason, run: read.run ?? null });
     return { ok: false, reason: read.reason };
   }
-  const { data, error } = await deps.db.rpc("mhd_price_stock_changes", { p_run: read.run, p_limit: 50_000 });
-  if (error) throw error;
-  let changes = (data ?? []) as Change[];
+  // La API de la base devuelve 1.000 filas por llamada: se piden por páginas.
+  let changes: Change[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await deps.db.rpc("mhd_price_stock_changes", { p_run: read.run, p_limit: 50_000 }).range(from, from + 999);
+    if (error) throw error;
+    changes = changes.concat((data ?? []) as Change[]);
+    if (!data || data.length < 1000) break;
+  }
+  await checkLastBulk(deps);
   if (options.codes?.length) changes = changes.filter((item) => options.codes!.includes(item.codigo));
   const priceChanges = changes.filter((item) => item.sent_price === null || Number(item.sent_price) !== Number(item.price));
   const stockChanges = changes.filter((item) => item.sent_stock === null || item.sent_stock !== item.stock);
@@ -58,8 +64,19 @@ export async function syncPriceStock(deps: { db: SupabaseClient; shopify: Shopif
       summary.stockSent += batch.length;
     } catch (caught) { summary.errors.push(`Stock (${batch.length} productos): ${caught instanceof Error ? caught.message : String(caught)}`); }
   }
-  // Precio: una llamada por producto, unas pocas a la vez (lo normal son unos cientos por vuelta; si un día son miles,
-  // lo que no quepa en el tiempo de la vuelta sale en la siguiente, porque no queda como enviado).
+  // Precio: con muchos cambios (la primera puesta al día, o un cambio de tarifa de MHD), una operación masiva de Shopify
+  // que no gasta del límite de llamadas; se da por enviado al lanzarla y la vuelta siguiente repasa su resultado
+  // (checkLastBulk). Con pocos, una llamada por producto, unas pocas a la vez; lo que no quepa en el tiempo de la vuelta
+  // sale en la siguiente, porque no queda como enviado.
+  if (priceChanges.length >= PRICE_STOCK_SYNC.bulkFrom) {
+    try {
+      const bulk = await launchPriceBulk(deps.shopify, priceChanges);
+      for (const item of priceChanges) sent.set(item.codigo, { ...sent.get(item.codigo), price: item.price });
+      summary.pricesSent = priceChanges.length;
+      await event(deps.db, "masivo", { bulk, codes: priceChanges.map((item) => item.codigo) });
+    } catch (caught) { summary.errors.push(`Operación masiva de precios: ${caught instanceof Error ? caught.message : String(caught)}`); }
+    priceChanges.length = 0;
+  }
   let next = 0;
   const worker = async () => {
     while (next < priceChanges.length && Date.now() - started < PRICE_STOCK_SYNC.budgetMs) {
@@ -94,4 +111,42 @@ export async function syncPriceStock(deps: { db: SupabaseClient; shopify: Shopif
   for (let i = 0; i < events.length; i += 1000) await deps.db.from("mhd_sync_events").insert(events.slice(i, i + 1000));
   await event(deps.db, summary.errors.length ? "error" : "vuelta", { ...summary, errors: summary.errors.slice(0, 20), seconds: Math.round((Date.now() - started) / 1000) });
   return { ok: summary.errors.length === 0, ...summary };
+}
+
+// Operación masiva de Shopify con los precios (productVariantsBulkUpdate por producto, una línea por producto).
+async function launchPriceBulk(shopify: ShopifyConfig, items: Change[]) {
+  const { currentBulkOperation: current } = await shopifyGraphql<{ currentBulkOperation: { id: string; status: string } | null }>(shopify, `{ currentBulkOperation(type: MUTATION) { id status } }`);
+  if (current && ["CREATED", "RUNNING"].includes(current.status)) throw new Error(`Ya hay una operación masiva en marcha (${current.id}).`);
+  const lines = items.map((item) => JSON.stringify({ productId: item.product_id, variants: [{ id: item.variant_id, price: item.price.toFixed(2), compareAtPrice: null }] })).join("\n");
+  const staged = await shopifyGraphql<{ stagedUploadsCreate: { stagedTargets: { url: string; parameters: { name: string; value: string }[] }[] } }>(shopify, `mutation { stagedUploadsCreate(input: [{ resource: BULK_MUTATION_VARIABLES, filename: "precios.jsonl", mimeType: "text/jsonl", httpMethod: POST }]) { stagedTargets { url parameters { name value } } } }`);
+  const target = staged.stagedUploadsCreate.stagedTargets[0];
+  const form = new FormData();
+  for (const { name, value } of target.parameters) form.append(name, value);
+  form.append("file", new Blob([lines], { type: "text/jsonl" }), "precios.jsonl");
+  const upload = await fetch(target.url, { method: "POST", body: form });
+  if (!upload.ok) throw new Error(`Subida del fichero de precios: HTTP ${upload.status}`);
+  const key = target.parameters.find((item) => item.name === "key")!.value;
+  const run = await shopifyGraphql<{ bulkOperationRunMutation: { bulkOperation: { id: string } | null; userErrors: UserError[] } }>(shopify, `mutation($path: String!) { bulkOperationRunMutation(mutation: "mutation call($productId: ID!, $variants: [ProductVariantsBulkInput!]!) { productVariantsBulkUpdate(productId: $productId, variants: $variants) { userErrors { field message } } }", stagedUploadPath: $path) { bulkOperation { id } userErrors { message } } }`, { path: key });
+  if (!run.bulkOperationRunMutation.bulkOperation) throw new Error(run.bulkOperationRunMutation.userErrors.map((item) => item.message).join("; "));
+  return run.bulkOperationRunMutation.bulkOperation.id;
+}
+
+// Repasa la última operación masiva de precios: si terminó con fallos, esos productos dejan de constar como enviados
+// para que la vuelta siguiente los mande otra vez. Se repasa una sola vez (evento «masivo-revisado»).
+async function checkLastBulk(deps: { db: SupabaseClient; shopify: ShopifyConfig }) {
+  const { data: last } = await deps.db.from("mhd_sync_events").select("id,detail").eq("sync", "precio-stock").eq("kind", "masivo").order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (!last) return;
+  const { data: checked } = await deps.db.from("mhd_sync_events").select("id").eq("sync", "precio-stock").eq("kind", "masivo-revisado").contains("detail", { event: last.id }).limit(1).maybeSingle();
+  if (checked) return;
+  const { bulk, codes } = last.detail as { bulk: string; codes: string[] };
+  const { node } = await shopifyGraphql<{ node: { status: string; url: string | null; errorCode: string | null } | null }>(deps.shopify, `query($id: ID!) { node(id: $id) { ... on BulkOperation { status url errorCode } } }`, { id: bulk });
+  if (!node || ["CREATED", "RUNNING"].includes(node.status)) return;
+  let failed: string[] = node.status === "COMPLETED" ? [] : codes;
+  if (node.status === "COMPLETED" && node.url) {
+    const text = await (await fetch(node.url)).text();
+    failed = text.trim().split("\n").filter(Boolean).map((line) => JSON.parse(line) as { __lineNumber?: number; data?: { productVariantsBulkUpdate?: { userErrors?: UserError[] } } })
+      .filter((row) => (row.data?.productVariantsBulkUpdate?.userErrors?.length ?? 0) > 0).map((row) => codes[row.__lineNumber ?? -1]).filter(Boolean);
+  }
+  for (let i = 0; i < failed.length; i += 500) await deps.db.from("mhd_shopify_price_stock").update({ price: null }).in("codigo", failed.slice(i, i + 500));
+  await event(deps.db, "masivo-revisado", { event: last.id, bulk, status: node.status, errorCode: node.errorCode, failed: failed.length });
 }
