@@ -2,8 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/proxy";
 
 // /api/shopify/portes: la llama Shopify en el pago (servicio de portes), sin sesión. El trabajador del importador lo
-// llaman el vigilante de pg_cron y él mismo, sin sesión (solo procesa lo que ya está en la cola).
-const publicPaths = new Set(["/login", "/set-password", "/auth/logout", "/auth/confirm", "/api/shopify/portes", "/api/importador-productos/trabajos/trabajador"]);
+// llaman el vigilante de pg_cron y él mismo, sin sesión (solo procesa lo que ya está en la cola). La sincronización de
+// precio y stock la llama pg_cron sin sesión, pero la ruta exige la clave de las lecturas de MHD (x-mhd-import-token).
+const publicPaths = new Set(["/login", "/set-password", "/auth/logout", "/auth/confirm", "/api/shopify/portes", "/api/importador-productos/trabajos/trabajador", "/api/sincronizaciones/precio-stock"]);
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
