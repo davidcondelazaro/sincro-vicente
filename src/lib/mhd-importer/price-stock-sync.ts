@@ -58,7 +58,7 @@ export async function syncPriceStock(deps: { db: SupabaseClient; shopify: Shopif
   for (let i = 0; i < stockChanges.length && Date.now() - started < PRICE_STOCK_SYNC.budgetMs; i += PRICE_STOCK_SYNC.stockBatch) {
     const batch = stockChanges.slice(i, i + PRICE_STOCK_SYNC.stockBatch);
     try {
-      const result = await shopifyGraphql<{ inventorySetQuantities: { userErrors: UserError[] } }>(deps.shopify, `mutation($input: InventorySetQuantitiesInput!) { inventorySetQuantities(input: $input) { userErrors { field message } } }`, { input: { name: "available", reason: "correction", referenceDocumentUri: `gid://sincro-vicente/SyncJob/precio-stock-${read.run}`, quantities: batch.map((item) => ({ inventoryItemId: item.inventory_item_id, locationId: location, quantity: item.stock, changeFromQuantity: null })) } });
+      const result = await shopifyGraphql<{ inventorySetQuantities: { userErrors: UserError[] } }>(deps.shopify, `mutation($input: InventorySetQuantitiesInput!, $key: String!) { inventorySetQuantities(input: $input) @idempotent(key: $key) { userErrors { field message } } }`, { key: crypto.randomUUID(), input: { name: "available", reason: "correction", referenceDocumentUri: `gid://sincro-vicente/SyncJob/precio-stock-${read.run}`, quantities: batch.map((item) => ({ inventoryItemId: item.inventory_item_id, locationId: location, quantity: item.stock, changeFromQuantity: null })) } });
       if (result.inventorySetQuantities.userErrors.length) throw new Error(result.inventorySetQuantities.userErrors.map((item) => item.message).join("; "));
       for (const item of batch) sent.set(item.codigo, { ...sent.get(item.codigo), stock: item.stock });
       summary.stockSent += batch.length;
