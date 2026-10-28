@@ -1,5 +1,7 @@
 # Productos de promociones en Shopify
 
+> **Obsoleto desde el 2026-10-28 (David).** Las promociones ya no son fichas de producto ni vienen de ninguna sincronización: son colecciones de Shopify (`custom.tipo_coleccion = promocion`) dadas de alta a mano. Ver `theme-enterprise-vicente/docs/promociones.md`. La regla de la categoría `V346` se ha retirado de `sync-catalog-imports` (sin desplegar: esa función está apagada) y el importador ya no conserva la etiqueta «Promociones». Lo de abajo queda como histórico.
+
 ## Regla de identificación
 
 Un producto es una promoción cuando su categoría por defecto de origen es `V346`.

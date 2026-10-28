@@ -11,7 +11,7 @@ export type Classification = { productType: string | null; tags: string[]; categ
 type Sibling = { productType: string; tags: string[]; category: { id: string; fullName: string } | null };
 
 // Etiquetas que dependen del producto y no se copian de sus hermanas.
-const PER_PRODUCT_TAGS = new Set(["Energética", "Descatalogado", "Oferta", "Novedad", "Promociones"]);
+const PER_PRODUCT_TAGS = new Set(["Energética", "Descatalogado", "Oferta", "Novedad"]);
 const norm = (text: string) => text.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 const majority = <T,>(items: T[], key: (item: T) => string) => { const counts = new Map<string, { item: T; n: number }>(); for (const item of items) { const k = key(item); const entry = counts.get(k) ?? { item, n: 0 }; entry.n += 1; counts.set(k, entry); } return [...counts.values()].sort((a, b) => b.n - a.n)[0]?.item ?? null; };
 

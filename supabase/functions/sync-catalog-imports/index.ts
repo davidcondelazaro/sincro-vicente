@@ -7,8 +7,6 @@ const SHOPIFY_TIMEOUT_MS = 20_000;
 const WORKER_HEARTBEAT_MS = 10_000;
 const WORKER_BUDGET_MS = 45_000;
 const MAX_PRODUCT_IMAGE_BYTES = 25 * 1024 * 1024;
-const PROMOTION_CATEGORY_ID = "V346";
-const PROMOTION_TEMPLATE_SUFFIX = "promociones";
 
 type Manufacturer = { id: string; name: string | null; active: boolean | null; image: string | null };
 type Category = { id: string; name: string | null; link_rewrite: string | null; id_parent: string | null; active: boolean | null };
@@ -763,7 +761,6 @@ async function syncActiveProduct(summary: Product, forceImages: boolean, modifie
   const { data: product, error } = await db.from("source_products").select("*").eq("id", summary.id).single(); if (error || !product) throw error ?? new Error("No se pudo leer el producto.");
   const imageWasModified = Boolean(modifiedSince && product.fecha_modificacion_imagen && new Date(product.fecha_modificacion_imagen).getTime() >= new Date(`${modifiedSince}T00:00:00`).getTime());
   const shouldForceImages = forceImages || imageWasModified;
-  const isPromotion = product.id_category_default === PROMOTION_CATEGORY_ID;
   const existing = await findProduct(summary);
   const [{ data: manufacturer }, categories, fields, locationId] = await Promise.all([
     db.from("source_manufacturers").select("name").eq("id", product.id_manufacturer).single(), categoryNames(product.id_category_default), productMetafields(product), getLocationId(),
@@ -783,7 +780,7 @@ async function syncActiveProduct(summary: Product, forceImages: boolean, modifie
   const weight = product.weight == null ? undefined : Number(product.weight);
   const variant: Record<string, unknown> = { optionValues: [{ optionName: "Title", name: "Default Title" }], sku: product.id, ...(product.ean13 ? { barcode: product.ean13 } : {}), inventoryPolicy, ...(Number.isFinite(weight) ? { inventoryItem: { measurement: { weight: { value: weight, unit: "KILOGRAMS" } } } } : {}) };
   if (!existing) Object.assign(variant, { price, ...(compareAtPrice ? { compareAtPrice } : {}), inventoryQuantities: [{ locationId, name: "on_hand", quantity: stock }] });
-  const input: Record<string, unknown> = { title, handle, descriptionHtml: product.description ?? "", vendor: manufacturer.name, productType: categories[0] ?? "", tags: productTags(product, categories, existing?.tags), status: "ACTIVE", seo: { title: String(product.meta_title || title).trim(), description: product.meta_description || htmlToText(product.description_short) }, metafields: fields.map(({ namespace, key, value }) => ({ namespace, key, value })), productOptions: [{ name: "Title", position: 1, values: [{ name: "Default Title" }] }], variants: [variant], ...(isPromotion ? { templateSuffix: PROMOTION_TEMPLATE_SUFFIX } : {}) };
+  const input: Record<string, unknown> = { title, handle, descriptionHtml: product.description ?? "", vendor: manufacturer.name, productType: categories[0] ?? "", tags: productTags(product, categories, existing?.tags), status: "ACTIVE", seo: { title: String(product.meta_title || title).trim(), description: product.meta_description || htmlToText(product.description_short) }, metafields: fields.map(({ namespace, key, value }) => ({ namespace, key, value })), productOptions: [{ name: "Title", position: 1, values: [{ name: "Default Title" }] }], variants: [variant] };
   if (existing) { input.id = existing.id; if (sameProduct(existing, input, shouldForceImages, Boolean(product.images))) { await upsertProductShopifyLink(product.id, existing); const sourceCount = String(product.images ?? "").split("@").filter(Boolean).length; return { action: "unchanged" as const, targetId: existing.id, message: `Producto ya actualizado: sin cambios. Imágenes: sin cambios (${existing.media.nodes.length} actuales; ${sourceCount} en origen).` }; } }
   const result = await shopify<{ data: { productSet: { product: ShopifyProduct | null; userErrors: ShopifyUserError[] } } }>(`mutation($input:ProductSetInput!){productSet(input:$input){product{${shopifyProductFields}} userErrors{field message}}}`, { input });
   const updated = result.data.productSet.product; if (!updated || result.data.productSet.userErrors.length) {

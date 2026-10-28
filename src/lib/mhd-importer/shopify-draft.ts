@@ -206,9 +206,10 @@ async function releaseProductRedirects(deps: { db: SupabaseClient; shopify: Shop
   return own.length;
 }
 
-// Etiquetas que se conservan al pisar un producto (David, 2026-10-27): de ellas cuelgan las colecciones Ofertas,
-// Promociones y Novedades. Las demás (las de categoría del árbol viejo, SuperOferta, Descatalogado…) se quitan.
-const KEEP_TAGS = new Set(["Oferta", "Promociones", "Novedad"]);
+// Etiquetas que se conservan al pisar un producto (David, 2026-10-27): de ellas cuelgan las colecciones Ofertas y
+// Novedades. Las demás (las de categoría del árbol viejo, SuperOferta, Descatalogado…) se quitan. «Promociones» se quitó
+// el 2026-10-28: las promociones son colecciones de Shopify dadas de alta a mano (docs/promociones.md del tema).
+const KEEP_TAGS = new Set(["Oferta", "Novedad"]);
 // Subida de vídeos mp4 a Shopify (ver la parte de vídeos de createShopifyDraft).
 const UPLOAD_VIDEOS = false;
 

@@ -269,6 +269,8 @@ Salieron al revisar las dudas del perfil de Lavadoras (G01); el analista las rec
 
 ## Alta del producto en Shopify: decisiones (2026-10-23, David)
 
+- **Etiquetas que se conservan al subir (2026-10-28):** solo **Oferta** y **Novedad**. «Promociones» se quitó: las promociones son colecciones de Shopify (`custom.tipo_coleccion = promocion`) dadas de alta a mano, nunca vienen de MHD (`theme-enterprise-vicente/docs/promociones.md`). También se retiró la regla de la categoría `V346` de `sync-catalog-imports` (apagada) y `PROMOCIONES_SHOPIFY.md` queda como histórico.
+
 - **Colecciones actuales:** por ahora el producto entra en las colecciones que ya existen. Son automáticas (etiquetas, tipo de producto, proveedor y metacampos), así que basta con poner lo mismo que sus hermanas. Regla: por cada subfamilia de MHD **y distinción del perfil** (p. ej. en G0101: libre instalación, integrable, carga superior, que MHD mezcla en la misma subfamilia), se copian el tipo de producto y las etiquetas de los productos de la tienda que coinciden por EAN (en G0101, 52 coincidencias: «Lavadoras Libre Instalación» + Electrodomésticos, Lavado, Lavadoras, Lavadoras Libre Instalación, Energética). Lo que no tenga pareja va al informe. Cuando se cierre el árbol nuevo con Vicente, se cambia esta regla.
 - **Categoría de Shopify** (taxonomía estándar; antes no se ponía en las altas, hoy la tienen 4.117 de 4.804): la mayoritaria del tipo de producto en la tienda (lavadoras: «Home & Garden > Household Appliances > Laundry Appliances > Washing Machines»).
 - **Precio:** el PVP de MHD. Sin precio tachado (`pvp_antes` se desprecia). El triple neto no se usa.
