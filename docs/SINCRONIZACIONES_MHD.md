@@ -45,6 +45,15 @@ Propuesta inicial:
 | Clase energética | **Todo lo que depende de ella** (David, 2026-10-26): la etiqueta energética (`custom.etiqueta_energetica`), la ficha de información del producto de la UE y el enlace a EPREL (`custom.documentos`, `custom.eprel`), el filtro de eficiencia y la etiqueta «Energética». Como es un dato clave, también se rehacen los textos (regla de los cambios de datos). Si la etiqueta nueva no casa con el modelo, a revisión. |
 | Opciones de entrega | **Se actualizan solas, siempre** (David, 2026-10-26: «esta parte es importantísima»): portes, subida, instalación y retirada del viejo, con sus precios, al metacampo `custom.opciones_entrega`, sin IA. Se detectan en cada lectura del listado (cada hora), que trae los siete campos de portes y servicios. Hoy van dentro de la huella «precio» (`mhd_hash_parts`): conviene separarlos en una huella propia. Sale en el resumen diario. Si un servicio desaparece o su precio sube mucho, aviso en el resumen. |
 
+## Lo que cada subida avisa a la estructura de la tienda (acuerdo con la sesión del árbol, 2026-10-28)
+
+David: «siempre hay que pensar en el importador para que todo lo nuevo vaya fino». La estructura (colecciones, menús, marcas, tema) no se crea sola con los productos:
+
+- **Proveedores sin colección de marca:** el informe de cada subida los lista; con ellos se lanza `theme-enterprise-vicente/tools/shopify/marcas_nuevas.py`, que crea solo las que faltan.
+- **Variantes nuevas de proveedor** (p. ej. «POLK AUDIO» frente a «polk»): el informe lista las que no estén en `theme-enterprise-vicente/snippets/marca-handle.liquid`, que traduce cada variante a su marca. El proveedor de los productos no se cambia (movería las colecciones de marca).
+- **Familia nueva** (en `store_collections` o como destino nuevo en `store_icecat_category_map`): su colección de Shopify se crea con `tools/shopify/arbol_colecciones.py` (sesión del árbol).
+- **Después de cambiar metacampos del árbol en bloque**, volver a guardar sin cambios la regla de las colecciones afectadas: Shopify no las recalcula solo.
+
 ## Pendiente de decidir
 
 - El porcentaje del freno de bajas.
