@@ -12,6 +12,7 @@ import { SHOPIFY_CATEGORY_BY_FAMILY } from "./shopify-categories";
 import { noTrace, type Trace } from "./trace";
 import { shopifyGraphql, type ShopifyConfig } from "./store-filters";
 import { MIRROR_PRODUCT_FIELDS, MIRROR_VARIANT_FIELDS, mirrorProduct } from "../shopify-mirror";
+import { warrantyEligible } from "./warranty";
 
 // Regla de David (2026-10-26): los productos con revisión pendiente se suben igual, como borrador, y se revisan antes de
 // publicar. Llevan esta etiqueta mientras estén pendientes en la cola; al marcarlos «Está bien» se quita.
@@ -337,6 +338,8 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   const galleryFiles = [...photoFiles.slice(0, productViews < 0 ? photoFiles.length : productViews), ...videoFiles, ...photoFiles.slice(productViews < 0 ? photoFiles.length : productViews)];
 
   // 4) Producto entero de una vez: en borrador si es nuevo; si ya existía, se actualiza (las fotos se sustituyen).
+  // Marca de ampliación de garantía (warranty.ts); sin decidir, no se envía y se borra la que hubiera.
+  const warranty = await t.step("Ampliación de garantía", () => warrantyEligible(deps.db, placement.familia, shop.title), (result) => `${result.eligible === null ? "sin decidir" : result.eligible ? "sí" : "no"}: ${result.reason}`);
   const metafields = [
     ...shop.metafields.filter((item) => item.value !== ""),
     ...(labelId ? [{ namespace: "custom", key: "etiqueta_energetica", type: "file_reference", value: labelId }] : []),
@@ -347,6 +350,7 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
     { namespace: "custom", key: "grupo", type: "single_line_text_field", value: placement.grupo },
     { namespace: "custom", key: "familia", type: "single_line_text_field", value: placement.familia },
     ...(product.family.subfamilyCode ? [{ namespace: "custom", key: "mhd_subfamilia", type: "single_line_text_field", value: product.family.subfamilyCode }] : []),
+    ...(warranty.eligible === null ? [] : [{ namespace: "custom", key: "admite_garantia", type: "boolean", value: String(warranty.eligible) }]),
   ];
   const KEEP_ON_REFRESH = new Set(["custom.disponibilidad_con_stock", "custom.disponibilidad_sin_stock", "custom.prioridad"]);
   // productSet deja el producto solo con los metacampos que se le pasan: en el refresco, los que se conservan se
@@ -404,7 +408,7 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   // Al actualizar, productSet no borra los metacampos que ya no van (p. ej. la etiqueta, el EPREL o la ficha de Icecat
   // de otro modelo): se borran aquí los que gestiona el importador y esta vez no llevan valor.
   if (existing) {
-    const managed = [...shop.metafields.map((item) => `${item.namespace}.${item.key}`), "custom.etiqueta_energetica", "custom.eprel", "custom.icecat", "custom.documentos", "custom.videos"];
+    const managed = [...shop.metafields.map((item) => `${item.namespace}.${item.key}`), "custom.etiqueta_energetica", "custom.eprel", "custom.icecat", "custom.documentos", "custom.videos", "custom.admite_garantia"];
     const kept = new Set(finalMetafields.map((item) => `${item.namespace}.${item.key}`));
     const stale = [...new Set(managed)].filter((name) => !kept.has(name)).map((name) => { const [namespace, key] = name.split("."); return { ownerId: created.id, namespace, key }; });
     if (stale.length) {
