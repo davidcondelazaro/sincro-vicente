@@ -303,4 +303,5 @@ test("marca oficial en el título: solo la primera aparición y sin tocar el mod
   assert.equal(withOfficialBrand("Adaptador USB-C a RJ-45 Dell DELL-SA224-BK", "Dell"), "Adaptador USB-C a RJ-45 Dell DELL-SA224-BK");
   assert.equal(withOfficialBrand("Teléfono inalámbrico Fritz! 20003009", "FRITZ!"), "Teléfono inalámbrico FRITZ! 20003009");
   assert.equal(withOfficialBrand("Cable USB Nanocable 10.01", "NOX"), "Cable USB Nanocable 10.01");
+  assert.equal(withOfficialBrand("Heladera Corbero CMICE12 1,3 L", "Corberó"), "Heladera Corberó CMICE12 1,3 L");
 });

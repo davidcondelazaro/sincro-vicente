@@ -114,9 +114,11 @@ async function officialBrand(shopify: ShopifyConfig, vendor: string) {
   const handle = handleize(vendor);
   return brandsCache.byHandle.get(VENDOR_ALIASES[handle] ?? handle) ?? null;
 }
+// Sin distinguir tildes ni mayúsculas: «Corbero» y «CORBERO» pasan a «Corberó».
+const LOOSE: Record<string, string> = { a: "aáàä", e: "eéèë", i: "iíìï", o: "oóòö", u: "uúùü", n: "nñ", c: "cç" };
 export function withOfficialBrand(text: string, brand: string) {
-  const escaped = brand.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return text.replace(new RegExp(`(^|[^\\p{L}\\p{N}])(${escaped})(?=$|[^\\p{L}\\p{N}])`, "iu"), (_match, before: string) => before + brand);
+  const pattern = [...brand.normalize("NFD").replace(/[\u0300-\u036f]/g, "")].map((char) => { const set = LOOSE[char.toLowerCase()]; return set ? `[${set}${set.toUpperCase()}]` : char.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }).join("");
+  return text.replace(new RegExp(`(^|[^\\p{L}\\p{N}])(${pattern})(?=$|[^\\p{L}\\p{N}])`, "iu"), (_match, before: string) => before + brand);
 }
 
 // Todos los canales de venta de la tienda (David, 2026-10-27: «activar el producto en todos los canales»). Hoy son
