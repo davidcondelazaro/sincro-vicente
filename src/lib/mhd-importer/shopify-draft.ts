@@ -92,6 +92,33 @@ async function storeLocations(shopify: ShopifyConfig) {
   return locationsCache.nodes;
 }
 
+// Nombre oficial de cada marca (David, 2026-10-28): el título de su colección de marca, la que le toca por proveedor
+// como en el tema (theme-enterprise-vicente/snippets/marca-handle.liquid: mismas variantes juntadas). La IA a veces
+// escribe la marca como Icecat o MHD («Viewsonic», «Nox»); antes de guardar se corrige su primera aparición en el
+// título y el meta título (las siguientes suelen ser parte del modelo: «Dell DELL-SA224-BK»). Se lee una vez por hora.
+const VENDOR_ALIASES: Record<string, string> = { "polk-audio": "polk", roomba: "irobot", "irobot-roomba": "irobot", "fonestar-sistem": "fonestar", startechcom: "startech", "western-digital-wd": "western-digital", "dahua-technology": "dahua", "wp-european-cabling-solution": "wp", be: "be-quiet", unyka: "unykach", "phoenix-technologies": "phoenix", "alfa-hogar": "alfa", "ruijie-networks": "ruijie", "qcharx-international": "qcharx", "tenda-co-ltd": "tenda", "madcow-entertainment": "madcow", "k-rcher": "karcher" };
+const handleize = (text: string) => text.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+let brandsCache: { at: number; byHandle: Map<string, string> } | null = null;
+async function officialBrand(shopify: ShopifyConfig, vendor: string) {
+  if (!brandsCache || Date.now() - brandsCache.at > 3_600_000) {
+    const byHandle = new Map<string, string>();
+    type Page = { collections: { nodes: { handle: string; title: string; tipo: { value: string } | null; marca: { value: string } | null }[]; pageInfo: { hasNextPage: boolean; endCursor: string | null } } };
+    let after: string | null = null;
+    do {
+      const page: Page = await shopifyGraphql<Page>(shopify, `query($after: String) { collections(first: 250, after: $after) { nodes { handle title tipo: metafield(namespace: "custom", key: "tipo_coleccion") { value } marca: metafield(namespace: "custom", key: "es_marca") { value } } pageInfo { hasNextPage endCursor } } }`, { after });
+      for (const node of page.collections.nodes) if (node.tipo?.value === "marca" || node.marca?.value === "true") byHandle.set(node.handle, node.title);
+      after = page.collections.pageInfo.hasNextPage ? page.collections.pageInfo.endCursor : null;
+    } while (after);
+    brandsCache = { at: Date.now(), byHandle };
+  }
+  const handle = handleize(vendor);
+  return brandsCache.byHandle.get(VENDOR_ALIASES[handle] ?? handle) ?? null;
+}
+export function withOfficialBrand(text: string, brand: string) {
+  const escaped = brand.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return text.replace(new RegExp(`(^|[^\\p{L}\\p{N}])(${escaped})(?=$|[^\\p{L}\\p{N}])`, "iu"), (_match, before: string) => before + brand);
+}
+
 // Todos los canales de venta de la tienda (David, 2026-10-27: «activar el producto en todos los canales»). Hoy son
 // «Online Store» y «Shop»; si se instala otro (Google, Meta, punto de venta), entra solo. Se leen una vez por hora.
 let channelsCache: { at: number; ids: string[] } | null = null;
@@ -349,9 +376,10 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   // (activos, refrescados o archivados que vuelven). La dirección intermedia de Shopify no se redirige (la tienda nunca
   // ha estado abierta): solo la URL original de PrestaShop, directa a la nueva, con el resto (docs/REDIRECCIONES.md).
   const handle = shop.handle;
+  const brand = shop.vendor ? await officialBrand(deps.shopify, shop.vendor) : null;
   const input = {
-    title: shop.title, handle, status, vendor: shop.vendor, productType: placement.familyTitle, tags,
-    ...(category ? { category } : {}), descriptionHtml: shop.descriptionHtml, seo: shop.seo, metafields: finalMetafields,
+    title: brand ? withOfficialBrand(shop.title, brand) : shop.title, handle, status, vendor: shop.vendor, productType: placement.familyTitle, tags,
+    ...(category ? { category } : {}), descriptionHtml: shop.descriptionHtml, seo: brand ? { ...shop.seo, title: withOfficialBrand(shop.seo.title, brand) } : shop.seo, metafields: finalMetafields,
     files: galleryFiles,
     productOptions: [{ name: "Title", values: [{ name: "Default Title" }] }],
     variants: [variant],
@@ -399,8 +427,9 @@ export async function updateShopifyTexts(deps: { db: SupabaseClient; shopify: Sh
   const { data: previous } = await deps.db.from("mhd_importer_product_runs").select("shopify_product_id").eq("codigo", run.codigo).not("shopify_product_id", "is", null).order("created_at", { ascending: false }).limit(1).maybeSingle();
   const productId = previous?.shopify_product_id as string | undefined;
   if (!productId) throw new Error("Este producto todavía no está en Shopify: guárdalo entero primero.");
+  const brand = shop.vendor ? await officialBrand(deps.shopify, shop.vendor) : null;
   const updated = await shopifyGraphql<{ productUpdate: { product: { id: string; handle: string; status: string } | null; userErrors: UserError[] } }>(deps.shopify,
-    `mutation($p: ProductUpdateInput!) { productUpdate(product: $p) { product { id handle status } userErrors { field message } } }`, { p: { id: productId, title: shop.title, descriptionHtml: shop.descriptionHtml, seo: shop.seo } });
+    `mutation($p: ProductUpdateInput!) { productUpdate(product: $p) { product { id handle status } userErrors { field message } } }`, { p: { id: productId, title: brand ? withOfficialBrand(shop.title, brand) : shop.title, descriptionHtml: shop.descriptionHtml, seo: brand ? { ...shop.seo, title: withOfficialBrand(shop.seo.title, brand) } : shop.seo } });
   check(updated.productUpdate.userErrors, "Shopify no actualizó los textos");
   const textFields = ["descripcion_corta", "consejo_elvi"];
   const set = shop.metafields.filter((item) => item.namespace === "custom" && textFields.includes(item.key) && item.value !== "").map((item) => ({ ownerId: productId, ...item }));
