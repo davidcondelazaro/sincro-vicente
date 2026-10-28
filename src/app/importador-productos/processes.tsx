@@ -53,6 +53,13 @@ function pace(job: Job, now: number) {
   return { perMinute, eta: left && job.status === "en_curso" ? left / perMinute : null };
 }
 
+// Tiempo total de la tanda (David, 2026-10-28): de cuando arrancó a cuando terminó, o hasta ahora si sigue; con las pausas.
+function duration(job: Job, now: number) {
+  if (!job.started_at) return "—";
+  const minutes = Math.round(((job.finished_at ? new Date(job.finished_at).getTime() : now) - new Date(job.started_at).getTime()) / 60_000);
+  return minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
+}
+
 export function ProcessesView() {
   const [jobs, setJobs] = useState<Job[]>([]); const [workers, setWorkers] = useState<{ slot: number; lease_until: string | null; heartbeat_at: string | null }[]>([]);
   const [mirror, setMirror] = useState<{ status: string; started_at: string; finished_at: string | null; products: number | null; variants: number | null; collections: number | null; error: string | null } | null>(null);
@@ -100,8 +107,8 @@ function JobCard({ job, now, selected, onSelect, onAction }: { job: Job; now: nu
       <span className="ml-auto text-xs text-zinc-400">{job.created_by ?? "—"} · {clock(job.created_at)}</span>
     </header>
     <div className="mt-3 flex h-2.5 overflow-hidden rounded-full bg-zinc-100">{bar(job.ok, "bg-emerald-500")}{bar(job.descartados, "bg-amber-400")}{bar(job.errores, "bg-red-500")}{bar(job.en_curso, "bg-sky-400 animate-pulse")}</div>
-    <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4 lg:grid-cols-8">
-      {([["Hechos", `${integer.format(done)} de ${integer.format(job.total)}`], ["Bien", integer.format(job.ok)], ["Descartados", integer.format(job.descartados)], ["Errores", integer.format(job.errores)], ["En curso", integer.format(job.en_curso)], ["Media por producto", seconds(job.duracion_media_ms)], ["Ritmo", perMinute ? `${perMinute.toFixed(1).replace(".", ",")}/min` : "—"], [job.status === "en_curso" ? "Quedan" : "Coste", job.status === "en_curso" ? (eta ? `~${eta < 60 ? `${Math.ceil(eta)} min` : `${(eta / 60).toFixed(1).replace(".", ",")} h`}` : "—") : `${Number(job.coste_usd).toFixed(2).replace(".", ",")} $`]] as const).map(([label, value]) => <div key={label}><dt className="text-xs text-zinc-500">{label}</dt><dd className="font-medium tabular-nums text-zinc-900">{value}</dd></div>)}
+    <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-5 lg:grid-cols-9">
+      {([["Hechos", `${integer.format(done)} de ${integer.format(job.total)}`], ["Bien", integer.format(job.ok)], ["Descartados", integer.format(job.descartados)], ["Errores", integer.format(job.errores)], ["En curso", integer.format(job.en_curso)], ["Duración", duration(job, now)], ["Media por producto", seconds(job.duracion_media_ms)], ["Ritmo", perMinute ? `${perMinute.toFixed(1).replace(".", ",")}/min` : "—"], [job.status === "en_curso" ? "Quedan" : "Coste", job.status === "en_curso" ? (eta ? `~${eta < 60 ? `${Math.ceil(eta)} min` : `${(eta / 60).toFixed(1).replace(".", ",")} h`}` : "—") : `${Number(job.coste_usd).toFixed(2).replace(".", ",")} $`]] as const).map(([label, value]) => <div key={label}><dt className="text-xs text-zinc-500">{label}</dt><dd className="font-medium tabular-nums text-zinc-900">{value}</dd></div>)}
     </dl>
     <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
       <span className="text-xs text-zinc-500">Última actividad: {ago(job.ultima_actividad, now)} · coste {Number(job.coste_usd).toFixed(2).replace(".", ",")} $ · {job.options.workers ?? 1} × {job.options.concurrency ?? 4} a la vez{job.options.upload === "nuevos" ? " · sube a Shopify solo los nuevos" : job.options.upload ? " · sube a Shopify" : ""}</span>
