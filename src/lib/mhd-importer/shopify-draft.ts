@@ -107,8 +107,9 @@ export async function publishToStoreChannels(shopify: ShopifyConfig, productId: 
 // El tipo de producto de Shopify es el nombre de la familia (David, 2026-10-27): sale como filtro «Categoría» en las
 // colecciones y el «Tipo» de la ficha enlaza a su familia.
 type Placement = { apartado: string; grupo: string; familia: string; familyTitle: string };
-let treeCache: { at: number; bySubfamily: Map<string, Placement & { perProduct: boolean }>; byCategory: Map<string, Placement> } | null = null;
+let treeCache: { at: number; byHandle: Map<string, Placement>; bySubfamily: Map<string, Placement & { perProduct: boolean }>; byCategory: Map<string, Placement> } | null = null;
 // Colocación en el árbol nuevo (David, 2026-10-28):
+// 0. La familia elegida a mano para el producto (store_product_family_overrides), si la tiene.
 // 1. Si la categoría de Icecat del producto está en store_icecat_category_map, manda esa familia: la fila de su
 //    subfamilia y, si no hay, la de toda la tienda (alfombrillas, docks, tóner en «Cartuchos»…). Vale para los nuevos.
 // 2. Si no, la familia de su subfamilia de MHD (store_mhd_subfamily_map), con la recolocación del producto si la tiene
@@ -138,8 +139,15 @@ async function treePlacement(db: SupabaseClient, product: { codigo: string; subf
       const placed = place(row.collection_handle);
       if (placed) byCategory.set(`${row.icecat_category}|${row.mhd_subfamily_code ?? ""}`, placed);
     }
-    treeCache = { at: Date.now(), bySubfamily, byCategory };
+    const placedByHandle = new Map<string, Placement>();
+    for (const handle of byHandle.keys()) { const placed = place(handle); if (placed) placedByHandle.set(handle, placed); }
+    treeCache = { at: Date.now(), byHandle: placedByHandle, bySubfamily, byCategory };
   }
+  // 0. Familia elegida a mano para este producto (store_product_family_overrides): manda sobre todo.
+  const { data: chosen, error: chosenError } = await db.from("store_product_family_overrides").select("collection_handle").eq("codigo", product.codigo).maybeSingle();
+  if (chosenError) throw chosenError;
+  const byHand = chosen ? treeCache.byHandle.get(chosen.collection_handle) ?? null : null;
+  if (byHand) return byHand;
   const { data: cached, error: cacheError } = product.ean ? await db.from("mhd_importer_source_cache").select("payload").eq("source", "icecat").eq("source_key", product.ean).maybeSingle() : { data: null, error: null };
   if (cacheError) throw cacheError;
   const payload = cached?.payload as { data?: unknown } | null;
