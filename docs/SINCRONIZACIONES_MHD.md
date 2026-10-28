@@ -51,6 +51,7 @@ David: «siempre hay que pensar en el importador para que todo lo nuevo vaya fin
 
 - **Proveedores sin colección de marca:** el informe de cada subida los lista; con ellos se lanza `theme-enterprise-vicente/tools/shopify/marcas_nuevas.py`, que crea solo las que faltan.
 - **Variantes nuevas de proveedor** (p. ej. «POLK AUDIO» frente a «polk»): el informe lista las que no estén en `theme-enterprise-vicente/snippets/marca-handle.liquid`, que traduce cada variante a su marca. El proveedor de los productos no se cambia (movería las colecciones de marca).
+- **Marcas despublicadas que vuelven a tener productos:** el informe lista los proveedores con productos activos cuya colección de marca está despublicada (19 despublicadas el 2026-10-28 por no tener productos, sin borrar: `theme-enterprise-vicente/reference/marcas/marcas-despublicadas-2026-10-28.json`), para volver a publicarla; mientras tanto su URL redirige a `/pages/marcas`.
 - **Familia nueva** (en `store_collections` o como destino nuevo en `store_icecat_category_map`): su colección de Shopify se crea con `tools/shopify/arbol_colecciones.py` (sesión del árbol).
 - **Después de cambiar metacampos del árbol en bloque**, volver a guardar sin cambios la regla de las colecciones afectadas: Shopify no las recalcula solo.
 

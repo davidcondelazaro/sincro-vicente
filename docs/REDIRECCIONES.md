@@ -26,7 +26,7 @@ Copias de `theme-enterprise-vicente/reference/redirecciones/` (ver `data/redirec
 
 - **Producto:** a su ficha **solo si sigue vivo** en la tienda nueva; si no, a su categoría (la de la URL vieja, traducida con `theme-enterprise-vicente/docs/arbol-colecciones-equivalencias.csv`). Nada de producto sustituto.
 - **Colección o categoría:** a su equivalente por esa tabla (handle actual → handle nuevo); si no hay, a la más próxima del árbol (familia › grupo › apartado).
-- **Marca:** a su página de marca; si no existe, a `/pages/marcas`.
+- **Marca:** a su página de marca; si no existe o está despublicada, directa a `/pages/marcas` (no a `/collections/<handle>`, que ya redirige ahí: sería una cadena). Despublicadas el 2026-10-28: `theme-enterprise-vicente/reference/marcas/marcas-despublicadas-2026-10-28.json`.
 - **Nunca** a la portada por defecto ni en cadena.
 - Las bajas de MHD (archivar + redirigir) añaden su fila con la misma lógica (`SINCRONIZACIONES_MHD.md`).
 - **Dirección de los productos que ya tenía la tienda** (David, 2026-10-26; corregido en la subida el 2026-10-27): estrenan la dirección del importador. La dirección intermedia de Shopify no se redirige (la tienda nunca ha estado abierta); solo la **URL original de PrestaShop**, directa a la nueva, sin cadenas (David, 2026-10-27).
