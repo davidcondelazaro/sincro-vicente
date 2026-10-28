@@ -1,5 +1,6 @@
-// Sincronización de precio y stock con Shopify (David, 2026-10-28; diseño en docs/SINCRONIZACIONES_MHD.md). Cada 30 min
-// Supabase lee /prices y /stocks de MHD (mhd_import_start_scheduled); esta pieza manda a Shopify solo lo que cambia
+// Sincronización de precio y stock con Shopify (David, 2026-10-28; diseño en docs/SINCRONIZACIONES_MHD.md). Supabase lee
+// MHD (mhd_import_start_scheduled): el stock de /stocks cada 30 min y el precio del listado de productos (`pvp`, la tarifa
+// de nuestra web; el de /prices es otra tarifa, David 2026-10-29) cada hora. Esta pieza manda a Shopify solo lo que cambia
 // respecto a lo último enviado (mhd_shopify_price_stock), sin IA: el precio en la variante (sin precio tachado) y el
 // stock en «Almacén MHD». Todo queda en mhd_sync_events. Los productos que no vienen en la lectura no se tocan: eso lo
 // deciden las bajas, con dos lecturas seguidas.

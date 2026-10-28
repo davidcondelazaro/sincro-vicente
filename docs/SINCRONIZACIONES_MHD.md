@@ -56,9 +56,9 @@ David: «siempre hay que pensar en el importador para que todo lo nuevo vaya fin
 - **Familia nueva** (en `store_collections` o como destino nuevo en `store_icecat_category_map`): su colección de Shopify se crea con `tools/shopify/arbol_colecciones.py` (sesión del árbol).
 - **Después de cambiar metacampos del árbol en bloque**, volver a guardar sin cambios la regla de las colecciones afectadas: Shopify no las recalcula solo.
 
-## Precio bueno: el de `/prices`, no el del listado (2026-10-28)
+## Precio de la tienda: el `pvp` del listado de productos (David, 2026-10-29)
 
-El `pvp` del listado (`/products`) no coincide con el de `/prices` en 17.526 de 29.900 productos aunque los dos traen la misma `fecha_modificacion_precio` (10.275 más bajo en el listado, 7.251 más alto; de media el real es un 6,8 % más alto). La web de MHD coincide siempre con `/prices`: combi Bosch KGN39VIEB 647 € frente a 796 € (web 796 €), lavadora Bosch WAN24272ES 537 € frente a 529,80 € (web 529,80 €), silla Equip 651016 137 € frente a 135 € (web 135 €). La subida masiva usó el del listado; la sincronización de precio y stock y el importador usan desde ahora `/prices` (y `/stocks`). Preguntado a MHD qué es el `pvp` del listado (David, 2026-10-29).
+El `pvp` del listado (`/products`) es **la tarifa de nuestra web**, la buena: MHD ya lo había cambiado ahí. `/prices` trae otra tarifa (la de la web de MHD) y no coincide en ~17.500 productos (combi Bosch KGN39VIEB: 647 € en el listado, 796 € en `/prices` y en su web); MHD tiene que cambiarla también. Hasta entonces, el precio sale del listado (subida del importador y sincronización) y el stock, de `/stocks`. La subida masiva usó el del listado, así que sus precios están bien. El 28-10 se probó a poner el de `/prices` en 5 productos y se deshizo el 29-10.
 
 ## Pendiente de decidir
 

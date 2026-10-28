@@ -360,18 +360,16 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   const current = existing?.variants.nodes[0];
   // Precio, stock, SKU y EAN de MHD en todo lo que se sube (David, 2026-10-27), también al pisar un producto que ya
   // estaba: el SKU tiene que ser el código de MHD porque los pedidos se le mandan con él (mhd-order-lines.ts), y los
-  // productos de antes llevaban la referencia del fabricante. Precio y stock, los de la última lectura de /prices y
-  // /stocks de MHD (2026-10-28: el `pvp` del listado no es el de su web en ~17.500 productos); si no están, los del
-  // listado. Sin precio tachado (no es oferta: la oferta es la etiqueta).
-  const [{ data: priceRow, error: priceError }, { data: stockRow, error: stockError }, { data: listed, error: listedError }] = await Promise.all([
-    deps.db.from("mhd_catalog_prices").select("pvp").eq("codigo", product.codigo).maybeSingle(),
+  // productos de antes llevaban la referencia del fabricante. Precio: el `pvp` del listado de productos de MHD, que es la
+  // tarifa de nuestra web (David, 2026-10-29: el de /prices es otra tarifa, la de la web de MHD). Stock: el de la última
+  // lectura de /stocks; si no está, el del listado. Sin precio tachado (no es oferta: la oferta es la etiqueta).
+  const [{ data: stockRow, error: stockError }, { data: listed, error: listedError }] = await Promise.all([
     deps.db.from("mhd_catalog_stock").select("stock").eq("codigo", product.codigo).maybeSingle(),
     deps.db.from("mhd_catalog_products").select("pvp,stock").eq("codigo", product.codigo).maybeSingle(),
   ]);
-  if (priceError) throw priceError;
   if (stockError) throw stockError;
   if (listedError) throw listedError;
-  const freshPrice = Number(priceRow?.pvp ?? 0) > 0 ? Number(priceRow!.pvp) : Number(listed?.pvp ?? 0) > 0 ? Number(listed!.pvp) : null;
+  const freshPrice = Number(listed?.pvp ?? 0) > 0 ? Number(listed!.pvp) : null;
   const freshStock = stockRow ? stockRow.stock : listed ? listed.stock : null;
   const price = freshPrice ? freshPrice.toFixed(2) : shop.variant.price;
   const stock = freshStock !== null ? Math.max(0, Math.trunc(Number(freshStock ?? 0))) : null;
