@@ -53,6 +53,7 @@ export const SHOPIFY_CATEGORY_BY_FAMILY: Record<string, string> = {
   "antenas-parabolicas": "gid://shopify/TaxonomyCategory/el-17-3-3", // Antenas satelitales
   "antenas-y-adaptadores-wifi": "gid://shopify/TaxonomyCategory/el-12-6-4", // Tarjetas y adaptadores de red Wi-Fi
   "arcones-congeladores": "gid://shopify/TaxonomyCategory/hg-11-7-20-1", // Congeladores horizontales
+  "accesorios-de-ordenador": "gid://shopify/TaxonomyCategory/el-7-8", // Accesorios informáticos (familia nueva, 2026-10-28)
   "armarios-rack-y-accesorios-de-red": "gid://shopify/TaxonomyCategory/el-7", // Accesorios electrónicos
   "arroceras": "gid://shopify/TaxonomyCategory/hg-11-7-14-3", // Arroceras
   "aspiradores": "gid://shopify/TaxonomyCategory/hg-9-10", // Aspiradoras
@@ -71,6 +72,7 @@ export const SHOPIFY_CATEGORY_BY_FAMILY: Record<string, string> = {
   "cafes-e-infusiones": "gid://shopify/TaxonomyCategory/fb-1", // Bebidas
   "cafeteras": "gid://shopify/TaxonomyCategory/hg-11-7-4", // Cafeteras
   "cajas-de-ordenador": "gid://shopify/TaxonomyCategory/el-7-9-8", // Cajas para computadoras y servidores
+  "bases-y-replicadores-de-puertos": "gid://shopify/TaxonomyCategory/el-7-8-7", // Estaciones de conexión para portátiles (familia nueva, 2026-10-28)
   "cajas-para-discos-duros": "gid://shopify/TaxonomyCategory/el-7-9-14-2-3", // Soportes y carcasas para discos duros
   "cajones-calientaplatos": "gid://shopify/TaxonomyCategory/hg-11-7-19-7", // Cajones calentadores
   "calculadoras": "gid://shopify/TaxonomyCategory/os-10-2", // Calculadoras

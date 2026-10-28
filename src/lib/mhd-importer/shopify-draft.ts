@@ -106,24 +106,54 @@ export async function publishToStoreChannels(shopify: ShopifyConfig, productId: 
 // leen una vez por hora. Sin familia del árbol el producto no se sube: quedaría fuera de todas las colecciones.
 // El tipo de producto de Shopify es el nombre de la familia (David, 2026-10-27): sale como filtro «Categoría» en las
 // colecciones y el «Tipo» de la ficha enlaza a su familia.
-let treeCache: { at: number; bySubfamily: Map<string, { apartado: string; grupo: string; familia: string; familyTitle: string }> } | null = null;
-async function treePlacement(db: SupabaseClient, subfamily: string | null) {
+type Placement = { apartado: string; grupo: string; familia: string; familyTitle: string };
+let treeCache: { at: number; bySubfamily: Map<string, Placement & { perProduct: boolean }>; byCategory: Map<string, Placement> } | null = null;
+// Colocación en el árbol nuevo (David, 2026-10-28):
+// 1. Si la categoría de Icecat del producto está en store_icecat_category_map, manda esa familia: la fila de su
+//    subfamilia y, si no hay, la de toda la tienda (alfombrillas, docks, tóner en «Cartuchos»…). Vale para los nuevos.
+// 2. Si no, la familia de su subfamilia de MHD (store_mhd_subfamily_map), con la recolocación del producto si la tiene
+//    (mhd_importer_subfamily_overrides, la misma que usa el procesado).
+// 3. En los cajones de sastre (`per_product`) una categoría que no está en la tabla, o no tener Icecat, deja el producto
+//    en la familia de la subfamilia con `doubtful`: la subida lo pone en borrador y a revisión.
+async function treePlacement(db: SupabaseClient, product: { codigo: string; subfamily: string | null; ean: string | null }): Promise<(Placement & { doubtful?: string }) | null> {
   if (!treeCache || Date.now() - treeCache.at > 3_600_000) {
-    const [{ data: map, error: mapError }, { data: collections, error: collectionsError }] = await Promise.all([
-      db.from("store_mhd_subfamily_map").select("mhd_subfamily_code,collection_handle").not("collection_handle", "is", null),
+    const [{ data: map, error: mapError }, { data: collections, error: collectionsError }, { data: categories, error: categoriesError }] = await Promise.all([
+      db.from("store_mhd_subfamily_map").select("mhd_subfamily_code,collection_handle,per_product").not("collection_handle", "is", null),
       db.from("store_collections").select("handle,title,parent_handle,apartado_handle"),
+      db.from("store_icecat_category_map").select("icecat_category,mhd_subfamily_code,collection_handle"),
     ]);
     if (mapError) throw mapError;
     if (collectionsError) throw collectionsError;
+    if (categoriesError) throw categoriesError;
     const byHandle = new Map((collections as { handle: string; title: string; parent_handle: string | null; apartado_handle: string | null }[]).map((row) => [row.handle, row]));
-    const bySubfamily = new Map<string, { apartado: string; grupo: string; familia: string; familyTitle: string }>();
-    for (const row of map as { mhd_subfamily_code: string; collection_handle: string }[]) {
-      const family = byHandle.get(row.collection_handle);
-      if (family?.parent_handle && family.apartado_handle) bySubfamily.set(row.mhd_subfamily_code, { apartado: family.apartado_handle, grupo: family.parent_handle, familia: row.collection_handle, familyTitle: family.title });
+    const place = (handle: string): Placement | null => { const family = byHandle.get(handle); return family?.parent_handle && family.apartado_handle ? { apartado: family.apartado_handle, grupo: family.parent_handle, familia: handle, familyTitle: family.title } : null; };
+    const bySubfamily = new Map<string, Placement & { perProduct: boolean }>();
+    for (const row of map as { mhd_subfamily_code: string; collection_handle: string; per_product: boolean }[]) {
+      const placed = place(row.collection_handle);
+      if (placed) bySubfamily.set(row.mhd_subfamily_code, { ...placed, perProduct: row.per_product });
     }
-    treeCache = { at: Date.now(), bySubfamily };
+    const byCategory = new Map<string, Placement>();
+    // Clave «categoría|subfamilia» (o «categoría|» si vale para toda la tienda).
+    for (const row of categories as { icecat_category: string; mhd_subfamily_code: string | null; collection_handle: string }[]) {
+      const placed = place(row.collection_handle);
+      if (placed) byCategory.set(`${row.icecat_category}|${row.mhd_subfamily_code ?? ""}`, placed);
+    }
+    treeCache = { at: Date.now(), bySubfamily, byCategory };
   }
-  return subfamily ? treeCache.bySubfamily.get(subfamily) ?? null : null;
+  const { data: cached, error: cacheError } = product.ean ? await db.from("mhd_importer_source_cache").select("payload").eq("source", "icecat").eq("source_key", product.ean).maybeSingle() : { data: null, error: null };
+  if (cacheError) throw cacheError;
+  const payload = cached?.payload as { data?: unknown } | null;
+  const category = ((payload?.data ?? payload) as { GeneralInfo?: { Category?: { Name?: { Value?: string } } } } | null)?.GeneralInfo?.Category?.Name?.Value ?? null;
+  const { data: moved, error: movedError } = await db.from("mhd_importer_subfamily_overrides").select("cod_subfamilia").eq("codigo", product.codigo).maybeSingle();
+  if (movedError) throw movedError;
+  const subfamily = moved?.cod_subfamilia ?? product.subfamily;
+  const byCategory = category ? treeCache.byCategory.get(`${category}|${subfamily ?? ""}`) ?? treeCache.byCategory.get(`${category}|`) ?? null : null;
+  if (byCategory) return byCategory;
+  const bySubfamily = subfamily ? treeCache.bySubfamily.get(subfamily) ?? null : null;
+  if (!bySubfamily) return null;
+  const { perProduct, ...placement } = bySubfamily;
+  if (!perProduct) return placement;
+  return { ...placement, doubtful: category ? `Cajón de sastre de MHD: la categoría de Icecat «${category}» no tiene familia en la tabla.` : "Cajón de sastre de MHD sin categoría de Icecat: hay que elegirle familia." };
 }
 
 async function releaseProductRedirects(deps: { db: SupabaseClient; shopify: ShopifyConfig }, handle: string) {
@@ -158,9 +188,10 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   if (decision?.status === "no_importar") throw new Error(`Marcado «No importar» en la cola de revisión${decision.note ? `: ${decision.note}` : ""}.`);
   const { data: queued, error: queueError } = await deps.db.from("mhd_importer_review_queue").select("pending").eq("codigo", product.codigo).maybeSingle();
   if (queueError) throw queueError;
-  const reviewPending = Boolean(queued?.pending);
-  const placement = await t.step("Colocación en el árbol", () => treePlacement(deps.db, product.family.subfamilyCode), (result) => (result ? `${result.apartado} › ${result.grupo} › ${result.familia}` : "Sin familia del árbol"));
+  let reviewPending = Boolean(queued?.pending);
+  const placement = await t.step("Colocación en el árbol", () => treePlacement(deps.db, { codigo: product.codigo, subfamily: product.family.subfamilyCode, ean: shop.variant.barcode ?? null }), (result) => (result ? `${result.apartado} › ${result.grupo} › ${result.familia}${result.doubtful ? " (dudosa)" : ""}` : "Sin familia del árbol"));
   if (!placement) throw new Error(`La subfamilia ${product.family.subfamilyName ?? product.family.subfamilyCode} no tiene familia en el árbol nuevo: no se sube.`);
+  if (placement.doubtful) { t.event("aviso", "Colocación en el árbol", placement.doubtful); reviewPending = true; }
   // ¿Ya existe en Shopify? Primero la propia prueba; si no, cualquier prueba anterior del mismo código de MHD.
   let existingId = run.shopify_product_id as string | null;
   if (!existingId) {
