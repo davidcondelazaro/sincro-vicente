@@ -8,7 +8,7 @@
 // de MHD salvo que esta tabla la corrija por otra empresa. Funciones puras, sin IA.
 import type { IcecatSummary } from "./icecat";
 
-export type BrandChoice = { brand: string; vendor: string; needsReview: boolean; reason: string | null };
+export type BrandChoice = { brand: string; vendor: string; needsReview: boolean; reason: string | null; replaces?: string };
 export type BrandListing = { codigo?: string | null; nombre_marca: string | null; titulo?: string | null; ref_proved?: string | null };
 
 export const brandKey = (name: string | null | undefined) => (name ?? "").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Z0-9]/g, "");
@@ -74,10 +74,19 @@ const MHD_BRAND_FIXES: Record<string, string> = { EPOSSENNHEISER: "Sennheiser", 
 // …o productos sueltos, por su código de MHD (el resto de su marca está bien).
 const PRODUCT_BRAND_FIXES: Record<string, string> = { "10039156": "Ruby", "10039823": "Ruby", "10022318": "Ruby", "10013300": "Hyper", "10141269": "Medisana" };
 
+// La IA copia en el título la marca que trae MHD («Play Go Up», «Kayami Ruby Bero 1»): se cambia por la buena y se
+// quita la repetición que queda («Ruby Ruby»).
+export function fixBrandText(text: string, wrong: string, brand: string) {
+  const words = wrong.trim().split(/\s+/).map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s+");
+  const fixed = text.replace(new RegExp(`(^|[^\\p{L}\\p{N}])${words}(?=$|[^\\p{L}\\p{N}])`, "giu"), (_match, before: string) => before + brand);
+  const twice = brand.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return fixed.replace(new RegExp(`(^|[^\\p{L}\\p{N}])${twice}\\s+${twice}(?=$|[^\\p{L}\\p{N}])`, "giu"), (_match, before: string) => before + brand);
+}
+
 export function resolveBrand(listing: BrandListing, icecat: IcecatSummary | null): BrandChoice {
   const mhd = (listing.nombre_marca ?? "").trim(); const mhdKey = brandKey(mhd);
   const fixed = PRODUCT_BRAND_FIXES[listing.codigo ?? ""] ?? MHD_BRAND_FIXES[mhdKey];
-  if (fixed) return { brand: fixed, vendor: fixed.toUpperCase(), needsReview: false, reason: `MHD pone «${mhd}», pero la marca es «${fixed}» (corrección comprobada por EAN y web del fabricante): va en el informe para MHD.` };
+  if (fixed) return { brand: fixed, vendor: fixed.toUpperCase(), needsReview: false, replaces: mhd, reason: `MHD pone «${mhd}», pero la marca es «${fixed}» (corrección comprobada por EAN y web del fabricante): va en el informe para MHD.` };
   const vendor = mhd.toUpperCase(); const ref = (listing.ref_proved ?? "").trim().toUpperCase();
   // Marcas que MHD pone mal y se reconocen por el modelo o el título.
   if (mhdKey !== "DAYMA" && (/\bDAYMA\b/i.test(listing.titulo ?? "") || (ref.startsWith("M-") && PRINTER_BRANDS.has(mhdKey))))

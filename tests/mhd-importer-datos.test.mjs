@@ -6,7 +6,7 @@ import { createJiti } from "jiti";
 
 const jiti = createJiti(import.meta.url);
 const { resolveModel } = await jiti.import("../src/lib/mhd-importer/models.ts");
-const { resolveBrand, writtenBrand } = await jiti.import("../src/lib/mhd-importer/brands.ts");
+const { fixBrandText, resolveBrand, writtenBrand } = await jiti.import("../src/lib/mhd-importer/brands.ts");
 const { buildFactSheet, numbersIn, unsupportedNumbers, relativeDifference, sourceDisagreements } = await jiti.import("../src/lib/mhd-importer/facts.ts");
 const { applyProfile, discardReason, exclusionReason } = await jiti.import("../src/lib/mhd-importer/rules.ts");
 const { energyClassReason, median } = await jiti.import("../src/lib/mhd-importer/review.ts");
@@ -311,4 +311,9 @@ test("marcas que MHD pone mal siempre: por marca o por producto, haya Icecat o n
   assert.equal(resolveBrand({ nombre_marca: "PLAY", titulo: "Carro We Go" }, null).vendor, "PLAYMARKET");
   assert.equal(resolveBrand({ codigo: "10039156", nombre_marca: "KAYAMI", titulo: "Ruby Bero 1" }, null).brand, "Ruby");
   assert.equal(resolveBrand({ codigo: "10142490", nombre_marca: "KAYAMI", titulo: "Humidificador HM140U" }, null).brand, "Kayami");
+  assert.equal(fixBrandText("Carrito de la compra Play Go Up Olive 2 ruedas", "Play", "Playmarket"), "Carrito de la compra Playmarket Go Up Olive 2 ruedas");
+  assert.equal(fixBrandText("Carrito Playmarket We Go", "Play", "Playmarket"), "Carrito Playmarket We Go");
+  assert.equal(fixBrandText("Carrito Duet 24925D3 290", "Duet", "Duett"), "Carrito Duett 24925D3 290");
+  assert.equal(fixBrandText("Termoventilador Kayami Ruby Bero 1 1500 W", "Kayami", "Ruby"), "Termoventilador Ruby Bero 1 1500 W");
+  assert.equal(fixBrandText("Auriculares EPOS Sennheiser ACCENTUM", "Epos Sennheiser", "Sennheiser"), "Auriculares Sennheiser ACCENTUM");
 });

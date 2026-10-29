@@ -7,7 +7,7 @@ import sharp from "sharp";
 import { productDistinction, type Classification } from "./classification";
 import { PROCESSOR_MODEL } from "./ai";
 import { writeContent, writeElviForPage, type ProductContent } from "./content";
-import { resolveBrand, type BrandChoice } from "./brands";
+import { fixBrandText, resolveBrand, type BrandChoice } from "./brands";
 import { sourceDisagreements } from "./facts";
 import { resolveModel, type ModelChoice } from "./models";
 import { energyClassReason, energyLetter } from "./review";
@@ -293,6 +293,10 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   warnings.push(...written.errors.map((error) => `Validación del texto: ${error}`));
   if (written.blocked) warnings.push("Ficha bloqueada: el revisor de datos encontró afirmaciones sin respaldo. Hay que rehacerla o revisarla antes de guardarla en Shopify.");
   cost += written.costUsd ?? 0; usage.content = written.usage; usage.contentAttempts = written.attempts; usage.contentErrors = written.attemptErrors;
+  if (brandChoice.replaces) {
+    written.content.title = fixBrandText(written.content.title, brandChoice.replaces, brandChoice.brand);
+    written.content.meta_title = fixBrandText(written.content.meta_title, brandChoice.replaces, brandChoice.brand);
+  }
   const brand = brandChoice.brand;
   // Tipo para la dirección y los archivos: lo que va delante de la marca en el título («Freidora de aire»), porque en
   // familias amplias el nombre del perfil es genérico («pequeño electrodoméstico de preparación de alimentos»).
