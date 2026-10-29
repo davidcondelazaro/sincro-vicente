@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 
 // Cola de revisión a mano del importador (docs/IMPORTADOR_PRODUCTOS_MHD.md): los productos cuya última prueba trae
 // motivos de revisión (clase energética distinta, cifras de MHD e Icecat que no cuadran, precio raro, modelo o marca
@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 // nueva trae otros motivos, vuelve a la cola.
 
 type Decision = "resuelto" | "no_importar" | "avisar_mhd";
-type QueueItem = { codigo: string; family_code: string | null; family_name: string | null; run_id: string; run_at: string; title: string | null; ean: string | null; reasons: string[]; decision: Decision | null; note: string | null; reviewer: string | null; decided_at: string | null; pending: boolean };
+type QueueItem = { codigo: string; shopify_product_id: string | null; family_code: string | null; family_name: string | null; run_id: string; run_at: string; title: string | null; ean: string | null; reasons: string[]; decision: Decision | null; note: string | null; reviewer: string | null; decided_at: string | null; pending: boolean };
 type ReasonKind = "energia" | "cifras" | "precio" | "modelo" | "marca" | "foto" | "perfil";
 
 const KINDS: Record<ReasonKind, string> = { energia: "Clase energética", cifras: "MHD e Icecat no cuadran", precio: "Precio", modelo: "Modelo", marca: "Marca", foto: "Foto pequeña", perfil: "Regla de la familia" };
@@ -94,6 +94,7 @@ function ReviewCard({ item, onSaved }: { item: QueueItem; onSaved: () => void })
       <span className="ml-auto text-xs text-zinc-400">Prueba del {dateTime(item.run_at)}</span>
     </header>
     <p className="mt-1 text-base font-semibold text-zinc-900">{item.title ?? "Sin título"}</p>
+    <ProductLinks item={item} />
     <ul className="mt-2 flex flex-col gap-1.5 text-sm">{item.reasons.map((reason) => <li key={reason} className="flex flex-wrap items-baseline gap-2"><span className="shrink-0 rounded-md bg-zinc-100 px-1.5 py-0.5 text-xs font-medium text-zinc-600">{KINDS[reasonKind(reason)]}</span><span className="min-w-0 flex-1 text-zinc-800">{reason}</span></li>)}</ul>
     {decision && item.decided_at && <p className="mt-2 text-xs text-zinc-500">{decision.label} · {item.reviewer ?? "—"} · {dateTime(item.decided_at)}{item.note ? ` · ${item.note}` : ""}</p>}
     <div className="mt-3 flex flex-wrap items-start gap-2 border-t border-zinc-100 pt-3">
@@ -104,4 +105,28 @@ function ReviewCard({ item, onSaved }: { item: QueueItem; onSaved: () => void })
       {error && <p className="w-full text-xs text-red-700">{error}</p>}
     </div>
   </article>;
+}
+
+// Enlaces para comprobar la discrepancia sin buscar el producto (2026-10-29): el borrador en Shopify y los datos de MHD
+// desplegados aquí mismo (mismos datos que «Catálogo MHD»).
+const MHD_FIELDS: [string, string][] = [["titulo", "Título"], ["nombre_marca", "Marca"], ["ref_proved", "Referencia"], ["nombre_familia", "Familia"], ["nombre_subfamilia", "Subfamilia"], ["pvp", "PVP"], ["stock", "Stock"], ["descripcion_ampliada", "Descripción ampliada"]];
+function ProductLinks({ item }: { item: QueueItem }) {
+  const [mhd, setMhd] = useState<Record<string, unknown> | null>(null); const [open, setOpen] = useState(false); const [error, setError] = useState<string | null>(null);
+  async function toggle() {
+    setOpen(!open);
+    if (mhd || open) return;
+    try {
+      const response = await fetch(`/api/mhd-catalog?codigo=${encodeURIComponent(item.codigo)}`, { cache: "no-store" });
+      const body = await response.json(); if (!response.ok) throw new Error(body.error ?? "No se pudieron leer los datos de MHD.");
+      setMhd(body.product ?? {});
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Error inesperado."); }
+  }
+  const shopifyId = item.shopify_product_id?.split("/").pop();
+  return <div className="mt-1">
+    <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+      {shopifyId && <a href={`https://admin.shopify.com/store/electronica-vicente/products/${shopifyId}`} target="_blank" rel="noreferrer" className="font-medium text-emerald-700 hover:underline">Ver en Shopify ↗</a>}
+      <button type="button" onClick={() => void toggle()} className="font-medium text-emerald-700 hover:underline">{open ? "Ocultar datos de MHD" : "Datos de MHD"}</button>
+    </div>
+    {open && <div className="mt-2 rounded-lg bg-zinc-50 p-3 text-sm">{error ? <p className="text-red-700">{error}</p> : !mhd ? <p className="text-zinc-500">Cargando…</p> : <dl className="grid gap-x-4 gap-y-1.5 sm:grid-cols-[10rem_minmax(0,1fr)]">{MHD_FIELDS.filter(([key]) => mhd[key] !== undefined && mhd[key] !== null && mhd[key] !== "").map(([key, label]) => <Fragment key={key}><dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">{label}</dt><dd className="break-words text-zinc-800">{String(mhd[key])}</dd></Fragment>)}</dl>}</div>}
+  </div>;
 }

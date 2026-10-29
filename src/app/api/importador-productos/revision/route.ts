@@ -23,7 +23,15 @@ export async function GET() {
       items.push(...data);
       if (data.length < 1000) break;
     }
-    return Response.json({ items });
+    // El producto en Shopify de cada uno (por SKU = código de MHD), para el enlace «Ver en Shopify».
+    const productIds = new Map<string, string>();
+    const codes = items.map((item) => item.codigo as string);
+    for (let i = 0; i < codes.length; i += 200) {
+      const { data, error } = await session.db.from("shopify_variants").select("sku,product_id").in("sku", codes.slice(i, i + 200));
+      if (error) throw error;
+      for (const row of data ?? []) productIds.set(row.sku as string, row.product_id as string);
+    }
+    return Response.json({ items: items.map((item) => ({ ...item, shopify_product_id: productIds.get(item.codigo as string) ?? null })) });
   } catch (caught) { return errorResponse(caught, "No se pudo leer la cola de revisión."); }
 }
 
