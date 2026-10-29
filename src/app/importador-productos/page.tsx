@@ -7,7 +7,6 @@ import { createClient } from "@/lib/supabase/client";
 import type { FamilySummary } from "@/lib/mhd-importer/family";
 import type { FamilyProfile, FilterRule } from "@/lib/mhd-importer/profile";
 import type { ProcessedProduct } from "@/lib/mhd-importer/processor";
-import { BenchView } from "./bench";
 import { ReviewView } from "./review";
 import { ProcessesView } from "./processes";
 
@@ -29,8 +28,15 @@ const statusLabel = (status: TreeFamily["profile_status"]) => status === "review
 export default function ProductImporterPage() {
   const [email, setEmail] = useState<string | null>(null); const [error, setError] = useState<string | null>(null);
   const [tree, setTree] = useState<TreeLine[]>([]); const [search, setSearch] = useState(""); const [showEmpty, setShowEmpty] = useState(false); const [onlyProfiled, setOnlyProfiled] = useState(false); const [openLines, setOpenLines] = useState<string[]>([]);
-  const [selected, setSelected] = useState<string | null>(null); const [version, setVersion] = useState(0); const [tab, setTab] = useState<"families" | "product" | "bench" | "review" | "processes">("families");
-  useEffect(() => { createClient().auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null)); }, []);
+  const [selected, setSelected] = useState<string | null>(null); const [version, setVersion] = useState(0); const [tab, setTab] = useState<"families" | "product" | "review" | "processes">("families");
+  // Se puede abrir una pestaña desde otra pantalla: ?pestana=producto&codigo=… (la cola de revisión enlaza así la ficha).
+  const [linkedCode, setLinkedCode] = useState("");
+  useEffect(() => {
+    createClient().auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
+    const params = new URLSearchParams(window.location.search); const pestana = params.get("pestana");
+    const tabs = { familias: "families", producto: "product", revision: "review", procesos: "processes" } as const;
+    if (pestana && pestana in tabs) window.setTimeout(() => { setTab(tabs[pestana as keyof typeof tabs]); setLinkedCode(params.get("codigo") ?? ""); }, 0);
+  }, []);
   useEffect(() => { fetchJson<{ tree: TreeLine[] }>("/api/importador-productos/familias", "No se pudo leer el árbol de MHD.").then((body) => setTree(body.tree ?? []), (caught: Error) => setError(caught.message)); }, [version]);
   const term = search.trim().toLowerCase();
   const matches = (text: string) => !term || text.toLowerCase().includes(term);
@@ -42,8 +48,8 @@ export default function ProductImporterPage() {
   return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]"><AppSidebar active="productImporter" userEmail={email} /><main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 pb-24 pt-28 sm:px-10 lg:mx-0 lg:py-16">
     <header><h1 className="text-4xl font-semibold tracking-tight">Importador de productos</h1><p className="mt-3 text-zinc-600">Piloto del paso de MHD a Shopify. Cada familia de MHD tiene un perfil con sus reglas: primero se prepara una muestra de productos (MHD e Icecat) y después el analista propone el perfil.</p></header>
     {error && <p className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">{error}</p>}
-    <div className="flex flex-wrap gap-2">{([["families", "Familias"], ["product", "Prueba de producto"], ["bench", "Banco de prueba"], ["review", "Cola de revisión"], ["processes", "Procesos"]] as const).map(([key, label]) => <button key={key} type="button" onClick={() => setTab(key)} className={`rounded-lg px-4 py-2 text-sm font-medium ${tab === key ? "bg-emerald-700 text-white" : "border border-zinc-300 bg-white text-zinc-700"}`}>{label}</button>)}</div>
-    {tab === "processes" ? <ProcessesView /> : tab === "review" ? <ReviewView /> : tab === "bench" ? <BenchView /> : tab === "product" ? <ProductTest /> : <>
+    <div className="flex flex-wrap gap-2">{([["families", "Familias"], ["product", "Un producto"], ["review", "Cola de revisión"], ["processes", "Procesos"]] as const).map(([key, label]) => <button key={key} type="button" onClick={() => setTab(key)} className={`rounded-lg px-4 py-2 text-sm font-medium ${tab === key ? "bg-emerald-700 text-white" : "border border-zinc-300 bg-white text-zinc-700"}`}>{label}</button>)}</div>
+    {tab === "processes" ? <ProcessesView /> : tab === "review" ? <ReviewView /> : tab === "product" ? <ProductTest initialCode={linkedCode} /> : <>
     <div className="flex flex-wrap items-end justify-between gap-3"><label className="text-sm font-medium text-zinc-700">Buscar<input value={search} onChange={(event) => setSearch(event.target.value)} className="mt-1 block h-10 w-72 rounded-lg border border-zinc-300 px-3" placeholder="Línea, familia, subfamilia o código" /></label>
       <div className="flex flex-wrap items-center gap-4 text-sm text-zinc-600"><label className="flex items-center gap-2"><input type="checkbox" checked={onlyProfiled} onChange={(event) => setOnlyProfiled(event.target.checked)} />Solo con perfil</label><label className="flex items-center gap-2"><input type="checkbox" checked={showEmpty} onChange={(event) => setShowEmpty(event.target.checked)} />Mostrar familias sin productos</label><button type="button" onClick={() => setOpenLines(openLines.length ? [] : tree.map((line) => line.code))} className="font-medium text-emerald-700 hover:underline">{openLines.length ? "Plegar todo" : "Desplegar todo"}</button><span className="text-zinc-500">{integer.format(visible.length)} líneas · {integer.format(familyCount)} familias</span></div></div>
     <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm sm:p-4">
@@ -141,18 +147,31 @@ const mediaUrl = (id: string) => `/api/importador-productos/imagen?media=${id}`;
 const sourceUrl = (url: string) => `/api/importador-productos/imagen?url=${encodeURIComponent(url)}`;
 const KIND_LABELS: Record<string, string> = { frontal: "Frontal", tres_cuartos: "Tres cuartos", lateral: "Lateral", trasera: "Trasera", abierto: "Abierta", detalle: "Detalle", ambiente: "Ambiente", medidas: "Medidas", icono_o_logo: "Icono o logo", etiqueta_energetica: "Etiqueta energética", otro: "Otro" };
 
-function ProductTest() {
-  const [codigo, setCodigo] = useState("10042945"); const [run, setRun] = useState<Run | null>(null); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null);
-  useEffect(() => { fetchJson<{ runs: Run[] }>("/api/importador-productos/producto?codigo=10042945", "No se pudo leer la última prueba.").then((body) => setRun(body.runs[0] ?? null), (caught: Error) => setError(caught.message)); }, []);
+// Un producto (2026-10-29; antes «Prueba de producto»): con un código de MHD o EAN enseña la última ficha procesada y
+// deja procesarlo de nuevo; si salió bien, subirlo o refrescarlo en Shopify.
+function ProductTest({ initialCode = "" }: { initialCode?: string }) {
+  const [codigo, setCodigo] = useState(initialCode); const [run, setRun] = useState<Run | null>(null); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null); const [looked, setLooked] = useState(false);
+  async function show(code = codigo) {
+    if (!code.trim()) return;
+    setBusy(true); setError(null);
+    try { const body = await fetchJson<{ runs: Run[] }>(`/api/importador-productos/producto?codigo=${encodeURIComponent(code.trim())}`, "No se pudo leer la última ficha."); setRun(body.runs[0] ?? null); setLooked(true); }
+    catch (caught) { setError(caught instanceof Error ? caught.message : "No se pudo leer la última ficha."); } finally { setBusy(false); }
+  }
+  useEffect(() => { if (initialCode) { const timer = window.setTimeout(() => { setCodigo(initialCode); void show(initialCode); }, 0); return () => window.clearTimeout(timer); } }, [initialCode]); // eslint-disable-line react-hooks/exhaustive-deps
   async function process() {
     setBusy(true); setError(null);
-    try { const response = await fetch("/api/importador-productos/producto", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ codigo }) }); const body = await response.json(); if (!response.ok) throw new Error(body.error ?? "No se pudo procesar el producto."); setRun(body.run); }
+    try { const response = await fetch("/api/importador-productos/producto", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ codigo }) }); const body = await response.json(); if (!response.ok) throw new Error(body.error ?? "No se pudo procesar el producto."); setRun(body.run); setLooked(true); }
     catch (caught) { setError(caught instanceof Error ? caught.message : "No se pudo procesar el producto."); } finally { setBusy(false); }
   }
   return <section className="flex flex-col gap-5">
-    <p className="text-sm text-zinc-600">Monta la ficha de un producto de MHD con el perfil de su familia, tal como se crearía en Shopify (en borrador), sin crear nada todavía.</p>
-    <div className="flex flex-wrap items-end gap-3"><label className="text-sm font-medium text-zinc-700">Código de MHD o EAN<input value={codigo} onChange={(event) => setCodigo(event.target.value)} className="mt-1 block h-10 w-72 rounded-lg border border-zinc-300 px-3" /></label><button type="button" disabled={busy || !codigo.trim()} onClick={() => void process()} className="h-10 rounded-lg bg-emerald-700 px-4 text-sm font-medium text-white disabled:opacity-50">{busy ? "Procesando… (hasta dos minutos)" : "Procesar"}</button></div>
+    <p className="text-sm text-zinc-600">Busca un producto por su código de MHD o su EAN para ver la última ficha que montó el importador, con sus fuentes y avisos. Desde aquí puedes procesarlo de nuevo y subirlo o refrescarlo en Shopify. Para varios productos a la vez, usa «Procesos» → «Nueva tanda».</p>
+    <form className="flex flex-wrap items-end gap-3" onSubmit={(event) => { event.preventDefault(); void show(); }}>
+      <label className="text-sm font-medium text-zinc-700">Código de MHD o EAN<input value={codigo} onChange={(event) => setCodigo(event.target.value)} placeholder="p. ej. 10042945" className="mt-1 block h-10 w-72 rounded-lg border border-zinc-300 px-3" /></label>
+      <button type="submit" disabled={busy || !codigo.trim()} className="h-10 rounded-lg border border-zinc-300 bg-white px-4 text-sm font-medium text-zinc-800 disabled:opacity-50">Ver la última ficha</button>
+      <button type="button" disabled={busy || !codigo.trim()} onClick={() => void process()} className="h-10 rounded-lg bg-emerald-700 px-4 text-sm font-medium text-white disabled:opacity-50">{busy ? "Trabajando… (hasta dos minutos)" : "Procesar de nuevo"}</button>
+    </form>
     {error && <p className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p>}
+    {looked && !run && !error && <p className="rounded-xl border border-dashed border-zinc-300 p-5 text-sm text-zinc-600">Este producto no se ha procesado nunca. Pulsa «Procesar de nuevo» para montarlo.</p>}
     {run && <RunView run={run} />}
     {run?.status === "ok" && <ShopifyDraft run={run} onCreated={(id) => setRun({ ...run, shopify_product_id: id })} />}
   </section>;

@@ -64,13 +64,28 @@ export async function POST(request: Request) {
     }
     if (body.action === "crear") {
       // Productos de la tanda: los del banco, una lista de códigos o los de unas familias (presentes en MHD).
-      let codes: { codigo: string; family_code: string | null }[] = [];
+      let codes: { codigo: string; family_code: string | null }[] = []; let unknown: string[] = [];
       if (body.bench) {
         const { data, error } = await session.db.from("mhd_importer_bench_items").select("codigo,family_code");
         if (error) throw error;
         codes = data;
       } else if (body.codes?.length) {
-        codes = [...new Set(body.codes.map((code) => code.trim()).filter(Boolean))].map((codigo) => ({ codigo, family_code: null }));
+        // Códigos de MHD o EAN (2026-10-29): cada uno se busca por los dos en el catálogo de MHD; lo que no está, al aviso.
+        const tokens = [...new Set(body.codes.map((code) => code.trim()).filter(Boolean))];
+        const found = new Map<string, string | null>(); const matched = new Set<string>();
+        for (let i = 0; i < tokens.length; i += 300) {
+          const chunk = tokens.slice(i, i + 300);
+          const [byCode, byEan] = await Promise.all([
+            session.db.from("mhd_catalog_products").select("codigo,cod_familia").in("codigo", chunk),
+            session.db.from("mhd_catalog_products").select("codigo,cod_familia,codigo_ean").in("codigo_ean", chunk),
+          ]);
+          if (byCode.error) throw byCode.error;
+          if (byEan.error) throw byEan.error;
+          for (const row of byCode.data) { found.set(row.codigo, row.cod_familia); matched.add(row.codigo); }
+          for (const row of byEan.data) { found.set(row.codigo, row.cod_familia); matched.add(row.codigo_ean); }
+        }
+        unknown = tokens.filter((token) => !matched.has(token));
+        codes = [...found].map(([codigo, family_code]) => ({ codigo, family_code }));
       } else if (body.families?.length) {
         // Solo los que están en el último listado de MHD (2026-10-26): la importación no da de baja los que MHD quita, así
         // que «present» incluye productos que ya no vende (6.768 el 26-10, casi todos sin ficha).
@@ -95,7 +110,20 @@ export async function POST(request: Request) {
         }
         codes = codes.filter((item) => !done.has(item.codigo));
       }
-      if (!codes.length) return Response.json({ error: "La tanda no tiene productos." }, { status: 400 });
+      // Sin repetidos (2026-10-29): fuera los que ya esperan o se están procesando en otra tanda abierta.
+      const queued = new Set<string>();
+      if (codes.length) {
+        const { data: open, error: openError } = await session.db.from("mhd_importer_jobs").select("id").in("status", ["en_cola", "en_curso", "pausado"]);
+        if (openError) throw openError;
+        for (let i = 0; open?.length && i < codes.length; i += 500) {
+          const { data, error } = await session.db.from("mhd_importer_job_items").select("codigo").in("job_id", open.map((job) => job.id)).in("status", ["pendiente", "en_curso"]).in("codigo", codes.slice(i, i + 500).map((item) => item.codigo));
+          if (error) throw error;
+          for (const row of data) queued.add(row.codigo);
+        }
+        codes = codes.filter((item) => !queued.has(item.codigo));
+      }
+      const skipped = [unknown.length ? `No están en el catálogo de MHD: ${unknown.slice(0, 20).join(", ")}${unknown.length > 20 ? "…" : ""}.` : "", queued.size ? `${queued.size} ya estaban en cola en otra tanda.` : ""].filter(Boolean).join(" ");
+      if (!codes.length) return Response.json({ error: `La tanda no tiene productos. ${skipped}`.trim() }, { status: 400 });
       const title = body.title?.trim() || (body.bench ? "Banco de prueba" : body.families?.length ? `Familias ${body.families.join(", ")}` : `${codes.length} productos`);
       const { data: job, error } = await session.db.from("mhd_importer_jobs").insert({ title, created_by: session.email, options: { families: body.families ?? null, bench: Boolean(body.bench), codes: body.codes?.length ?? 0, workers: Math.min(12, Math.max(1, Number(body.workers ?? 2))), concurrency: Math.min(12, Math.max(1, Number(body.concurrency ?? 6))), skipDone: Boolean(body.skipDone), upload: body.upload === "nuevos" || body.upload === "solo" ? body.upload : Boolean(body.upload) } }).select("id").single();
       if (error) throw error;
@@ -113,7 +141,7 @@ export async function POST(request: Request) {
         detailsNote = detailsError ? `Faltan ${missing.length} fichas de MHD y no se pudieron pedir: ${detailsError.message}` : `Se están trayendo ${missing.length} fichas de MHD que faltaban; esos productos esperan a tenerla.`;
       }
       await wakeWorker(request);
-      return Response.json({ ok: true, job: job.id, items: codes.length, note: detailsNote });
+      return Response.json({ ok: true, job: job.id, items: codes.length, note: [skipped, detailsNote].filter(Boolean).join(" ") || null });
     }
     if (!body.job) return Response.json({ error: "Falta la tanda." }, { status: 400 });
     if (body.action === "pausar" || body.action === "cancelar") {

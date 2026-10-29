@@ -125,6 +125,7 @@ function ProductLinks({ item }: { item: QueueItem }) {
   return <div className="mt-1">
     <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
       {shopifyId && <a href={`https://admin.shopify.com/store/electronica-vicente/products/${shopifyId}`} target="_blank" rel="noreferrer" className="font-medium text-emerald-700 hover:underline">Ver en Shopify ↗</a>}
+      <a href={`/importador-productos?pestana=producto&codigo=${encodeURIComponent(item.codigo)}`} className="font-medium text-emerald-700 hover:underline">Ver la ficha procesada</a>
       <button type="button" onClick={() => void toggle()} className="font-medium text-emerald-700 hover:underline">{open ? "Ocultar datos de MHD" : "Datos de MHD"}</button>
     </div>
     {open && <div className="mt-2 rounded-lg bg-zinc-50 p-3 text-sm">{error ? <p className="text-red-700">{error}</p> : !mhd ? <p className="text-zinc-500">Cargando…</p> : <dl className="grid gap-x-4 gap-y-1.5 sm:grid-cols-[10rem_minmax(0,1fr)]">{MHD_FIELDS.filter(([key]) => mhd[key] !== undefined && mhd[key] !== null && mhd[key] !== "").map(([key, label]) => <Fragment key={key}><dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">{label}</dt><dd className="break-words text-zinc-800">{String(mhd[key])}</dd></Fragment>)}</dl>}</div>}

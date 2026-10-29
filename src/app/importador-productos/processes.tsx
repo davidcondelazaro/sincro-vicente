@@ -188,8 +188,8 @@ function JobDetail({ jobId, now }: { jobId: string; now: number }) {
 }
 
 function NewJob({ onCreated }: { onCreated: (id: string) => void }) {
-  const [mode, setMode] = useState<"familias" | "banco" | "codigos">("familias"); const [tree, setTree] = useState<TreeLine[]>([]); const [chosen, setChosen] = useState<string[]>([]);
-  const [codes, setCodes] = useState(""); const [title, setTitle] = useState(""); const [concurrency, setConcurrency] = useState(6); const [workerCount, setWorkerCount] = useState(2); const [upload, setUpload] = useState<"no" | "nuevos" | "todos">("no"); const [skipDone, setSkipDone] = useState(true);
+  const [mode, setMode] = useState<"familias" | "codigos">("codigos"); const [tree, setTree] = useState<TreeLine[]>([]); const [chosen, setChosen] = useState<string[]>([]);
+  const [codes, setCodes] = useState(""); const [title, setTitle] = useState(""); const [concurrency, setConcurrency] = useState(6); const [workerCount, setWorkerCount] = useState(2); const [upload, setUpload] = useState<"no" | "nuevos" | "todos">("todos"); const [skipDone, setSkipDone] = useState(false);
   const [search, setSearch] = useState(""); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null);
   useEffect(() => { api<{ tree: TreeLine[] }>("/api/importador-productos/familias").then((body) => setTree(body.tree ?? []), (caught: Error) => setError(caught.message)); }, []);
   const families = tree.flatMap((line) => line.families.filter((family) => family.products > 0).map((family) => ({ ...family, line: line.name })));
@@ -199,13 +199,13 @@ function NewJob({ onCreated }: { onCreated: (id: string) => void }) {
   async function create() {
     setBusy(true); setError(null);
     try {
-      const body = await post({ action: "crear", title, workers: workerCount, concurrency, skipDone, upload: upload === "nuevos" ? "nuevos" : upload === "todos", ...(mode === "banco" ? { bench: true } : mode === "codigos" ? { codes: codes.split(/[\s,;]+/) } : { families: chosen }) });
+      const body = await post({ action: "crear", title, workers: workerCount, concurrency, skipDone, upload: upload === "nuevos" ? "nuevos" : upload === "todos", ...(mode === "codigos" ? { codes: codes.split(/[\s,;]+/) } : { families: chosen }) });
       if (body.note) window.alert(body.note);
       onCreated(body.job!);
     } catch (caught) { setError(caught instanceof Error ? caught.message : "No se pudo crear."); } finally { setBusy(false); }
   }
   return <div className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-    <div className="flex flex-wrap gap-2">{([["familias", "Familias"], ["banco", "Banco de prueba"], ["codigos", "Lista de códigos"]] as const).map(([key, label]) => <button key={key} type="button" onClick={() => setMode(key)} className={`h-9 rounded-lg px-3 text-sm font-medium ${mode === key ? "bg-zinc-900 text-white" : "border border-zinc-300 text-zinc-700"}`}>{label}</button>)}</div>
+    <div className="flex flex-wrap gap-2">{([["codigos", "Productos concretos (código o EAN)"], ["familias", "Familias enteras"]] as const).map(([key, label]) => <button key={key} type="button" onClick={() => { setMode(key); setSkipDone(key === "familias"); setUpload(key === "familias" ? "no" : "todos"); }} className={`h-9 rounded-lg px-3 text-sm font-medium ${mode === key ? "bg-zinc-900 text-white" : "border border-zinc-300 text-zinc-700"}`}>{label}</button>)}</div>
     {mode === "familias" && <>
       <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar familia" className="h-10 rounded-lg border border-zinc-300 px-3 text-sm" />
       <div className="max-h-72 overflow-auto rounded-lg border border-zinc-100 p-2">{visible.map((family) => <label key={family.code} className="flex items-center gap-2 rounded px-1 py-1 text-sm hover:bg-zinc-50"><input type="checkbox" checked={chosen.includes(family.code)} onChange={(event) => setChosen((current) => (event.target.checked ? [...current, family.code] : current.filter((code) => code !== family.code)))} /><span className="text-zinc-900">{family.name}</span><span className="text-xs text-zinc-400">{family.code}</span><span className={`rounded-full px-1.5 text-xs ${family.profile_status === "reviewed" ? "bg-emerald-100 text-emerald-800" : family.profile_status === "draft" ? "bg-amber-100 text-amber-800" : "bg-red-100 text-red-800"}`}>{family.profile_status === "reviewed" ? "revisado" : family.profile_status === "draft" ? "borrador" : "sin perfil"}</span><span className="ml-auto text-xs tabular-nums text-zinc-500">{integer.format(family.products)}</span></label>)}</div>

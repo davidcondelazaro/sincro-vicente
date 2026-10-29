@@ -22,7 +22,9 @@ export async function GET(request: Request) {
   if (!session) return Response.json({ error: "Necesitas iniciar sesión." }, { status: 401 });
   const codigo = new URL(request.url).searchParams.get("codigo");
   let query = session.db.from("mhd_importer_product_runs").select(`*, media:mhd_importer_media(${MEDIA_FIELDS})`).order("created_at", { ascending: false }).limit(codigo ? 1 : 20);
-  if (codigo) query = query.eq("codigo", codigo);
+  // Por código de MHD o por EAN (2026-10-29, pestaña «Un producto»).
+  const clean = codigo?.replace(/[^0-9A-Za-z-]/g, "");
+  if (clean) query = query.or(`codigo.eq.${clean},result->>ean.eq.${clean}`);
   const { data, error } = await query;
   return error ? errorResponse(error, "No se pudieron leer las pruebas.") : Response.json({ runs: data });
 }
