@@ -12,6 +12,7 @@ import { processProduct } from "./processor";
 import { createTrace, type TraceEvent } from "./trace";
 import { warningKind } from "./warning-kinds";
 import { sendAlert } from "./alerts";
+import { productLock } from "./locks";
 
 type Env = Record<string, string | undefined>;
 export type JobItem = { id: number; job_id: string; codigo: string; family_code: string | null; attempts: number };
@@ -66,6 +67,12 @@ function familyData(db: SupabaseClient, family: string) {
 export async function processJobItem(deps: { db: SupabaseClient; config: SourcesConfig; ai: Anthropic; upload?: boolean | "nuevos" | "solo"; elviModel?: string; noThinking?: boolean }, item: JobItem) {
   const started = Date.now(); const log = itemLog(deps.db, item);
   try {
+    // Bloqueado a mano (ficha arreglada en Shopify): ni se procesa ni se sube.
+    const locked = await productLock(deps.db, item.codigo);
+    if (locked) {
+      await deps.db.from("mhd_importer_job_items").update({ status: "descartado", finished_at: new Date().toISOString(), duration_ms: Date.now() - started, cost_usd: 0, error: locked, lease_until: null, step: null }).eq("id", item.id);
+      return;
+    }
     // Tanda «solo subir» (2026-10-27): la última prueba correcta del producto se sube a Shopify sin volver a procesarla
     // (sin IA). Es la subida masiva, y sirve para medir cuánto tarda cada producto y cuánto paralelismo aguanta Shopify.
     if (deps.upload === "solo") {

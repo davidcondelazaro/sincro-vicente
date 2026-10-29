@@ -13,6 +13,7 @@ import { noTrace, type Trace } from "./trace";
 import { shopifyGraphql, type ShopifyConfig } from "./store-filters";
 import { MIRROR_PRODUCT_FIELDS, MIRROR_VARIANT_FIELDS, mirrorProduct } from "../shopify-mirror";
 import { warrantyEligible } from "./warranty";
+import { productLock } from "./locks";
 
 // Regla de David (2026-10-26): los productos con revisión pendiente se suben igual, como borrador, y se revisan antes de
 // publicar. Llevan esta etiqueta mientras estén pendientes en la cola; al marcarlos «Está bien» se quita.
@@ -216,9 +217,10 @@ const UPLOAD_VIDEOS = false;
 
 export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: ShopifyConfig; icecat: IcecatConfig; trace?: Trace }, runId: string) {
   const t = deps.trace ?? noTrace;
-  const { data: run, error } = await deps.db.from("mhd_importer_product_runs").select("id,status,result,shopify_product_id").eq("id", runId).single();
+  const { data: run, error } = await deps.db.from("mhd_importer_product_runs").select("id,codigo,status,result,shopify_product_id").eq("id", runId).single();
   if (error) throw error;
   if (run.status !== "ok" || !run.result) throw new Error("Esta prueba no tiene un producto montado.");
+  const locked = await productLock(deps.db, run.codigo); if (locked) throw new Error(locked);
   const product = run.result as ProcessedProduct; const shop = product.shopify;
   if (product.contentBlocked) throw new Error("La ficha tiene afirmaciones sin respaldo en los datos (ver avisos): rehazla antes de guardarla en Shopify.");
   // Cola de revisión (2026-10-26): lo marcado «No importar» no se sube a Shopify.
@@ -440,6 +442,7 @@ export async function updateShopifyTexts(deps: { db: SupabaseClient; shopify: Sh
   const { data: run, error } = await deps.db.from("mhd_importer_product_runs").select("status,result,codigo").eq("id", runId).single();
   if (error) throw error;
   if (run.status !== "ok" || !run.result) throw new Error("Esta prueba no tiene un producto montado.");
+  const locked = await productLock(deps.db, run.codigo); if (locked) throw new Error(locked);
   const product = run.result as ProcessedProduct; const shop = product.shopify;
   if (product.contentBlocked) throw new Error("La ficha tiene afirmaciones sin respaldo en los datos (ver avisos): rehazla antes de guardarla en Shopify.");
   const { data: previous } = await deps.db.from("mhd_importer_product_runs").select("shopify_product_id").eq("codigo", run.codigo).not("shopify_product_id", "is", null).order("created_at", { ascending: false }).limit(1).maybeSingle();
