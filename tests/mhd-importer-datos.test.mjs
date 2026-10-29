@@ -316,4 +316,9 @@ test("marcas que MHD pone mal siempre: por marca o por producto, haya Icecat o n
   assert.equal(fixBrandText("Carrito Duet 24925D3 290", "Duet", "Duett"), "Carrito Duett 24925D3 290");
   assert.equal(fixBrandText("Termoventilador Kayami Ruby Bero 1 1500 W", "Kayami", "Ruby"), "Termoventilador Ruby Bero 1 1500 W");
   assert.equal(fixBrandText("Auriculares EPOS Sennheiser ACCENTUM", "Epos Sennheiser", "Sennheiser"), "Auriculares Sennheiser ACCENTUM");
+  assert.equal(resolveBrand({ nombre_marca: "Atc", titulo: "Adaptador AC7022" }, { brand: "ACT" }).brand, "ACT");
+  assert.equal(resolveBrand({ codigo: "10000906", nombre_marca: "Youin", titulo: "Soporte AC0591E" }, { brand: "Engel Axil" }).brand, "Engel");
+  assert.equal(resolveBrand({ codigo: "10040953", nombre_marca: "Youin", titulo: "Inflador MA1018" }, null).brand, "Youin");
+  assert.equal(fixBrandText("Soporte de pared Youin Engel AC0591E", "Youin", "Engel"), "Soporte de pared Engel AC0591E");
+  assert.equal(fixBrandText("Cápsulas Nestle Dolce Gusto Ristretto Bonka", "Nestle", "Dolce Gusto"), "Cápsulas Dolce Gusto Ristretto Bonka");
 });

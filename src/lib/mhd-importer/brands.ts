@@ -33,7 +33,7 @@ const LICENSES: Record<string, string[] | "*"> = {
   SILVERELECTRONICS: ["SILVERSANZ"], POSIFLEX: ["10POS"], ARDISTEL: "*",
   // Misma casa o submarca (cola de revisión, David, 2026-10-27): la de MHD está bien.
   KEEPOUT: ["APPROX"], ALIENWARE: ["DELL"], BEATSBYDRDRE: ["APPLE"], BEATS: ["APPLE"], CABLEXPERT: ["GEMBIRD"], XPG: ["ADATA"],
-  MONIX: ["BRA"], NESCAFE: ["DOLCEGUSTO", "NESTLE"], NESTLE: ["DOLCEGUSTO", "NESCAFE"], ACT: ["ATC"], HYPER: ["TARGUS"],
+  MONIX: ["BRA"], NESCAFE: ["DOLCEGUSTO", "NESTLE"], NESTLE: ["DOLCEGUSTO", "NESCAFE"], HYPER: ["TARGUS"],
   TARGUS: ["HYPER"], TPLINK: ["MERCUSYS"], FRANKE: ["MEPAMSA"], ELECTROLUX: ["ZANUSSI", "AEG"], ORALB: ["BRAUN"], SHARK: ["NINJA"],
   GIGABYTE: ["AORUS"], ASTROGAMING: ["LOGITECH"], KASASMART: ["TPLINK"], GAMERSTORM: ["DEEPCOOL"], LACIE: ["SEAGATE"],
   DEEPGAMING: ["COOLBOX"], MARSGAMING: ["TACENS"], GEORGEFOREMAN: ["RUSSELLHOBBS"], SMARTWARES: ["TRISTAR"], BELLISSIMA: ["IMETEC"],
@@ -70,9 +70,12 @@ const inTitle = (brand: string, title: string | null | undefined) => { const wor
 
 // Marcas que MHD pone mal y que se corrigen siempre, haya Icecat o no (sesión de logos de marca, aprobado por David el
 // 2026-10-29, comprobado por EAN y web del fabricante): toda la marca de MHD…
-const MHD_BRAND_FIXES: Record<string, string> = { EPOSSENNHEISER: "Sennheiser", PLAY: "Playmarket", DUET: "Duett", MADCOWENTERTAINMENT: "Teknofun" };
+const MHD_BRAND_FIXES: Record<string, string> = { EPOSSENNHEISER: "Sennheiser", PLAY: "Playmarket", DUET: "Duett", MADCOWENTERTAINMENT: "Teknofun", ATC: "ACT" };
 // …o productos sueltos, por su código de MHD (el resto de su marca está bien).
-const PRODUCT_BRAND_FIXES: Record<string, string> = { "10039156": "Ruby", "10039823": "Ruby", "10022318": "Ruby", "10013300": "Hyper", "10141269": "Medisana" };
+const PRODUCT_BRAND_FIXES: Record<string, string> = { "10039156": "Ruby", "10039823": "Ruby", "10022318": "Ruby", "10013300": "Hyper", "10141269": "Medisana",
+  // Catálogo de Engel Axil que MHD pone como Youin (soportes, cables, antena y mandos; David, 2026-10-29).
+  "10000654": "Engel", "10000744": "Engel", "10000745": "Engel", "10000746": "Engel", "10000906": "Engel", "10000747": "Engel", "10000748": "Engel", "10000922": "Engel", "10044286": "Engel", "10044527": "Engel", "10044524": "Engel", "10044525": "Engel", "10044523": "Engel", "10044521": "Engel", "10044528": "Engel", "10044529": "Engel", "10046304": "Engel", "10046303": "Engel", "10044514": "Engel", "10044516": "Engel", "10044515": "Engel", "10044517": "Engel",
+  "10021178": "Dolce Gusto", "10021168": "Dolce Gusto" };
 
 // La IA copia en el título la marca que trae MHD («Play Go Up», «Kayami Ruby Bero 1»): se cambia por la buena y se
 // quita la repetición que queda («Ruby Ruby»).
