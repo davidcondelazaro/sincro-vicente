@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { createClient } from "@/lib/supabase/client";
+import { SyncCycles } from "./cycles";
 
 type EntityProgress = { done?: number; total?: number; estimated?: number; pages?: number; part_done?: Record<string, number>; part_total?: Record<string, number>; started_at?: string; completed_at?: string; rate_from?: string; rate_done?: number };
 type PageError = { entity: string; part: number; page: number; attempts: number; error: string; at: string };
@@ -18,14 +19,12 @@ type Run = {
 const labels: Record<string, string> = { categories: "Categorías", brands: "Marcas", products: "Productos", prices: "Precios", stock: "Stock", details: "Fichas de detalle de producto" };
 const kindLabels: Record<string, string> = { full: "Completa", ...labels, details_all: "Todas las fichas de detalle de producto", details_codes: "Fichas de detalle de producto (lista)" };
 const pageSizes: Record<string, number> = { categories: 1000, brands: 1000, products: 1000, prices: 5000, stock: 5000, details: 300 };
+// Lecturas sueltas, solo para diagnóstico (2026-10-29): el listado, el precio y el stock los lee la vuelta de cada 30
+// minutos, y las fichas de detalle las pide el importador producto a producto en cada alta o cambio.
 const launchers = [
-  { kind: "full", detail: "Categorías, marcas, productos, precios, stock y las fichas de detalle de producto nuevas o cambiadas." },
-  { kind: "categories", detail: "Los tres niveles: líneas, familias y subfamilias." },
-  { kind: "brands", detail: "Listado de marcas." },
-  { kind: "products", detail: "Catálogo de productos." },
-  { kind: "prices", detail: "Todos los precios (/prices)." },
-  { kind: "stock", detail: "Todo el stock (/stocks)." },
-  { kind: "details", detail: "Fichas de detalle de producto (características y fotos) que faltan o que MHD ha modificado. Una petición por producto, de 8 en 8." },
+  { kind: "categories", detail: "Los tres niveles: líneas, familias y subfamilias. Para ver si MHD ha creado alguna subfamilia nueva." },
+  { kind: "brands", detail: "Listado de marcas de MHD." },
+  { kind: "prices", detail: "Todos los precios de /prices, para comprobar que siguen coincidiendo con los del listado." },
   { kind: "details_all", detail: "Todas las fichas de detalle de producto otra vez, aunque no hayan cambiado. Unos 40 minutos." },
 ];
 const STALL_MS = 60_000;
@@ -68,18 +67,19 @@ export default function MhdImportPage() {
 
   const serverNow = now + clockOffset;
   return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]"><AppSidebar active="mhdImport" userEmail={email} /><main className="mx-auto flex w-full max-w-5xl flex-col gap-7 px-6 pb-24 pt-28 sm:px-10 lg:mx-0 lg:py-16">
-    <header><h1 className="text-4xl font-semibold tracking-tight text-zinc-950">Importar de MHD</h1><p className="mt-3 max-w-3xl text-zinc-600">Copia el catálogo desde la API de MHD a Supabase, página a página. Si se corta, se reanuda desde la última página buena. Todavía no marca bajas (pendiente).</p></header>
+    <header><h1 className="text-4xl font-semibold tracking-tight text-zinc-950">Sincronización con MHD</h1><p className="mt-3 max-w-3xl text-zinc-600">Las vueltas automáticas que mantienen la tienda al día con MHD y, debajo, las lecturas del catálogo de MHD que guarda Supabase.</p></header>
+    <SyncCycles />
     {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">{error}</p>}
 
-    <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-      <h2 className="text-xl font-semibold">Lanzar importación</h2>
-      <p className="mt-1 text-sm text-zinc-600">{active ? "Hay una importación en curso o detenida: termina, reanúdala o descártala antes de lanzar otra." : "Todas son manuales. Solo puede haber una a la vez."}</p>
+    <details className="group rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+      <summary className="cursor-pointer list-none text-xl font-semibold"><span className="mr-2 inline-block text-zinc-400 transition-transform group-open:rotate-90">›</span>Lecturas sueltas (diagnóstico)</summary>
+      <p className="mt-1 text-sm text-zinc-600">{active ? "Hay una importación en curso o detenida: termina, reanúdala o descártala antes de lanzar otra." : "Normalmente no hacen falta. Solo puede haber una lectura a la vez (también la de la vuelta)."}</p>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{launchers.map(({ kind, detail }) => <button key={kind} onClick={() => act({ action: "start", kind })} disabled={Boolean(active) || busy} className={`rounded-xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${kind === "full" ? "border-emerald-700 bg-emerald-700 text-white hover:bg-emerald-800" : "border-zinc-200 bg-white hover:border-emerald-600"}`}><span className="block font-semibold">{kind === "full" ? "Importación completa" : kindLabels[kind]}</span><span className={`mt-1 block text-sm ${kind === "full" ? "text-emerald-50" : "text-zinc-600"}`}>{detail}</span></button>)}</div>
-    </section>
+    </details>
 
     {active && <ActiveRun run={active} now={serverNow} busy={busy} act={act} />}
 
-    <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"><div className="flex flex-wrap items-baseline justify-between gap-4"><div><h2 className="text-xl font-semibold">Histórico</h2><p className="mt-1 text-sm text-zinc-600">Cada ejecución conserva sus totales y la duración de cada parte.</p></div><span className="text-sm text-zinc-500">{runs.length} ejecuciones recientes</span></div>
+    <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"><div className="flex flex-wrap items-baseline justify-between gap-4"><div><h2 className="text-xl font-semibold">Lecturas de MHD</h2><p className="mt-1 text-sm text-zinc-600">Cada ejecución conserva sus totales y la duración de cada parte.</p></div><span className="text-sm text-zinc-500">{runs.length} ejecuciones recientes</span></div>
       <div className="mt-4 overflow-hidden rounded-xl border border-zinc-200"><ul className="divide-y divide-zinc-100">{runs.length ? runs.map((run) => <li key={run.id} className="p-4">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1"><StatusBadge status={run.status} /><span className="text-sm font-semibold text-zinc-900">{kindLabels[run.kind] ?? run.kind}</span><time className="text-sm text-zinc-600">{formatDate(run.started_at)}</time><span className="text-sm text-zinc-600">Duración: {formatDuration(elapsedMs(run.started_at, run.completed_at ?? run.last_activity_at, serverNow))}</span></div>
         <div className="mt-3 grid gap-2 sm:grid-cols-5">{(run.entities ?? Object.keys(labels)).map((key) => <EntitySummary key={key} label={labels[key] ?? key} progress={run.entity_progress?.[key]} legacyCount={run.record_counts?.[key]} legacyTiming={run.progress?.entity_timings?.[key]} now={serverNow} runEnd={run.status === "running" ? null : run.completed_at ?? run.last_activity_at} />)}</div>

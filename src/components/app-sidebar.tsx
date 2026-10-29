@@ -30,7 +30,7 @@ const navigation: { label: string | null; entries: NavEntry[] }[] = [
     { section: "warranties", href: "/tienda/garantias", label: "Garantías", icon: "shield" },
   ] },
   { label: "MHD", entries: [
-    { section: "mhdImport", href: "/importar-datos-mhd", label: "Importar de MHD", icon: "database" },
+    { section: "mhdImport", href: "/importar-datos-mhd", label: "Sincronización con MHD", icon: "sync" },
     { section: "mhdCatalog", href: "/importacion-catalogo-mhd", label: "Catálogo MHD", icon: "catalog" },
     { section: "productImporter", href: "/importador-productos", label: "Importador de productos", icon: "spark" },
     { section: "orders", href: "/pedidos-mhd", label: "Pedidos MHD", icon: "orders" },
