@@ -33,5 +33,7 @@ Decidido por David el 2026-10-26: las sincronizaciones e importaciones no pregun
 
 ## Pendiente
 
+- **Sustituir el espejo por los identificadores de cada extremo** (David, 2026-10-29: «en cualquier conector ERP-tienda tener el ID de cada extremo siempre ha sumado»). Ya solo hay procesos parciales (altas, agotados y bajas, cambios), y precio y stock se comparan con lo último que enviamos, no con Shopify. Basta guardar, por código de MHD, el producto, la variante y el artículo de inventario de Shopify al subirlo (ya está en `mhd_shopify_price_stock` y `mhd_importer_product_runs.shopify_product_id`), y preguntar a Shopify en el momento lo puntual: si un alta ya existe (por código o EAN), si una dirección está libre. Si Shopify contesta «no existe» al escribir, se vuelve a buscar por código y se corrige el identificador. Toca: precio y stock, agotados, altas, colocación y dirección en el importador, informes. Hacerlo después de las altas automáticas, pieza a pieza y comprobando cada una. Recordárselo a David.
+
 - Que el resto de sincronizaciones (precios y stock desde SQL Server, que hoy usa `product_shopify_links`) lean del espejo. Va en la propuesta de rediseño de sincronizaciones.
 - Refresco incremental (solo lo cambiado desde la última vez) o por *webhooks* de Shopify, si el completo se queda corto cuando la tienda crezca a ~35.000 productos.
