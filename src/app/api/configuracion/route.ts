@@ -11,6 +11,8 @@ const VALIDATE: Record<string, (value: unknown) => string | null> = {
   report_emails: (value) => (Array.isArray(value) && value.length && value.every((item) => typeof item === "string" && EMAIL.test(item)) ? null : "Pon al menos un correo válido."),
   report_frequency: (value) => (value === "hora" || value === "diario" ? null : "Frecuencia no válida."),
   sync_enabled: (value) => (typeof value === "boolean" ? null : "Valor no válido."),
+  absence_days: (value) => (Number.isInteger(value) && Number(value) >= 1 && Number(value) <= 365 ? null : "Pon un número de días entre 1 y 365."),
+  absence_brake_pct: (value) => (typeof value === "number" && value >= 0.5 && value <= 50 ? null : "Pon un porcentaje entre 0,5 y 50."),
 };
 
 async function session() {

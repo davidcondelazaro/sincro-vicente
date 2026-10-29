@@ -1,6 +1,6 @@
 # Sincronizaciones periódicas con MHD (diseño, 2026-10-26)
 
-Diseño acordado con David para mantener la tienda al día una vez terminado el masivo del catálogo. Aún no está programado. Sustituye a las sincronizaciones preliminares (la de SQL Server de `ESTADO_SINCRONIZACION_SQL_SHOPIFY.md` y la importación diaria completa de `IMPORTACION_CATALOGO_MHD.md`).
+Diseño acordado con David para mantener la tienda al día una vez terminado el masivo del catálogo. **En marcha desde el 2026-10-29** (vuelta cada 30 minutos; ver «Vuelta encadenada» abajo). Sustituye a las sincronizaciones preliminares (la de SQL Server de `ESTADO_SINCRONIZACION_SQL_SHOPIFY.md` y la importación diaria completa de `IMPORTACION_CATALOGO_MHD.md`).
 
 ## Qué se hace y cada cuánto
 
@@ -8,8 +8,7 @@ Diseño acordado con David para mantener la tienda al día una vez terminado el 
 
 | Cada | Lectura de MHD (medida el 2026-10-26) | Qué se hace |
 | --- | --- | --- |
-| 30 min | `/prices` y `/stocks` completos: ~11 s y 3,7 MB; ~12 s y 2,3 MB | Precio y stock directos a Shopify, sin IA. Los códigos sirven además para ver altas y bajas. |
-| 1 hora | `/products` completo: 30.961 productos, ~24-33 s, 125 MB | Altas (códigos nuevos: todo el proceso del importador), bajas (códigos que faltan en dos lecturas seguidas: archivar y redirigir), opciones de entrega y modificaciones según su tipo (abajo). |
+| 30 min (en marcha desde el 2026-10-29) | `/products` completo: ~31.500 productos, ~3½ min | **Vuelta encadenada:** conexiones → lectura del listado → precio y stock (los dos del listado) → agotados en MHD → (pendiente) altas y cambios. `/prices` y `/stocks` ya no se leen en cada vuelta: `/prices` coincide con el listado desde el 29-10 y `/stocks` sigue enseñando productos que MHD ya ha retirado. |
 | 1 día (madrugada, hora de Madrid) | Nada de MHD: colecciones de Shopify con `custom.tipo_coleccion = promocion` | **Caducidad de promociones** (encargo de David, 2026-10-28, desde la sesión de promociones): las que tengan `custom.promo_fin` anterior a hoy se despublican de Tienda online y Shop, se crea la redirección `/collections/<handle>` → `/collections/promociones` (si no existe) y se quitan de `custom.subcategorias` de la colección «promociones», conservando el orden. Sin borrar nada; cada baja al registro. Con modo de simulación. Referencia: orden `caducar` de `theme-enterprise-vicente/tools/shopify/promociones.py`; procedimiento en `theme-enterprise-vicente/docs/promociones.md`. La primera vencerá el 1-12-2026 (Hisense lavado). |
 
 El listado no permite pedir menos campos (probados 9 nombres de parámetro) y trae las dos descripciones largas: 2,7 de los 4 KB de media por producto; la ficha de detalle solo añade características (0,27 KB) y galería (0,31 KB). Lo que se descarga (~3,3 GB al día) no se guarda: cada producto tiene una sola fila con su última versión (todo el catálogo de MHD ocupa ~370 MB) y el histórico solo apunta los cambios.
@@ -19,12 +18,10 @@ Solo las altas y las modificaciones importantes piden la ficha de detalle (una p
 ## Decisiones
 
 - **Altas:** se publican directamente en la tienda, sin borrador (David, 2026-10-26). La colocación se decide al subir, con el árbol nuevo de colecciones.
-- **Bajas:** se **archivan** (no a borrador) y se crea su redirección a la colección de su familia en el árbol nuevo. Archivar las separa de los borradores pendientes, conserva su historial y se deshace si MHD vuelve a darlas de alta.
+- **Bajas:** solo lo que lleva **30 días agotado en MHD** (ver «Agotados en MHD» abajo). Entonces se **archivan** (no a borrador) y se propone su redirección a la colección de su familia en el árbol nuevo. Archivar las separa de los borradores pendientes, conserva su historial y se deshace si MHD vuelve a traerlas.
 - **Vuelta de un archivado** (David, 2026-10-27): si MHD vuelve a traer un producto que estaba archivado, se **reactiva** (activo, o borrador si tiene revisión pendiente o «Avisar a MHD»), conserva su URL y se **quita su redirección**: la de `/products/<handle>` se borra en Shopify y se descarta en la base de redirecciones. Ojo con las redirecciones cada vez que algo se reactive. Hecho en la subida (`shopify-draft.ts`, `releaseProductRedirects`).
 - **Bajas también para lo que entró con la sincronización antigua** (SQL Server / Pladisel): el «ERP» y MHD son lo mismo (David, 2026-10-26). Sustituye a la decisión de esa mañana de archivar solo lo creado por el importador. El 26-10 había 440 productos activos de esa vía cuyo EAN MHD ya había dado de baja; se cruzan por EAN o por código.
-- **Seguros de las bajas** (una lectura incompleta de MHD parecería una baja masiva):
-  - solo se da de baja lo que falta en **dos lecturas seguidas**;
-  - **freno:** si de una vez desaparece más de un porcentaje pequeño del catálogo, no se archiva nada y se manda correo de fallo grave.
+- **Seguros** (una lectura incompleta de MHD parecería una baja masiva; ver «Agotados en MHD»): nada se toca solo porque falte en el listado, cada producto se confirma con su ficha de MHD, y hay **freno** (`absence_brake_pct`, 2 %).
 - **Histórico:** una tabla con todo lo ocurrido a cada producto (alta, baja, cambio, qué se hizo y con qué resultado), **sin caducidad**. El registro del importador (`mhd_importer_events`) se borra a los 60 días; este no.
 - **Correos:**
   - inmediato **solo con fallos graves**, también a david@aligeria.com: lectura de MHD fallida, freno de bajas, Anthropic sin saldo o con el tope de gasto alcanzado, Shopify rechazando la subida;
@@ -71,6 +68,37 @@ El `pvp` del listado (`/products`) es **la tarifa de nuestra web**, la buena: MH
 
 Shopify cuenta disponibles (se pueden vender), comprometidas (pedidos sin enviar) y en existencia (la suma). La sincronización y la subida del importador fijan **en existencia** (`on_hand`) al stock de MHD en «Almacén MHD», y Shopify resta lo comprometido. Así una unidad vendida que MHD aún no ha registrado no se vuelve a vender. Entre que MHD registra el pedido y se marca como enviado en Shopify, la web enseña una unidad de menos (el error seguro); al marcar el envío vuelve a cuadrar. Fijar las disponibles podría vender dos veces la misma unidad.
 
+
+## Vuelta encadenada (en marcha desde el 2026-10-29)
+
+Un solo reloj: pg_cron abre una vuelta cada 30 minutos (`mhd_sync_cycle_start`, tabla `mhd_sync_cycles`) y la base avisa a la app (`/api/sincronizaciones/vuelta`, `src/lib/mhd-importer/sync-cycle.ts`). Cada paso arranca al acabar el anterior y queda con su inicio, fin, cifras y error:
+
+1. **Conexiones:** Shopify y MHD (si fallan, la vuelta se para y llega un aviso); Anthropic e Icecat (aviso, pero precio y stock siguen); Resend (en rojo en Inicio).
+2. **Lectura del listado de MHD** (~3½ min). Al acabar, la base llama al paso siguiente (disparador `mhd_sync_read_finished`).
+3. **Precio y stock** a Shopify (solo lo que cambia).
+4. **Agotados en MHD** (abajo).
+5. Pendiente: altas y cambios de ficha.
+
+Una sola vuelta a la vez; si una pasa de 25 minutos se da por atascada y se avisa. Se ve en utils › Catálogo › Sincronización con MHD (con el botón «Leer ahora y actualizar») y en Inicio. Pausa y frecuencia del resumen: Configuración. Resumen por correo cada hora mientras se estabiliza (después, a las 9:00).
+
+## Agotados en MHD: desaparecer no es una baja (David, 2026-10-29)
+
+MHD lo explica así: «si no tienen stock nosotros los descatalogamos y cuando vuelvan a tener stock los volvemos a poner con disponibilidad». Su listado cambia todos los días: el 29-10 desaparecieron 60 productos entre la mañana y las 13:30, y desde el 26-10 volvieron 1.195 productos antiguos que entonces no estaban. Además, **el listado por páginas no es del todo fiable**: si cambia mientras se lee, unas páginas se desplazan (en una lectura salieron 5 repetidos y otros tantos sin leer). Y `/stocks` va por detrás: sigue enseñando productos que la ficha de MHD ya da por inexistentes (404).
+
+Por eso (`src/lib/mhd-importer/absences.ts`, paso «agotados» de la vuelta, tabla `mhd_missing_products`):
+
+1. **Desaparece del listado:** se pregunta a MHD por su ficha. Solo si responde «no existe» (404) cuenta; si existe, la lectura se lo saltó y no se toca (queda contado como «saltado por la lectura»).
+2. **Confirmado:** **stock 0** en «Almacén MHD» y, si se vendía sin stock (Balay, Bosch, Siemens, AEG, Electrolux y Zanussi en lavado, frío y cocción: `STORE_RULES.sellOutOfStock*`), **deja de venderse sin stock** mientras falte. **Sigue publicado**, con su dirección, precio y «Avísame cuando vuelva». Nada se archiva ni se redirige.
+3. **Vuelve a venir:** precio y stock lo reponen en esa misma vuelta y se le devuelve «vender sin stock» si lo tenía. Sin reprocesar ni tocar redirecciones.
+4. **30 días sin volver** (`absence_days`, en utils › Catálogo › Configuración): pasa a **pendiente de baja** (archivar y proponer redirección; esa parte está pendiente de montar).
+5. **Freno:** si en una vuelta se confirman más del `absence_brake_pct` % (2 %) de los activos de la tienda, no se toca nada y llega un aviso. La primera puesta al día (29-10, 14:12) se aplicó con el freno saltado, con el sí de David: **667 productos a stock 0** (4.739 unidades que MHD no podía servir), 12 de ellos dejaron de venderse sin stock; 2 los había saltado la lectura y no se tocaron.
+
+Sale en el resumen por correo («Agotados en MHD»: se agotan, vuelven, siguen agotados, pasan de 30 días y saltados por la lectura), en Inicio y en la tabla de vueltas de utils. A mano: `POST /api/sincronizaciones/agotados?simulacion=1` (o `?forzar=1`), con la cabecera de la clave.
+
+## Altas
+
+Un producto es alta si viene en el listado de MHD, no existe en Shopify con su código como SKU (en ningún estado), nunca lo ha procesado el importador, su familia tiene reglas y su subfamilia sitio en el árbol, y no está bloqueado. El 29-10 eran 1.301: 106 de códigos nuevos y 1.195 antiguos que MHD volvió a poner a la venta. Fuera quedan los «Productos de Marketing» (6.742) y los descartados (984 «Sin imagen»: vuelven a la cola si MHD les pone fotos). Pendiente de montar en la vuelta.
+
 ## Pendiente de decidir
 
-- El porcentaje del freno de bajas.
+- ~~El porcentaje del freno de bajas~~: 2 % (David, 2026-10-29), en Configuración.

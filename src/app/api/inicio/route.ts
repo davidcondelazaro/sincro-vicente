@@ -15,11 +15,12 @@ export async function GET() {
   const madridOffset = new Intl.DateTimeFormat("en", { timeZone: "Europe/Madrid", timeZoneName: "longOffset" }).formatToParts(new Date()).find((part) => part.type === "timeZoneName")?.value.replace("GMT", "") || "+00:00";
   const since = new Date(`${madridDay}T00:00:00${madridOffset}`).toISOString();
   const overviewFresh = overviewCache && Date.now() - overviewCache.at < 60_000;
-  const [cycles, today, overview, alerts] = await Promise.all([
+  const [cycles, today, overview, alerts, absences] = await Promise.all([
     db.from("mhd_sync_cycles").select("id,trigger,status,started_at,finished_at,read_run_id,steps,error").order("started_at", { ascending: false }).limit(16),
     db.rpc("mhd_sync_report", { p_since: since }),
     overviewFresh ? Promise.resolve({ data: overviewCache!.data, error: null }) : db.rpc("mhd_catalog_overview"),
     db.from("mhd_sync_events").select("detail,created_at").eq("sync", "avisos").eq("kind", "correo").gte("created_at", new Date(Date.now() - 86_400_000).toISOString()).order("created_at", { ascending: false }).limit(8),
+    db.rpc("mhd_absence_report", { p_since: since }),
   ]);
   if (!overviewFresh && overview.data) overviewCache = { at: Date.now(), data: overview.data };
   const current = cycles.data?.[0];
@@ -30,5 +31,5 @@ export async function GET() {
     reading = { done: progress?.done ?? 0, total: progress?.total ?? 0 };
   }
   const error = cycles.error?.message ?? today.error?.message ?? overview.error?.message;
-  return Response.json({ cycles: cycles.data ?? [], reading, today: today.data, overview: overview.data, alerts: alerts.data ?? [], since, error: error ?? null, now: new Date().toISOString() });
+  return Response.json({ absences: absences.data ?? null, cycles: cycles.data ?? [], reading, today: today.data, overview: overview.data, alerts: alerts.data ?? [], since, error: error ?? null, now: new Date().toISOString() });
 }

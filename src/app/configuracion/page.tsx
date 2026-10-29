@@ -47,6 +47,12 @@ export default function SettingsPage() {
           <label className="flex items-center gap-3 text-sm font-medium text-zinc-800"><input type="checkbox" className="h-5 w-5 accent-emerald-700" checked={settings.sync_enabled?.value === true} onChange={(event) => void save("sync_enabled", event.target.checked, event.target.checked ? "vueltas activas" : "vueltas en pausa")} />{settings.sync_enabled?.value === true ? "Activa: una vuelta cada 30 minutos" : "En pausa"}</label>
           {stamp("sync_enabled")}
         </Section>
+        <Section title="Agotados en MHD" text="MHD quita de su listado lo que su proveedor no tiene y lo vuelve a poner cuando hay stock. Lo que deja de venir (confirmado uno a uno con MHD) pasa a stock 0 y deja de venderse sin stock, pero sigue publicado; si vuelve, se repone solo. Solo pasa a baja (archivar y redirigir) si no vuelve en estos días.">
+          <NumberSetting label="Días agotado antes de pasar a baja" suffix="días" value={Number(settings.absence_days?.value ?? 30)} step={1} onSave={(value) => save("absence_days", value, "días hasta la baja")} />
+          {stamp("absence_days")}
+          <NumberSetting label="Freno: si en una vuelta desaparece más de este porcentaje de la tienda, no se toca nada y llega un aviso" suffix="%" value={Number(settings.absence_brake_pct?.value ?? 2)} step={0.5} onSave={(value) => save("absence_brake_pct", value, "freno de agotados")} />
+          {stamp("absence_brake_pct")}
+        </Section>
         <Section title="Resumen por correo" text="Lo hecho y lo que hay que mirar: vueltas, precio y stock, importador, cola de revisión y avisos.">
           <div className="flex flex-wrap gap-2">{([["hora", "Cada hora (mientras se estabiliza)"], ["diario", "Diario, a las 9:00"]] as const).map(([value, label]) => <button key={value} type="button" onClick={() => void save("report_frequency", value, `resumen ${value === "hora" ? "cada hora" : "diario"}`)} className={`h-10 rounded-lg px-4 text-sm font-medium ${settings.report_frequency?.value === value ? "bg-emerald-700 text-white" : "border border-zinc-300 bg-white text-zinc-700"}`}>{label}</button>)}</div>
           {stamp("report_frequency")}
@@ -72,5 +78,14 @@ function Emails({ label, value, onSave }: { label: string; value: unknown; onSav
   return <form className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end" onSubmit={(event) => { event.preventDefault(); void onSave(list); }}>
     <label className="flex-1 text-sm font-medium text-zinc-700">{label}<input value={text} onChange={(event) => setText(event.target.value)} placeholder="correo@ejemplo.com, otro@ejemplo.com" className="mt-1 block h-10 w-full rounded-lg border border-zinc-300 px-3" /></label>
     <button type="submit" disabled={!list.length || text === initial} className="h-10 rounded-lg bg-emerald-700 px-4 text-sm font-medium text-white disabled:opacity-40">Guardar</button>
+  </form>;
+}
+
+function NumberSetting({ label, suffix, value, step, onSave }: { label: string; suffix: string; value: number; step: number; onSave: (value: number) => Promise<void> }) {
+  const [text, setText] = useState(String(value));
+  const number = Number(text.replace(",", "."));
+  return <form className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end" onSubmit={(event) => { event.preventDefault(); void onSave(number); }}>
+    <label className="flex-1 text-sm font-medium text-zinc-700">{label}<span className="mt-1 flex items-center gap-2"><input inputMode="decimal" value={text} onChange={(event) => setText(event.target.value)} step={step} className="block h-10 w-28 rounded-lg border border-zinc-300 px-3" /><span className="text-zinc-500">{suffix}</span></span></label>
+    <button type="submit" disabled={!Number.isFinite(number) || number === value} className="h-10 rounded-lg bg-emerald-700 px-4 text-sm font-medium text-white disabled:opacity-40">Guardar</button>
   </form>;
 }

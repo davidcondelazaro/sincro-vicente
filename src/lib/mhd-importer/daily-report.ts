@@ -18,6 +18,7 @@ type Report = {
   ai_cost: { period: number; today: number; month: number };
   review: { pending: number; reasons: { reason: string; n: number }[] };
 };
+type Absences = { days: number; out: number; out_selling: number; out_list: Product[]; back: number; back_list: Product[]; open: number; due: number; near: number; due_list: (Product & { missing_since: string })[]; skipped_by_read: number };
 type Overview = { read_at: string | null; in_listing: number; not_in_store: number; active_missing: number; active: number; draft: number; archived: number };
 
 const UTILS = "https://utils.electronicavicente.com";
@@ -37,11 +38,12 @@ const STATUS: Record<string, string> = { terminada: "terminada", fallida: "FALLI
 export async function buildDailyReport(db: SupabaseClient, now = new Date(), hours = 24) {
   const since = new Date(now.getTime() - hours * 3_600_000).toISOString();
   const period = hours === 1 ? "la última hora" : `las últimas ${hours} horas`;
-  const [cyclesResult, reportResult, overviewResult, alertsResult] = await Promise.all([
+  const [cyclesResult, reportResult, overviewResult, alertsResult, absencesResult] = await Promise.all([
     db.from("mhd_sync_cycles").select("id,trigger,status,started_at,finished_at,steps,error").gte("started_at", since).order("started_at"),
     db.rpc("mhd_sync_report", { p_since: since }),
     db.rpc("mhd_catalog_overview"),
     db.from("mhd_sync_events").select("detail,created_at").eq("sync", "avisos").eq("kind", "correo").gte("created_at", since).order("created_at"),
+    db.rpc("mhd_absence_report", { p_since: since }),
   ]);
   const report = reportResult.data as Report | null;
   const overview = overviewResult.data as Overview | null;
@@ -61,11 +63,12 @@ export async function buildDailyReport(db: SupabaseClient, now = new Date(), hou
       ...(services.length ? [`Conexiones (última comprobación): ${services.map((item) => `${item.name} ${item.ok ? `${(item.ms / 1000).toLocaleString("es-ES", { maximumFractionDigits: 1 })} s` : `SIN CONEXIÓN (${item.error})`}`).join(" · ")}.`] : []),
       ...bad.map((cycle) => `${madridTime(cycle.started_at)} · ${STATUS[cycle.status]}: ${cycle.error ?? "sin motivo"}`),
     ] : [`Ninguna vuelta en ${period}. ¿Está parada la tarea programada?`],
-    table: cycles.length ? { head: ["Hora", "Estado", "Total", "Lectura MHD", "Productos leídos", "Precio y stock", "Precios", "Stock"], rows: cycles.map((cycle) => {
-      const read = cycle.steps.find((item) => item.name === "lectura"); const sync = cycle.steps.find((item) => item.name === "precio-stock");
+    table: cycles.length ? { head: ["Hora", "Estado", "Total", "Lectura MHD", "Productos leídos", "Precio y stock", "Precios", "Stock", "Agotados / vuelven"], rows: cycles.map((cycle) => {
+      const read = cycle.steps.find((item) => item.name === "lectura"); const sync = cycle.steps.find((item) => item.name === "precio-stock"); const gone = cycle.steps.find((item) => item.name === "agotados");
       return [madridTime(cycle.started_at), STATUS[cycle.status] ?? cycle.status, duration(seconds(cycle.started_at, cycle.finished_at ?? undefined)), duration(seconds(read?.started_at, read?.finished_at)),
         read?.counts?.products ? integer.format(Number(read.counts.products)) : "—", duration(seconds(sync?.started_at, sync?.finished_at)),
-        sync?.counts ? integer.format(Number(sync.counts.pricesSent ?? 0)) : "—", sync?.counts ? integer.format(Number(sync.counts.stockSent ?? 0)) : "—"];
+        sync?.counts ? integer.format(Number(sync.counts.pricesSent ?? 0)) : "—", sync?.counts ? integer.format(Number(sync.counts.stockSent ?? 0)) : "—",
+        gone?.counts ? `${integer.format(Number(gone.counts.applied ?? 0))} / ${integer.format(Number(gone.counts.returned ?? 0))}${gone.counts.braked ? " (freno)" : ""}` : "—"];
     }) } : undefined,
     link: { text: "Ver las lecturas en utils", href: `${UTILS}/importar-datos-mhd` },
   });
@@ -91,6 +94,20 @@ export async function buildDailyReport(db: SupabaseClient, now = new Date(), hou
         ...(stock.out_list.length ? [`Agotados: ${stock.out_list.map((item) => item.title ?? item.codigo).join(" · ")}.`] : []),
       ],
       table: prices.top.length ? { head: ["Producto", "Código", "Antes", "Ahora", "Cambio"], rows: prices.top.map((item) => [shopifyLink(item), item.codigo, euros(item.antes), euros(item.ahora), `${item.pct > 0 ? "+" : ""}${item.pct} %${Math.abs(item.pct) > 30 ? " ⚠" : ""}`]) } : undefined,
+    });
+
+    // Agotados en MHD (2026-10-29): lo que MHD deja de traer pasa a stock 0 y se repone al volver; baja solo a los N días.
+    const absences = absencesResult.data as Absences | null;
+    if (absences) sections.push({
+      title: "Agotados en MHD", warn: absences.due > 0,
+      lines: [
+        `En ${period}: ${integer.format(absences.out)} se agotan (MHD deja de traerlos; stock 0${absences.out_selling ? `, ${absences.out_selling} dejan de venderse sin stock` : ""}) y ${integer.format(absences.back)} vuelven.`,
+        `Siguen agotados: ${integer.format(absences.open)}. ${absences.due ? `${integer.format(absences.due)} llevan más de ${absences.days} días: pendientes de baja (archivar y redirigir).` : `Ninguno pasa de ${absences.days} días.`}${absences.near ? ` ${integer.format(absences.near)} llegan a los ${absences.days} días en menos de 5.` : ""}`,
+        ...(absences.skipped_by_read ? [`La lectura de MHD se saltó ${absences.skipped_by_read} productos que siguen existiendo: no se tocaron.`] : []),
+        ...(absences.back_list.length ? [`Vuelven: ${absences.back_list.map((item) => item.title ?? item.codigo).join(" · ")}.`] : []),
+      ],
+      table: absences.due_list.length ? { head: ["Pendiente de baja", "Código", "Agotado desde"], rows: absences.due_list.map((item) => [shopifyLink(item), item.codigo, new Date(item.missing_since).toLocaleDateString("es-ES", { timeZone: "Europe/Madrid" })]) }
+        : absences.out_list.length ? { head: ["Agotados en este periodo (los últimos)", "Código"], rows: absences.out_list.map((item) => [shopifyLink(item), item.codigo]) } : undefined,
     });
 
     const byStatus = report.importer.by_status; const processed = Object.values(byStatus).reduce((total, value) => total + value, 0);
