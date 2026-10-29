@@ -55,11 +55,14 @@ export async function syncPriceStock(deps: { db: SupabaseClient; shopify: Shopif
 
   const location = STORE_RULES.locationIds["Almacén MHD"];
   const sent = new Map<string, { price?: number; stock?: number }>();
-  // Stock: de 250 en 250 en una sola llamada cada lote.
+  // Stock: de 250 en 250 en una sola llamada cada lote. Se fijan las unidades «en existencia» (on_hand), no las
+  // disponibles (David, 2026-10-29): Shopify resta lo comprometido en pedidos sin enviar, así que una unidad vendida y
+  // aún no registrada por MHD no se vuelve a vender. Entre que MHD la registra y se marca el envío, la web enseña una
+  // unidad de menos (el error seguro).
   for (let i = 0; i < stockChanges.length && Date.now() - started < PRICE_STOCK_SYNC.budgetMs; i += PRICE_STOCK_SYNC.stockBatch) {
     const batch = stockChanges.slice(i, i + PRICE_STOCK_SYNC.stockBatch);
     try {
-      const result = await shopifyGraphql<{ inventorySetQuantities: { userErrors: UserError[] } }>(deps.shopify, `mutation($input: InventorySetQuantitiesInput!, $key: String!) { inventorySetQuantities(input: $input) @idempotent(key: $key) { userErrors { field message } } }`, { key: crypto.randomUUID(), input: { name: "available", reason: "correction", referenceDocumentUri: `gid://sincro-vicente/SyncJob/precio-stock-${read.run}`, quantities: batch.map((item) => ({ inventoryItemId: item.inventory_item_id, locationId: location, quantity: item.stock, changeFromQuantity: null })) } });
+      const result = await shopifyGraphql<{ inventorySetQuantities: { userErrors: UserError[] } }>(deps.shopify, `mutation($input: InventorySetQuantitiesInput!, $key: String!) { inventorySetQuantities(input: $input) @idempotent(key: $key) { userErrors { field message } } }`, { key: crypto.randomUUID(), input: { name: "on_hand", reason: "correction", referenceDocumentUri: `gid://sincro-vicente/SyncJob/precio-stock-${read.run}`, quantities: batch.map((item) => ({ inventoryItemId: item.inventory_item_id, locationId: location, quantity: item.stock, changeFromQuantity: null })) } });
       if (result.inventorySetQuantities.userErrors.length) throw new Error(result.inventorySetQuantities.userErrors.map((item) => item.message).join("; "));
       for (const item of batch) sent.set(item.codigo, { ...sent.get(item.codigo), stock: item.stock });
       summary.stockSent += batch.length;

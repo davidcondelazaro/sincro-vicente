@@ -377,7 +377,8 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   const variant = { ...(current ? { id: current.id } : {}),
     optionValues: [{ optionName: "Title", name: "Default Title" }], price, compareAtPrice: null, sku: shop.variant.sku, barcode: shop.variant.barcode ?? current?.barcode ?? null, inventoryPolicy: shop.variant.inventoryPolicy,
     inventoryItem: { tracked: true, ...(shop.variant.weightKg ? { measurement: { weight: { value: shop.variant.weightKg, unit: "KILOGRAMS" } } } : {}) },
-    inventoryQuantities: inventory.map((item) => ({ locationId: locationId(item.location), name: "available", quantity: item.quantity })) };
+    // Unidades «en existencia», no disponibles: Shopify resta lo comprometido en pedidos sin enviar (David, 2026-10-29).
+    inventoryQuantities: inventory.map((item) => ({ locationId: locationId(item.location), name: "on_hand", quantity: item.quantity })) };
   // Estado (David, 2026-10-27): los productos nuevos de la subida van activos, y también los archivados que MHD vuelve a
   // traer (se reactivan y se les quita la redirección, abajo). En borrador solo lo que tiene algo pendiente: la cola de
   // revisión o «Avisar a MHD» (hasta que se decida qué hacer con ellos). Un producto que ya estaba activo sigue activo.

@@ -60,6 +60,10 @@ David: «siempre hay que pensar en el importador para que todo lo nuevo vaya fin
 
 El `pvp` del listado (`/products`) es **la tarifa de nuestra web**, la buena: MHD ya lo había cambiado ahí. `/prices` trae otra tarifa (la de la web de MHD) y no coincide en ~17.500 productos (combi Bosch KGN39VIEB: 647 € en el listado, 796 € en `/prices` y en su web); MHD tiene que cambiarla también. Hasta entonces, el precio sale del listado (subida del importador y sincronización) y el stock, de `/stocks`. La subida masiva usó el del listado, así que sus precios están bien. El 28-10 se probó a poner el de `/prices` en 5 productos y se deshizo el 29-10.
 
+## Stock y pedidos: se fijan las unidades «en existencia» (David, 2026-10-29)
+
+Shopify cuenta disponibles (se pueden vender), comprometidas (pedidos sin enviar) y en existencia (la suma). La sincronización y la subida del importador fijan **en existencia** (`on_hand`) al stock de MHD en «Almacén MHD», y Shopify resta lo comprometido. Así una unidad vendida que MHD aún no ha registrado no se vuelve a vender. Entre que MHD registra el pedido y se marca como enviado en Shopify, la web enseña una unidad de menos (el error seguro); al marcar el envío vuelve a cuadrar. Fijar las disponibles podría vender dos veces la misma unidad.
+
 ## Pendiente de decidir
 
 - El porcentaje del freno de bajas.
