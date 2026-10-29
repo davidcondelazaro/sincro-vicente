@@ -18,7 +18,7 @@ const navigation: { label: string | null; entries: NavEntry[] }[] = [
     { section: "productLocks", href: "/productos-bloqueados", label: "Productos bloqueados", icon: "lock" },
     { section: "redirects", href: "/tienda/redirecciones", label: "Redirecciones", icon: "export" },
     { section: "warranties", href: "/tienda/garantias", label: "Garantías", icon: "shield" },
-    { section: "mhdCatalog", href: "/importacion-catalogo-mhd", label: "Catálogo MHD", icon: "catalog" },
+    { section: "mhdCatalog", href: "/importacion-catalogo-mhd", label: "Consultar catálogo MHD", icon: "catalog" },
   ] },
   { label: "Tienda", entries: [
     { section: "orders", href: "/pedidos-mhd", label: "Pedidos MHD", icon: "orders" },
