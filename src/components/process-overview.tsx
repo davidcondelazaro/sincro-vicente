@@ -9,7 +9,9 @@ type Process = { id: string; entity: string; family: string; href: string; statu
 type Summary = { type: string; entity: string; family: string; href: string; latest: Process | null };
 type Data = { active: Process[]; summaries: Summary[] };
 
-export function ProcessOverview() {
+// Procesos de la sincronización antigua (Pladisel/SQL Server). Desde el 2026-10-29 van plegados al final de Inicio
+// (`embedded`), debajo del panel de las sincronizaciones con MHD.
+export function ProcessOverview({ embedded = false }: { embedded?: boolean }) {
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
@@ -24,17 +26,21 @@ export function ProcessOverview() {
     } catch (reason) { setError(reason instanceof Error ? reason.message : "No se pudo actualizar el resumen."); }
   }, []);
 
-  useEffect(() => { void load(); createClient().auth.getUser().then(({ data: auth }) => setUserEmail(auth.user?.email ?? null)); }, [load]);
-  useEffect(() => { const timer = window.setInterval(() => { setNow(Date.now()); void load(); }, 3_000); return () => window.clearInterval(timer); }, [load]);
+  useEffect(() => { void load(); if (!embedded) createClient().auth.getUser().then(({ data: auth }) => setUserEmail(auth.user?.email ?? null)); }, [load, embedded]);
+  useEffect(() => { const timer = window.setInterval(() => { setNow(Date.now()); void load(); }, embedded ? 30_000 : 3_000); return () => window.clearInterval(timer); }, [load, embedded]);
   const active = useMemo(() => data?.active ?? [], [data]);
 
+  const sections = <>
+      {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-800">{error}</p>}
+      <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"><div className="flex flex-wrap items-baseline justify-between gap-3"><h2 className="text-xl font-semibold">En ejecución</h2><span className="text-sm text-zinc-500">{active.length} {active.length === 1 ? "proceso activo" : "procesos activos"}</span></div>{!data ? <p className="mt-5 text-sm text-zinc-500">Cargando procesos…</p> : active.length ? <div className="mt-5 grid gap-3 xl:grid-cols-2">{active.map((process) => <ActiveProcess key={process.id} process={process} now={now} />)}</div> : <p className="mt-5 rounded-xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-6 text-center text-sm text-zinc-600">No hay procesos en curso.</p>}</section>
+      <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"><h2 className="text-xl font-semibold">Última ejecución completada</h2><div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{(data?.summaries ?? []).map((summary) => <LatestProcess key={summary.type} summary={summary} />)}</div></section>
+    </>;
+  if (embedded) return <div className="flex flex-col gap-4">{sections}</div>;
   return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
     <AppSidebar active="home" userEmail={userEmail} />
     <main className="min-w-0 px-6 pb-24 pt-28 sm:px-10 lg:px-12 lg:py-16"><div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       <header><h1 className="text-4xl font-semibold tracking-tight text-zinc-950">Resumen de sincronizaciones</h1><p className="mt-2 text-zinc-600">Procesos en curso y última ejecución correcta de cada entidad.</p></header>
-      {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-800">{error}</p>}
-      <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"><div className="flex flex-wrap items-baseline justify-between gap-3"><h2 className="text-xl font-semibold">En ejecución</h2><span className="text-sm text-zinc-500">{active.length} {active.length === 1 ? "proceso activo" : "procesos activos"}</span></div>{!data ? <p className="mt-5 text-sm text-zinc-500">Cargando procesos…</p> : active.length ? <div className="mt-5 grid gap-3 xl:grid-cols-2">{active.map((process) => <ActiveProcess key={process.id} process={process} now={now} />)}</div> : <p className="mt-5 rounded-xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-6 text-center text-sm text-zinc-600">No hay procesos en curso.</p>}</section>
-      <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"><h2 className="text-xl font-semibold">Última ejecución completada</h2><div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{(data?.summaries ?? []).map((summary) => <LatestProcess key={summary.type} summary={summary} />)}</div></section>
+      {sections}
     </div></main>
   </div>;
 }

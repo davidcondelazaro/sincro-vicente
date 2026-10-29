@@ -1,5 +1,5 @@
-import { ProcessOverview } from "@/components/process-overview";
+import { HomeDashboard } from "@/components/home-dashboard";
 
 export default function Home() {
-  return <ProcessOverview />;
+  return <HomeDashboard />;
 }
