@@ -3,13 +3,15 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { anthropicKey, PROCESSOR_MODEL } from "./ai";
 import { sendAlert } from "./alerts";
 import type { SourcesConfig } from "./gather";
+import { syncAbsences } from "./absences";
 import { syncPriceStock } from "./price-stock-sync";
 import { shopifyGraphql } from "./store-filters";
 
 // Vuelta de sincronización con MHD (David, 2026-10-29; diseño en docs/SINCRONIZACIONES_MHD.md). La abre pg_cron cada 30
 // minutos (mhd_sync_cycle_start) y la base llama a la ruta /api/sincronizaciones/vuelta en dos momentos:
 //   «inicio»: se comprueban las conexiones (si alguna falla, aviso y la vuelta se para) y se lanza la lectura del listado;
-//   «continuar»: al acabar la lectura, los pasos en orden (hoy precio y stock; después altas, bajas y cambios).
+//   «continuar»: al acabar la lectura, los pasos en orden: precio y stock, agotados en MHD (absences.ts); después altas
+//   y cambios.
 // Cada paso queda en mhd_sync_cycles.steps con su inicio, fin, cifras y error; de ahí salen el resumen diario y utils.
 type StepStatus = "ok" | "error" | "saltado";
 export type CycleStep = { name: string; started_at: string; finished_at?: string; status?: StepStatus; counts?: Record<string, unknown>; error?: string };
@@ -135,6 +137,11 @@ export async function continueCycle(deps: Deps, cycleId: string) {
       const result = await syncPriceStock({ db: deps.db, shopify: deps.sources.shopify }, { runId: cycle.read_run_id! });
       if (!result.ok && "reason" in result) throw new Error(String(result.reason));
       return result as Record<string, unknown>;
+    });
+    // Agotados en MHD: lo que deja de venir se confirma con su ficha y pasa a stock 0; lo que vuelve, se repone.
+    await step(deps.db, cycle, "agotados", async () => {
+      const result = await syncAbsences({ db: deps.db, sources: deps.sources }, { runId: cycle.read_run_id!, cycleId: cycle.id });
+      return result as unknown as Record<string, unknown>;
     });
     await finish(deps.db, cycle, "terminada");
   } catch (caught) {
