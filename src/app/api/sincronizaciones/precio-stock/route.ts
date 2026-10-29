@@ -2,6 +2,7 @@ import { after } from "next/server";
 import { syncPriceStock } from "@/lib/mhd-importer/price-stock-sync";
 import { workerClient } from "@/lib/mhd-importer/jobs";
 import { sourcesConfig } from "@/lib/mhd-importer/server";
+import { sendAlert } from "@/lib/mhd-importer/alerts";
 
 // Sincronización de precio y stock con Shopify (src/lib/mhd-importer/price-stock-sync.ts). La llama pg_cron cada 30 min,
 // unos minutos después de lanzar la lectura de /prices y /stocks de MHD. Sin sesión, pero solo con la cabecera
@@ -26,7 +27,11 @@ export async function POST(request: Request) {
   if (dryRun || codes?.length) return Response.json(await run());
   after(async () => {
     try { console.log(JSON.stringify({ priceStockSync: await run() })); }
-    catch (caught) { console.error(JSON.stringify({ priceStockSync: "error", error: caught instanceof Error ? caught.message : String(caught) })); }
+    catch (caught) {
+      const error = caught instanceof Error ? caught.message : String(caught);
+      console.error(JSON.stringify({ priceStockSync: "error", error }));
+      await sendAlert(db, { key: "precio-stock:caida", subject: "Precio y stock: la sincronización se ha caído", lines: ["La sincronización de precio y stock ha fallado a medias:", error] });
+    }
   });
   return Response.json({ ok: true }, { status: 202 });
 }

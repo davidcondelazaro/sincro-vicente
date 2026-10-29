@@ -7,6 +7,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { shopifyGraphql, type ShopifyConfig } from "./store-filters";
 import { STORE_RULES } from "./processor";
+import { sendAlert } from "./alerts";
 
 type Change = { codigo: string; product_id: string; variant_id: string; inventory_item_id: string; price: number; stock: number; sent_price: number | null; sent_stock: number | null };
 type UserError = { field?: string[] | null; message: string };
@@ -35,7 +36,10 @@ export async function syncPriceStock(deps: { db: SupabaseClient; shopify: Shopif
   const started = Date.now();
   const read = await latestRead(deps.db);
   if (!read.ok) {
-    if (!options.dryRun) await event(deps.db, "freno", { reason: read.reason, run: read.run ?? null });
+    if (!options.dryRun) {
+      await event(deps.db, "freno", { reason: read.reason, run: read.run ?? null });
+      await sendAlert(deps.db, { key: "precio-stock:freno", subject: "Precio y stock parados", lines: ["La sincronización de precio y stock con Shopify no ha enviado nada:", read.reason], href: "/importar-datos-mhd" });
+    }
     return { ok: false, reason: read.reason };
   }
   // La API de la base devuelve 1.000 filas por llamada: se piden por páginas.
@@ -114,6 +118,7 @@ export async function syncPriceStock(deps: { db: SupabaseClient; shopify: Shopif
   });
   for (let i = 0; i < events.length; i += 1000) await deps.db.from("mhd_sync_events").insert(events.slice(i, i + 1000));
   await event(deps.db, summary.errors.length ? "error" : "vuelta", { ...summary, errors: summary.errors.slice(0, 20), seconds: Math.round((Date.now() - started) / 1000) });
+  if (summary.errors.length) await sendAlert(deps.db, { key: "precio-stock:error", subject: `Precio y stock: ${summary.errors.length} errores al enviar a Shopify`, lines: [`Cambios: ${summary.changes} · enviados ${summary.pricesSent} precios y ${summary.stockSent} existencias.`, ...summary.errors.slice(0, 10).map(String)] });
   return { ok: summary.errors.length === 0, ...summary };
 }
 

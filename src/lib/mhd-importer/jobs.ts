@@ -11,6 +11,7 @@ import { createShopifyDraft } from "./shopify-draft";
 import { processProduct } from "./processor";
 import { createTrace, type TraceEvent } from "./trace";
 import { warningKind } from "./warning-kinds";
+import { sendAlert } from "./alerts";
 
 type Env = Record<string, string | undefined>;
 export type JobItem = { id: number; job_id: string; codigo: string; family_code: string | null; attempts: number };
@@ -150,7 +151,10 @@ export async function processJobItem(deps: { db: SupabaseClient; config: Sources
     // tandas. Así un fallo nuevo que nadie ha previsto no quema miles de productos.
     await log.flush();
     const { data: brake } = await deps.db.rpc("mhd_importer_brake_check", { p_job: item.job_id });
-    if (brake) console.error(JSON.stringify({ productImporterWorker: "freno", reason: brake }));
+    if (brake) {
+      console.error(JSON.stringify({ productImporterWorker: "freno", reason: brake }));
+      await sendAlert(deps.db, { key: `importador:freno:${item.job_id}`, subject: "Importador parado por el freno", lines: ["Un trabajo del importador se ha pausado solo:", String(brake)] });
+    }
   } finally {
     await log.flush();
   }
