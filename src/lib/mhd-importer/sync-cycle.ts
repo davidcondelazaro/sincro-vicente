@@ -45,24 +45,42 @@ async function finish(db: SupabaseClient, cycle: Cycle, status: "terminada" | "f
 }
 
 // Conexiones: una consulta mínima a cada servicio. La de Anthropic es una respuesta de 1 token con el modelo barato
-// (~0,00001 $), que es la forma de saber que la clave vale y que queda crédito.
+// (~0,00001 $), que es la forma de saber que la clave vale y que queda crédito. Solo Shopify y MHD son imprescindibles
+// para la vuelta (`critical`); Anthropic e Icecat hacen falta para procesar fichas y Resend para los correos: si fallan
+// se avisa (Resend no puede avisarse a sí mismo: queda en rojo en Inicio) pero la vuelta sigue (David, 2026-10-29).
 export async function checkConnections(sources: SourcesConfig, env: Record<string, string | undefined>) {
-  const timed = async (name: string, check: () => Promise<unknown>) => {
+  const timed = async (name: string, critical: boolean, check: () => Promise<unknown>) => {
     const started = Date.now();
-    try { await check(); return { name, ok: true, ms: Date.now() - started }; }
-    catch (caught) { return { name, ok: false, ms: Date.now() - started, error: caught instanceof Error ? caught.message : String(caught) }; }
+    try { await check(); return { name, critical, ok: true, ms: Date.now() - started }; }
+    catch (caught) { return { name, critical, ok: false, ms: Date.now() - started, error: caught instanceof Error ? caught.message : String(caught) }; }
   };
-  const mhd = sources.mhd;
+  const mhd = sources.mhd; const icecat = sources.icecat;
   return Promise.all([
-    timed("Shopify", () => shopifyGraphql(sources.shopify, "{ shop { id } }")),
-    timed("MHD", async () => {
+    timed("Shopify", true, () => shopifyGraphql(sources.shopify, "{ shop { id } }")),
+    timed("MHD", true, async () => {
       const url = `${mhd.url.replace(/\/$/, "")}/api/${mhd.version.replace(/^\/+|\/+$/g, "")}/${mhd.subPath.replace(/^\/+|\/+$/g, "")}/categories?page=1&pageSize=1`;
       const response = await fetch(url, { headers: { Accept: "application/json", Authorization: `Basic ${btoa(`${mhd.user}:${mhd.pass}`)}` }, signal: AbortSignal.timeout(15_000) });
       if (!response.ok) throw new Error(`MHD respondió HTTP ${response.status}`);
     }),
-    timed("Anthropic", async () => {
+    timed("Anthropic", false, async () => {
       const client = new Anthropic({ apiKey: anthropicKey(env), maxRetries: 1 });
       await client.messages.create({ model: PROCESSOR_MODEL, max_tokens: 1, messages: [{ role: "user", content: "ok" }] });
+    }),
+    // Icecat como la comprobación de utils (/api/health): un producto de Full Icecat que solo contesta a la IP autorizada.
+    timed("Icecat", false, async () => {
+      const query = new URLSearchParams({ UserName: icecat.username, Language: icecat.language, GTIN: "3700460207656", app_key: icecat.appKey });
+      const response = await fetch(`${icecat.proxyUrl || "https://live.icecat.biz/api"}?${query}`, { headers: icecat.proxyUrl && icecat.proxyToken ? { "X-Proxy-Token": icecat.proxyToken } : undefined, signal: AbortSignal.timeout(15_000) });
+      if (response.status === 403) throw new Error("IP de salida no autorizada para Full Icecat.");
+      if (!response.ok) throw new Error(`Icecat respondió HTTP ${response.status}`);
+    }),
+    // Resend: la clave de solo envío no puede listar dominios y contesta «restricted_api_key», que también vale (es válida).
+    timed("Resend", false, async () => {
+      if (!env.RESEND_API_KEY) throw new Error("Falta RESEND_API_KEY.");
+      const response = await fetch("https://api.resend.com/domains", { headers: { Authorization: `Bearer ${env.RESEND_API_KEY}` }, signal: AbortSignal.timeout(10_000) });
+      if (response.ok) return;
+      const body = await response.json().catch(() => ({})) as { name?: string; message?: string };
+      if (body.name === "restricted_api_key") return;
+      throw new Error(body.message ?? `Resend respondió HTTP ${response.status}`);
     }),
   ]);
 }
@@ -82,10 +100,9 @@ export async function startCycle(deps: Deps, cycleId: string) {
       return { services: results, failed: results.filter((item) => !item.ok).map((item) => item.name) };
     });
     const failed = checks.services.filter((item) => !item.ok);
-    if (failed.length) {
-      for (const item of failed) await sendAlert(deps.db, { key: `conexion:${item.name}`, subject: `Sin conexión con ${item.name}`, lines: [`La vuelta de sincronización se ha parado: ${item.name} no responde.`, item.error ?? ""] });
-      return finish(deps.db, cycle, "fallida", `Sin conexión con ${failed.map((item) => item.name).join(", ")}.`);
-    }
+    for (const item of failed.filter((service) => service.name !== "Resend")) await sendAlert(deps.db, { key: `conexion:${item.name}`, subject: `Sin conexión con ${item.name}`, lines: [item.critical ? `La vuelta de sincronización se ha parado: ${item.name} no responde.` : `${item.name} no responde: precio y stock siguen, pero no se pueden procesar fichas hasta que vuelva.`, item.error ?? ""] });
+    const blocking = failed.filter((item) => item.critical);
+    if (blocking.length) return finish(deps.db, cycle, "fallida", `Sin conexión con ${blocking.map((item) => item.name).join(", ")}.`);
     const read = await step(deps.db, cycle, "lectura", async () => {
       const { data, error } = await deps.db.rpc("mhd_import_start_scheduled", { p_kind: "products", p_entities: ["products"] });
       if (error) throw error;
