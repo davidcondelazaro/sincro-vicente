@@ -305,3 +305,10 @@ test("marca oficial en el título: solo la primera aparición y sin tocar el mod
   assert.equal(withOfficialBrand("Cable USB Nanocable 10.01", "NOX"), "Cable USB Nanocable 10.01");
   assert.equal(withOfficialBrand("Heladera Corbero CMICE12 1,3 L", "Corberó"), "Heladera Corberó CMICE12 1,3 L");
 });
+
+test("marcas que MHD pone mal siempre: por marca o por producto, haya Icecat o no (2026-10-29)", () => {
+  assert.equal(resolveBrand({ nombre_marca: "EPOS SENNHEISER", titulo: "Auriculares ACCENTUM" }, null).brand, "Sennheiser");
+  assert.equal(resolveBrand({ nombre_marca: "PLAY", titulo: "Carro We Go" }, null).vendor, "PLAYMARKET");
+  assert.equal(resolveBrand({ codigo: "10039156", nombre_marca: "KAYAMI", titulo: "Ruby Bero 1" }, null).brand, "Ruby");
+  assert.equal(resolveBrand({ codigo: "10142490", nombre_marca: "KAYAMI", titulo: "Humidificador HM140U" }, null).brand, "Kayami");
+});

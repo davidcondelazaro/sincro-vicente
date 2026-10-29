@@ -9,7 +9,7 @@
 import type { IcecatSummary } from "./icecat";
 
 export type BrandChoice = { brand: string; vendor: string; needsReview: boolean; reason: string | null };
-export type BrandListing = { nombre_marca: string | null; titulo?: string | null; ref_proved?: string | null };
+export type BrandListing = { codigo?: string | null; nombre_marca: string | null; titulo?: string | null; ref_proved?: string | null };
 
 export const brandKey = (name: string | null | undefined) => (name ?? "").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Z0-9]/g, "");
 
@@ -68,8 +68,16 @@ export function writtenBrand(name: string) {
 const titleKey = (text: string | null | undefined) => ` ${(text ?? "").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Z0-9]+/g, " ").trim()} `;
 const inTitle = (brand: string, title: string | null | undefined) => { const words = titleKey(brand).trim(); return Boolean(words) && titleKey(title).includes(` ${words} `); };
 
+// Marcas que MHD pone mal y que se corrigen siempre, haya Icecat o no (sesión de logos de marca, aprobado por David el
+// 2026-10-29, comprobado por EAN y web del fabricante): toda la marca de MHD…
+const MHD_BRAND_FIXES: Record<string, string> = { EPOSSENNHEISER: "Sennheiser", PLAY: "Playmarket", DUET: "Duett", MADCOWENTERTAINMENT: "Teknofun" };
+// …o productos sueltos, por su código de MHD (el resto de su marca está bien).
+const PRODUCT_BRAND_FIXES: Record<string, string> = { "10039156": "Ruby", "10039823": "Ruby", "10022318": "Ruby", "10013300": "Hyper", "10141269": "Medisana" };
+
 export function resolveBrand(listing: BrandListing, icecat: IcecatSummary | null): BrandChoice {
   const mhd = (listing.nombre_marca ?? "").trim(); const mhdKey = brandKey(mhd);
+  const fixed = PRODUCT_BRAND_FIXES[listing.codigo ?? ""] ?? MHD_BRAND_FIXES[mhdKey];
+  if (fixed) return { brand: fixed, vendor: fixed.toUpperCase(), needsReview: false, reason: `MHD pone «${mhd}», pero la marca es «${fixed}» (corrección comprobada por EAN y web del fabricante): va en el informe para MHD.` };
   const vendor = mhd.toUpperCase(); const ref = (listing.ref_proved ?? "").trim().toUpperCase();
   // Marcas que MHD pone mal y se reconocen por el modelo o el título.
   if (mhdKey !== "DAYMA" && (/\bDAYMA\b/i.test(listing.titulo ?? "") || (ref.startsWith("M-") && PRINTER_BRANDS.has(mhdKey))))
