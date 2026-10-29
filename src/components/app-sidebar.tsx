@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
-type Section = "home" | "customer" | "customers" | "catalog" | "priorities" | "icecat" | "supabase" | "mhdImport" | "mhdCatalog" | "prices" | "stock" | "orders" | "productImporter" | "chatbotStats" | "chatbotConversations" | "chatbotImprovements" | "chatbotSupport" | "chatbotErrors" | "chatbotSyncs" | "chatbotDiscounts" | "chatbotSettings" | "chatbotPrivacy" | "stockAlerts" | "priceAlerts" | "quotes" | "redirects" | "warranties" | "productLocks";
+type Section = "home" | "customer" | "customers" | "catalog" | "priorities" | "icecat" | "supabase" | "mhdImport" | "mhdCatalog" | "prices" | "stock" | "orders" | "productImporter" | "chatbotStats" | "chatbotConversations" | "chatbotImprovements" | "chatbotSupport" | "chatbotErrors" | "chatbotSyncs" | "chatbotDiscounts" | "chatbotSettings" | "chatbotPrivacy" | "stockAlerts" | "priceAlerts" | "quotes" | "redirects" | "warranties" | "productLocks" | "familyRules";
 type IconName = "home" | "database" | "users" | "catalog" | "price" | "stock" | "sort" | "icecat" | "orders" | "bell" | "tag" | "shield" | "quote" | "spark" | "ticket" | "chart" | "chat" | "support" | "alert" | "sync" | "settings" | "export" | "lock" | "package";
 
 type NavEntry = { section: Section; href: string; label: string; icon: IconName };
@@ -15,6 +15,7 @@ const navigation: { label: string | null; entries: NavEntry[] }[] = [
   { label: "Catálogo", entries: [
     { section: "mhdImport", href: "/importar-datos-mhd", label: "Sincronización con MHD", icon: "sync" },
     { section: "productImporter", href: "/importador-productos", label: "Importador de productos", icon: "package" },
+    { section: "familyRules", href: "/reglas-por-familia", label: "Reglas por familia", icon: "settings" },
     { section: "productLocks", href: "/productos-bloqueados", label: "Productos bloqueados", icon: "lock" },
     { section: "redirects", href: "/tienda/redirecciones", label: "Redirecciones", icon: "export" },
     { section: "warranties", href: "/tienda/garantias", label: "Garantías", icon: "shield" },
