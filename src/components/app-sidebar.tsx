@@ -8,9 +8,23 @@ type Section = "home" | "customer" | "customers" | "catalog" | "priorities" | "i
 type IconName = "home" | "database" | "users" | "catalog" | "price" | "stock" | "sort" | "icecat" | "orders" | "bell" | "tag" | "shield" | "quote" | "spark" | "ticket" | "chart" | "chat" | "support" | "alert" | "sync" | "settings" | "export";
 
 type NavEntry = { section: Section; href: string; label: string; icon: IconName };
-// Apartados del menú: cada uno se pliega y despliega; el del apartado activo siempre se abre.
+// Apartados del menú (orden revisado con David el 2026-10-29: primero lo que más se usa): cada uno se pliega y
+// despliega; el del apartado activo siempre se abre. Pladisel, la sincronización antigua, va al final y plegado.
 const navigation: { label: string | null; entries: NavEntry[] }[] = [
   { label: null, entries: [{ section: "home", href: "/", label: "Inicio", icon: "home" }] },
+  { label: "Catálogo", entries: [
+    { section: "mhdImport", href: "/importar-datos-mhd", label: "Sincronización con MHD", icon: "sync" },
+    { section: "productImporter", href: "/importador-productos", label: "Importador de productos", icon: "spark" },
+    { section: "mhdCatalog", href: "/importacion-catalogo-mhd", label: "Catálogo MHD", icon: "catalog" },
+  ] },
+  { label: "Tienda", entries: [
+    { section: "orders", href: "/pedidos-mhd", label: "Pedidos MHD", icon: "orders" },
+    { section: "quotes", href: "/tienda/presupuestos", label: "Presupuestos", icon: "quote" },
+    { section: "stockAlerts", href: "/tienda/avisos-stock", label: "Avisos de stock", icon: "bell" },
+    { section: "priceAlerts", href: "/tienda/avisos-precio", label: "Avisos de precio", icon: "tag" },
+    { section: "warranties", href: "/tienda/garantias", label: "Garantías", icon: "shield" },
+    { section: "redirects", href: "/tienda/redirecciones", label: "Redirecciones", icon: "export" },
+  ] },
   { label: "Chatbot IA", entries: [
     { section: "chatbotStats", href: "/chatbot/estadisticas", label: "Estadísticas", icon: "chart" },
     { section: "chatbotConversations", href: "/chatbot/conversaciones", label: "Conversaciones", icon: "chat" },
@@ -22,20 +36,7 @@ const navigation: { label: string | null; entries: NavEntry[] }[] = [
     { section: "chatbotSettings", href: "/chatbot/configuracion", label: "Configuración", icon: "settings" },
     { section: "chatbotPrivacy", href: "/chatbot/datos-clientes", label: "Datos de clientes", icon: "shield" },
   ] },
-  { label: "Tienda", entries: [
-    { section: "quotes", href: "/tienda/presupuestos", label: "Presupuestos", icon: "quote" },
-    { section: "stockAlerts", href: "/tienda/avisos-stock", label: "Avisos de stock", icon: "bell" },
-    { section: "priceAlerts", href: "/tienda/avisos-precio", label: "Avisos de precio", icon: "tag" },
-    { section: "redirects", href: "/tienda/redirecciones", label: "Redirecciones", icon: "export" },
-    { section: "warranties", href: "/tienda/garantias", label: "Garantías", icon: "shield" },
-  ] },
-  { label: "MHD", entries: [
-    { section: "mhdImport", href: "/importar-datos-mhd", label: "Sincronización con MHD", icon: "sync" },
-    { section: "mhdCatalog", href: "/importacion-catalogo-mhd", label: "Catálogo MHD", icon: "catalog" },
-    { section: "productImporter", href: "/importador-productos", label: "Importador de productos", icon: "spark" },
-    { section: "orders", href: "/pedidos-mhd", label: "Pedidos MHD", icon: "orders" },
-  ] },
-  { label: "Pladisel", entries: [
+  { label: "Pladisel (antiguo)", entries: [
     { section: "supabase", href: "/importar-datos-sql-server", label: "Importar de SQL Server", icon: "database" },
     { section: "customers", href: "/importacion-clientes", label: "Importación de clientes", icon: "users" },
     { section: "catalog", href: "/importacion-catalogo", label: "Importación catálogo", icon: "catalog" },
@@ -46,9 +47,11 @@ const navigation: { label: string | null; entries: NavEntry[] }[] = [
   ] },
 ];
 
-// Apartados plegados, recordados en este navegador (si el almacenamiento no está disponible, todo abierto).
-const COLLAPSED_KEY = "menu-apartados-plegados";
-function readCollapsed() { try { return localStorage.getItem(COLLAPSED_KEY) ?? "[]"; } catch { return "[]"; } }
+// Apartados plegados, recordados en este navegador. Mientras no se toque nada, Pladisel va plegado (2026-10-29); sin
+// almacenamiento, todo abierto. La clave es nueva para que el plegado por defecto llegue también a quien ya tenía menú.
+const COLLAPSED_KEY = "menu-apartados-plegados-v2";
+const DEFAULT_COLLAPSED = JSON.stringify(["Pladisel (antiguo)"]);
+function readCollapsed() { try { return localStorage.getItem(COLLAPSED_KEY) ?? DEFAULT_COLLAPSED; } catch { return "[]"; } }
 function saveCollapsed(labels: string[]) { try { localStorage.setItem(COLLAPSED_KEY, JSON.stringify(labels)); } catch { /* sin almacenamiento */ } window.dispatchEvent(new Event(COLLAPSED_KEY)); }
 function subscribeCollapsed(callback: () => void) { window.addEventListener(COLLAPSED_KEY, callback); return () => window.removeEventListener(COLLAPSED_KEY, callback); }
 
