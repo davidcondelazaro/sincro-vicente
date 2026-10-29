@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
 type Section = "home" | "customer" | "customers" | "catalog" | "priorities" | "icecat" | "supabase" | "mhdImport" | "mhdCatalog" | "prices" | "stock" | "orders" | "productImporter" | "chatbotStats" | "chatbotConversations" | "chatbotImprovements" | "chatbotSupport" | "chatbotErrors" | "chatbotSyncs" | "chatbotDiscounts" | "chatbotSettings" | "chatbotPrivacy" | "stockAlerts" | "priceAlerts" | "quotes" | "redirects" | "warranties" | "productLocks";
-type IconName = "home" | "database" | "users" | "catalog" | "price" | "stock" | "sort" | "icecat" | "orders" | "bell" | "tag" | "shield" | "quote" | "spark" | "ticket" | "chart" | "chat" | "support" | "alert" | "sync" | "settings" | "export";
+type IconName = "home" | "database" | "users" | "catalog" | "price" | "stock" | "sort" | "icecat" | "orders" | "bell" | "tag" | "shield" | "quote" | "spark" | "ticket" | "chart" | "chat" | "support" | "alert" | "sync" | "settings" | "export" | "lock" | "package";
 
 type NavEntry = { section: Section; href: string; label: string; icon: IconName };
 // Apartados del menú (orden revisado con David el 2026-10-29: primero lo que más se usa): cada uno se pliega y
@@ -14,8 +14,10 @@ const navigation: { label: string | null; entries: NavEntry[] }[] = [
   { label: null, entries: [{ section: "home", href: "/", label: "Inicio", icon: "home" }] },
   { label: "Catálogo", entries: [
     { section: "mhdImport", href: "/importar-datos-mhd", label: "Sincronización con MHD", icon: "sync" },
-    { section: "productImporter", href: "/importador-productos", label: "Importador de productos", icon: "spark" },
-    { section: "productLocks", href: "/productos-bloqueados", label: "Productos bloqueados", icon: "shield" },
+    { section: "productImporter", href: "/importador-productos", label: "Importador de productos", icon: "package" },
+    { section: "productLocks", href: "/productos-bloqueados", label: "Productos bloqueados", icon: "lock" },
+    { section: "redirects", href: "/tienda/redirecciones", label: "Redirecciones", icon: "export" },
+    { section: "warranties", href: "/tienda/garantias", label: "Garantías", icon: "shield" },
     { section: "mhdCatalog", href: "/importacion-catalogo-mhd", label: "Catálogo MHD", icon: "catalog" },
   ] },
   { label: "Tienda", entries: [
@@ -23,8 +25,6 @@ const navigation: { label: string | null; entries: NavEntry[] }[] = [
     { section: "quotes", href: "/tienda/presupuestos", label: "Presupuestos", icon: "quote" },
     { section: "stockAlerts", href: "/tienda/avisos-stock", label: "Avisos de stock", icon: "bell" },
     { section: "priceAlerts", href: "/tienda/avisos-precio", label: "Avisos de precio", icon: "tag" },
-    { section: "warranties", href: "/tienda/garantias", label: "Garantías", icon: "shield" },
-    { section: "redirects", href: "/tienda/redirecciones", label: "Redirecciones", icon: "export" },
   ] },
   { label: "Chatbot IA", entries: [
     { section: "chatbotStats", href: "/chatbot/estadisticas", label: "Estadísticas", icon: "chart" },
@@ -147,6 +147,8 @@ function Icon({ name }: { name: IconName }) {
     ticket: <><path d="M3 9a2 2 0 0 0 0 6v3a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-3a2 2 0 0 1 0-6V6a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v3Z" /><path d="M13 5v2M13 11v2M13 17v2" /></>,
     quote: <><path d="M7 3h10a1 1 0 0 1 1 1v17l-3-2-3 2-3-2-3 2V4a1 1 0 0 1 1-1Z" /><path d="M9 8h6M9 12h6M9 16h3" /></>,
     shield: <><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6l-8-3Z" /><path d="m9 12 2 2 4-4" /></>,
+    lock: <><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></>,
+    package: <><path d="M21 8 12 3 3 8v8l9 5 9-5V8Z" /><path d="m3 8 9 5 9-5M12 13v8" /></>,
     tag: <><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9Z" /><circle cx="7.5" cy="7.5" r="1.5" /></>,
     bell: <><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0" /></>,
     spark: <path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6" />,
