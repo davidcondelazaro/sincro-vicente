@@ -1,6 +1,6 @@
-// Sincronización de precio y stock con Shopify (David, 2026-10-28; diseño en docs/SINCRONIZACIONES_MHD.md). Supabase lee
-// MHD (mhd_import_start_scheduled): el stock de /stocks cada 30 min y el precio del listado de productos (`pvp`, la tarifa
-// de nuestra web; el de /prices es otra tarifa, David 2026-10-29) cada hora. Esta pieza manda a Shopify solo lo que cambia
+// Sincronización de precio y stock con Shopify (David, 2026-10-28; diseño en docs/SINCRONIZACIONES_MHD.md). Es un paso
+// de la vuelta de cada 30 minutos (sync-cycle.ts): precio (`pvp`) y stock salen los dos del listado de productos de MHD
+// (David, 2026-10-29; /prices y /stocks ya no se leen en cada vuelta). Esta pieza manda a Shopify solo lo que cambia
 // respecto a lo último enviado (mhd_shopify_price_stock), sin IA: el precio en la variante (sin precio tachado) y el
 // stock en «Almacén MHD». Todo queda en mhd_sync_events. Los productos que no vienen en la lectura no se tocan: eso lo
 // deciden las bajas, con dos lecturas seguidas.
@@ -19,22 +19,24 @@ async function event(db: SupabaseClient, kind: string, detail: Record<string, un
   await db.from("mhd_sync_events").insert({ sync: "precio-stock", kind, codigo, detail });
 }
 
-// Última lectura terminada de precios y stock de MHD, si es reciente y completa.
-async function latestRead(db: SupabaseClient) {
-  const { data: runs, error } = await db.from("mhd_catalog_import_runs").select("id,entities,entity_progress,status,last_activity_at").eq("status", "completed").contains("entities", ["prices", "stock"]).not("last_activity_at", "is", null).order("last_activity_at", { ascending: false, nullsFirst: false }).limit(1);
+// Lectura del listado de MHD que se usa: la de la vuelta (`runId`) o la última terminada, si es reciente y completa.
+async function latestRead(db: SupabaseClient, runId?: string) {
+  let query = db.from("mhd_catalog_import_runs").select("id,entity_progress,last_activity_at").eq("status", "completed").contains("entities", ["products"]).not("last_activity_at", "is", null);
+  query = runId ? query.eq("id", runId) : query.order("last_activity_at", { ascending: false, nullsFirst: false });
+  const { data: runs, error } = await query.limit(1);
   if (error) throw error;
   const run = runs?.[0] as { id: string; entity_progress: Record<string, { total?: number; done?: number }>; last_activity_at: string } | undefined;
-  if (!run) return { ok: false as const, reason: "No hay ninguna lectura de precios y stock terminada." };
+  if (!run) return { ok: false as const, reason: "No hay ninguna lectura del listado de MHD terminada." };
   const ageMinutes = (Date.now() - new Date(run.last_activity_at).getTime()) / 60_000;
-  const prices = run.entity_progress.prices?.done ?? 0; const stock = run.entity_progress.stock?.done ?? 0;
+  const products = run.entity_progress.products?.done ?? 0;
   if (ageMinutes > PRICE_STOCK_SYNC.maxReadAgeMinutes) return { ok: false as const, reason: `La última lectura de MHD es de hace ${Math.round(ageMinutes)} min.`, run: run.id };
-  if (prices < PRICE_STOCK_SYNC.minRows || stock < PRICE_STOCK_SYNC.minRows) return { ok: false as const, reason: `Lectura incompleta: ${prices} precios y ${stock} existencias (mínimo ${PRICE_STOCK_SYNC.minRows}).`, run: run.id };
-  return { ok: true as const, run: run.id, prices, stock };
+  if (products < PRICE_STOCK_SYNC.minRows) return { ok: false as const, reason: `Lectura incompleta: ${products} productos (mínimo ${PRICE_STOCK_SYNC.minRows}).`, run: run.id };
+  return { ok: true as const, run: run.id, products };
 }
 
-export async function syncPriceStock(deps: { db: SupabaseClient; shopify: ShopifyConfig }, options: { dryRun?: boolean; codes?: string[] } = {}) {
+export async function syncPriceStock(deps: { db: SupabaseClient; shopify: ShopifyConfig }, options: { dryRun?: boolean; codes?: string[]; runId?: string } = {}) {
   const started = Date.now();
-  const read = await latestRead(deps.db);
+  const read = await latestRead(deps.db, options.runId);
   if (!read.ok) {
     if (!options.dryRun) {
       await event(deps.db, "freno", { reason: read.reason, run: read.run ?? null });
