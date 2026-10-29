@@ -8,7 +8,7 @@ type Step = { name: string; started_at: string; finished_at?: string; status?: s
 type Cycle = { id: string; trigger: string; status: string; started_at: string; finished_at: string | null; steps: Step[]; error: string | null };
 type Data = { cycles: Cycle[]; reading: { done: number; total: number } | null };
 
-const STEPS = [["conexiones", "Conexiones"], ["lectura", "Lectura de MHD"], ["precio-stock", "Precio y stock"], ["agotados", "Agotados en MHD"]] as const;
+const STEPS = [["conexiones", "Conexiones"], ["lectura", "Lectura de MHD"], ["precio-stock", "Precio y stock"], ["agotados", "Agotados en MHD"], ["altas", "Altas"]] as const;
 const RUNNING = ["iniciando", "leyendo", "procesando"];
 const STATUS: Record<string, [string, string]> = {
   terminada: ["Terminada", "bg-emerald-50 text-emerald-700 ring-emerald-600/20"], iniciando: ["Empezando", "bg-sky-50 text-sky-700 ring-sky-600/20"], leyendo: ["Leyendo MHD", "bg-sky-50 text-sky-700 ring-sky-600/20"],
@@ -27,6 +27,7 @@ function stepText(step: Step | undefined, reading: Data["reading"]) {
   if (step.name === "lectura") return !step.finished_at && reading ? `${integer(reading.done)} de ${integer(reading.total)}` : `${integer(counts.products)} productos`;
   if (step.name === "precio-stock") return step.finished_at ? `${integer(counts.pricesSent)} precios · ${integer(counts.stockSent)} stocks${(counts.errors as unknown[] | undefined)?.length ? ` · ${(counts.errors as unknown[]).length} errores` : ""}` : "Enviando…";
   if (step.name === "agotados") return step.finished_at ? `${integer(counts.applied)} se agotan · ${integer(counts.returned)} vuelven${counts.braked ? " · FRENO" : ""}${counts.skippedByRead ? ` · ${integer(counts.skippedByRead)} saltados` : ""}` : "Confirmando con MHD…";
+  if (step.name === "altas") return step.finished_at ? (counts.braked ? `FRENO: ${integer(counts.found)} de golpe` : `${integer(counts.queued)} a la cola${counts.fotosNuevas ? ` (${integer(counts.fotosNuevas)} con fotos nuevas)` : ""}`) : "Buscando…";
   return "";
 }
 
@@ -71,9 +72,9 @@ export function SyncCycles() {
     </div>
     {error && <p role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
     <div className="mt-4 overflow-x-auto rounded-xl border border-zinc-200">
-      <table className="w-full min-w-[56rem] text-sm">
+      <table className="w-full min-w-[64rem] text-sm">
         <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500"><tr><th className="px-3 py-2 font-medium">Empezó</th><th className="px-3 py-2 font-medium">Estado</th><th className="px-3 py-2 font-medium">Total</th>{STEPS.map(([, label]) => <th key={label} className="px-3 py-2 font-medium">{label}</th>)}</tr></thead>
-        <tbody className="divide-y divide-zinc-100">{!data ? <tr><td colSpan={7} className="px-3 py-4 text-zinc-500">Cargando…</td></tr> : !cycles.length ? <tr><td colSpan={7} className="px-3 py-4 text-zinc-500">Todavía no hay vueltas.</td></tr> : cycles.map((cycle) => {
+        <tbody className="divide-y divide-zinc-100">{!data ? <tr><td colSpan={8} className="px-3 py-4 text-zinc-500">Cargando…</td></tr> : !cycles.length ? <tr><td colSpan={8} className="px-3 py-4 text-zinc-500">Todavía no hay vueltas.</td></tr> : cycles.map((cycle) => {
           const running = RUNNING.includes(cycle.status); const [label, tone] = STATUS[cycle.status] ?? [cycle.status, "bg-zinc-100 text-zinc-700 ring-zinc-600/20"];
           return <Fragment key={cycle.id}>
             <tr className="cursor-pointer align-top hover:bg-zinc-50" onClick={() => setOpen(open === cycle.id ? null : cycle.id)}>
@@ -83,7 +84,7 @@ export function SyncCycles() {
               {STEPS.map(([name]) => { const step = cycle.steps.find((item) => item.name === name); const active = running && step && !step.finished_at;
                 return <td key={name} className={`px-3 py-2.5 ${step?.status === "error" ? "text-red-700" : active ? "text-sky-700" : "text-zinc-700"}`}>{step ? <><span className="font-medium tabular-nums">{duration(secs(step.started_at, step.finished_at, now))}{active ? "…" : ""}</span><span className="block text-xs text-zinc-500">{stepText(step, active ? data.reading : null)}</span></> : <span className="text-zinc-300">—</span>}</td>; })}
             </tr>
-            {open === cycle.id && <tr><td colSpan={7} className="bg-zinc-50 px-3 py-3 text-xs text-zinc-600">
+            {open === cycle.id && <tr><td colSpan={8} className="bg-zinc-50 px-3 py-3 text-xs text-zinc-600">
               {cycle.error && <p className="mb-2 text-red-700">{cycle.error}</p>}
               <pre className="max-h-64 overflow-auto whitespace-pre-wrap">{JSON.stringify(cycle.steps.map(({ name, status, started_at, finished_at, counts, error: stepError }) => ({ name, status, started_at, finished_at, error: stepError, counts: counts && { ...counts, sample: undefined } })), null, 2)}</pre>
             </td></tr>}

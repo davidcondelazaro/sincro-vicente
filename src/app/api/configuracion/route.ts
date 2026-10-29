@@ -12,6 +12,10 @@ const VALIDATE: Record<string, (value: unknown) => string | null> = {
   report_frequency: (value) => (value === "hora" || value === "diario" ? null : "Frecuencia no válida."),
   sync_enabled: (value) => (typeof value === "boolean" ? null : "Valor no válido."),
   absence_days: (value) => (Number.isInteger(value) && Number(value) >= 1 && Number(value) <= 365 ? null : "Pon un número de días entre 1 y 365."),
+  importer_max_workers: (value) => (Number.isInteger(value) && Number(value) >= 1 && Number(value) <= 12 ? null : "Pon entre 1 y 12 trabajadores."),
+  importer_max_concurrency: (value) => (Number.isInteger(value) && Number(value) >= 1 && Number(value) <= 12 ? null : "Pon entre 1 y 12 productos por trabajador."),
+  auto_altas: (value) => (typeof value === "boolean" ? null : "Valor no válido."),
+  auto_altas_max: (value) => (Number.isInteger(value) && Number(value) >= 1 && Number(value) <= 5000 ? null : "Pon un número entre 1 y 5.000."),
   absence_brake_pct: (value) => (typeof value === "number" && value >= 0.5 && value <= 50 ? null : "Pon un porcentaje entre 0,5 y 50."),
 };
 

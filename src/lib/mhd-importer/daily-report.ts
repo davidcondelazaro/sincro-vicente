@@ -38,12 +38,13 @@ const STATUS: Record<string, string> = { terminada: "terminada", fallida: "FALLI
 export async function buildDailyReport(db: SupabaseClient, now = new Date(), hours = 24) {
   const since = new Date(now.getTime() - hours * 3_600_000).toISOString();
   const period = hours === 1 ? "la última hora" : `las últimas ${hours} horas`;
-  const [cyclesResult, reportResult, overviewResult, alertsResult, absencesResult] = await Promise.all([
+  const [cyclesResult, reportResult, overviewResult, alertsResult, absencesResult, altasResult] = await Promise.all([
     db.from("mhd_sync_cycles").select("id,trigger,status,started_at,finished_at,steps,error").gte("started_at", since).order("started_at"),
     db.rpc("mhd_sync_report", { p_since: since }),
     db.rpc("mhd_catalog_overview"),
     db.from("mhd_sync_events").select("detail,created_at").eq("sync", "avisos").eq("kind", "correo").gte("created_at", since).order("created_at"),
     db.rpc("mhd_absence_report", { p_since: since }),
+    db.from("mhd_sync_events").select("detail").eq("sync", "altas").eq("kind", "encolado").gte("created_at", since).limit(5000),
   ]);
   const report = reportResult.data as Report | null;
   const overview = overviewResult.data as Overview | null;
@@ -114,6 +115,7 @@ export async function buildDailyReport(db: SupabaseClient, now = new Date(), hou
     sections.push({
       title: "Importador de productos", warn: (byStatus.error ?? 0) > 0 || report.importer.open_jobs.some((job) => job.paused_reason),
       lines: [
+        ...(() => { const altas = altasResult.data ?? []; const photos = altas.filter((row) => (row.detail as { motivo?: string }).motivo === "fotos nuevas").length; return altas.length ? [`Altas encoladas solas en ${period}: ${integer.format(altas.length)} (${integer.format(altas.length - photos)} nuevas de MHD${photos ? ` y ${integer.format(photos)} que antes no tenían fotos` : ""}).`] : [`Ninguna alta nueva de MHD en ${period}.`]; })(),
         processed ? `${integer.format(processed)} productos en ${period}: ${integer.format(byStatus.ok ?? 0)} bien, ${integer.format(byStatus.descartado ?? 0)} descartados y ${integer.format(byStatus.error ?? 0)} con error.` : `Ningún producto procesado en ${period}.`,
         ...report.importer.open_jobs.map((job) => `Trabajo abierto «${job.title}»: ${integer.format(job.done)} de ${integer.format(job.total)}${job.errors ? `, ${job.errors} errores` : ""}${job.paused_reason ? ` · PAUSADO: ${job.paused_reason}` : ""}.`),
         `Gasto de IA: ${dollars.format(report.ai_cost.period)} en ${period}, ${dollars.format(report.ai_cost.today)} hoy y ${dollars.format(report.ai_cost.month)} este mes.`,

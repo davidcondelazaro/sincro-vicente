@@ -77,7 +77,9 @@ Un solo reloj: pg_cron abre una vuelta cada 30 minutos (`mhd_sync_cycle_start`, 
 2. **Lectura del listado de MHD** (~3½ min). Al acabar, la base llama al paso siguiente (disparador `mhd_sync_read_finished`).
 3. **Precio y stock** a Shopify (solo lo que cambia).
 4. **Agotados en MHD** (abajo).
-5. Pendiente: altas y cambios de ficha.
+5. **Altas** (abajo): lo nuevo, a la tanda «Altas automáticas».
+6. **Avisos de tandas terminadas:** un correo por cada tanda del importador que acaba, con su resultado (`job-notices.ts`).
+7. Pendiente: cambios de ficha.
 
 Una sola vuelta a la vez; si una pasa de 25 minutos se da por atascada y se avisa. Se ve en utils › Catálogo › Sincronización con MHD (con el botón «Leer ahora y actualizar») y en Inicio. Pausa y frecuencia del resumen: Configuración. Resumen por correo cada hora mientras se estabiliza (después, a las 9:00).
 
@@ -95,9 +97,13 @@ Por eso (`src/lib/mhd-importer/absences.ts`, paso «agotados» de la vuelta, tab
 
 Sale en el resumen por correo («Agotados en MHD»: se agotan, vuelven, siguen agotados, pasan de 30 días y saltados por la lectura), en Inicio y en la tabla de vueltas de utils. A mano: `POST /api/sincronizaciones/agotados?simulacion=1` (o `?forzar=1`), con la cabecera de la clave.
 
-## Altas
+## Altas (automáticas desde el 2026-10-29)
 
-Un producto es alta si viene en el listado de MHD, no existe en Shopify con su código como SKU (en ningún estado), nunca lo ha procesado el importador, su familia tiene reglas y su subfamilia sitio en el árbol, y no está bloqueado. El 29-10 eran 1.301: 106 de códigos nuevos y 1.195 antiguos que MHD volvió a poner a la venta. Fuera quedan los «Productos de Marketing» (6.742) y los descartados (984 «Sin imagen»: vuelven a la cola si MHD les pone fotos). Pendiente de montar en la vuelta.
+Un producto es alta si viene en el listado de MHD, no existe en Shopify con su código como SKU (en ningún estado), nunca lo ha procesado el importador, su familia tiene reglas y su subfamilia sitio en el árbol, no está bloqueado y no está ya en cola (`mhd_new_products`). También vuelven a entrar los descartados «Sin imagen» a los que MHD cambia las fotos. Fuera quedan los «Productos de Marketing» (6.742 el 29-10).
+
+- **Primera tanda, a mano (29-10, 14:20 → 16:44):** 1.301 (106 de códigos nuevos y 1.195 antiguos que MHD volvió a poner a la venta). Resultado: 1.239 subidos (59 en borrador para revisar), 27 fichas bloqueadas por el revisor, 25 «Sin imagen» y 10 fallidos por la saturación de la base, reintentados. 8,55 $. Los 57 que estaban en la tienda de PrestaShop con otro SKU reutilizaron su producto archivado (se reactivan, sin duplicar).
+- **Desde entonces, en cada vuelta** (`new-products.ts`): las altas se añaden a la tanda abierta «Altas automáticas» (o a una nueva) y se despierta al trabajador; si le falta la ficha de MHD, la pide él. **Freno:** más de `auto_altas_max` (300) en una vuelta → no se encola nada y llega un aviso. Se pausan con `auto_altas` en Configuración.
+- **Tope del importador** (`importer_max_workers` 3 × `importer_max_concurrency` 4, en Configuración): ninguna tanda lo pasa. El 29-10, con la base en Micro, 12 trabajadores × 4 la dejaron sin conexiones 25 minutos; se subió la base a **Small** (David) y con 3 × 4 fue más rápido (12-13 productos por minuto) que con 12 × 4, sin errores.
 
 ## Pendiente de decidir
 

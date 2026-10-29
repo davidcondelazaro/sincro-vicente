@@ -4,14 +4,16 @@ import { anthropicKey, PROCESSOR_MODEL } from "./ai";
 import { sendAlert } from "./alerts";
 import type { SourcesConfig } from "./gather";
 import { syncAbsences } from "./absences";
+import { notifyFinishedJobs } from "./job-notices";
+import { queueNewProducts } from "./new-products";
 import { syncPriceStock } from "./price-stock-sync";
 import { shopifyGraphql } from "./store-filters";
 
 // Vuelta de sincronización con MHD (David, 2026-10-29; diseño en docs/SINCRONIZACIONES_MHD.md). La abre pg_cron cada 30
 // minutos (mhd_sync_cycle_start) y la base llama a la ruta /api/sincronizaciones/vuelta en dos momentos:
 //   «inicio»: se comprueban las conexiones (si alguna falla, aviso y la vuelta se para) y se lanza la lectura del listado;
-//   «continuar»: al acabar la lectura, los pasos en orden: precio y stock, agotados en MHD (absences.ts); después altas
-//   y cambios.
+//   «continuar»: al acabar la lectura, los pasos en orden: precio y stock, agotados en MHD (absences.ts), altas
+//   (new-products.ts) y avisos de tandas terminadas (job-notices.ts); pendiente: cambios de ficha.
 // Cada paso queda en mhd_sync_cycles.steps con su inicio, fin, cifras y error; de ahí salen el resumen diario y utils.
 type StepStatus = "ok" | "error" | "saltado";
 export type CycleStep = { name: string; started_at: string; finished_at?: string; status?: StepStatus; counts?: Record<string, unknown>; error?: string };
@@ -143,6 +145,10 @@ export async function continueCycle(deps: Deps, cycleId: string) {
       const result = await syncAbsences({ db: deps.db, sources: deps.sources }, { runId: cycle.read_run_id!, cycleId: cycle.id });
       return result as unknown as Record<string, unknown>;
     });
+    // Altas: lo nuevo de MHD a la tanda «Altas automáticas» (new-products.ts).
+    await step(deps.db, cycle, "altas", async () => queueNewProducts({ db: deps.db }, { runId: cycle.read_run_id!, cycleId: cycle.id }) as unknown as Promise<Record<string, unknown>>);
+    // Tandas del importador terminadas desde la última vuelta: un correo con su resultado.
+    await step(deps.db, cycle, "avisos-tandas", async () => notifyFinishedJobs(deps.db));
     await finish(deps.db, cycle, "terminada");
   } catch (caught) {
     await finish(deps.db, cycle, "fallida", caught instanceof Error ? caught.message : String(caught));

@@ -47,6 +47,16 @@ export default function SettingsPage() {
           <label className="flex items-center gap-3 text-sm font-medium text-zinc-800"><input type="checkbox" className="h-5 w-5 accent-emerald-700" checked={settings.sync_enabled?.value === true} onChange={(event) => void save("sync_enabled", event.target.checked, event.target.checked ? "vueltas activas" : "vueltas en pausa")} />{settings.sync_enabled?.value === true ? "Activa: una vuelta cada 30 minutos" : "En pausa"}</label>
           {stamp("sync_enabled")}
         </Section>
+        <Section title="Altas e importador" text="Cada vuelta encola sola en «Altas automáticas» lo nuevo de MHD (y lo que se descartó por no tener fotos cuando MHD se las pone). El importador lo procesa y lo sube a la tienda. El tope de trabajadores protege la base de datos: con 12 trabajadores la dejaron sin conexiones (29-10).">
+          <label className="flex items-center gap-3 text-sm font-medium text-zinc-800"><input type="checkbox" className="h-5 w-5 accent-emerald-700" checked={settings.auto_altas?.value !== false} onChange={(event) => void save("auto_altas", event.target.checked, event.target.checked ? "altas automáticas activas" : "altas automáticas en pausa")} />{settings.auto_altas?.value !== false ? "Altas automáticas activas" : "Altas automáticas en pausa"}</label>
+          {stamp("auto_altas")}
+          <NumberSetting label="Freno: si en una vuelta salen más altas que estas, no se encola nada y llega un aviso" suffix="altas" value={Number(settings.auto_altas_max?.value ?? 300)} step={1} onSave={(value) => save("auto_altas_max", value, "freno de altas")} />
+          {stamp("auto_altas_max")}
+          <NumberSetting label="Tope de trabajadores del importador (para cualquier tanda)" suffix="trabajadores" value={Number(settings.importer_max_workers?.value ?? 3)} step={1} onSave={(value) => save("importer_max_workers", value, "tope de trabajadores")} />
+          {stamp("importer_max_workers")}
+          <NumberSetting label="Productos a la vez por trabajador" suffix="productos" value={Number(settings.importer_max_concurrency?.value ?? 4)} step={1} onSave={(value) => save("importer_max_concurrency", value, "productos por trabajador")} />
+          {stamp("importer_max_concurrency")}
+        </Section>
         <Section title="Agotados en MHD" text="MHD quita de su listado lo que su proveedor no tiene y lo vuelve a poner cuando hay stock. Lo que deja de venir (confirmado uno a uno con MHD) pasa a stock 0 y deja de venderse sin stock, pero sigue publicado; si vuelve, se repone solo. Solo pasa a baja (archivar y redirigir) si no vuelve en estos días.">
           <NumberSetting label="Días agotado antes de pasar a baja" suffix="días" value={Number(settings.absence_days?.value ?? 30)} step={1} onSave={(value) => save("absence_days", value, "días hasta la baja")} />
           {stamp("absence_days")}

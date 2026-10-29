@@ -175,8 +175,12 @@ export async function runWorkerTurn(env: Env, config: SourcesConfig, spawn: () =
   const db = workerClient(env);
   const { data: jobs } = await db.from("mhd_importer_jobs").select("options").in("status", ["en_cola", "en_curso"]).order("created_at").limit(1);
   const options = (jobs?.[0]?.options ?? {}) as { workers?: number; concurrency?: number };
-  const workers = Math.min(12, Math.max(1, Number(options.workers ?? WORKER.workers)));
-  const concurrency = Math.min(12, Math.max(1, Number(options.concurrency ?? WORKER.concurrency)));
+  // Tope de Configuración (2026-10-29): con la base pequeña, 45 productos a la vez la dejaron sin conexiones. Ninguna
+  // tanda pasa de `importer_max_workers` × `importer_max_concurrency`, la pida quien la pida.
+  const { data: caps } = await db.from("store_settings").select("key,value").in("key", ["importer_max_workers", "importer_max_concurrency"]);
+  const cap = (key: string, fallback: number) => Number(caps?.find((row) => row.key === key)?.value ?? fallback) || fallback;
+  const workers = Math.min(cap("importer_max_workers", 3), Math.max(1, Number(options.workers ?? WORKER.workers)));
+  const concurrency = Math.min(cap("importer_max_concurrency", 4), Math.max(1, Number(options.concurrency ?? WORKER.concurrency)));
   const { data: slots, error } = await db.rpc("mhd_importer_slot_acquire", { p_seconds: WORKER.leaseSeconds, p_max: workers });
   if (error) throw error;
   const slot = (slots as { slot: number; token: string }[] | null)?.[0];

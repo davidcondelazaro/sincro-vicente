@@ -21,7 +21,7 @@ type Overview = { read_at: string | null; in_listing: number; not_in_store: numb
 type Absences = { days: number; out: number; back: number; open: number; due: number; near: number };
 type Data = { absences: Absences | null; cycles: Cycle[]; reading: { done: number; total: number } | null; today: Today | null; overview: Overview | null; alerts: { detail: { subject?: string; sent?: boolean; lines?: string[] }; created_at: string }[]; error: string | null; now: string };
 
-const STEP_LABEL: Record<string, string> = { conexiones: "Conexiones", lectura: "Lectura de MHD", "precio-stock": "Precio y stock", agotados: "Agotados en MHD" };
+const STEP_LABEL: Record<string, string> = { conexiones: "Conexiones", lectura: "Lectura de MHD", "precio-stock": "Precio y stock", agotados: "Agotados en MHD", altas: "Altas" };
 const RUNNING = ["iniciando", "leyendo", "procesando"];
 const STATUS: Record<string, { label: string; tone: string }> = {
   terminada: { label: "Terminada", tone: "bg-emerald-50 text-emerald-700 ring-emerald-600/20" }, iniciando: { label: "Empezando", tone: "bg-sky-50 text-sky-700 ring-sky-600/20" },
@@ -81,7 +81,7 @@ export function HomeDashboard() {
         <Card title={live ? "Vuelta en curso" : "Última vuelta"} aside={current ? <Badge status={current.status} /> : null}>
           {!current ? <Empty text="Aún no hay vueltas." /> : <>
             <p className="text-sm text-zinc-600">{current.trigger === "manual" ? "Lanzada a mano" : "Programada"} a las {clock(current.started_at)} · {live ? `lleva ${duration(span(current.started_at, null, now))}` : `${duration(span(current.started_at, current.finished_at))} en total`}</p>
-            <ol className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{current.steps.map((step) => {
+            <ol className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">{current.steps.filter((step) => step.name !== "avisos-tandas").map((step) => {
               const running = !step.finished_at && live; const secs = span(step.started_at, step.finished_at, now);
               return <li key={step.name} className={`rounded-xl border p-3 ${step.status === "error" ? "border-red-200 bg-red-50" : running ? "border-sky-200 bg-sky-50" : "border-zinc-200"}`}>
                 <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">{STEP_LABEL[step.name] ?? step.name}</p>
@@ -164,6 +164,7 @@ function stepDetail(step: Step, reading?: { done: number; total: number } | null
   if (step.name === "lectura") return reading ? `${integer(reading.done)} de ${integer(reading.total)} productos` : counts.products ? `${integer(Number(counts.products))} productos` : "Leyendo…";
   if (step.name === "precio-stock") return step.finished_at ? `${integer(Number(counts.pricesSent ?? 0))} precios · ${integer(Number(counts.stockSent ?? 0))} stocks` : "Enviando a Shopify…";
   if (step.name === "agotados") return step.finished_at ? `${integer(Number(counts.applied ?? 0))} se agotan · ${integer(Number(counts.returned ?? 0))} vuelven${counts.braked ? " · freno" : ""}` : "Confirmando con MHD…";
+  if (step.name === "altas") return step.finished_at ? (counts.braked ? `freno: ${integer(Number(counts.found ?? 0))} de golpe` : `${integer(Number(counts.queued ?? 0))} a la cola`) : "Buscando…";
   return step.finished_at ? "Hecho" : "En marcha…";
 }
 
