@@ -191,7 +191,8 @@ function NewJob({ onCreated }: { onCreated: (id: string) => void }) {
   const [mode, setMode] = useState<"familias" | "codigos">("codigos"); const [tree, setTree] = useState<TreeLine[]>([]); const [chosen, setChosen] = useState<string[]>([]);
   const [codes, setCodes] = useState(""); const [title, setTitle] = useState(""); const [concurrency, setConcurrency] = useState(6); const [workerCount, setWorkerCount] = useState(2); const [upload, setUpload] = useState<"no" | "nuevos" | "todos">("todos"); const [skipDone, setSkipDone] = useState(false);
   const [search, setSearch] = useState(""); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null);
-  useEffect(() => { api<{ tree: TreeLine[] }>("/api/importador-productos/familias").then((body) => setTree(body.tree ?? []), (caught: Error) => setError(caught.message)); }, []);
+  // El árbol solo hace falta para elegir familias enteras (consulta pesada): se pide al elegir ese modo.
+  useEffect(() => { if (mode !== "familias" || tree.length) return; api<{ tree: TreeLine[] }>("/api/importador-productos/familias").then((body) => setTree(body.tree ?? []), (caught: Error) => setError(caught.message)); }, [mode, tree.length]);
   const families = tree.flatMap((line) => line.families.filter((family) => family.products > 0).map((family) => ({ ...family, line: line.name })));
   const term = search.trim().toLowerCase();
   const visible = families.filter((family) => !term || `${family.code} ${family.name} ${family.line}`.toLowerCase().includes(term));

@@ -39,7 +39,8 @@ export function ProductImporterScreen({ view }: { view: "importer" | "families" 
     const tabs = { producto: "product", revision: "review", procesos: "processes" } as const;
     if (pestana && pestana in tabs) window.setTimeout(() => { setTab(tabs[pestana as keyof typeof tabs]); setLinkedCode(params.get("codigo") ?? ""); }, 0);
   }, []);
-  useEffect(() => { fetchJson<{ tree: TreeLine[] }>("/api/importador-productos/familias", "No se pudo leer el árbol de MHD.").then((body) => setTree(body.tree ?? []), (caught: Error) => setError(caught.message)); }, [version]);
+  // El árbol de familias es una consulta pesada: solo lo pide «Reglas por familia», que es quien lo enseña.
+  useEffect(() => { if (view !== "families") return; fetchJson<{ tree: TreeLine[] }>("/api/importador-productos/familias", "No se pudo leer el árbol de MHD.").then((body) => setTree(body.tree ?? []), (caught: Error) => setError(caught.message)); }, [version, view]);
   const term = search.trim().toLowerCase();
   const matches = (text: string) => !term || text.toLowerCase().includes(term);
   // Al buscar o filtrar por perfil se abren solas las líneas con coincidencias; las familias vacías se ocultan salvo que se pidan.
