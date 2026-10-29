@@ -12,6 +12,7 @@ import { SHOPIFY_CATEGORY_BY_FAMILY } from "./shopify-categories";
 import { noTrace, type Trace } from "./trace";
 import { shopifyGraphql, type ShopifyConfig } from "./store-filters";
 import { MIRROR_PRODUCT_FIELDS, MIRROR_VARIANT_FIELDS, mirrorProduct } from "../shopify-mirror";
+import { rememberShopifyIds, rememberShopifyStatus } from "./shopify-ids";
 import { warrantyEligible } from "./warranty";
 import { productLock } from "./locks";
 
@@ -264,6 +265,7 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
           const archived = await shopifyGraphql<{ productUpdate: { userErrors: UserError[] } }>(deps.shopify, `mutation($p: ProductUpdateInput!) { productUpdate(product: $p) { userErrors { field message } } }`, { p: { id, status: "ARCHIVED" } });
           check(archived.productUpdate.userErrors, "Shopify no archivó el duplicado");
           await deps.db.from("shopify_products").update({ status: "ARCHIVED" }).eq("product_id", id);
+          await rememberShopifyStatus(deps.db, id, "ARCHIVED");
         }
         return others.length;
       }, (count) => `EAN ${shop.variant.barcode} en ${count + 1} productos: se refresca ${keep.split("/").pop()} y se ${count === 1 ? "archiva el otro" : `archivan los otros ${count}`}`);
@@ -413,7 +415,8 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   // borra en Shopify y se descarta en la base de redirecciones (docs/REDIRECCIONES.md), para que la URL vuelva a ser
   // la del producto.
   if (existing?.status === "ARCHIVED") await t.step("Redirecciones del producto reactivado", () => releaseProductRedirects(deps, created.handle), (removed) => `${removed} redirecciones quitadas`);
-  // Al espejo de la tienda en el momento, para que la siguiente subida o procesado ya lo vea.
+  // Identificadores de cada extremo (los usan precio y stock, agotados y altas) y, mientras se retira, el espejo.
+  await rememberShopifyIds(deps.db, product.codigo, created);
   await mirrorProduct(deps.db, created);
   // Lo enviado de precio y stock, para que la sincronización de cada 30 min no lo vuelva a mandar (price-stock-sync.ts).
   const sentVariant = created.variants.nodes[0] as { id: string; inventoryItem?: { id: string } | null } | undefined;
