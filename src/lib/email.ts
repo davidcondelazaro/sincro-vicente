@@ -1,7 +1,7 @@
 // Correos internos con Resend (API REST, sin SDK), igual que chatbot-vicente (`src/email/send.ts`): mismo servicio y
 // mismo remitente del equipo, del dominio ya verificado. Variables en Vercel: RESEND_API_KEY (obligatoria),
-// EMAIL_FROM_TEAM (opcional) y ALERT_EMAILS (destinatarios separados por comas; por defecto, David). Sin clave no envía
-// y devuelve { skipped: true }.
+// EMAIL_FROM_TEAM (opcional). Los destinatarios se eligen en utils › Catálogo › Configuración (store_settings:
+// alert_emails y report_emails); si no hay, ALERT_EMAILS o David. Sin clave no envía y devuelve { skipped: true }.
 const TEAM_FROM = "Electrónica Vicente <utils@mail.electronicavicente.com>";
 const DEFAULT_TO = "david@aligeria.com";
 
@@ -11,6 +11,13 @@ export const EMAIL_PREFIX = "[Electrónica Vicente Utils]";
 export type SendResult = { ok: true; id: string } | { ok: false; skipped?: boolean; error: string };
 
 export const alertRecipients = () => (process.env.ALERT_EMAILS || DEFAULT_TO).split(",").map((item) => item.trim()).filter(Boolean);
+
+// Destinatarios guardados en la configuración («alert_emails» o «report_emails»).
+export async function settingRecipients(db: { from: (table: string) => any }, key: "alert_emails" | "report_emails") { // eslint-disable-line @typescript-eslint/no-explicit-any
+  const { data } = await db.from("store_settings").select("value").eq("key", key).maybeSingle();
+  const list = Array.isArray(data?.value) ? (data.value as unknown[]).map(String).map((item) => item.trim()).filter(Boolean) : [];
+  return list.length ? list : alertRecipients();
+}
 export const emailConfigured = () => Boolean(process.env.RESEND_API_KEY);
 
 export async function sendEmail(email: { to?: string[]; subject: string; html: string; text: string; idempotencyKey?: string }): Promise<SendResult> {

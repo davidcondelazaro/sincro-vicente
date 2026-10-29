@@ -1,4 +1,4 @@
-import { sendEmail } from "@/lib/email";
+import { sendEmail, settingRecipients } from "@/lib/email";
 import { buildDailyReport } from "@/lib/mhd-importer/daily-report";
 import { workerClient } from "@/lib/mhd-importer/jobs";
 
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   const report = await buildDailyReport(db, new Date(), hours);
   if (params.get("simulacion") === "1") return Response.json({ ok: true, dryRun: true, ...report });
   const day = new Date().toLocaleString("sv-SE", { timeZone: "Europe/Madrid" }).slice(0, hours === 24 ? 10 : 13);
-  const result = await sendEmail({ subject: report.subject, html: report.html, text: report.text, idempotencyKey: `informe-${hours}h-${day}` });
+  const result = await sendEmail({ to: await settingRecipients(db, "report_emails"), subject: report.subject, html: report.html, text: report.text, idempotencyKey: `informe-${hours}h-${day}` });
   await db.from("mhd_sync_events").insert({ sync: "avisos", kind: "resumen", detail: { day, subject: report.subject, sent: result.ok, error: result.ok ? null : result.error } });
   return Response.json({ ...result, subject: report.subject }, { status: result.ok ? 200 : 502 });
 }

@@ -4,8 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
-type Section = "home" | "customer" | "customers" | "catalog" | "priorities" | "icecat" | "supabase" | "mhdImport" | "mhdCatalog" | "prices" | "stock" | "orders" | "productImporter" | "chatbotStats" | "chatbotConversations" | "chatbotImprovements" | "chatbotSupport" | "chatbotErrors" | "chatbotSyncs" | "chatbotDiscounts" | "chatbotSettings" | "chatbotPrivacy" | "stockAlerts" | "priceAlerts" | "quotes" | "redirects" | "warranties" | "productLocks" | "familyRules";
-type IconName = "home" | "database" | "users" | "catalog" | "price" | "stock" | "sort" | "icecat" | "orders" | "bell" | "tag" | "shield" | "quote" | "spark" | "ticket" | "chart" | "chat" | "support" | "alert" | "sync" | "settings" | "export" | "lock" | "package";
+type Section = "home" | "customer" | "customers" | "catalog" | "priorities" | "icecat" | "supabase" | "mhdImport" | "mhdCatalog" | "prices" | "stock" | "orders" | "productImporter" | "chatbotStats" | "chatbotConversations" | "chatbotImprovements" | "chatbotSupport" | "chatbotErrors" | "chatbotSyncs" | "chatbotDiscounts" | "chatbotSettings" | "chatbotPrivacy" | "stockAlerts" | "priceAlerts" | "quotes" | "redirects" | "warranties" | "productLocks" | "familyRules" | "storeSettings";
+type IconName = "home" | "database" | "users" | "catalog" | "price" | "stock" | "sort" | "icecat" | "orders" | "bell" | "tag" | "shield" | "quote" | "spark" | "ticket" | "chart" | "chat" | "support" | "alert" | "sync" | "settings" | "export" | "lock" | "package" | "bag";
 
 type NavEntry = { section: Section; href: string; label: string; icon: IconName };
 // Apartados del menú (orden revisado con David el 2026-10-29: primero lo que más se usa): cada uno se pliega y
@@ -14,12 +14,13 @@ const navigation: { label: string | null; entries: NavEntry[] }[] = [
   { label: null, entries: [{ section: "home", href: "/", label: "Inicio", icon: "home" }] },
   { label: "Catálogo", entries: [
     { section: "mhdImport", href: "/importar-datos-mhd", label: "Sincronización con MHD", icon: "sync" },
-    { section: "productImporter", href: "/importador-productos", label: "Importador de productos", icon: "package" },
-    { section: "familyRules", href: "/reglas-por-familia", label: "Reglas por familia", icon: "settings" },
+    { section: "productImporter", href: "/importador-productos", label: "Importador de productos", icon: "bag" },
+    { section: "familyRules", href: "/reglas-por-familia", label: "Reglas por familia", icon: "sort" },
     { section: "productLocks", href: "/productos-bloqueados", label: "Productos bloqueados", icon: "lock" },
     { section: "redirects", href: "/tienda/redirecciones", label: "Redirecciones", icon: "export" },
     { section: "warranties", href: "/tienda/garantias", label: "Garantías", icon: "shield" },
     { section: "mhdCatalog", href: "/importacion-catalogo-mhd", label: "Consultar catálogo MHD", icon: "catalog" },
+    { section: "storeSettings", href: "/configuracion", label: "Configuración", icon: "settings" },
   ] },
   { label: "Tienda", entries: [
     { section: "orders", href: "/pedidos-mhd", label: "Pedidos MHD", icon: "orders" },
@@ -150,6 +151,7 @@ function Icon({ name }: { name: IconName }) {
     shield: <><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6l-8-3Z" /><path d="m9 12 2 2 4-4" /></>,
     lock: <><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></>,
     package: <><path d="M21 8 12 3 3 8v8l9 5 9-5V8Z" /><path d="m3 8 9 5 9-5M12 13v8" /></>,
+    bag: <><path d="M5 8h14l-1 12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 8Z" /><path d="M9 8V6a3 3 0 0 1 6 0v2" /></>,
     tag: <><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9Z" /><circle cx="7.5" cy="7.5" r="1.5" /></>,
     bell: <><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0" /></>,
     spark: <path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6" />,
