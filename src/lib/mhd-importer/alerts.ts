@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { escapeHtml, sendEmail } from "@/lib/email";
+import { EMAIL_PREFIX, escapeHtml, sendEmail } from "@/lib/email";
 
 // Avisos al momento de los fallos graves de las sincronizaciones (David, 2026-10-26: «fallos graves al momento»). Como
 // mucho uno por motivo (`key`) cada hora, para que un fallo que se repite cada 30 minutos no llene el correo. Cada
@@ -13,7 +13,7 @@ export async function sendAlert(db: SupabaseClient, alert: { key: string; subjec
   if (recent) return { ok: true, skipped: "ya avisado en la última hora" };
   const link = `${APP_URL}${alert.href ?? "/importador-productos"}`;
   const result = await sendEmail({
-    subject: `[Utils] ${alert.subject}`,
+    subject: `${EMAIL_PREFIX} ⚠ ${alert.subject}`,
     text: [...alert.lines, "", link].join("\n"),
     html: `<p>${alert.lines.map(escapeHtml).join("<br>")}</p><p><a href="${link}">Abrir utils</a></p>`,
   });

@@ -5,6 +5,9 @@
 const TEAM_FROM = "Electrónica Vicente <utils@mail.electronicavicente.com>";
 const DEFAULT_TO = "david@aligeria.com";
 
+// Delante de todos los asuntos (David, 2026-10-29).
+export const EMAIL_PREFIX = "[Electrónica Vicente Utils]";
+
 export type SendResult = { ok: true; id: string } | { ok: false; skipped?: boolean; error: string };
 
 export const alertRecipients = () => (process.env.ALERT_EMAILS || DEFAULT_TO).split(",").map((item) => item.trim()).filter(Boolean);
