@@ -95,7 +95,7 @@ export default function CatalogImportPage() {
   const entityWord = run?.entity_type === "categories" ? "categoría" : run?.entity_type === "features" ? "característica" : run?.entity_type === "products" ? "producto" : "marca";
   const etaText = estimate && run ? `Tiempo transcurrido: ${formatDuration(elapsed ?? 0)} · restante estimado: ${formatDuration(estimate)} · promedio: ${formatDuration(Math.round(estimate / Math.max(1, run.total_count - run.processed_count)))} por ${entityWord}` : elapsed !== null ? `Tiempo transcurrido: ${formatDuration(elapsed)} · calculando el tiempo restante…` : "Esperando a que comience el proceso…";
   const selected = entities.find((item) => item.value === entityType)!;
-  return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
+  return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[17.5rem_minmax(0,1fr)]">
     <AppSidebar active="catalog" userEmail={userEmail} />
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-7 px-6 pb-24 pt-28 sm:px-10 lg:mx-0 lg:py-16">
       <header><h1 className="text-4xl font-semibold tracking-tight text-zinc-950">Importación catálogo</h1><p className="mt-3 max-w-3xl text-zinc-600">Importa entidades que ya están copiadas en Supabase. Cada ejecución queda en cola, conserva sus eventos y puede continuar aunque cierres esta pantalla.</p></header>

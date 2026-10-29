@@ -55,7 +55,7 @@ export default function CustomerDataPage() {
   }
 
   const found = result ? total(result.counts) : 0;
-  return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]"><AppSidebar active="chatbotPrivacy" userEmail={user} /><main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 pb-24 pt-28 sm:px-10 lg:mx-0 lg:py-16">
+  return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[17.5rem_minmax(0,1fr)]"><AppSidebar active="chatbotPrivacy" userEmail={user} /><main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 pb-24 pt-28 sm:px-10 lg:mx-0 lg:py-16">
     <header><p className="text-sm font-semibold tracking-[0.18em] text-emerald-700 uppercase">Chatbot IA</p><h1 className="mt-2 text-4xl font-semibold tracking-tight text-zinc-950">Datos de clientes</h1><p className="mt-3 max-w-3xl text-zinc-600">Para atender a un cliente que pide qué datos suyos tenemos, una copia o que los borremos (RGPD). Busca por su email todo lo que guarda el chatbot: conversaciones, avisos, presupuestos, tickets, consentimientos y emails enviados. Cada búsqueda, descarga o borrado queda registrado. Los pedidos y la newsletter están en Shopify y se gestionan allí.</p></header>
 
     <form onSubmit={search} className="flex flex-wrap items-end gap-3">

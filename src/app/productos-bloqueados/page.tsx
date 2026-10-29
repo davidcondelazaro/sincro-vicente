@@ -37,7 +37,7 @@ export default function ProductLocksPage() {
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Error inesperado."); } finally { setBusy(false); }
   }
 
-  return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]"><AppSidebar active="productLocks" userEmail={email} />
+  return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[17.5rem_minmax(0,1fr)]"><AppSidebar active="productLocks" userEmail={email} />
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 pb-24 pt-28 sm:px-10 lg:mx-0 lg:py-16">
       <header><h1 className="text-4xl font-semibold tracking-tight text-zinc-950">Productos bloqueados</h1><p className="mt-3 max-w-3xl text-zinc-600">Productos con la ficha arreglada a mano en Shopify. El importador no los vuelve a procesar ni a subir (ni las tandas, ni «Un producto», ni las altas y cambios automáticos), para no pisar el arreglo. El precio y el stock sí se siguen sincronizando con MHD.</p></header>
       {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">{error}</p>}

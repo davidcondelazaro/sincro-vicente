@@ -60,7 +60,7 @@ export default function QuotesPage() {
   }
 
   const counts = (quotes ?? []).reduce<Record<string, number>>((acc, q) => { acc[q.status] = (acc[q.status] ?? 0) + 1; return acc; }, {});
-  return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]"><AppSidebar active="quotes" userEmail={email} /><main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 pb-24 pt-28 sm:px-10 lg:mx-0 lg:py-16">
+  return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[17.5rem_minmax(0,1fr)]"><AppSidebar active="quotes" userEmail={email} /><main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 pb-24 pt-28 sm:px-10 lg:mx-0 lg:py-16">
     <header><p className="text-sm font-semibold tracking-[0.18em] text-emerald-700 uppercase">Tienda</p><h1 className="mt-2 text-4xl font-semibold tracking-tight text-zinc-950">Presupuestos</h1><p className="mt-3 max-w-3xl text-zinc-600">Presupuestos a medida que piden los clientes desde el chat. Los precios son los de la web en el momento del envío; al cliente le llegó un resumen sin precios.</p></header>
     {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p>}
     <div className="flex flex-wrap items-end gap-3">

@@ -35,7 +35,7 @@ export default function RedirectsPage() {
   }
   const all = Object.values(byType).reduce((sum, n) => sum + n, 0);
   const select = "mt-1 block h-10 rounded-lg border border-zinc-300 bg-white px-2 text-sm";
-  return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]"><AppSidebar active="redirects" userEmail={email} /><main className="mx-auto flex w-full max-w-6xl min-w-0 flex-col gap-6 px-4 pb-24 pt-28 sm:px-10 lg:mx-0 lg:py-16">
+  return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[17.5rem_minmax(0,1fr)]"><AppSidebar active="redirects" userEmail={email} /><main className="mx-auto flex w-full max-w-6xl min-w-0 flex-col gap-6 px-4 pb-24 pt-28 sm:px-10 lg:mx-0 lg:py-16">
     <header className="flex flex-wrap items-end justify-between gap-4"><div><h1 className="text-4xl font-semibold tracking-tight">Redirecciones</h1><p className="mt-3 max-w-3xl text-zinc-600">Cada URL de la web vieja, de dónde sale y a qué apunta. El destino final se calcula cuando estén cerrados el árbol nuevo de colecciones y las direcciones de los productos, para que nunca haya cadenas.</p></div><button type="button" onClick={() => void reload()} disabled={loading} className="h-10 rounded-lg bg-emerald-700 px-4 text-sm font-medium text-white disabled:opacity-50">{loading ? "Cargando…" : "Volver a cargar las fuentes"}</button></header>
     {error && <p className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">{error}</p>}
     {notice && <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">{notice}</p>}

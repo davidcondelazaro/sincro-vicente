@@ -66,7 +66,7 @@ export default function MhdImportPage() {
   }
 
   const serverNow = now + clockOffset;
-  return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]"><AppSidebar active="mhdImport" userEmail={email} /><main className="mx-auto flex w-full max-w-5xl flex-col gap-7 px-6 pb-24 pt-28 sm:px-10 lg:mx-0 lg:py-16">
+  return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[17.5rem_minmax(0,1fr)]"><AppSidebar active="mhdImport" userEmail={email} /><main className="mx-auto flex w-full max-w-5xl flex-col gap-7 px-6 pb-24 pt-28 sm:px-10 lg:mx-0 lg:py-16">
     <header><h1 className="text-4xl font-semibold tracking-tight text-zinc-950">Sincronización con MHD</h1><p className="mt-3 max-w-3xl text-zinc-600">Las vueltas automáticas que mantienen la tienda al día con MHD y, debajo, las lecturas del catálogo de MHD que guarda Supabase.</p></header>
     <SyncCycles />
     {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">{error}</p>}

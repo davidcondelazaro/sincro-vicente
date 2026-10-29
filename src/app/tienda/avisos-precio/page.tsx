@@ -62,7 +62,7 @@ export default function PriceAlertsPage() {
 
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
   const select = "mt-1 block h-10 rounded-lg border border-zinc-300 bg-white px-2 font-normal";
-  return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]"><AppSidebar active="priceAlerts" userEmail={email} /><main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 pb-24 pt-28 sm:px-10 lg:mx-0 lg:py-16">
+  return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[17.5rem_minmax(0,1fr)]"><AppSidebar active="priceAlerts" userEmail={email} /><main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 pb-24 pt-28 sm:px-10 lg:mx-0 lg:py-16">
     <header><p className="text-sm font-semibold tracking-[0.18em] text-emerald-700 uppercase">Tienda</p><h1 className="mt-2 text-4xl font-semibold tracking-tight text-zinc-950">Avisos de precio</h1><p className="mt-3 max-w-3xl text-zinc-600">Clientes que han pedido desde el chat que les avisemos si un producto baja de precio. Se guarda el precio del momento y el aviso se envía por email una sola vez, tras la copia de productos (cada hora) en la que está más barato y se puede comprar.</p></header>
     {data?.schedule && <ScheduleLine schedule={data.schedule} />}
     {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p>}

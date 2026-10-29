@@ -53,7 +53,7 @@ export default function WarrantyPage() {
   const shown = families.filter((item) => (!search || `${item.title} ${item.group}`.toLowerCase().includes(search.toLowerCase())) && (!filter || label(item.eligible) === filter));
   const count = (value: boolean | null) => families.filter((item) => item.eligible === value);
   const pendingChanges = applied ? applied.toYes + applied.toNo + applied.removed : 0;
-  return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]"><AppSidebar active="warranties" userEmail={email} /><main className="mx-auto flex w-full max-w-6xl min-w-0 flex-col gap-6 px-4 pb-24 pt-28 sm:px-10 lg:mx-0 lg:py-16">
+  return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[17.5rem_minmax(0,1fr)]"><AppSidebar active="warranties" userEmail={email} /><main className="mx-auto flex w-full max-w-6xl min-w-0 flex-col gap-6 px-4 pb-24 pt-28 sm:px-10 lg:mx-0 lg:py-16">
     <header><h1 className="text-4xl font-semibold tracking-tight">Garantías</h1><p className="mt-3 max-w-3xl text-zinc-600">Qué productos pueden llevar ampliación de Garantía3. Lo decide la familia y, en las familias mixtas, una regla por título. El importador lo escribe en cada producto al subirlo; la web y Elvi solo lo leen. El precio mínimo (60 €) y los tramos están en el editor del tema.</p></header>
     {error && <p className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">{error}</p>}
     {notice && <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">{notice}</p>}

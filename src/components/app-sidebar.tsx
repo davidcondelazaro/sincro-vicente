@@ -71,7 +71,7 @@ export function AppSidebar({ active, userEmail }: { active: Section; userEmail: 
     </header>
     <div className="hidden lg:block" aria-hidden="true" />
     {open && <button type="button" onClick={close} className="fixed inset-0 z-40 bg-zinc-950/30 lg:hidden" aria-label="Cerrar menú" />}
-    <aside className={`fixed inset-y-0 right-0 z-50 flex w-72 min-w-0 flex-col overflow-hidden border-l border-zinc-200 bg-white px-5 pt-5 shadow-xl transition-transform lg:right-auto lg:left-0 lg:w-60 lg:border-b-0 lg:border-l-0 lg:border-r lg:shadow-none ${open ? "translate-x-0" : "translate-x-full lg:translate-x-0"}`}>
+    <aside className={`fixed inset-y-0 right-0 z-50 flex w-72 min-w-0 flex-col overflow-hidden border-l border-zinc-200 bg-white px-5 pt-5 shadow-xl transition-transform lg:right-auto lg:left-0 lg:w-[17.5rem] lg:border-b-0 lg:border-l-0 lg:border-r lg:shadow-none ${open ? "translate-x-0" : "translate-x-full lg:translate-x-0"}`}>
       <div className="hidden min-w-0 px-3 lg:block"><Link href="/" className="block" aria-label="Ir al inicio"><Image src="/electronica-vicente.svg" alt="Electrónica Vicente" width={2124} height={462} priority className="h-auto w-full max-w-[13rem]" /><AppLabels className="mt-3 flex" /></Link></div>
       <div className="flex items-center justify-between lg:hidden"><p className="text-sm font-semibold text-zinc-900">MENÚ</p><button type="button" onClick={close} className="grid h-11 w-11 place-items-center rounded-lg text-3xl leading-none text-zinc-600 hover:bg-zinc-100" aria-label="Cerrar menú">×</button></div>
       <nav className="-mx-1 mt-5 flex min-h-0 min-w-0 flex-1 flex-col gap-1 overflow-y-auto px-1 lg:mt-6" aria-label="Módulos de la aplicación">{navigation.map((group) => {

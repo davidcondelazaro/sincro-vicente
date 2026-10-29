@@ -36,7 +36,7 @@ export function ProcessOverview({ embedded = false }: { embedded?: boolean }) {
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"><h2 className="text-xl font-semibold">Última ejecución completada</h2><div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{(data?.summaries ?? []).map((summary) => <LatestProcess key={summary.type} summary={summary} />)}</div></section>
     </>;
   if (embedded) return <div className="flex flex-col gap-4">{sections}</div>;
-  return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
+  return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[17.5rem_minmax(0,1fr)]">
     <AppSidebar active="home" userEmail={userEmail} />
     <main className="min-w-0 px-6 pb-24 pt-28 sm:px-10 lg:px-12 lg:py-16"><div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       <header><h1 className="text-4xl font-semibold tracking-tight text-zinc-950">Resumen de sincronizaciones</h1><p className="mt-2 text-zinc-600">Procesos en curso y última ejecución correcta de cada entidad.</p></header>

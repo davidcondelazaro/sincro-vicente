@@ -54,7 +54,7 @@ export default function SqlServerImportPage() {
     } catch (caught) { setError(caught instanceof Error ? caught.message : "No se pudo iniciar la copia."); } finally { setStarting(false); }
   }
 
-  return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
+  return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[17.5rem_minmax(0,1fr)]">
     <AppSidebar active="supabase" userEmail={userEmail} />
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-7 px-6 pb-24 pt-28 sm:px-10 lg:mx-0 lg:py-16">
       <header><h1 className="text-4xl font-semibold tracking-tight text-zinc-950">Importar datos de SQL Server a Supabase</h1><p className="mt-3 max-w-3xl text-zinc-600">Primero se recibe una copia mediante el puente seguro de Pladisel y después se actualizan las tablas de catálogo de Supabase. Una nueva copia sólo sustituye a la anterior cuando todo ha finalizado correctamente.</p></header>

@@ -91,7 +91,7 @@ export default function BulkImportsPage() {
   const elapsed = run?.started_at ? Math.max(0, (run.finished_at ? new Date(run.finished_at).getTime() : Date.now()) - new Date(run.started_at).getTime()) : null;
   const etaText = estimate && run ? `Tiempo transcurrido: ${formatDuration(elapsed ?? 0)} · restante estimado: ${formatDuration(estimate)} · promedio: ${formatDuration(Math.round(estimate / Math.max(1, run.total_count - run.processed_count)))} por cliente` : elapsed !== null ? `Tiempo transcurrido: ${formatDuration(elapsed)} · calculando el tiempo restante…` : "Esperando a que comience el proceso…";
 
-  return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
+  return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[17.5rem_minmax(0,1fr)]">
     <AppSidebar active="customers" userEmail={userEmail} />
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-7 px-6 pb-24 pt-28 sm:px-10 lg:mx-0 lg:py-16">
       <header><h1 className="text-4xl font-semibold tracking-tight text-zinc-950">Importación de clientes desde PrestaShop</h1><p className="mt-3 max-w-3xl text-zinc-600">Lanza una importación persistente. Puedes cerrar esta pantalla: la cola seguirá procesando y podrás volver a ver su avance. Los alcances masivos incluyen clientes activos y no eliminados, tengan pedidos o no.</p></header>

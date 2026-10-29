@@ -67,7 +67,7 @@ export function HomeDashboard() {
   const today = data?.today; const overview = data?.overview;
   const next = nextCycle(now);
 
-  return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
+  return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[17.5rem_minmax(0,1fr)]">
     <AppSidebar active="home" userEmail={userEmail} />
     <main className="min-w-0 px-4 pb-24 pt-28 sm:px-10 lg:px-12 lg:py-16"><div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
