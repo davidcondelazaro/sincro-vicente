@@ -13,6 +13,7 @@ import { createTrace, type TraceEvent } from "./trace";
 import { warningKind } from "./warning-kinds";
 import { sendAlert } from "./alerts";
 import { productLock } from "./locks";
+import { storeProductsByEan } from "./shopify-ids";
 
 type Env = Record<string, string | undefined>;
 export type JobItem = { id: number; job_id: string; codigo: string; family_code: string | null; attempts: number };
@@ -20,7 +21,7 @@ export type JobItem = { id: number; job_id: string; codigo: string; family_code:
 // Una llamada dura como mucho 300 s en Vercel: no se reservan productos nuevos pasados 150 s (un producto tarda hasta
 // ~2 min), y el puesto caduca a los 120 s sin latido por si la llamada muere. Por defecto, 2 trabajadores con 6
 // productos a la vez cada uno; cada tanda lo cambia (options.workers, hasta 12, y options.concurrency, hasta 12).
-export const WORKER = { budgetMs: 150_000, leaseSeconds: 120, itemLeaseSeconds: 600, workers: 2, concurrency: 6, maxAttempts: 2, mirrorMaxAgeHours: 6 };
+export const WORKER = { budgetMs: 150_000, leaseSeconds: 120, itemLeaseSeconds: 600, workers: 2, concurrency: 6, maxAttempts: 2 };
 
 // Cliente con la clave secreta: el trabajador no tiene sesión de usuario. Vale la clave nueva (SUPABASE_SECRET_KEY) o
 // la antigua (SUPABASE_SERVICE_ROLE_KEY).
@@ -121,14 +122,14 @@ export async function processJobItem(deps: { db: SupabaseClient; config: Sources
     // Tandas con «Subir a Shopify» (2026-10-26): el producto se sube en borrador al momento, con el tiempo de cada parte.
     // Si la subida falla, el producto queda procesado y el error en el registro y en su detalle.
     let uploadError: string | null = null;
-    // «nuevos»: no se tocan los productos que la tienda ya tenía antes del importador (por EAN, en el espejo); los que
-    // creó el importador (alguna prueba con ese identificador de Shopify) sí se actualizan (David, 2026-10-26).
+    // «nuevos»: no se tocan los productos que la tienda ya tenía antes del importador (por EAN, preguntado a Shopify); los
+    // que creó el importador (alguna prueba con ese identificador de Shopify) sí se actualizan (David, 2026-10-26).
     let inStore: { product_id: string } | null = null;
     if (deps.upload === "nuevos" && result.status === "ok" && result.product.ean) {
-      const { data: found } = await deps.db.from("shopify_variants").select("product_id").eq("barcode", result.product.ean).limit(1).maybeSingle();
+      const found = (await storeProductsByEan(deps.config.shopify, result.product.ean))[0];
       if (found) {
-        const { count } = await deps.db.from("mhd_importer_product_runs").select("id", { count: "exact", head: true }).eq("shopify_product_id", found.product_id);
-        if (!count) inStore = found;
+        const { count } = await deps.db.from("mhd_importer_product_runs").select("id", { count: "exact", head: true }).eq("shopify_product_id", found.id);
+        if (!count) inStore = { product_id: found.id };
       }
     }
     if (inStore) log.add({ level: "decision", step: "Subir a Shopify", message: `Ya estaba en la tienda antes del importador (${inStore.product_id}): no se toca, la tanda solo sube los nuevos.` });
@@ -189,18 +190,7 @@ export async function runWorkerTurn(env: Env, config: SourcesConfig, spawn: () =
   const ai = new Anthropic({ apiKey: anthropicKey(env) });
   const started = Date.now(); let processed = 0; let more = false;
   try {
-    const { mirrorAgeHours, refreshShopifyMirror } = await import("../shopify-mirror");
-    const age = jobs?.length ? await mirrorAgeHours(db) : 0;
-    // Sin espejo todavía no se puede colocar nada: solo el primer puesto trabaja (lo llena) y los demás esperan al
-    // vigilante.
-    if (age === null && slot.slot !== 1) return { ran: false, processed: 0, more: false, reason: "Esperando al espejo de la tienda." };
-    if (jobs?.length && slot.slot === 1) {
-      if (age === null || age > WORKER.mirrorMaxAgeHours) {
-        const result = await refreshShopifyMirror(db, config.shopify).catch((caught: Error) => ({ error: caught.message }));
-        console.log(JSON.stringify({ productImporterWorker: "espejo", ...result }));
-      }
-    }
-    // Con el espejo listo, arranca otro trabajador si la tanda usa más de uno (ese, a su vez, arranca el siguiente).
+    // Arranca otro trabajador si la tanda usa más de uno (ese, a su vez, arranca el siguiente).
     if (jobs?.length && workers > 1) spawn();
     // Opciones de cada tanda (p. ej. «Subir a Shopify»), leídas una vez por turno.
     const optionsByJob = new Map<string, Promise<{ upload?: boolean | "nuevos" | "solo"; elviModel?: string; noThinking?: boolean }>>();

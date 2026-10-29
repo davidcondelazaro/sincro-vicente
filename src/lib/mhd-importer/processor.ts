@@ -20,6 +20,8 @@ import { classifyImages, imageFilenames, KIND_ALT, normalizeEnergyLabel, orderIm
 import type { FamilyProfile } from "./profile";
 import { classifyVideos, prepareVideos, type VideoKind } from "./videos";
 import { noTrace, type Trace } from "./trace";
+import { handleOwner, storeProductsByEan } from "./shopify-ids";
+import type { ShopifyConfig } from "./store-filters";
 import { applyProfile, discardReason, firstNumber, sourceValues, type AppliedRules, reviewReasons } from "./rules";
 import { fetchEprelClass, fetchIcecatByModel, fetchIcecatDocument, fetchMhdMedia } from "./sources";
 
@@ -83,13 +85,12 @@ function weightKg(values: Map<string, string>) {
 
 // Dirección de la ficha (decidido 2026-10-23): tipo + marca + modelo; si existe, color, y en último caso -2, -3…
 // Una dirección que ya tiene este mismo producto (creado antes desde el importador) cuenta como libre.
-// Desde el 2026-10-26 sin preguntar a Shopify: se mira el espejo de la tienda y las direcciones ya dadas por el
+// Se pregunta a Shopify si la dirección está ocupada (desde el 2026-10-29, sin espejo) y se miran las ya dadas por el
 // importador (mhd_importer_handles), que se reservan aquí para que dos productos de una tanda no se queden la misma.
-async function freeHandle(db: SupabaseClient, base: string, color: string | null, ownId: string | null, codigo: string) {
+async function freeHandle(db: SupabaseClient, shopify: ShopifyConfig, base: string, color: string | null, ownId: string | null, codigo: string) {
   const take = async (handle: string) => {
-    const { data: inStore, error } = await db.from("shopify_products").select("product_id").eq("handle", handle);
-    if (error) throw new Error(`No se pudo leer el espejo de la tienda: ${error.message}`);
-    if (inStore.some((row) => row.product_id !== ownId)) return false;
+    const owner = await handleOwner(shopify, handle);
+    if (owner && owner !== ownId) return false;
     await db.from("mhd_importer_handles").upsert({ handle, codigo }, { onConflict: "handle", ignoreDuplicates: true });
     const { data: reserved, error: reserveError } = await db.from("mhd_importer_handles").select("codigo").eq("handle", handle).maybeSingle();
     if (reserveError) throw new Error(`No se pudo reservar la dirección: ${reserveError.message}`);
@@ -365,8 +366,8 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   const tags = [...classification.tags];
   const { data: previousRun } = await deps.db.from("mhd_importer_product_runs").select("shopify_product_id").eq("codigo", listing.codigo).not("shopify_product_id", "is", null).order("created_at", { ascending: false }).limit(1).maybeSingle();
   // El producto ya puede estar en la tienda (creado por el importador o de antes, por EAN): su dirección le vale.
-  const { data: storeMatch } = listing.codigo_ean ? await deps.db.from("shopify_variants").select("product_id").eq("barcode", listing.codigo_ean).limit(1).maybeSingle() : { data: null };
-  const handle = await t.step("Dirección de la ficha", () => freeHandle(deps.db, base, typeof applied.metafields["filtro.color"] === "string" ? applied.metafields["filtro.color"] as string : null, previousRun?.shopify_product_id ?? storeMatch?.product_id ?? null, listing.codigo), (result) => result);
+  const storeMatch = previousRun?.shopify_product_id || !listing.codigo_ean ? null : (await storeProductsByEan(deps.config.shopify, listing.codigo_ean)).sort((a, b) => Number(b.status === "ACTIVE") - Number(a.status === "ACTIVE"))[0] ?? null;
+  const handle = await t.step("Dirección de la ficha", () => freeHandle(deps.db, deps.config.shopify, base, typeof applied.metafields["filtro.color"] === "string" ? applied.metafields["filtro.color"] as string : null, previousRun?.shopify_product_id ?? storeMatch?.id ?? null, listing.codigo), (result) => result);
   const sellWithoutStock = STORE_RULES.sellOutOfStockBrands.includes(vendor) && STORE_RULES.sellOutOfStockLines.includes(listing.cod_linea ?? "");
   // Opiniones que ya tenemos de este EAN (Trusted Shops) con el resumen de Elvi, para la sección «Opiniones».
   const technical = icecatMetafield(icecat, gathered.detail?.caracteristicas ?? [], youtube);

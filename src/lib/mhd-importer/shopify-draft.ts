@@ -11,8 +11,7 @@ import { mediaBytes } from "./media-store";
 import { SHOPIFY_CATEGORY_BY_FAMILY } from "./shopify-categories";
 import { noTrace, type Trace } from "./trace";
 import { shopifyGraphql, type ShopifyConfig } from "./store-filters";
-import { MIRROR_PRODUCT_FIELDS, MIRROR_VARIANT_FIELDS, mirrorProduct } from "../shopify-mirror";
-import { rememberShopifyIds, rememberShopifyStatus } from "./shopify-ids";
+import { ID_PRODUCT_FIELDS, rememberShopifyIds, rememberShopifyStatus, storeProductsByEan } from "./shopify-ids";
 import { warrantyEligible } from "./warranty";
 import { productLock } from "./locks";
 
@@ -247,28 +246,24 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   // MHD), el EAN y la venta sin stock (ver la variante, abajo).
   let refresh = false;
   if (!existingId && shop.variant.barcode) {
-    // En el espejo de la tienda (src/lib/shopify-mirror.ts), sin preguntar a Shopify.
-    const { data: found, error: mirrorError } = await deps.db.from("shopify_variants").select("product_id").eq("barcode", shop.variant.barcode);
-    if (mirrorError) throw new Error(`No se pudo leer el espejo de la tienda: ${mirrorError.message}`);
-    let products = [...new Set(found.map((row) => row.product_id as string))];
+    // Preguntado a Shopify en el momento (desde el 2026-10-29, sin espejo).
+    const found = await t.step("Shopify: buscar por EAN", () => storeProductsByEan(deps.shopify, shop.variant.barcode!), (rows) => `${rows.length} con este EAN`);
+    let products = found.map((row) => row.id);
     // Varios con el mismo EAN (duplicados de la tienda antigua; en MHD no se repite ninguno): se refresca uno y los demás
     // se archivan (David, 2026-10-27). Se queda el activo; si no, el borrador; y entre iguales, el más antiguo.
     if (products.length > 1) {
-      const { data: rows, error: rowsError } = await deps.db.from("shopify_products").select("product_id,status,shopify_created_at").in("product_id", products);
-      if (rowsError) throw new Error(`No se pudo leer el espejo de la tienda: ${rowsError.message}`);
       const rank = (status: string) => ({ ACTIVE: 0, DRAFT: 1 } as Record<string, number>)[status] ?? 2;
-      const ordered = [...(rows ?? [])].sort((a, b) => rank(a.status) - rank(b.status) || String(a.shopify_created_at).localeCompare(String(b.shopify_created_at)));
-      const keep = ordered[0]?.product_id ?? products[0];
-      const others = products.filter((id) => id !== keep);
+      const ordered = [...found].sort((a, b) => rank(a.status) - rank(b.status) || a.createdAt.localeCompare(b.createdAt));
+      const keep = ordered[0]?.id ?? products[0];
+      const others = found.filter((row) => row.id !== keep && row.status !== "ARCHIVED").map((row) => row.id);
       await t.step("Duplicados por EAN", async () => {
         for (const id of others) {
           const archived = await shopifyGraphql<{ productUpdate: { userErrors: UserError[] } }>(deps.shopify, `mutation($p: ProductUpdateInput!) { productUpdate(product: $p) { userErrors { field message } } }`, { p: { id, status: "ARCHIVED" } });
           check(archived.productUpdate.userErrors, "Shopify no archivó el duplicado");
-          await deps.db.from("shopify_products").update({ status: "ARCHIVED" }).eq("product_id", id);
           await rememberShopifyStatus(deps.db, id, "ARCHIVED");
         }
         return others.length;
-      }, (count) => `EAN ${shop.variant.barcode} en ${count + 1} productos: se refresca ${keep.split("/").pop()} y se ${count === 1 ? "archiva el otro" : `archivan los otros ${count}`}`);
+      }, (count) => `EAN ${shop.variant.barcode} en ${products.length} productos: se refresca ${keep.split("/").pop()}${count ? ` y se ${count === 1 ? "archiva 1" : `archivan ${count}`}` : ""}${products.length - 1 - count ? ` (${products.length - 1 - count} ya archivado${products.length - 2 - count ? "s" : ""})` : ""}`);
       products = [keep];
     }
     if (products[0]) { existingId = products[0]; refresh = true; }
@@ -403,8 +398,8 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
     productOptions: [{ name: "Title", values: [{ name: "Default Title" }] }],
     variants: [variant],
   };
-  const data = await t.step("Shopify: crear el producto", () => shopifyGraphql<{ productSet: { product: (Parameters<typeof mirrorProduct>[1]) | null; userErrors: UserError[] } }>(deps.shopify,
-    `mutation($input: ProductSetInput!, $identifier: ProductSetIdentifiers) { productSet(input: $input, identifier: $identifier, synchronous: true) { product { ${MIRROR_PRODUCT_FIELDS} variants(first: 10) { nodes { ${MIRROR_VARIANT_FIELDS} } } } userErrors { field message } } }`, { input, identifier: existing ? { id: existing.id } : null }), (result) => (result.productSet.product ? `${existing ? "actualizado" : "creado"} ${status === "ACTIVE" ? "activo" : "en borrador"}` : null));
+  const data = await t.step("Shopify: crear el producto", () => shopifyGraphql<{ productSet: { product: (Parameters<typeof rememberShopifyIds>[2]) | null; userErrors: UserError[] } }>(deps.shopify,
+    `mutation($input: ProductSetInput!, $identifier: ProductSetIdentifiers) { productSet(input: $input, identifier: $identifier, synchronous: true) { product { ${ID_PRODUCT_FIELDS} } userErrors { field message } } }`, { input, identifier: existing ? { id: existing.id } : null }), (result) => (result.productSet.product ? `${existing ? "actualizado" : "creado"} ${status === "ACTIVE" ? "activo" : "en borrador"}` : null));
   check(data.productSet.userErrors, existing ? "Shopify no actualizó el producto" : "Shopify no creó el producto");
   const created = data.productSet.product!;
   // Canales de venta: todos, también al pisar un producto que ya estaba (publicar en un canal en el que ya está no hace
@@ -415,9 +410,8 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   // borra en Shopify y se descarta en la base de redirecciones (docs/REDIRECCIONES.md), para que la URL vuelva a ser
   // la del producto.
   if (existing?.status === "ARCHIVED") await t.step("Redirecciones del producto reactivado", () => releaseProductRedirects(deps, created.handle), (removed) => `${removed} redirecciones quitadas`);
-  // Identificadores de cada extremo (los usan precio y stock, agotados y altas) y, mientras se retira, el espejo.
+  // Identificadores de cada extremo (los usan precio y stock, agotados y altas).
   await rememberShopifyIds(deps.db, product.codigo, created);
-  await mirrorProduct(deps.db, created);
   // Lo enviado de precio y stock, para que la sincronización de cada 30 min no lo vuelva a mandar (price-stock-sync.ts).
   const sentVariant = created.variants.nodes[0] as { id: string; inventoryItem?: { id: string } | null } | undefined;
   if (sentVariant?.inventoryItem?.id) await deps.db.from("mhd_shopify_price_stock").upsert({ codigo: product.codigo, product_id: created.id, variant_id: sentVariant.id, inventory_item_id: sentVariant.inventoryItem.id, price: Number(price), stock, sent_at: new Date().toISOString() });
