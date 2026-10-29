@@ -52,7 +52,7 @@ export async function syncAbsences(deps: { db: SupabaseClient; sources: SourcesC
   summary.confirmed = confirmed.length; summary.skippedByRead = skipped.length;
 
   // 2. Freno y aplicación.
-  const { count: storeSize } = await db.from("shopify_products").select("product_id", { count: "exact", head: true }).eq("status", "ACTIVE");
+  const { count: storeSize } = await db.from("store_shopify_ids").select("codigo", { count: "exact", head: true }).eq("status", "ACTIVE");
   const limit = Math.max(1, Math.round((storeSize ?? 0) * brakePct / 100));
   if (confirmed.length > limit && !options.force) {
     summary.braked = true;

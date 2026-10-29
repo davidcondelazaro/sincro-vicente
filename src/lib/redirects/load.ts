@@ -42,7 +42,7 @@ export function keyFor(origin: string, target: string | null, inventoryType: str
   const handle = (prefix: string) => (to?.startsWith(prefix) ? decodeURIComponent(to.slice(prefix.length).split("/")[0]) : null);
   if (origin.startsWith("/marca/") || inventoryType === "marca") return { key_type: "marca", key_value: handle("/collections/") ?? origin.replace(/^\/marca\//, "").replace(/-\d+$/, ""), shopify_product_id: null, note: null };
   const product = handle("/products/");
-  if (product) { const id = productIds.get(product) ?? null; return { key_type: "producto", key_value: id ?? product, shopify_product_id: id, note: id ? null : `El producto /products/${product} no está en el espejo de la tienda.` }; }
+  if (product) { const id = productIds.get(product) ?? null; return { key_type: "producto", key_value: id ?? product, shopify_product_id: id, note: id ? null : `El producto /products/${product} no está en la tienda.` }; }
   const collection = handle("/collections/");
   if (collection) return { key_type: "coleccion", key_value: collection, shopify_product_id: null, note: null };
   const page = handle("/pages/");
@@ -67,13 +67,22 @@ async function shopifyRedirects(config: ShopifyConfig) {
   return all;
 }
 
-async function productIdsByHandle(db: SupabaseClient) {
+// Identificador de Shopify de cada producto al que apunta una redirección: primero los identificadores guardados
+// (store_shopify_ids); los que no están (productos de la tienda antigua sin código de MHD, a menudo archivados) se
+// preguntan a Shopify por dirección, de 50 en 50.
+async function productIdsByHandle(db: SupabaseClient, shopify: ShopifyConfig, handles: string[]) {
   const ids = new Map<string, string>();
-  for (let from = 0; ; from += 1000) {
-    const { data, error } = await db.from("shopify_products").select("product_id,handle").order("product_id").range(from, from + 999);
-    if (error) throw new Error(`No se pudo leer el espejo de la tienda: ${error.message}`);
+  const wanted = [...new Set(handles)];
+  for (let i = 0; i < wanted.length; i += 200) {
+    const { data, error } = await db.from("store_shopify_ids").select("product_id,handle").in("handle", wanted.slice(i, i + 200));
+    if (error) throw new Error(`No se pudieron leer los identificadores de Shopify: ${error.message}`);
     for (const row of data as { product_id: string; handle: string }[]) ids.set(row.handle, row.product_id);
-    if (data.length < 1000) break;
+  }
+  const missing = wanted.filter((handle) => !ids.has(handle));
+  for (let i = 0; i < missing.length; i += 50) {
+    const query = missing.slice(i, i + 50).map((handle) => `handle:'${handle.replace(/'/g, "")}'`).join(" OR ");
+    const data = await shopifyGraphql<{ products: { nodes: { id: string; handle: string }[] } }>(shopify, `query($q: String!) { products(first: 250, query: $q) { nodes { id handle } } }`, { q: query });
+    for (const node of data.products.nodes) ids.set(node.handle, node.id);
   }
   return ids;
 }
@@ -91,7 +100,8 @@ export async function loadRedirects(db: SupabaseClient, shopify: ShopifyConfig) 
   for (const item of inventory) { const entry = row(item.origen); entry.sources.add("inventario"); entry.current_target ??= item.destino || null; entry.inventory_type = item.tipo || null; }
   const pages = parseCsv(await readFile(path.join(DATA, "api-paginas-16-meses-2026-10-26.csv"), "utf8"));
   for (const item of pages) { const entry = row(item.page); entry.sources.add("search_console"); entry.clicks = Math.max(entry.clicks, Number(item.clics) || 0); entry.impressions = Math.max(entry.impressions, Number(item.impresiones) || 0); }
-  const productIds = await productIdsByHandle(db);
+  const targetHandle = (target: string | null) => { const to = target ? originPath(target) : null; return to?.startsWith("/products/") ? decodeURIComponent(to.slice("/products/".length).split("/")[0]) : null; };
+  const productIds = await productIdsByHandle(db, shopify, [...rows.values()].map((entry) => targetHandle(entry.current_target)).filter((handle): handle is string => Boolean(handle)));
   const now = new Date().toISOString();
   const records = [...rows.values()].filter((entry) => entry.origin !== "/").map((entry) => ({ origin: entry.origin, sources: [...entry.sources], current_target: entry.current_target, ...keyFor(entry.origin, entry.current_target, entry.inventory_type, productIds), clicks_16m: entry.clicks, impressions_16m: entry.impressions, updated_at: now }));
   for (let i = 0; i < records.length; i += 500) {

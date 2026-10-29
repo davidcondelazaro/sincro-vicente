@@ -16,10 +16,8 @@ export async function GET() {
   const { data: locks, error } = await auth.db.from("store_product_locks").select("codigo,reason,locked_by,locked_at").order("locked_at", { ascending: false });
   if (error) return Response.json({ error: error.message }, { status: 500 });
   const codes = (locks ?? []).map((lock) => lock.codigo);
-  const { data: variants } = codes.length ? await auth.db.from("shopify_variants").select("sku,product_id").in("sku", codes) : { data: [] };
-  const ids = (variants ?? []).map((variant) => variant.product_id);
-  const { data: products } = ids.length ? await auth.db.from("shopify_products").select("product_id,title,status").in("product_id", ids) : { data: [] };
-  const bySku = new Map((variants ?? []).map((variant) => [variant.sku, (products ?? []).find((product) => product.product_id === variant.product_id)]));
+  const { data: products } = codes.length ? await auth.db.from("store_shopify_ids").select("codigo,product_id,title,status").in("codigo", codes) : { data: [] };
+  const bySku = new Map((products ?? []).map(({ codigo, ...product }) => [codigo, product]));
   return Response.json({ locks: (locks ?? []).map((lock) => ({ ...lock, product: bySku.get(lock.codigo) ?? null })) });
 }
 

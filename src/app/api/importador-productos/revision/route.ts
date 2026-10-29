@@ -27,9 +27,9 @@ export async function GET() {
     const productIds = new Map<string, string>();
     const codes = items.map((item) => item.codigo as string);
     for (let i = 0; i < codes.length; i += 200) {
-      const { data, error } = await session.db.from("shopify_variants").select("sku,product_id").in("sku", codes.slice(i, i + 200));
+      const { data, error } = await session.db.from("store_shopify_ids").select("codigo,product_id").in("codigo", codes.slice(i, i + 200));
       if (error) throw error;
-      for (const row of data ?? []) productIds.set(row.sku as string, row.product_id as string);
+      for (const row of data ?? []) productIds.set(row.codigo as string, row.product_id as string);
     }
     return Response.json({ items: items.map((item) => ({ ...item, shopify_product_id: productIds.get(item.codigo as string) ?? null })) });
   } catch (caught) { return errorResponse(caught, "No se pudo leer la cola de revisión."); }

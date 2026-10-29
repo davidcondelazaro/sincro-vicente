@@ -25,10 +25,10 @@ export async function GET() {
     ]);
     if (collectionsError) throw collectionsError;
     if (rulesError) throw rulesError;
-    // Productos activos por familia, del espejo de la tienda (el tipo de producto es el nombre de la familia).
+    // Productos activos por familia, de los identificadores de Shopify (el tipo de producto es el nombre de la familia).
     const active = new Map<string, number>();
     for (let from = 0; ; from += 1000) {
-      const { data, error } = await db.from("shopify_products").select("product_type").eq("status", "ACTIVE").order("product_id").range(from, from + 999);
+      const { data, error } = await db.from("store_shopify_ids").select("product_type").eq("status", "ACTIVE").order("codigo").range(from, from + 999);
       if (error) throw error;
       for (const row of data) if (row.product_type) active.set(row.product_type, (active.get(row.product_type) ?? 0) + 1);
       if (data.length < 1000) break;
