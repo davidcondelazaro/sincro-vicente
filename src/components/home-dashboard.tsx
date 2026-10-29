@@ -172,7 +172,7 @@ function CycleChart({ cycles, now }: { cycles: Cycle[]; now: number }) {
     <div className="flex h-36 items-end gap-1.5">{cycles.map((cycle, index) => {
       const sync = cycle.steps.find((step) => step.name === "precio-stock")?.counts;
       const tone = cycle.status === "terminada" ? "bg-emerald-500" : RUNNING.includes(cycle.status) ? "animate-pulse bg-sky-500" : cycle.status === "parada" ? "bg-amber-400" : "bg-red-500";
-      return <div key={cycle.id} className="group relative flex h-full min-w-0 flex-1 flex-col justify-end">
+      return <div key={cycle.id} className="group relative flex h-full min-w-0 max-w-10 flex-1 flex-col justify-end">
         <div className={`w-full rounded-t ${tone}`} style={{ height: `${Math.max(4, Math.round(100 * secs[index] / max))}%` }} />
         <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden w-48 -translate-x-1/2 rounded-lg bg-zinc-900 p-2 text-xs text-white shadow-lg group-hover:block">
           <p className="font-medium">{clock(cycle.started_at)} · {STATUS[cycle.status]?.label ?? cycle.status}</p>
