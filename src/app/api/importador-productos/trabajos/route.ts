@@ -1,14 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { after } from "next/server";
-import { errorResponse, importerSession, sourcesConfig } from "@/lib/mhd-importer/server";
-import { refreshShopifyMirror } from "@/lib/shopify-mirror";
+import { errorResponse, importerSession } from "@/lib/mhd-importer/server";
 
 // Procesos del importador (docs/IMPORTADOR_PRODUCTOS_MHD.md): tandas de productos que procesa el trabajador en
 // producción. GET sin parámetros: las tandas con su avance y el estado del trabajador. GET ?job=<id>: el avance, el
 // tiempo medio de cada paso, los productos y el registro (filtros: level, step, codigo; `since` = id del último hecho
 // recibido, para ir añadiendo). POST { action: "crear", title, families | codes | bench, workers, concurrency, skipDone, upload }
 // encola una tanda (y pide a Supabase las fichas de MHD que falten); { action: "pausar" | "reanudar" | "cancelar" |
-// "reintentar", job } la gobierna; { action: "espejo" } refresca el espejo de la tienda de Shopify.
+// "reintentar", job } la gobierna.
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,8 +26,7 @@ export async function GET(request: Request) {
       ]);
       if (error) throw error;
       if (workerError) throw workerError;
-      const { data: mirror } = await session.db.from("shopify_mirror_runs").select("status,started_at,finished_at,products,variants,collections,error").order("started_at", { ascending: false }).limit(1).maybeSingle();
-      return Response.json({ jobs, workers: worker, mirror });
+      return Response.json({ jobs, workers: worker });
     }
     let events = session.db.from("mhd_importer_events").select("id,item_id,codigo,level,step,message,duration_ms,data,created_at").eq("job_id", job).order("id", { ascending: false }).limit(EVENTS_PAGE);
     if (params.get("since")) events = events.gt("id", Number(params.get("since")));
@@ -55,13 +52,6 @@ export async function POST(request: Request) {
   if (!session) return Response.json({ error: "Necesitas iniciar sesión." }, { status: 401 });
   const body = await request.json().catch(() => ({})) as { action?: string; job?: string; title?: string; families?: string[]; codes?: string[]; bench?: boolean; workers?: number; concurrency?: number; skipDone?: boolean; upload?: boolean | "nuevos" | "solo" };
   try {
-    if (body.action === "espejo") {
-      // Se refresca después de contestar: tarda de segundos a pocos minutos.
-      const { workerClient } = await import("@/lib/mhd-importer/jobs");
-      const db = workerClient(process.env);
-      after(async () => { await refreshShopifyMirror(db, sourcesConfig().shopify).catch((caught: Error) => console.error(JSON.stringify({ shopifyMirror: "error", error: caught.message }))); });
-      return Response.json({ ok: true });
-    }
     if (body.action === "crear") {
       // Productos de la tanda: los del banco, una lista de códigos o los de unas familias (presentes en MHD).
       let codes: { codigo: string; family_code: string | null }[] = []; let unknown: string[] = [];

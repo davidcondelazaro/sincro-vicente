@@ -146,7 +146,7 @@ Medido en producción con el banco de 41: 41 s por producto y 2,2 productos por 
   - Cada trabajador ocupa un puesto (`mhd_importer_worker_slots`) y, si quedan puestos y trabajo, arranca otro.
   - En cuanto termina un producto coge el siguiente, sin esperar al más lento.
   - Los productos se reservan por familias, para aprovechar la caché de la redacción.
-- **Cero consultas a Shopify al procesar:** todo sale del espejo de la tienda; ver [ESPEJO_TIENDA_SHOPIFY.md](ESPEJO_TIENDA_SHOPIFY.md).
+- **Consultas a Shopify al procesar:** solo lo puntual (si el producto ya existe por EAN y si la dirección está libre), una consulta ligera cada una; ver [IDENTIFICADORES_SHOPIFY.md](IDENTIFICADORES_SHOPIFY.md). Hasta el 2026-10-29 salía del espejo de la tienda.
 - **Fotos antes de redactar:**
   - Las fotos se revisan con el título de MHD. Si ninguna vale, el producto se descarta sin pagar la redacción.
   - Las fotos descartadas salen en el registro con su motivo.

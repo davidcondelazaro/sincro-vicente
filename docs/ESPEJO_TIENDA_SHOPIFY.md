@@ -1,4 +1,6 @@
-# Espejo de la tienda de Shopify
+# Espejo de la tienda de Shopify (retirado)
+
+> **Retirado el 2026-10-29.** Lo sustituyen los identificadores de cada extremo: ver [IDENTIFICADORES_SHOPIFY.md](IDENTIFICADORES_SHOPIFY.md). El código se quitó (`src/lib/shopify-mirror.ts`, el refresco del trabajador y el botón «Actualizar espejo»); las tablas siguen en la base sin uso hasta que David diga si se borran. Lo de abajo queda como historia.
 
 Decidido por David el 2026-10-26: las sincronizaciones e importaciones no preguntan a Shopify producto a producto. Leen una copia local de la tienda en Supabase y solo escriben en Shopify cuando suben algo.
 

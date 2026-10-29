@@ -62,12 +62,11 @@ function duration(job: Job, now: number) {
 
 export function ProcessesView() {
   const [jobs, setJobs] = useState<Job[]>([]); const [workers, setWorkers] = useState<{ slot: number; lease_until: string | null; heartbeat_at: string | null }[]>([]);
-  const [mirror, setMirror] = useState<{ status: string; started_at: string; finished_at: string | null; products: number | null; variants: number | null; collections: number | null; error: string | null } | null>(null);
   const [error, setError] = useState<string | null>(null); const [selected, setSelected] = useState<string | null>(null); const [creating, setCreating] = useState(false);
   const [version, setVersion] = useState(0); const [now, setNow] = useState(0);
   useEffect(() => {
     let alive = true;
-    const load = () => api<{ jobs: Job[]; workers: typeof workers; mirror: typeof mirror }>("/api/importador-productos/trabajos").then((body) => { if (!alive) return; setNow(Date.now()); setJobs(body.jobs); setWorkers(body.workers); setMirror(body.mirror); setError(null); setSelected((current) => current ?? body.jobs[0]?.id ?? null); }).catch((caught: Error) => alive && setError(caught.message));
+    const load = () => api<{ jobs: Job[]; workers: typeof workers }>("/api/importador-productos/trabajos").then((body) => { if (!alive) return; setNow(Date.now()); setJobs(body.jobs); setWorkers(body.workers); setError(null); setSelected((current) => current ?? body.jobs[0]?.id ?? null); }).catch((caught: Error) => alive && setError(caught.message));
     load(); const timer = setInterval(load, POLL_MS);
     return () => { alive = false; clearInterval(timer); };
   }, [version]);
@@ -84,8 +83,6 @@ export function ProcessesView() {
     {error && <p className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p>}
     <div className="flex flex-wrap items-center gap-3">
       <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm ${working ? "bg-sky-100 text-sky-800" : "bg-zinc-100 text-zinc-600"}`}><span className={`h-2 w-2 rounded-full ${working ? "animate-pulse bg-sky-600" : "bg-zinc-400"}`} />{working ? `${active.length} trabajador${active.length > 1 ? "es" : ""} procesando` : "Trabajadores en espera"}{lastBeat ? ` · última señal ${ago(lastBeat, now)}` : ""}</span>
-      <span className="text-sm text-zinc-600">Espejo de la tienda: {!mirror ? "sin hacer" : mirror.status === "running" ? `actualizándose (desde ${ago(mirror.started_at, now)})` : mirror.status === "error" ? <span className="text-red-700">falló ({mirror.error})</span> : `${integer.format(mirror.products ?? 0)} productos · ${ago(mirror.finished_at, now)}`}</span>
-      <button type="button" onClick={() => act("espejo", "")} className="h-10 rounded-lg border border-zinc-300 px-4 text-sm font-medium text-zinc-700">Actualizar espejo</button>
       <button type="button" onClick={() => setCreating(!creating)} className="h-10 rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white">{creating ? "Cerrar" : "Nueva tanda"}</button>
     </div>
     {creating && <NewJob onCreated={(id) => { setCreating(false); setSelected(id); setVersion((current) => current + 1); }} />}

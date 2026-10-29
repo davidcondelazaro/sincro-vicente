@@ -170,8 +170,8 @@ export async function processJobItem(deps: { db: SupabaseClient; config: Sources
 
 // Un turno del trabajador (2026-10-26): coge un puesto libre (hasta `workers` a la vez) y procesa en cola continua:
 // en cuanto termina un producto coge otro, sin esperar al más lento, hasta `concurrency` a la vez. Si quedan puestos
-// libres y trabajo, llama a `spawn` para que arranque otro trabajador. El primero refresca antes el espejo de la tienda
-// si tiene más de 6 horas. Devuelve si queda trabajo, para que la ruta se vuelva a llamar.
+// libres y trabajo, llama a `spawn` para que arranque otro trabajador. Devuelve si queda trabajo, para que la ruta se
+// vuelva a llamar.
 export async function runWorkerTurn(env: Env, config: SourcesConfig, spawn: () => void = () => undefined) {
   const db = workerClient(env);
   const { data: jobs } = await db.from("mhd_importer_jobs").select("options").in("status", ["en_cola", "en_curso"]).order("created_at").limit(1);
