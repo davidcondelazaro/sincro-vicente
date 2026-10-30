@@ -108,7 +108,7 @@ Un aviso por incidencia, con `idempotencyKey`, para no repetirlo en cada vuelta:
 
 ## Pantalla
 
-En Tienda, junto a Productos con garantía (`/tienda/garantias`):
+En Tienda, «Contratos Garantía3». «Productos con garantía» (`/tienda/garantias`) está en Integración MHD:
 
 - Ajustes y prueba de conexión (`?comprobar=1` del proxy).
 - Listado filtrable por estado, con enlace al pedido.
