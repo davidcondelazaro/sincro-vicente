@@ -44,7 +44,7 @@ En `store_settings`, editables desde la pantalla de Garantía3:
 
 En **test** se hace todo el recorrido con una respuesta simulada y las filas quedan marcadas como prueba. Las filas de prueba no cuentan como contrato: al pasar a producción se procesan de nuevo. Si Garantía3 da un entorno de pruebas, se valora usarlo.
 
-«Enviar pedido de prueba» (solo en test) crea un pedido con datos inventados (`#PRUEBA-…`, `cliente.prueba@example.com`), sin Shopify ni clientes, y hace la parte final del recorrido con respuesta simulada. Estas filas se borran al pasar a producción: nunca se piden de verdad.
+«Enviar pedido de prueba» (solo en test) crea un pedido con datos inventados (`#PRUEBA-…`, `cliente.prueba@example.com`), sin Shopify ni clientes. Con `GARANTIA3_TOKEN_TEST` lo manda al entorno de pruebas de Garantía3; sin él, la respuesta es simulada. Los pedidos reales nunca van al entorno de pruebas. Estas filas se borran al pasar a producción: nunca se piden de verdad.
 
 ## Datos
 
@@ -61,7 +61,7 @@ Estados: `espera`, `lista`, `enviando`, `creado`, `error`, `dudoso`, `bloqueado`
 
 ## Llamada a Garantía3
 
-Por el proxy `pladisel/proxy-garantia3.php`, que sale por la IP autorizada `93.189.94.124` y guarda el token de Garantía3. Vercel solo conoce `GARANTIA3_PROXY_URL` y `GARANTIA3_PROXY_TOKEN`.
+Por el proxy `pladisel/proxy-garantia3.php`, que sale por la IP autorizada `93.189.94.124`. Las claves viven en Vercel (`GARANTIA3_PROXY_URL`, `GARANTIA3_PROXY_TOKEN`, `GARANTIA3_TOKEN` y `GARANTIA3_TOKEN_TEST`): utils manda el entorno y su token en cada petición y el proxy no los guarda. El proxy solo conoce las dos direcciones de Garantía3 (`webshop.bcwm.es` y `testwebshop.bcwm.es`, la de pruebas que aparece en su documentación). En el servidor solo queda `PROXY_TOKEN`.
 
 Se envía `ean13`, `name`, `lastname`, `email`, `phone` y `note` con el número de pedido. Respuesta real en los 353 contratos: `{"data":[{"transaction":"…","pin":"…"}],"code":200,"message":"OK"}`. Solo se considera creado si hay `data[0].transaction` y `message` es `OK`. Una respuesta 200 sin esos datos es dudosa.
 

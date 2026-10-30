@@ -50,8 +50,8 @@ export default function ContratosGarantia3Page() {
     const body = await post("vuelta");
     if (body) setNotice(`Vuelta terminada: ${body.nuevas} nuevas, ${body.creadas} creadas, ${body.bloqueadas} bloqueadas, ${body.dudosas} dudosas, ${body.errores} con error.${body.fallos.length ? ` Fallos: ${body.fallos.join(" · ")}` : ""}`);
   }
-  async function prueba() { const body = await post("prueba"); if (body) setNotice(`Pedido de prueba ${body.pedido}: ${ESTADOS[body.estado] ?? body.estado}, contrato simulado ${body.contrato}.`); }
-  async function comprobar() { const body = await post("comprobar"); if (body) setNotice(body.correcto ? "Conexión correcta: token e IP autorizados." : `Garantía3 respondió ${body.garantia3}: revisa token e IP.`); }
+  async function prueba() { const body = await post("prueba"); if (body) setNotice(`Pedido de prueba ${body.pedido}${body.real ? " (entorno de pruebas de Garantía3)" : " (simulado)"}: ${ESTADOS[body.estado] ?? body.estado}${body.contrato ? `, contrato ${body.contrato}` : ""}${body.motivo ? `. ${body.motivo}` : ""}.`); }
+  async function comprobar() { const body = await post("comprobar"); if (body) setNotice((body.entornos as { entorno: string; configurado: boolean; correcto?: boolean; garantia3?: number | null; error?: string | null }[]).map((item) => `${item.entorno === "test" ? "Pruebas" : "Producción"}: ${!item.configurado ? "sin token" : item.correcto ? "correcto" : `revisar (${item.error ?? `respuesta ${item.garantia3 ?? "ninguna"}`})`}`).join(" · ")); }
   async function pedirYa(fila: Contrato) { if (window.confirm(`¿Pedir ya el contrato de ${fila.shopify_order_name}, sin esperar los días?`)) await post("pedir_ya", { id: fila.id }, fila.id); }
   async function resolverDudoso(fila: Contrato) {
     const contrato = window.prompt("Mira el contrato en el portal. Si se creó, pega aquí su número. Déjalo vacío si no se creó: se volverá a pedir.");

@@ -53,10 +53,11 @@ async function pedidoVivo(env: Env, id: string) {
   return data.order;
 }
 
-async function llamarProxy(env: Env, fila: Contrato) {
-  if (!env.GARANTIA3_PROXY_URL || !env.GARANTIA3_PROXY_TOKEN) return { status: 503, cuerpo: { proxy: "no_enviado" } as unknown, texto: "Faltan GARANTIA3_PROXY_URL o GARANTIA3_PROXY_TOKEN" };
+async function llamarProxy(env: Env, fila: Pick<Contrato, "ean13" | "nombre" | "apellidos" | "email" | "telefono" | "shopify_order_name">, entorno: "produccion" | "test" = "produccion") {
+  const token = entorno === "test" ? env.GARANTIA3_TOKEN_TEST : env.GARANTIA3_TOKEN;
+  if (!env.GARANTIA3_PROXY_URL || !env.GARANTIA3_PROXY_TOKEN || !token) return { status: 503, cuerpo: { proxy: "no_enviado" } as unknown, texto: `Faltan GARANTIA3_PROXY_URL, GARANTIA3_PROXY_TOKEN o el token de ${entorno}` };
   try {
-    const response = await fetch(env.GARANTIA3_PROXY_URL, { method: "POST", headers: { "Content-Type": "application/json", "X-Proxy-Token": env.GARANTIA3_PROXY_TOKEN }, cache: "no-store", signal: AbortSignal.timeout(45_000), body: JSON.stringify({ ean13: fila.ean13, name: fila.nombre, lastname: fila.apellidos, email: fila.email, phone: fila.telefono, note: fila.shopify_order_name }) });
+    const response = await fetch(env.GARANTIA3_PROXY_URL, { method: "POST", headers: { "Content-Type": "application/json", "X-Proxy-Token": env.GARANTIA3_PROXY_TOKEN }, cache: "no-store", signal: AbortSignal.timeout(45_000), body: JSON.stringify({ entorno, token, ean13: fila.ean13, name: fila.nombre, lastname: fila.apellidos, email: fila.email, phone: fila.telefono, note: fila.shopify_order_name }) });
     const texto = await response.text();
     let cuerpo: unknown = null;
     try { cuerpo = JSON.parse(texto); } catch { /* Sin JSON: queda dudoso */ }
@@ -169,17 +170,20 @@ async function resumenDelDia(db: SupabaseClient, ajustes: Ajustes, cuenta: Recor
 }
 
 // Recorrido con datos inventados, sin Shopify ni clientes. Solo en modo test y sin llamar a Garantía3.
-export async function enviarPedidoDePrueba(db: SupabaseClient) {
+// Con GARANTIA3_TOKEN_TEST va al entorno de pruebas de Garantía3 con los datos inventados; sin él, respuesta simulada.
+// Los pedidos reales nunca pasan por aquí: en modo test la vuelta sigue sin llamar a Garantía3.
+export async function enviarPedidoDePrueba(db: SupabaseClient, env: Env) {
   const ajustes = await leerAjustes(db);
   if (ajustes.modo !== "test") throw new Error("El pedido de prueba solo se puede enviar en modo test.");
   const fila = pedidoDePrueba(Date.now());
   const { data, error } = await db.from("garantia3_contratos").insert(fila).select("id").single();
   if (error) throw error;
-  const cuerpo = respuestaSimulada(fila);
-  const resultado = interpretarRespuesta(200, cuerpo);
-  await db.from("garantia3_intentos").insert({ contrato_id: data.id, modo: "test", http_status: 200, resultado: resultado.estado, respuesta: "Simulado: pedido de prueba" });
+  const real = Boolean(env.GARANTIA3_TOKEN_TEST);
+  const llamada = real ? await llamarProxy(env, fila, "test") : { status: 200, cuerpo: respuestaSimulada(fila) as unknown, texto: "Simulado: pedido de prueba" };
+  const resultado = interpretarRespuesta(llamada.status, llamada.cuerpo);
+  await db.from("garantia3_intentos").insert({ contrato_id: data.id, modo: "test", http_status: llamada.status, resultado: resultado.estado, respuesta: llamada.texto.slice(0, 2000) });
   await db.from("garantia3_contratos").update({ estado: resultado.estado, contrato: resultado.contrato ?? null, pin: resultado.pin ?? null, motivo: resultado.motivo ?? null, fecha_alta: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", data.id);
-  return { pedido: fila.shopify_order_name, estado: resultado.estado, contrato: resultado.contrato ?? null };
+  return { pedido: fila.shopify_order_name, estado: resultado.estado, contrato: resultado.contrato ?? null, motivo: resultado.motivo ?? null, real };
 }
 
 export async function vueltaGarantia3(db: SupabaseClient, env: Env, origen: string, ownerId?: string) {

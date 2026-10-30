@@ -32,7 +32,7 @@ export async function GET(request: Request) {
   if (error) return Response.json({ error: error.message }, { status: 500 });
   if (new URL(request.url).searchParams.get("csv") === "1") return new Response(csvContratos(data ?? []), { headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": "attachment; filename=\"contratos-garantia3.csv\"" } });
   const [ajustes, vuelta] = await Promise.all([leerAjustes(auth.db), auth.db.from("garantia3_vueltas").select("origen,modo,inicio,fin,resumen").order("inicio", { ascending: false }).limit(1).maybeSingle()]);
-  return Response.json({ ajustes, contratos: data ?? [], vuelta: vuelta.data, proxyConfigurado: Boolean(process.env.GARANTIA3_PROXY_URL && process.env.GARANTIA3_PROXY_TOKEN) });
+  return Response.json({ ajustes, contratos: data ?? [], vuelta: vuelta.data, proxyConfigurado: Boolean(process.env.GARANTIA3_PROXY_URL && process.env.GARANTIA3_PROXY_TOKEN && (process.env.GARANTIA3_TOKEN || process.env.GARANTIA3_TOKEN_TEST)) });
 }
 
 export async function POST(request: Request) {
@@ -55,17 +55,23 @@ export async function POST(request: Request) {
       return error ? Response.json({ error: error.message }, { status: 500 }) : Response.json({ ok: true });
     }
     case "comprobar": {
-      if (!process.env.GARANTIA3_PROXY_URL || !process.env.GARANTIA3_PROXY_TOKEN) return Response.json({ error: "Faltan GARANTIA3_PROXY_URL y GARANTIA3_PROXY_TOKEN." }, { status: 422 });
-      try {
-        const response = await fetch(`${process.env.GARANTIA3_PROXY_URL}?comprobar=1`, { headers: { "X-Proxy-Token": process.env.GARANTIA3_PROXY_TOKEN }, cache: "no-store", signal: AbortSignal.timeout(40_000) });
-        return Response.json(await response.json(), { status: response.ok ? 200 : 502 });
-      } catch (caught) {
-        return Response.json({ error: caught instanceof Error ? caught.message : "No responde el proxy." }, { status: 502 });
-      }
+      const { GARANTIA3_PROXY_URL: url, GARANTIA3_PROXY_TOKEN: proxy, GARANTIA3_TOKEN: produccion, GARANTIA3_TOKEN_TEST: test } = process.env;
+      if (!url || !proxy || (!produccion && !test)) return Response.json({ error: "Faltan GARANTIA3_PROXY_URL, GARANTIA3_PROXY_TOKEN y algún token de Garantía3." }, { status: 422 });
+      const probar = async (entorno: string, token: string | undefined) => {
+        if (!token) return { entorno, configurado: false };
+        try {
+          const response = await fetch(`${url}?comprobar=1`, { method: "POST", headers: { "Content-Type": "application/json", "X-Proxy-Token": proxy }, body: JSON.stringify({ entorno, token }), cache: "no-store", signal: AbortSignal.timeout(40_000) });
+          const body = await response.json() as { garantia3?: number; correcto?: boolean; error?: string };
+          return { entorno, configurado: true, correcto: body.correcto === true, garantia3: body.garantia3 ?? null, error: body.error ?? null };
+        } catch (caught) {
+          return { entorno, configurado: true, correcto: false, garantia3: null, error: caught instanceof Error ? caught.message : "No responde el proxy." };
+        }
+      };
+      return Response.json({ entornos: await Promise.all([probar("produccion", produccion), probar("test", test)]) });
     }
     case "vuelta": return Response.json(await vueltaGarantia3(auth.db, process.env, "manual", auth.userId));
     case "prueba":
-      try { return Response.json(await enviarPedidoDePrueba(auth.db)); } catch (caught) { return Response.json({ error: caught instanceof Error ? caught.message : "No se pudo enviar la prueba." }, { status: 422 }); }
+      try { return Response.json(await enviarPedidoDePrueba(auth.db, process.env)); } catch (caught) { return Response.json({ error: caught instanceof Error ? caught.message : "No se pudo enviar la prueba." }, { status: 422 }); }
     case "reintentar": return cambiar(["error", "bloqueado"], { estado: "lista", motivo: null, ultimo_aviso: null });
     case "pedir_ya": return cambiar(["espera"], { estado: "lista" });
     case "dudoso_creado": return body.contrato?.trim() ? cambiar(["dudoso"], { estado: "creado", contrato: body.contrato.trim(), motivo: null, fecha_alta: new Date().toISOString() }) : Response.json({ error: "Falta el número de contrato." }, { status: 422 });
