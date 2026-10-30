@@ -122,6 +122,18 @@ Un producto es alta si viene en el listado de MHD, no existe en Shopify con su c
 - **Desde entonces, en cada vuelta** (`new-products.ts`): las altas se añaden a la tanda abierta «Altas automáticas» (o a una nueva) y se despierta al trabajador; si le falta la ficha de MHD, la pide él. **Freno:** más de `auto_altas_max` (300) en una vuelta → no se encola nada y llega un aviso. Se pausan con `auto_altas` en Configuración.
 - **Tope del importador** (`importer_max_workers` 3 × `importer_max_concurrency` 4, en Configuración): ninguna tanda lo pasa. El 29-10, con la base en Micro, 12 trabajadores × 4 la dejaron sin conexiones 25 minutos; se subió la base a **Small** (David) y con 3 × 4 fue más rápido (12-13 productos por minuto) que con 12 × 4, sin errores.
 
+## Relaciones de Icecat (preparada y apagada, 2026-10-30)
+
+**No está en marcha.** Se hizo una carga puntual el 2026-10-30; David definirá las reglas del proceso antes de activarlo. La tarea `sincro-vicente-relaciones` está apagada y la ruta sin desplegar.
+
+Diseño actual, fuera de la vuelta de 30 minutos: pg_cron llamaría cada día a las 4:45 UTC a `/api/sincronizaciones/relaciones` (`src/lib/mhd-importer/relations-sync.ts`). `mhd_relations_calc` calcula los metacampos de Search & Discovery con las fichas de Icecat guardadas y `mhd_shopify_relations` guarda lo último enviado. Se manda solo lo que cambia, en una operación masiva.
+
+- **Complementarios:** `consumable`, `accessory` y `compatible` invertido (viene del accesorio al aparato), sin monitores y sin fundas o mochilas de otra talla. Prioridad: con stock, luego ese orden, luego XL o negro.
+- **Relacionados:** `alternative` del mismo tipo de producto; en cables, adaptadores, pilas y baterías, además con el mismo conector o formato. Se dejan en `only manual` para que Shopify no los rellene.
+- **Máximo 10 por lista.** Quedan fuera garantías, servicios y tarjeta regalo.
+- **Lo puesto a mano no se pisa:** un metacampo que no está vacío ni coincide con lo último enviado se respeta.
+- **Límites:** los archivados entran mientras sigan en `store_shopify_ids`; los antiguos que nunca estuvieron (137 con EAN) no. Un producto que se queda sin relaciones conserva las suyas. Los televisores no tienen enlaces en Icecat.
+
 ## Pendiente de decidir
 
 - ~~El porcentaje del freno de bajas~~: 15 % (David, 2026-10-31; antes 2 %, que paraba con caídas normales de proveedor: lo máximo visto son unos 2.230, el 9 %), en Configuración.
