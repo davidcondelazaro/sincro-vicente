@@ -137,6 +137,22 @@ David prefiere procesar en producción para no depender de su ordenador, viendo 
 - **Archivos:** las fotos tratadas, etiquetas y vídeos van al almacenamiento de Supabase (cubo privado `importador`, migración `20261026140000`); la tabla `mhd_importer_media` guarda solo la ruta (`media-store.ts`). Antes iban en la tabla (~1,3 MB por producto).
 - **Probado en local (2026-10-26):** 4 productos a la vez, 3 bien en 30-42 s y 1 descartado (sin fotos en MHD ni Icecat). La redacción se lleva el 75 % del tiempo (29 s de media); colocar en la tienda 3,5 s, clasificar fotos 2 s y descargar fotos 1 s. ~0,005 $ por ficha. Con 4 a la vez salen unos 6 productos por minuto.
 
+### Lo ya subido no se reescribe (David, 2026-10-30)
+
+La subida (`createShopifyDraft`) usa `productSet` y reescribe casi toda la ficha: una tanda relanzada por error se llevaría por delante lo arreglado a mano en Shopify. Desde el 30-10 hace falta pedirlo.
+
+| Camino | Con un producto activo o en borrador en Shopify |
+|---|---|
+| Tanda «Solo los nuevos» (por defecto), «solo subir» y altas automáticas | No se toca. Si ya está en `store_shopify_ids`, se descarta antes de la IA (coste 0); si Shopify lo tiene con otro SKU y el mismo EAN, se procesa pero no se sube |
+| Tanda «Reescribir también los ya subidos» (`upload: true`) | Se reescribe, tras un aviso en pantalla. Respeta los bloqueados a mano |
+| Botón de una prueba ya subida | Se reescribe tras el aviso (`overwrite: true`) |
+| Acción `shopify-textos` de la ruta del producto | Solo con `overwrite: true`. No la llama ninguna pantalla |
+
+- **Dónde está:** `ALREADY_UPLOADED` en `shopify-draft.ts` (última barrera, también antes de archivar duplicados por EAN) y `processJobItem` en `jobs.ts` (evita gastar IA).
+- **Archivados:** pasan siempre, porque si MHD los vuelve a traer se reactivan y recuperan su URL (decisión del 27-10; así entraron los 57 de la tienda antigua con otro SKU).
+- **Consecuencia que hay que vigilar:** antes, un alta con el mismo EAN que un producto activo de otro SKU lo refrescaba y le ponía el código de MHD. Ahora no se toca y ese código queda sin enlazar: no recibe precio ni stock de MHD hasta que se decida a mano. Queda apuntado en el registro del producto («Ya estaba en la tienda»).
+- **Pruebas:** `tests/mhd-importer-datos.test.mjs`, «ya subido».
+
 ### Velocidad del procesado (David, 2026-10-26: «nos lo vamos a tomar muy muy en serio»)
 
 Medido en producción con el banco de 41: 41 s por producto y 2,2 productos por minuto. A ese ritmo, las 29.873 fichas procesables serían unos 9 días. Cambios:

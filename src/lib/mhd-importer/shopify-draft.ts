@@ -2,7 +2,7 @@
 // mhd_importer_product_runs). Sube las fotos ya tratadas, la etiqueta energética en PNG y los PDF con su nombre
 // normalizado y los vídeos, y lo crea todo de una vez con `productSet`: textos, SEO, colecciones (tipo, etiquetas, proveedor),
 // categoría, variante, stock por ubicación y metacampos. Nunca publica. Si el producto (mismo código de MHD) ya se creó
-// antes, lo ACTUALIZA en vez de crear otro, conservando su dirección y su estado. Ver docs/IMPORTADOR_PRODUCTOS_MHD.md.
+// antes, lo ACTUALIZA solo si se pide (`overwrite`), conservando su dirección y su estado. Ver docs/IMPORTADOR_PRODUCTOS_MHD.md.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createHash } from "node:crypto";
 import { STORE_RULES, type ProcessedProduct } from "./processor";
@@ -215,7 +215,12 @@ const KEEP_TAGS = new Set(["Oferta", "Novedad"]);
 // Subida de vídeos mp4 a Shopify (ver la parte de vídeos de createShopifyDraft).
 const UPLOAD_VIDEOS = false;
 
-export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: ShopifyConfig; icecat: IcecatConfig; trace?: Trace }, runId: string) {
+// Lo ya subido no se reescribe sin pedirlo (David, 2026-10-30): la subida pisa casi toda la ficha, también lo arreglado a
+// mano en Shopify. `overwrite` solo llega de una tanda «Reescribir» o del aviso del botón de una prueba. Los archivados sí
+// pasan: si MHD los vuelve a traer se reactivan (ver «Vuelta de un archivado» en docs/SINCRONIZACIONES_MHD.md).
+export const ALREADY_UPLOADED = "Ya está en Shopify: no se reescribe para no pisar lo arreglado a mano.";
+
+export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: ShopifyConfig; icecat: IcecatConfig; trace?: Trace; overwrite?: boolean }, runId: string) {
   const t = deps.trace ?? noTrace;
   const { data: run, error } = await deps.db.from("mhd_importer_product_runs").select("id,codigo,status,result,shopify_product_id").eq("id", runId).single();
   if (error) throw error;
@@ -248,6 +253,7 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   if (!existingId && shop.variant.barcode) {
     // Preguntado a Shopify en el momento (desde el 2026-10-29, sin espejo).
     const found = await t.step("Shopify: buscar por EAN", () => storeProductsByEan(deps.shopify, shop.variant.barcode!), (rows) => `${rows.length} con este EAN`);
+    if (found.some((row) => row.status !== "ARCHIVED") && !deps.overwrite) throw new Error(ALREADY_UPLOADED);
     let products = found.map((row) => row.id);
     // Varios con el mismo EAN (duplicados de la tienda antigua; en MHD no se repite ninguno): se refresca uno y los demás
     // se archivan (David, 2026-10-27). Se queda el activo; si no, el borrador; y entre iguales, el más antiguo.
@@ -270,6 +276,7 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   }
   type ExistingVariant = { id: string; price: string; compareAtPrice: string | null; sku: string | null; barcode: string | null; inventoryPolicy: string };
   const existing = existingId ? (await shopifyGraphql<{ product: { id: string; handle: string; status: string; tags: string[]; variants: { nodes: ExistingVariant[] } } | null }>(deps.shopify, `query($id: ID!) { product(id: $id) { id handle status tags variants(first: 2) { nodes { id price compareAtPrice sku barcode inventoryPolicy } } } }`, { id: existingId })).product : null;
+  if (existing && existing.status !== "ARCHIVED" && !deps.overwrite) throw new Error(ALREADY_UPLOADED);
   // Un producto activo (publicado) nunca recibe lo de negocio del importador, lo haya creado él o no.
   if (existing?.status === "ACTIVE") refresh = true;
   if (refresh && existing && existing.variants.nodes.length !== 1) throw new Error("El producto que ya tiene la tienda tiene varias variantes: el refresco solo cubre productos de una variante.");
@@ -435,7 +442,8 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
 // Solo textos (decidido 2026-10-23): rehacer la redacción de un producto que ya está en Shopify sin tocar fotos,
 // etiqueta, documentos, vídeos, filtros ni nada de negocio. Escribe título, SEO, descripción larga, descripción corta
 // y la frase de Elvi (o la borra si esta vez no hay).
-export async function updateShopifyTexts(deps: { db: SupabaseClient; shopify: ShopifyConfig }, runId: string) {
+export async function updateShopifyTexts(deps: { db: SupabaseClient; shopify: ShopifyConfig; overwrite?: boolean }, runId: string) {
+  if (!deps.overwrite) throw new Error(ALREADY_UPLOADED);
   const { data: run, error } = await deps.db.from("mhd_importer_product_runs").select("status,result,codigo").eq("id", runId).single();
   if (error) throw error;
   if (run.status !== "ok" || !run.result) throw new Error("Esta prueba no tiene un producto montado.");

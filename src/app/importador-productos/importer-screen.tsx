@@ -242,9 +242,9 @@ function RunView({ run }: { run: Run }) {
 function ShopifyDraft({ run, onCreated }: { run: Run; onCreated: (id: string) => void }) {
   const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null); const [done, setDone] = useState<{ adminUrl: string; updated: boolean } | null>(null);
   async function sync() {
-    if (!window.confirm("Se creará el producto en Shopify como BORRADOR (no se publica) o, si ya existe, se actualizará con esta prueba (textos, fotos, metacampos, precio y stock). ¿Seguir?")) return;
+    if (!window.confirm(run.shopify_product_id ? "Este producto ya está en Shopify. Se REESCRIBIRÁ con esta prueba (textos, fotos, metacampos, precio y stock) y se perderá lo arreglado a mano. ¿Seguir?" : "Se creará el producto en Shopify. ¿Seguir?")) return;
     setBusy(true); setError(null);
-    try { const response = await fetch("/api/importador-productos/producto", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "shopify", runId: run.id }) }); const body = await response.json(); if (!response.ok) throw new Error(body.error ?? "No se pudo guardar en Shopify."); setDone(body.created); onCreated(body.created.id); }
+    try { const response = await fetch("/api/importador-productos/producto", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "shopify", runId: run.id, overwrite: Boolean(run.shopify_product_id) }) }); const body = await response.json(); if (!response.ok) throw new Error(body.error ?? "No se pudo guardar en Shopify."); setDone(body.created); onCreated(body.created.id); }
     catch (caught) { setError(caught instanceof Error ? caught.message : "No se pudo guardar en Shopify."); } finally { setBusy(false); }
   }
   const productId = run.shopify_product_id?.split("/").pop();

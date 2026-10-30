@@ -32,15 +32,15 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const session = await importerSession();
   if (!session) return Response.json({ error: "Necesitas iniciar sesión." }, { status: 401 });
-  const body = await request.json().catch(() => ({})) as { codigo?: string; action?: string; runId?: string };
+  const body = await request.json().catch(() => ({})) as { codigo?: string; action?: string; runId?: string; overwrite?: boolean };
   if (body.action === "shopify-textos") {
     if (!body.runId) return Response.json({ error: "Falta la prueba." }, { status: 400 });
-    try { return Response.json({ created: await updateShopifyTexts({ db: session.db, shopify: sourcesConfig().shopify }, body.runId) }); }
+    try { return Response.json({ created: await updateShopifyTexts({ db: session.db, shopify: sourcesConfig().shopify, overwrite: body.overwrite === true }, body.runId) }); }
     catch (caught) { return errorResponse(caught, "No se pudieron actualizar los textos en Shopify."); }
   }
   if (body.action === "shopify") {
     if (!body.runId) return Response.json({ error: "Falta la prueba." }, { status: 400 });
-    try { const config = sourcesConfig(); return Response.json({ created: await createShopifyDraft({ db: session.db, shopify: config.shopify, icecat: config.icecat }, body.runId) }); }
+    try { const config = sourcesConfig(); return Response.json({ created: await createShopifyDraft({ db: session.db, shopify: config.shopify, icecat: config.icecat, overwrite: body.overwrite === true }, body.runId) }); }
     catch (caught) { return errorResponse(caught, "No se pudo crear el borrador en Shopify."); }
   }
   const codigo = body.codigo?.trim();

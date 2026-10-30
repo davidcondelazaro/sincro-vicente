@@ -7,7 +7,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { anthropicKey, ELVI_MODELS, PROCESSOR_MODEL } from "./ai";
 import type { SourcesConfig } from "./gather";
 import { pruneOlderRunMedia, saveRunMedia } from "./media-store";
-import { createShopifyDraft } from "./shopify-draft";
+import { ALREADY_UPLOADED, createShopifyDraft } from "./shopify-draft";
 import { processProduct } from "./processor";
 import { createTrace, type TraceEvent } from "./trace";
 import { warningKind } from "./warning-kinds";
@@ -74,6 +74,16 @@ export async function processJobItem(deps: { db: SupabaseClient; config: Sources
       await deps.db.from("mhd_importer_job_items").update({ status: "descartado", finished_at: new Date().toISOString(), duration_ms: Date.now() - started, cost_usd: 0, error: locked, lease_until: null, step: null }).eq("id", item.id);
       return;
     }
+    // Ya subido: solo una tanda «Reescribir» (upload: true) lo vuelve a tocar. Se corta aquí para no gastar IA en una
+    // ficha que no se va a subir.
+    if (deps.upload && deps.upload !== true) {
+      const { data: uploaded, error: uploadedError } = await deps.db.from("store_shopify_ids").select("codigo").eq("codigo", item.codigo).neq("status", "ARCHIVED").maybeSingle();
+      if (uploadedError) throw uploadedError;
+      if (uploaded) {
+        await deps.db.from("mhd_importer_job_items").update({ status: "descartado", finished_at: new Date().toISOString(), duration_ms: Date.now() - started, cost_usd: 0, error: ALREADY_UPLOADED, lease_until: null, step: null }).eq("id", item.id);
+        return;
+      }
+    }
     // Tanda «solo subir» (2026-10-27): la última prueba correcta del producto se sube a Shopify sin volver a procesarla
     // (sin IA). Es la subida masiva, y sirve para medir cuánto tarda cada producto y cuánto paralelismo aguanta Shopify.
     if (deps.upload === "solo") {
@@ -122,19 +132,16 @@ export async function processJobItem(deps: { db: SupabaseClient; config: Sources
     // Tandas con «Subir a Shopify» (2026-10-26): el producto se sube en borrador al momento, con el tiempo de cada parte.
     // Si la subida falla, el producto queda procesado y el error en el registro y en su detalle.
     let uploadError: string | null = null;
-    // «nuevos»: no se tocan los productos que la tienda ya tenía antes del importador (por EAN, preguntado a Shopify); los
-    // que creó el importador (alguna prueba con ese identificador de Shopify) sí se actualizan (David, 2026-10-26).
+    // «nuevos»: tampoco se tocan los que la tienda ya tiene con ese EAN (preguntado a Shopify), los creara o no el importador;
+    // los archivados sí, porque se reactivan.
     let inStore: { product_id: string } | null = null;
     if (deps.upload === "nuevos" && result.status === "ok" && result.product.ean) {
-      const found = (await storeProductsByEan(deps.config.shopify, result.product.ean))[0];
-      if (found) {
-        const { count } = await deps.db.from("mhd_importer_product_runs").select("id", { count: "exact", head: true }).eq("shopify_product_id", found.id);
-        if (!count) inStore = { product_id: found.id };
-      }
+      const found = (await storeProductsByEan(deps.config.shopify, result.product.ean)).find((row) => row.status !== "ARCHIVED");
+      if (found) inStore = { product_id: found.id };
     }
-    if (inStore) log.add({ level: "decision", step: "Subir a Shopify", message: `Ya estaba en la tienda antes del importador (${inStore.product_id}): no se toca, la tanda solo sube los nuevos.` });
+    if (inStore) log.add({ level: "decision", step: "Subir a Shopify", message: `Ya estaba en la tienda (${inStore.product_id}): no se toca, la tanda solo sube los nuevos.` });
     if (deps.upload && result.status === "ok" && !inStore) {
-      await log.trace.step("Subir a Shopify", () => createShopifyDraft({ db: deps.db, shopify: deps.config.shopify, icecat: deps.config.icecat, trace: log.trace }, saved.id), (draft) => `${draft.updated ? "Actualizado" : "Creado"} en ${draft.status === "DRAFT" ? "borrador" : draft.status} · ${draft.files.photos} fotos`)
+      await log.trace.step("Subir a Shopify", () => createShopifyDraft({ db: deps.db, shopify: deps.config.shopify, icecat: deps.config.icecat, trace: log.trace, overwrite: deps.upload === true }, saved.id), (draft) => `${draft.updated ? "Actualizado" : "Creado"} en ${draft.status === "DRAFT" ? "borrador" : draft.status} · ${draft.files.photos} fotos`)
         .catch((caught: Error) => { uploadError = `Procesado, pero no se subió a Shopify: ${caught.message}`; });
     }
     const duration = Date.now() - started;

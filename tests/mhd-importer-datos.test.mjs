@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url);
+const jiti = createJiti(import.meta.url, { alias: { "@": new URL("../src", import.meta.url).pathname } });
 const { resolveModel } = await jiti.import("../src/lib/mhd-importer/models.ts");
 const { fixBrandText, resolveBrand, writtenBrand } = await jiti.import("../src/lib/mhd-importer/brands.ts");
 const { buildFactSheet, numbersIn, unsupportedNumbers, relativeDifference, sourceDisagreements } = await jiti.import("../src/lib/mhd-importer/facts.ts");
@@ -365,4 +365,68 @@ test("Elvi: una frase limpia pasa al revisor a la primera", async () => {
   assert.equal(result.tip.text, "Si cocinas a menudo, este horno te da 70 l.");
   assert.equal(result.attempts, 1);
   assert.equal(result.calls.reviews, 1);
+});
+
+// Lo ya subido no se reescribe sin pedirlo (2026-10-30). Base falsa: cada tabla responde con `rows[tabla]`, y se apunta
+// qué tablas se leen y qué se actualiza.
+const { processJobItem } = await jiti.import("../src/lib/mhd-importer/jobs.ts");
+const { ALREADY_UPLOADED } = await jiti.import("../src/lib/mhd-importer/shopify-draft.ts");
+
+function fakeJobDb(rows = {}) {
+  const calls = { tables: [], updates: [], filters: [] };
+  const db = {
+    rpc: async () => ({ data: null, error: null }),
+    from(table) {
+      calls.tables.push(table);
+      const result = () => ({ data: rows[table] ?? null, error: null });
+      const chain = new Proxy({}, {
+        get(_, name) {
+          if (name === "then") return (resolve) => resolve(result());
+          if (name === "update") return (values) => { calls.updates.push({ table, values }); return chain; };
+          if (name === "maybeSingle" || name === "single") return async () => result();
+          return (...args) => { calls.filters.push([table, name, ...args]); return chain; };
+        },
+      });
+      return chain;
+    },
+  };
+  return { db, calls };
+}
+const noAi = new Proxy({}, { get() { throw new Error("No debía llamar a la IA."); } });
+const jobItem = { id: "item", job_id: "job", codigo: "10000001", family_code: "F" };
+const itemUpdates = (calls) => calls.updates.filter((row) => row.table === "mhd_importer_job_items").map((row) => row.values);
+
+test("ya subido: una tanda de nuevos lo descarta sin gastar IA", async () => {
+  const { db, calls } = fakeJobDb({ store_shopify_ids: { codigo: jobItem.codigo } });
+  await processJobItem({ db, config: {}, ai: noAi, upload: "nuevos" }, jobItem);
+  const last = itemUpdates(calls).at(-1);
+  assert.equal(last.status, "descartado");
+  assert.equal(last.error, ALREADY_UPLOADED);
+  assert.equal(last.cost_usd, 0);
+  assert.ok(!calls.tables.includes("mhd_importer_product_runs"));
+});
+
+test("ya subido: la tanda «solo subir» tampoco lo reescribe", async () => {
+  const { db, calls } = fakeJobDb({ store_shopify_ids: { codigo: jobItem.codigo } });
+  await processJobItem({ db, config: {}, ai: noAi, upload: "solo" }, jobItem);
+  assert.equal(itemUpdates(calls).at(-1).error, ALREADY_UPLOADED);
+});
+
+test("ya subido: los archivados no cuentan, porque se reactivan", async () => {
+  const { db, calls } = fakeJobDb();
+  await processJobItem({ db, config: {}, ai: noAi, upload: "solo" }, jobItem);
+  assert.ok(calls.filters.some(([table, name, column, value]) => table === "store_shopify_ids" && name === "neq" && column === "status" && value === "ARCHIVED"));
+  assert.notEqual(itemUpdates(calls).at(-1)?.error, ALREADY_UPLOADED);
+});
+
+test("ya subido: «Reescribir» no pasa por el bloqueo", async () => {
+  const { db, calls } = fakeJobDb({ store_shopify_ids: { codigo: jobItem.codigo } });
+  await processJobItem({ db, config: {}, ai: noAi, upload: true }, jobItem).catch(() => {});
+  assert.ok(!calls.tables.includes("store_shopify_ids"));
+});
+
+test("ya subido: bloqueado a mano sigue mandando sobre todo", async () => {
+  const { db, calls } = fakeJobDb({ store_product_locks: { reason: "arreglado" }, store_shopify_ids: { codigo: jobItem.codigo } });
+  await processJobItem({ db, config: {}, ai: noAi, upload: true }, jobItem);
+  assert.match(itemUpdates(calls).at(-1).error, /bloqueado a mano/);
 });

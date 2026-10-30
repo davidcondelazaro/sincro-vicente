@@ -35,7 +35,7 @@ export async function queueNewProducts(deps: { db: SupabaseClient }, options: { 
   let jobId = open?.id as string | undefined;
   if (!jobId) {
     const when = new Date().toLocaleString("es-ES", { timeZone: "Europe/Madrid", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-    const { data: created, error } = await db.from("mhd_importer_jobs").insert({ title: `Altas automáticas (desde el ${when})`, created_by: "vuelta automática", status: "en_cola", options: { auto: "altas", upload: true, workers: 3, concurrency: 4, skipDone: false } }).select("id").single();
+    const { data: created, error } = await db.from("mhd_importer_jobs").insert({ title: `Altas automáticas (desde el ${when})`, created_by: "vuelta automática", status: "en_cola", options: { auto: "altas", upload: "nuevos", workers: 3, concurrency: 4, skipDone: false } }).select("id").single();
     if (error) throw error;
     jobId = created.id as string;
   } else {

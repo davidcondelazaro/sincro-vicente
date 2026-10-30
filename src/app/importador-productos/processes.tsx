@@ -186,7 +186,7 @@ function JobDetail({ jobId, now }: { jobId: string; now: number }) {
 
 function NewJob({ onCreated }: { onCreated: (id: string) => void }) {
   const [mode, setMode] = useState<"familias" | "codigos">("codigos"); const [tree, setTree] = useState<TreeLine[]>([]); const [chosen, setChosen] = useState<string[]>([]);
-  const [codes, setCodes] = useState(""); const [title, setTitle] = useState(""); const [concurrency, setConcurrency] = useState(6); const [workerCount, setWorkerCount] = useState(2); const [upload, setUpload] = useState<"no" | "nuevos" | "todos">("todos"); const [skipDone, setSkipDone] = useState(false);
+  const [codes, setCodes] = useState(""); const [title, setTitle] = useState(""); const [concurrency, setConcurrency] = useState(6); const [workerCount, setWorkerCount] = useState(2); const [upload, setUpload] = useState<"no" | "nuevos" | "todos">("nuevos"); const [skipDone, setSkipDone] = useState(false);
   const [search, setSearch] = useState(""); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null);
   // El árbol solo hace falta para elegir familias enteras (consulta pesada): se pide al elegir ese modo.
   useEffect(() => { if (mode !== "familias" || tree.length) return; api<{ tree: TreeLine[] }>("/api/importador-productos/familias").then((body) => setTree(body.tree ?? []), (caught: Error) => setError(caught.message)); }, [mode, tree.length]);
@@ -195,6 +195,7 @@ function NewJob({ onCreated }: { onCreated: (id: string) => void }) {
   const visible = families.filter((family) => !term || `${family.code} ${family.name} ${family.line}`.toLowerCase().includes(term));
   const total = families.filter((family) => chosen.includes(family.code)).reduce((sum, family) => sum + family.products, 0);
   async function create() {
+    if (upload === "todos" && !window.confirm("Esta tanda REESCRIBIRÁ las fichas ya subidas y se perderá lo arreglado a mano en Shopify. ¿Seguir?")) return;
     setBusy(true); setError(null);
     try {
       const body = await post({ action: "crear", title, workers: workerCount, concurrency, skipDone, upload: upload === "nuevos" ? "nuevos" : upload === "todos", ...(mode === "codigos" ? { codes: codes.split(/[\s,;]+/) } : { families: chosen }) });
@@ -216,7 +217,7 @@ function NewJob({ onCreated }: { onCreated: (id: string) => void }) {
       <label className="text-sm font-medium text-zinc-700">Productos por trabajador<select value={concurrency} onChange={(event) => setConcurrency(Number(event.target.value))} className="mt-1 block h-10 rounded-lg border border-zinc-300 bg-white px-2 text-sm">{[1, 2, 4, 6, 8, 10, 12].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
       <span className="self-center text-xs text-zinc-500">{workerCount * concurrency} a la vez</span>
       <label className="flex h-10 items-center gap-2 text-sm text-zinc-700"><input type="checkbox" checked={skipDone} onChange={(event) => setSkipDone(event.target.checked)} />Solo los que faltan</label>
-      <label className="text-sm font-medium text-zinc-700">Subir a Shopify<select value={upload} onChange={(event) => setUpload(event.target.value as typeof upload)} className="mt-1 block h-10 rounded-lg border border-zinc-300 bg-white px-2 text-sm"><option value="no">No</option><option value="nuevos">Solo los nuevos (borrador)</option><option value="todos">Todos (refresca los que ya están)</option></select></label>
+      <label className="text-sm font-medium text-zinc-700">Subir a Shopify<select value={upload} onChange={(event) => setUpload(event.target.value as typeof upload)} className="mt-1 block h-10 rounded-lg border border-zinc-300 bg-white px-2 text-sm"><option value="no">No</option><option value="nuevos">Solo los nuevos</option><option value="todos">Reescribir también los ya subidos (pisa los arreglos)</option></select></label>
       <button type="button" disabled={busy || (mode === "familias" && !chosen.length) || (mode === "codigos" && !codes.trim())} onClick={create} className="h-10 rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white disabled:opacity-50">{busy ? "Creando…" : "Encolar y empezar"}</button>
     </div>
     {error && <p className="text-sm text-red-700">{error}</p>}
