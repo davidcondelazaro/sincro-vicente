@@ -12,18 +12,18 @@ type NavEntry = { section: Section; href: string; label: string; icon: IconName 
 // despliega; el del apartado activo siempre se abre. Pladisel, la sincronización antigua, va al final y plegado.
 const navigation: { label: string | null; entries: NavEntry[] }[] = [
   { label: null, entries: [{ section: "home", href: "/", label: "Inicio", icon: "home" }] },
-  { label: "Catálogo", entries: [
+  { label: "Integración MHD", entries: [
     { section: "mhdImport", href: "/importar-datos-mhd", label: "Sincronización con MHD", icon: "sync" },
+    { section: "orders", href: "/pedidos-mhd", label: "Pedidos MHD", icon: "orders" },
     { section: "productImporter", href: "/importador-productos", label: "Importador de productos", icon: "bag" },
     { section: "familyRules", href: "/reglas-por-familia", label: "Reglas por familia", icon: "sort" },
     { section: "productLocks", href: "/productos-bloqueados", label: "Productos bloqueados", icon: "lock" },
     { section: "redirects", href: "/tienda/redirecciones", label: "Redirecciones", icon: "export" },
-    { section: "warranties", href: "/tienda/garantias", label: "Garantías", icon: "shield" },
     { section: "mhdCatalog", href: "/importacion-catalogo-mhd", label: "Consultar catálogo MHD", icon: "catalog" },
     { section: "storeSettings", href: "/configuracion", label: "Configuración", icon: "settings" },
   ] },
   { label: "Tienda", entries: [
-    { section: "orders", href: "/pedidos-mhd", label: "Pedidos MHD", icon: "orders" },
+    { section: "warranties", href: "/tienda/garantias", label: "Garantías", icon: "shield" },
     { section: "warrantyContracts", href: "/tienda/contratos-garantia3", label: "Contratos Garantía3", icon: "shield" },
     { section: "quotes", href: "/tienda/presupuestos", label: "Presupuestos", icon: "quote" },
     { section: "stockAlerts", href: "/tienda/avisos-stock", label: "Avisos de stock", icon: "bell" },
