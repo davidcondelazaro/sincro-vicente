@@ -23,7 +23,7 @@ const navigation: { label: string | null; entries: NavEntry[] }[] = [
     { section: "storeSettings", href: "/configuracion", label: "Configuración", icon: "settings" },
   ] },
   { label: "Tienda", entries: [
-    { section: "warranties", href: "/tienda/garantias", label: "Garantías", icon: "shield" },
+    { section: "warranties", href: "/tienda/garantias", label: "Productos con garantía", icon: "shield" },
     { section: "warrantyContracts", href: "/tienda/contratos-garantia3", label: "Contratos Garantía3", icon: "shield" },
     { section: "quotes", href: "/tienda/presupuestos", label: "Presupuestos", icon: "quote" },
     { section: "stockAlerts", href: "/tienda/avisos-stock", label: "Avisos de stock", icon: "bell" },
