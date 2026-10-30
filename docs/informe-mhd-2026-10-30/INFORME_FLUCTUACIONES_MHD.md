@@ -13,7 +13,7 @@
 - **Horas:** hora peninsular española.
 - **Cómo se identifica cada producto:** código MHD (`codigo`) y EAN (`codigo_ean`).
 - **«Stock en la última lectura»:** el campo `stock` que traía el producto en la última lectura del listado en la que apareció.
-- **Anexos:** CSV separados por comas, en UTF-8, en la misma carpeta que este informe.
+- **Anexos:** en el Excel `Anexos_fluctuaciones_MHD_2026-10-30.xlsx`, una hoja por anexo. También van como CSV (UTF-8, separados por comas).
 
 **Qué hacemos nosotros cuando un producto deja de aparecer:** consultamos su ficha. Si la API responde «no existe» (404), lo dejamos sin stock en nuestra tienda hasta que vuelva. Por eso, cada producto que desaparece con stock real es una venta que perdemos mientras está fuera.
 
