@@ -1,0 +1,110 @@
+<?php
+// Proxy de Garantía3 para las altas de contratos de la web de Vicente.
+// Garantía3 solo acepta su token desde la IP autorizada (93.189.94.124) y utils corre en Vercel con IP dinámica:
+// las peticiones pasan por aquí para salir con la IP fija de este servidor.
+//
+// Se publica en pladisel.es/utils/proxy-garantia3/proxy-garantia3.php, con los dos tokens puestos solo en el servidor.
+// Compatible con PHP 7.0. No guarda nada: ni registros ni datos del cliente.
+//
+// - POST con { ean13, name, lastname, email, phone, note? }: crea un contrato. Cada llamada correcta es un contrato que se paga.
+// - ?ip=1: devuelve la IP de salida de este servidor.
+// - ?comprobar=1: prueba el token de Garantía3 con un EAN inexistente, sin crear nada. 404 = token e IP correctos.
+//
+// Respuestas: el código y el cuerpo de Garantía3 tal cual, salvo cuando no hay respuesta suya:
+// - 503 { proxy: "no_enviado" }: la petición no llegó a salir. Se puede repetir.
+// - 504 { proxy: "resultado_desconocido" }: salió y no hubo respuesta. NO repetir: el contrato puede existir.
+
+const PROXY_TOKEN = '';     // Poner aquí el token del proxy al subirlo al servidor.
+const GARANTIA3_TOKEN = ''; // Poner aquí el token de Garantía3 al subirlo al servidor.
+const GARANTIA3_URL = 'https://webshop.bcwm.es/api/v_1/contract/new';
+
+// Los EAN de las 9 garantías. Cualquier otro se rechaza aquí, sin llegar a Garantía3.
+const EANS = [
+    '8033509880271', '8033509880394', '8033509880400', '8033509880417', '8033509880424', // Hasta 5 años
+    '8033509887652', '8033509887669', '8033509887676', '8033509887683',                  // Hasta 6 años
+];
+
+header('Content-Type: application/json; charset=utf-8');
+
+function responder($status, $data) {
+    http_response_code($status);
+    echo json_encode($data, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// El token llega en la cabecera X-Proxy-Token o, si el servidor la descarta, en ?token=.
+$token = isset($_SERVER['HTTP_X_PROXY_TOKEN']) ? $_SERVER['HTTP_X_PROXY_TOKEN'] : (isset($_GET['token']) ? (string) $_GET['token'] : '');
+if (PROXY_TOKEN === '' || GARANTIA3_TOKEN === '' || !hash_equals(PROXY_TOKEN, $token)) {
+    responder(401, ['error' => 'No autorizado']);
+}
+
+function llamar($url, $body, &$status, &$sinEnviar) {
+    $curl = curl_init($url);
+    curl_setopt_array($curl, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 30,
+        CURLOPT_CONNECTTIMEOUT => 10,
+        // Sin seguir redirecciones: así nunca se sale de la dirección fijada.
+        CURLOPT_FOLLOWLOCATION => false,
+    ] + ($body === null ? [] : [
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $body,
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+    ]));
+    $respuesta = curl_exec($curl);
+    $status = curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+    // No se resolvió el dominio, no conectó o falló el TLS: no se envió nada. Cualquier otro fallo se trata como dudoso.
+    $sinEnviar = in_array(curl_errno($curl), [CURLE_COULDNT_RESOLVE_HOST, CURLE_COULDNT_CONNECT, CURLE_SSL_CONNECT_ERROR], true);
+    return $respuesta;
+}
+
+function contrato($datos, &$status, &$sinEnviar) {
+    return llamar(GARANTIA3_URL, json_encode(['token' => GARANTIA3_TOKEN] + $datos, JSON_UNESCAPED_UNICODE), $status, $sinEnviar);
+}
+
+if (isset($_GET['ip'])) {
+    $ip = llamar('https://api.ipify.org', null, $status, $sinEnviar);
+    responder(200, ['ip' => trim((string) $ip)]);
+}
+
+if (isset($_GET['comprobar'])) {
+    $datos = ['ean13' => '0000000000000', 'name' => 'Comprobacion', 'lastname' => 'Proxy', 'email' => 'utils@mail.electronicavicente.com', 'phone' => '34000000000'];
+    $respuesta = contrato($datos, $status, $sinEnviar);
+    responder(200, ['garantia3' => (int) $status, 'correcto' => (int) $status === 404]);
+}
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    responder(405, ['error' => 'Solo POST']);
+}
+
+$entrada = json_decode(file_get_contents('php://input'), true);
+if (!is_array($entrada)) {
+    responder(400, ['error' => 'JSON no válido']);
+}
+
+$datos = [];
+foreach (['ean13', 'name', 'lastname', 'email', 'phone'] as $campo) {
+    $valor = isset($entrada[$campo]) && is_string($entrada[$campo]) ? trim($entrada[$campo]) : '';
+    if ($valor === '') {
+        responder(422, ['error' => "Falta $campo"]);
+    }
+    $datos[$campo] = $valor;
+}
+if (!in_array($datos['ean13'], EANS, true)) {
+    responder(422, ['error' => 'EAN no permitido']);
+}
+// Opcional: número de pedido o factura, según la documentación de la API.
+if (isset($entrada['note']) && is_string($entrada['note']) && trim($entrada['note']) !== '') {
+    $datos['note'] = trim($entrada['note']);
+}
+
+$respuesta = contrato($datos, $status, $sinEnviar);
+if ($respuesta === false || (int) $status === 0) {
+    if ($sinEnviar) {
+        responder(503, ['proxy' => 'no_enviado']);
+    }
+    responder(504, ['proxy' => 'resultado_desconocido']);
+}
+
+http_response_code((int) $status);
+echo $respuesta;

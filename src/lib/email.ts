@@ -20,14 +20,14 @@ export async function settingRecipients(db: { from: (table: string) => any }, ke
 }
 export const emailConfigured = () => Boolean(process.env.RESEND_API_KEY);
 
-export async function sendEmail(email: { to?: string[]; subject: string; html: string; text: string; idempotencyKey?: string }): Promise<SendResult> {
+export async function sendEmail(email: { to?: string[]; subject: string; html: string; text: string; idempotencyKey?: string; attachments?: { filename: string; content: string }[] }): Promise<SendResult> {
   const key = process.env.RESEND_API_KEY;
   if (!key) return { ok: false, skipped: true, error: "Correo sin configurar (falta RESEND_API_KEY en Vercel)" };
   try {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", ...(email.idempotencyKey && { "Idempotency-Key": email.idempotencyKey }) },
-      body: JSON.stringify({ from: process.env.EMAIL_FROM_TEAM || TEAM_FROM, to: email.to ?? alertRecipients(), subject: email.subject, html: email.html, text: email.text }),
+      body: JSON.stringify({ from: process.env.EMAIL_FROM_TEAM || TEAM_FROM, to: email.to ?? alertRecipients(), subject: email.subject, html: email.html, text: email.text, ...(email.attachments && { attachments: email.attachments }) }),
       signal: AbortSignal.timeout(15_000),
     });
     const body = (await response.json().catch(() => ({}))) as { id?: string; message?: string };
