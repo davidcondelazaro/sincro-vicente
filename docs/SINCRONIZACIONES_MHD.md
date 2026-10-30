@@ -81,7 +81,7 @@ Un solo reloj: pg_cron abre una vuelta cada 30 minutos (`mhd_sync_cycle_start`, 
 6. **Avisos de tandas terminadas:** un correo por cada tanda del importador que acaba, con su resultado (`job-notices.ts`).
 7. Pendiente: cambios de ficha.
 
-Una sola vuelta a la vez; si una pasa de 25 minutos se da por atascada y se avisa. Se ve en utils › Catálogo › Sincronización con MHD (con el botón «Leer ahora y actualizar») y en Inicio. Pausa y frecuencia del resumen: Configuración. Resumen por correo cada hora mientras se estabiliza (después, a las 9:00).
+Una sola vuelta a la vez; si una pasa de 25 minutos se da por atascada y se avisa. Se ve en utils › Catálogo › Sincronización con MHD (con el botón «Leer ahora y actualizar») y en Inicio. Pausa y frecuencia del resumen: Configuración. Resumen por correo a las 9:00 (el de cada hora se quitó el 2026-10-30).
 
 ## Agotados en MHD: desaparecer no es una baja (David, 2026-10-29)
 

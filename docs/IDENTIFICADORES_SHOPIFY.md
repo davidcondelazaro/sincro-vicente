@@ -39,4 +39,4 @@ Una consulta ligera por producto, en el momento (el importador tarda un minuto o
 
 - Productos que no vienen de MHD y no tienen código: garantías, servicios y tarjeta regalo (no se sincronizan).
 - Productos de la tienda antigua cuyo equivalente de MHD (por EAN) descartó el importador: nadie los pisa y ninguna sincronización los ve. El 30-10 había 6 activos con stock de agosto (2 auriculares Sennheiser y 2 radios descartados por «Sin imagen», 2 Satisfyer por «Salud sexual: no se importa»); se archivaron con el visto bueno de David. Los de «Sin imagen» vuelven solos cuando MHD les pone fotos (el paso de altas los reprocesa y la subida reactiva el archivado por EAN). Sus URLs de PrestaShop van en la carga masiva de redirecciones.
-- Las tablas del espejo (`shopify_products`, `shopify_variants`, `shopify_collections`, `shopify_mirror_runs`) siguen en la base sin uso. No se borran sin el visto bueno de David.
+- Las tablas del espejo (`shopify_products`, `shopify_variants`, `shopify_collections`, `shopify_mirror_runs`) se borraron el 2026-10-30 con el sí de David, tras comprobar que ningún código, función, vista ni tarea las usaba.
