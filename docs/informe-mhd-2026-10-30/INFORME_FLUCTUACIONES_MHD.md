@@ -9,13 +9,13 @@
 - **Origen de los datos:** su API.
   - El listado `/products`, que leemos completo cada 30 minutos desde el 29-10-2026 a las 12:39.
   - La ficha `/products/:codigo`, que consultamos para cada producto que deja de aparecer en el listado.
-- **Periodo:** del 29-10-2026 a las 12:39 al 30-10-2026 a las 07:30, 37 lecturas completas del listado.
+- **Periodo:** del 29-10-2026 a las 12:39 al 30-10-2026 a las 08:30, 39 lecturas completas del listado.
 - **Horas:** hora peninsular española.
 - **Cómo se identifica cada producto:** código MHD (`codigo`) y EAN (`codigo_ean`).
 - **«Stock en la última lectura»:** el campo `stock` que traía el producto en la última lectura del listado en la que apareció.
 - **Anexos:** en el Excel `Anexos_fluctuaciones_MHD_2026-10-30.xlsx`, una hoja por anexo. También van como CSV (UTF-8, separados por comas).
 
-**Qué hacemos nosotros cuando un producto deja de aparecer:** consultamos su ficha. Si la API responde «no existe» (404), lo dejamos sin stock en nuestra tienda hasta que vuelva. Por eso, cada producto que desaparece con stock real es una venta que perdemos mientras está fuera.
+**Qué hacemos nosotros cuando un producto deja de aparecer:** consultamos su ficha. Si la API responde «no existe» (404), lo dejamos sin stock en nuestra tienda hasta que vuelva. Por eso, cada producto que desaparece con stock real es una venta que perdemos mientras está fuera. Si en una lectura son demasiados, un freno automático nos impide tocar nada hasta revisarlo.
 
 ---
 
@@ -23,14 +23,14 @@
 
 | # | Incidencia | Productos afectados | Impacto | Prioridad |
 |---|---|---|---|---|
-| 1 | **Caída masiva del 30-10 entre las 06:00 y las 07:30.** El listado pasa de 31.641 a 30.269 productos. Desaparece casi toda la gama blanca y el pequeño electrodoméstico de varias marcas. | 1.454 productos, 1.336 de ellos con stock (18.508 unidades). Marcas enteras: Edesa, Corbero, Nova, Flama y Candy. | Casi un tercio de nuestra gama blanca se queda sin poder venderse. | Muy alta |
+| 1 | **Caída masiva del 30-10, de unas 2 horas.** El listado pasa de 31.641 a unos 30.260 productos entre las 06:30 y las 08:00, y a las 08:30 vuelve a 31.662. Desaparece casi toda la gama blanca y el pequeño electrodoméstico de varias marcas. | 1.454 productos, 1.336 de ellos con stock (18.508 unidades). Marcas enteras: Edesa, Corbero, Nova, Flama y Candy. | Casi un tercio de nuestra gama blanca falta del catálogo durante 2 horas. Nuestro freno evitó quitarla de la venta, salvo 129 productos que quedaron sin stock hasta las 08:30. | Muy alta |
 | 2 | **Productos con stock que salen y entran del listado a diario.** Algunos, varias veces en una misma noche. | En una noche normal, 197 salidas de productos que vendemos. 195 tenían stock en la lectura anterior. El caso extremo: 9 salidas en 15 horas, con 111 unidades. | El producto aparece y desaparece de la venta sin motivo aparente. | Alta |
 | 3 | **El listado y la ficha no coinciden.** Productos que faltan en el listado siguen teniendo ficha, y la pierden más tarde. | 603 productos a las 06:30 del 30-10. Hasta 5 en una lectura normal. | No sabemos si un producto se ha dado de baja o si solo falta en una lectura. | Media |
-| 4 | **Límite de peticiones (HTTP 429)** al comprobar las fichas de muchos productos seguidos. | 893 consultas rechazadas entre las 06:30 y las 07:30 del 30-10. | Productos sin poder comprobar. | Media |
+| 4 | **Límite de peticiones (HTTP 429)** al comprobar las fichas de muchos productos seguidos. | 1.143 consultas rechazadas entre las 06:30 y las 08:00 del 30-10. | Productos sin poder comprobar. | Media |
 
 **Lo que les pedimos:**
 
-1. **Que nos expliquen la caída del 30-10** y si los productos van a volver.
+1. **Que nos expliquen la caída del 30-10** y si puede repetirse.
 2. **Que no saquen del listado los productos con stock.** Si un producto deja de estar disponible por un tiempo, que siga en el listado con `stock` a 0.
 3. **Que nos digan por qué sale un producto:** un campo de estado o motivo en el listado, o una llamada de bajas con fecha y motivo.
 4. **Que nos indiquen los límites de la API**, o una llamada para comprobar varios códigos a la vez.
@@ -47,6 +47,8 @@
 | 06:30 | 30.266 |
 | 07:00 | 30.303 |
 | 07:30 | 30.269 |
+| 08:00 | 30.254 |
+| 08:30 | 31.662 |
 
 En toda la noche anterior el listado se había movido entre 31.604 y 31.646 productos.
 
@@ -74,13 +76,12 @@ En toda la noche anterior el listado se había movido entre 31.604 y 31.646 prod
   - **En cantidad:** Bra (109), Orbegozo (92), Teka (82), Jata (67) y Balay (59).
   - El detalle de las 112 marcas está en el anexo 03.
 
-**Lo que parece:** por el volumen, la hora y las marcas, una caída o recarga del catálogo de uno o varios de sus proveedores, no bajas reales. A las 07:30 solo habían vuelto unos pocos.
+**Lo que parece:** por el volumen, la hora y las marcas, una caída o recarga del catálogo de uno o varios de sus proveedores, no bajas reales. Lo confirma la lectura de las 08:30: el listado vuelve a 31.662 productos y, como mucho, 141 de los 1.454 siguen fuera.
 
 **Preguntas:**
 
-1. ¿Qué pasó entre las 06:00 y las 07:30 del 30-10? ¿Corresponde a algún proveedor concreto?
-2. ¿Van a volver estos productos? ¿Cuándo?
-3. ¿Puede repetirse? Si es una recarga que hacen a diario, ¿a qué hora y cuánto dura?
+1. ¿Qué pasó entre las 06:00 y las 08:30 del 30-10? ¿Corresponde a algún proveedor concreto?
+2. ¿Puede repetirse? Si es una recarga que hacen a diario, ¿a qué hora y cuánto dura?
 
 ---
 
@@ -128,8 +129,8 @@ Por ejemplo, el 10116627 sale a las 16:02, 17:02, 18:02, 19:02, 20:02, 21:02, 00
 
 ## 5. Límite de peticiones (HTTP 429)
 
-- **Qué pasó:** al comprobar la ficha de unos mil productos seguidos a las 06:30, 07:00 y 07:30 del 30-10, la API rechazó 893 consultas con «HTTP 429».
-- **Por nuestra parte:** vamos a espaciar las consultas.
+- **Qué pasó:** al comprobar la ficha de unos mil productos seguidos a las 06:30, 07:00, 07:30 y 08:00 del 30-10, la API rechazó 1.143 consultas con «HTTP 429».
+- **Por nuestra parte:** ya hemos espaciado las consultas a 5 por segundo como máximo.
 
 **Preguntas:**
 
