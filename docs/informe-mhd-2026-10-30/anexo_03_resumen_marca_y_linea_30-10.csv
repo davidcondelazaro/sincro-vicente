@@ -1,0 +1,127 @@
+agrupacion,nombre,productos_antes,desaparecidos,porcentaje,unidades_de_stock_desaparecidas
+marca,"Bra",185,109,58.9,737
+marca,"Orbegozo",450,92,20.4,313
+marca,"Teka",259,82,31.7,444
+marca,"Jata",265,67,25.3,351
+marca,"Balay",178,59,33.1,367
+marca,"Beurer",90,52,57.8,320
+marca,"Edesa",46,46,100.0,202
+marca,"Corbero",43,43,100.0,142
+marca,"Philips",222,41,18.5,384
+marca,"Aeg",72,39,54.2,351
+marca,"Nova",37,37,100.0,534
+marca,"Svan",132,35,26.5,972
+marca,"Cata",114,32,28.1,149
+marca,"Hyundai",104,31,29.8,3012
+marca,"Taurus",187,30,16.0,197
+marca,"Elbe",38,29,76.3,144
+marca,"Ariete",36,28,77.8,99
+marca,"Tefal",63,27,42.9,118
+marca,"Bosch",126,26,20.6,265
+marca,"Beko",101,25,24.8,154
+marca,"Electrolux",37,25,67.6,258
+marca,"Flama",25,25,100.0,271
+marca,"Haier",29,25,86.2,238
+marca,"Braun",155,23,14.8,242
+marca,"Ufesa",145,22,15.2,225
+marca,"Aspes",110,21,19.1,1216
+marca,"Russell Hobbs",25,20,80.0,83
+marca,"LG",150,19,12.7,199
+marca,"Solac",69,17,24.6,70
+marca,"Whirlpool",43,17,39.5,79
+marca,"Mepamsa",50,16,32.0,53
+marca,"Candy",14,14,100.0,75
+marca,"HP",933,13,1.4,150
+marca,"WMF",22,13,59.1,83
+marca,"Tp-Link",620,12,1.9,446
+marca,"Asus",280,10,3.6,99
+marca,"Moulinex",45,10,22.2,62
+marca,"One For All",41,9,22.0,18
+marca,"PNY",31,9,29.0,790
+marca,"Samsung",224,9,4.0,179
+marca,"Ninja",9,8,88.9,21
+marca,"Oral B",39,8,20.5,721
+marca,"Wahl",24,8,33.3,17
+marca,"Wonder",9,8,88.9,773
+marca,"Woxter",11,8,72.7,21
+marca,"Black & Decker",14,7,50.0,13
+marca,"Rowenta",99,7,7.1,76
+marca,"Conceptronic",301,6,2.0,191
+marca,"Delonghi",37,6,16.2,23
+marca,"OEM",39,6,15.4,49
+marca,"Smeg",46,6,13.0,15
+marca,"SPC",60,6,10.0,15
+marca,"ARISTON",14,5,35.7,9
+marca,"Daitsu",7,5,71.4,20
+marca,"Kingston",187,5,2.7,505
+marca,"Magic Vac",5,5,100.0,18
+marca,"muvit",133,5,3.8,15
+marca,"Aiwa",110,4,3.6,54
+marca,"Engel",10,4,40.0,24
+marca,"Kayami",4,4,100.0,10
+marca,"Alcatel",7,3,42.9,18
+marca,"Duracell",16,3,18.8,419
+marca,"Keep Out",31,3,9.7,420
+marca,"Toshiba",8,3,37.5,243
+marca,"3 Claveles",2,2,100.0,19
+marca,"Alfa",7,2,28.6,232
+marca,"Castey",65,2,3.1,29
+marca,"D-Link",250,2,0.8,6
+marca,"Daga",13,2,15.4,11
+marca,"Elica",2,2,100.0,2
+marca,"Haverland",2,2,100.0,5
+marca,"Intel",76,2,2.6,26
+marca,"IROBOT ROOMBA",5,2,40.0,4
+marca,"Krups",13,2,15.4,13
+marca,"Qviart",2,2,100.0,20
+marca,"Roomba",12,2,16.7,7
+marca,"Synology",58,2,3.4,14
+marca,"The noble collection",165,2,1.2,2
+marca,"10Pos",31,1,3.2,1
+marca,"Apple",254,1,0.4,2
+marca,"Bandai",155,1,0.6,16
+marca,"BQ",1,1,100.0,1
+marca,"Brigmton",1,1,100.0,5
+marca,"Brita",17,1,5.9,56
+marca,"Dayma",420,1,0.2,12
+marca,"DCU",83,1,1.2,4
+marca,"Dell",272,1,0.4,1
+marca,"Dolce Gusto",23,1,4.3,9
+marca,"Equip",1147,1,0.1,8
+marca,"Gigabyte",128,1,0.8,1
+marca,"Hisense",104,1,1.0,2
+marca,"Kärcher",19,1,5.3,1
+marca,"Kenwood",14,1,7.1,2
+marca,"Lenovo",170,1,0.6,1
+marca,"Magefesa",46,1,2.2,8
+marca,"Minix",44,1,2.3,16
+marca,"MSI",188,1,0.5,3
+marca,"Nevir",7,1,14.3,0
+marca,"Qnap",39,1,2.6,1
+marca,"Rolser",23,1,4.3,0
+marca,"Ruijie Networks",141,1,0.7,3
+marca,"Shark",1,1,100.0,3
+marca,"Siemens",57,1,1.8,3
+marca,"Sony",134,1,0.7,18
+marca,"Trust",215,1,0.5,19
+marca,"Unyka",42,1,2.4,1
+marca,"Vileda",1,1,100.0,3
+marca,"Vogels",58,1,1.7,33
+marca,"Western Digital",55,1,1.8,80
+marca,"Xiaomi",123,1,0.8,3
+marca,"Zanussi",1,1,100.0,1
+marca,"Zyxel",93,1,1.1,20
+linea,"Productos para el Hogar",1646,373,22.7,3294
+linea,"Cocción",1091,337,30.9,2738
+linea,"Accesorios, consumibles, Garantías y Servicios",18637,158,0.8,2639
+linea,"Belleza, salud y cuidado personal",643,117,18.2,1446
+linea,"Frio y Congelación",389,115,29.6,2320
+linea,"Climatización, Calefacción y Agua Sanitaria",447,98,21.9,1990
+linea,"Lavado y Secado",346,97,28.0,1105
+linea,"Electrodomésticos de Limpieza",361,58,16.1,360
+linea,"Informática",5023,46,0.9,1864
+linea,"Sonido",1536,22,1.4,139
+linea,"Televisores, Monitores y Proyectores (Imagen)",433,17,3.9,482
+linea,"Hogar Domótico Conectado (Smart Home)",518,9,1.7,41
+linea,"Telefonía",139,5,3.6,21
+linea,"Cámaras de Foto y Video digitales",205,2,1.0,69
