@@ -28,7 +28,7 @@ Con 14 días desde el envío, en PrestaShop acabaron reembolsados 7 de 353 contr
 - Quedan unidades vivas de la garantía y de su aparato (`currentQuantity`). Se mira línea a línea: un reembolso parcial de otro artículo no bloquea la garantía, al contrario que en PrestaShop.
 - La línea tiene `lineItemGroup` y su SKU está en `GARANTIA3_EANS` (`src/lib/garantia3.ts`). El proxy no lleva lista de EAN: una ampliación nueva solo se añade ahí.
 - Hay nombre, apellidos, email y teléfono.
-- Modo producción. En modo test no se llama a Garantía3.
+- Modo producción. En modo test no se llama a Garantía3 por los pedidos reales.
 
 ## Ajustes del apartado
 
@@ -129,7 +129,7 @@ Correo enviado por David el 2026-10-30. Falta su respuesta sobre:
 
 - Bajo qué cliente se compran y facturan los contratos.
 - API vigente, token de producción y si se mantiene la IP.
-- Entorno y token de pruebas.
+- Entorno y token de pruebas. El 2026-10-30 `testwebshop.bcwm.es` existe pero su certificado no se valida y el proxy no conecta (respuesta 0). No se desactiva la comprobación: hay que pedirles que lo arreglen o que confirmen otra dirección.
 - Vigencia de los 9 EAN con la cuenta nueva.
 - Acceso al portal Webshop.
 - Anulaciones, duplicados y uso de `note` en este modo.
