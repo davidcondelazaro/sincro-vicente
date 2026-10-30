@@ -322,3 +322,47 @@ test("marcas que MHD pone mal siempre: por marca o por producto, haya Icecat o n
   assert.equal(fixBrandText("Soporte de pared Youin Engel AC0591E", "Youin", "Engel"), "Soporte de pared Engel AC0591E");
   assert.equal(fixBrandText("Cápsulas Nestle Dolce Gusto Ristretto Bonka", "Nestle", "Dolce Gusto"), "Cápsulas Dolce Gusto Ristretto Bonka");
 });
+
+// Cliente falso de Anthropic para writeElviForPage: `writes` son las frases que devuelve la redacción, por orden; el
+// revisor (la llamada sin `system`) siempre aprueba y se cuenta.
+function fakeElviClient(writes) {
+  const calls = { writes: [], reviews: 0 };
+  const reply = (text) => ({ model: "claude-haiku-5-5", stop_reason: "end_turn", usage: { input_tokens: 0, output_tokens: 0 }, content: [{ type: "text", text }] });
+  return {
+    calls,
+    client: { messages: { stream: (params) => ({ finalMessage: async () => {
+      if (!params.system) { calls.reviews += 1; return reply(JSON.stringify({ ok: true, reason: "Bien." })); }
+      calls.writes.push(params.messages[0].content);
+      return reply(JSON.stringify({ elvi_tip: { text: writes.shift() ?? "", sources: [] } }));
+    } }) } },
+  };
+}
+const elviPage = { title: "Horno X", shortDescription: "Horno de 70 l.", longDescriptionHtml: "<p>70 l.</p>", specifications: null };
+const elviCall = async (writes) => {
+  const { writeElviForPage } = await jiti.import("../src/lib/mhd-importer/content.ts");
+  const { PROCESSOR_MODEL } = await jiti.import("../src/lib/mhd-importer/ai.ts");
+  const fake = fakeElviClient(writes);
+  return { ...await writeElviForPage(fake.client, PROCESSOR_MODEL, { perfil: {}, page: elviPage }), calls: fake.calls };
+};
+
+test("Elvi: una frase vetada se reescribe con el motivo, sin gastar el revisor", async () => {
+  const result = await elviCall(["Si cocinas a menudo, 70 l. Lo que yo miraría antes de decidirme es el consumo.", "Si cocinas a menudo, este horno te da 70 l."]);
+  assert.equal(result.tip.text, "Si cocinas a menudo, este horno te da 70 l.");
+  assert.equal(result.attempts, 2);
+  assert.equal(result.calls.reviews, 1);
+  assert.match(result.calls.writes[1], /no puede decir «Lo que yo miraría»/);
+});
+
+test("Elvi: si vuelve a salir una frase vetada, la ficha va sin consejo", async () => {
+  const result = await elviCall(["Lo primero que miraría es el consumo.", "Antes de decidirte, mira el consumo."]);
+  assert.equal(result.tip.text, "");
+  assert.equal(result.review.ok, false);
+  assert.equal(result.calls.reviews, 0);
+});
+
+test("Elvi: una frase limpia pasa al revisor a la primera", async () => {
+  const result = await elviCall(["Si cocinas a menudo, este horno te da 70 l."]);
+  assert.equal(result.tip.text, "Si cocinas a menudo, este horno te da 70 l.");
+  assert.equal(result.attempts, 1);
+  assert.equal(result.calls.reviews, 1);
+});

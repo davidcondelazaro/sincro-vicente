@@ -254,7 +254,14 @@ export async function writeElviForPage(client: Anthropic, model: string, input: 
     if (message.stop_reason !== "end_turn") throw new Error(`La frase de Elvi terminó con ${message.stop_reason}.`);
     return (JSON.parse(message.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("")) as { elvi_tip: ElviTip }).elvi_tip ?? empty;
   };
-  const review = async (tip: ElviTip) => { const result = await reviewElviTip(client, tip, input.page.title, pageText(input.page)); cost += costUsd(PROCESSOR_MODEL, result.usage) ?? 0; return result; };
+  // Las frases vetadas se rechazan antes de gastar el revisor y cuentan como un rechazo más.
+  const review = async (tip: ElviTip) => {
+    const banned = checkElviWording(tip);
+    if (banned.length) return { ok: false, reason: banned.join(" ") };
+    const result = await reviewElviTip(client, tip, input.page.title, pageText(input.page));
+    cost += costUsd(PROCESSOR_MODEL, result.usage) ?? 0;
+    return result;
+  };
   let tip = await ask("Escribe la frase de Elvi.");
   if (!tip.text.trim()) return { tip: empty, review: null, attempts: 1, costUsd: cost };
   let verdict = await review(tip);
