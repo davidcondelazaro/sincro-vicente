@@ -95,6 +95,13 @@ Por eso (`src/lib/mhd-importer/absences.ts`, paso «agotados» de la vuelta, tab
 4. **30 días sin volver** (`absence_days`, en utils › Catálogo › Configuración): pasa a **pendiente de baja** (archivar y proponer redirección; esa parte está pendiente de montar).
 5. **Freno:** si en una vuelta se confirman más del `absence_brake_pct` % (2 %) de los activos de la tienda, no se toca nada y llega un aviso. La primera puesta al día (29-10, 14:12) se aplicó con el freno saltado, con el sí de David: **667 productos a stock 0** (4.739 unidades que MHD no podía servir), 12 de ellos dejaron de venderse sin stock; 2 los había saltado la lectura y no se tocaron.
 
+6. **Ritmo con MHD** (desde el 30-10, tras la caída de esa mañana; informe en `docs/informe-mhd-2026-10-30/`): las fichas se piden **como mucho 5 por segundo**, 4 a la vez y en orden aleatorio. Antes iban 8 a la vez (unas 20 por segundo) y MHD rechazó con 429 casi un tercio de mil consultas.
+   - **Si MHD falla en masa** (429, 5xx o sin respuesta): se para todo enseguida, se espera 10 s y se reintenta; si vuelve a fallar, 30 s y otro intento; a la tercera, se deja la ronda y llega un aviso (David: «pararía rápido y luego iría realizando ciertos reintentos»). Una ficha que falla por otra cosa se apunta y no para nada.
+   - **Tope de tiempo:** 2 minutos de comprobaciones por vuelta, para que la vuelta quepa en sus 5 minutos.
+   - **Freno anticipado:** en cuanto los confirmados pasan del límite del freno, se deja de comprobar (el freno salta igual) y el aviso dice «al menos N».
+   - Lo que no se llega a comprobar sigue siendo candidato y se mira en la vuelta siguiente (`unchecked`, `stoppedBy` en el paso de la vuelta).
+   - Los candidatos y los que vuelven se leen por páginas: antes se cortaban en 1.000 (límite de filas de Supabase) y el 30-10 faltaban 1.454.
+
 Sale en el resumen por correo («Agotados en MHD»: se agotan, vuelven, siguen agotados, pasan de 30 días y saltados por la lectura), en Inicio y en la tabla de vueltas de utils. A mano: `POST /api/sincronizaciones/agotados?simulacion=1` (o `?forzar=1`), con la cabecera de la clave.
 
 ## Altas (automáticas desde el 2026-10-29)

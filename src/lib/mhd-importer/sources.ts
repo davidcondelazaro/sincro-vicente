@@ -14,6 +14,10 @@ export function icecatConfigFromEnv(env: Env): IcecatConfig { return { username:
 
 const trim = (value: string) => value.replace(/^\/+|\/+$/g, "");
 
+// MHD saturado o caído (429 o 5xx): quien llama puede esperar y reintentar. `retryAfterMs` sale de la cabecera
+// Retry-After si MHD la manda.
+export class MhdBusyError extends Error { retryAfterMs: number | null; constructor(message: string, retryAfterMs: number | null) { super(message); this.retryAfterMs = retryAfterMs; } }
+
 // Ficha de detalle `/products/:codigo`: trae `caracteristicas` y `fotos`, que el listado no tiene. Ojo: no trae
 // `img_ficha_eficiencia` (solo el listado), así que nunca debe pisar lo que viene del listado.
 export async function fetchMhdProductDetail(config: MhdConfig, codigo: string): Promise<FetchResult<MhdProductDetail>> {
@@ -21,6 +25,7 @@ export async function fetchMhdProductDetail(config: MhdConfig, codigo: string): 
   const response = await fetch(url, { headers: { Accept: "application/json", Authorization: `Basic ${btoa(`${config.user}:${config.pass}`)}` }, signal: AbortSignal.timeout(30_000) });
   const body = await response.json().catch(() => null) as { success?: boolean; data?: MhdProductDetail } | null;
   if (response.status === 404) return { status: 404, payload: null };
+  if (response.status === 429 || response.status >= 500) throw new MhdBusyError(`MHD no devolvió la ficha ${codigo} (HTTP ${response.status}).`, Number(response.headers.get("retry-after")) * 1000 || null);
   if (!response.ok || !body?.success || !body.data) throw new Error(`MHD no devolvió la ficha ${codigo} (HTTP ${response.status}).`);
   return { status: response.status, payload: body.data };
 }
