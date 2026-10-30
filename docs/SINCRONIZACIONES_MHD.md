@@ -44,6 +44,7 @@ Solo las altas y las modificaciones importantes piden la ficha de detalle (una p
 
 - **Tocan solo el campo que cambió.** Nunca se rehace la ficha entera: `productSet`, que usa el importador, reescribe casi todo y no vale para esto.
 - **No pisan lo arreglado a mano.** Antes de escribir se compara lo que hay en Shopify con lo que subimos (`mhd_importer_product_runs.result`). Si no coincide, alguien lo tocó: no se escribe y va a revisión.
+- **Los filtros sí se podrían actualizar solos** (David, 2026-10-30), porque no son textos, siempre que no se hayan arreglado a mano. Ojo: salen de las características de la ficha de detalle, que el listado no trae, así que ni las huellas del listado ni `mhd_catalog_product_history` los ven; detectarlo exige leer esas fichas.
 - **Respetan los productos bloqueados** (`store_product_locks`).
 - **Los textos de una ficha ya publicada nunca se rehacen solos, solo se proponen** (David, 2026-10-30: «para no perder nada por error»), también en fichas sin tocar. Si un dato clave cambia, se propone el texto nuevo para revisar; mientras nadie lo revise, la ficha sigue como está. Si solo cambia la redacción de MHD, nada.
 
