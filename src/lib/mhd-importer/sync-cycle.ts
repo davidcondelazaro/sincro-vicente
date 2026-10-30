@@ -86,6 +86,14 @@ export async function checkConnections(sources: SourcesConfig, env: Record<strin
       if (body.name === "restricted_api_key") return;
       throw new Error(body.message ?? `Resend respondió HTTP ${response.status}`);
     }),
+    // Garantía3, siempre el token de producción: el proxy prueba un EAN inexistente, sin crear nada. 404 = token e IP correctos.
+    timed("Garantía3", false, async () => {
+      if (!env.GARANTIA3_PROXY_URL || !env.GARANTIA3_PROXY_TOKEN || !env.GARANTIA3_TOKEN) throw new Error("Faltan GARANTIA3_PROXY_URL, GARANTIA3_PROXY_TOKEN o GARANTIA3_TOKEN.");
+      const response = await fetch(`${env.GARANTIA3_PROXY_URL}?comprobar=1`, { method: "POST", headers: { "Content-Type": "application/json", "X-Proxy-Token": env.GARANTIA3_PROXY_TOKEN }, body: JSON.stringify({ entorno: "produccion", token: env.GARANTIA3_TOKEN }), signal: AbortSignal.timeout(20_000) });
+      const body = await response.json().catch(() => ({})) as { garantia3?: number; correcto?: boolean };
+      if (body.garantia3 === 401) throw new Error("Garantía3 rechaza el token o la IP (401).");
+      if (!response.ok || !body.correcto) throw new Error(`Garantía3 respondió ${body.garantia3 ?? `HTTP ${response.status} en el proxy`}.`);
+    }),
   ]);
 }
 
@@ -104,7 +112,7 @@ export async function startCycle(deps: Deps, cycleId: string) {
       return { services: results, failed: results.filter((item) => !item.ok).map((item) => item.name) };
     });
     const failed = checks.services.filter((item) => !item.ok);
-    for (const item of failed.filter((service) => service.name !== "Resend")) await sendAlert(deps.db, { key: `conexion:${item.name}`, subject: `Sin conexión con ${item.name}`, lines: [item.critical ? `La vuelta de sincronización se ha parado: ${item.name} no responde.` : `${item.name} no responde: precio y stock siguen, pero no se pueden procesar fichas hasta que vuelva.`, item.error ?? ""] });
+    for (const item of failed.filter((service) => service.name !== "Resend")) await sendAlert(deps.db, { key: `conexion:${item.name}`, subject: `Sin conexión con ${item.name}`, lines: [item.critical ? `La vuelta de sincronización se ha parado: ${item.name} no responde.` : item.name === "Garantía3" ? "Garantía3 no responde: precio y stock siguen, pero no se pueden pedir contratos hasta que vuelva." : `${item.name} no responde: precio y stock siguen, pero no se pueden procesar fichas hasta que vuelva.`, item.error ?? ""] });
     const blocking = failed.filter((item) => item.critical);
     if (blocking.length) return finish(deps.db, cycle, "fallida", `Sin conexión con ${blocking.map((item) => item.name).join(", ")}.`);
     const read = await step(deps.db, cycle, "lectura", async () => {

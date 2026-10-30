@@ -80,7 +80,7 @@ Shopify cuenta disponibles (se pueden vender), comprometidas (pedidos sin enviar
 
 Un solo reloj: pg_cron abre una vuelta cada 30 minutos (`mhd_sync_cycle_start`, tabla `mhd_sync_cycles`) y la base avisa a la app (`/api/sincronizaciones/vuelta`, `src/lib/mhd-importer/sync-cycle.ts`). Cada paso arranca al acabar el anterior y queda con su inicio, fin, cifras y error:
 
-1. **Conexiones:** Shopify y MHD (si fallan, la vuelta se para y llega un aviso); Anthropic e Icecat (aviso, pero precio y stock siguen); Resend (en rojo en Inicio).
+1. **Conexiones:** Shopify y MHD (si fallan, la vuelta se para y llega un aviso); Anthropic, Icecat y Garantía3 (aviso, pero precio y stock siguen); Resend (en rojo en Inicio). Garantía3 se comprueba siempre con el token de producción y un EAN inexistente, sin crear contratos.
 2. **Lectura del listado de MHD** (~3½ min). Al acabar, la base llama al paso siguiente (disparador `mhd_sync_read_finished`).
 3. **Precio y stock** a Shopify (solo lo que cambia).
 4. **Agotados en MHD** (abajo).
