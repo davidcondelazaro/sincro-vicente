@@ -26,7 +26,7 @@ Con 14 días desde el envío, en PrestaShop acabaron reembolsados 7 de 353 contr
 
 - Pedido no cancelado y pagado, ni en Shopify ni en MHD (estado Cancelado, id 13).
 - Quedan unidades vivas de la garantía y de su aparato (`currentQuantity`). Se mira línea a línea: un reembolso parcial de otro artículo no bloquea la garantía, al contrario que en PrestaShop.
-- La línea tiene `lineItemGroup` y su EAN es uno de los 9.
+- La línea tiene `lineItemGroup` y su SKU está en `GARANTIA3_EANS` (`src/lib/garantia3.ts`). El proxy no lleva lista de EAN: una ampliación nueva solo se añade ahí.
 - Hay nombre, apellidos, email y teléfono.
 - Modo producción. En modo test no se llama a Garantía3.
 

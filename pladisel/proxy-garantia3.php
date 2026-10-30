@@ -18,12 +18,6 @@ const PROXY_TOKEN = '';     // Poner aquí el token del proxy al subirlo al serv
 const GARANTIA3_TOKEN = ''; // Poner aquí el token de Garantía3 al subirlo al servidor.
 const GARANTIA3_URL = 'https://webshop.bcwm.es/api/v_1/contract/new';
 
-// Los EAN de las 9 garantías. Cualquier otro se rechaza aquí, sin llegar a Garantía3.
-const EANS = [
-    '8033509880271', '8033509880394', '8033509880400', '8033509880417', '8033509880424', // Hasta 5 años
-    '8033509887652', '8033509887669', '8033509887676', '8033509887683',                  // Hasta 6 años
-];
-
 header('Content-Type: application/json; charset=utf-8');
 
 function responder($status, $data) {
@@ -90,8 +84,9 @@ foreach (['ean13', 'name', 'lastname', 'email', 'phone'] as $campo) {
     }
     $datos[$campo] = $valor;
 }
-if (!in_array($datos['ean13'], EANS, true)) {
-    responder(422, ['error' => 'EAN no permitido']);
+// Qué EAN se venden lo decide utils; aquí solo se comprueba la forma. Los que Garantía3 no autorice devuelven 404.
+if (!preg_match('/^\d{13}$/', $datos['ean13'])) {
+    responder(422, ['error' => 'EAN no válido']);
 }
 // Opcional: número de pedido o factura, según la documentación de la API.
 if (isset($entrada['note']) && is_string($entrada['note']) && trim($entrada['note']) !== '') {

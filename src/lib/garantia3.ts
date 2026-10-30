@@ -1,6 +1,6 @@
 // Reglas de las altas de Garantía3, sin acceso a red ni base de datos. Ver docs/GARANTIA3.md.
 
-// SKU de las 9 ampliaciones en Shopify y su EAN. Los mismos EAN están en pladisel/proxy-garantia3.php.
+// SKU de las ampliaciones en Shopify y su EAN. Una ampliación nueva solo hay que añadirla aquí: el proxy no lleva lista.
 export const GARANTIA3_EANS: Record<string, string> = {
   G3PDES250: "8033509880271", G3PDES500: "8033509880394", G3PDES1000: "8033509880400", G3PDES2000: "8033509880417", G3PDES5000: "8033509880424",
   G3PD3ES250: "8033509887652", G3PD3ES500: "8033509887669", G3PD3ES1000: "8033509887676", G3PD3ES2000: "8033509887683",
