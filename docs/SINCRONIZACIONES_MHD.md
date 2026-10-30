@@ -38,6 +38,8 @@ Solo las altas y las modificaciones importantes piden la ficha de detalle (una p
 
 ## Tipos de modificación (por decidir uno a uno)
 
+**Histórico de cambios (desde el 2026-10-30):** la lectura sobrescribe la fila de cada producto y las huellas solo dicen que algo cambió. La tabla `mhd_catalog_product_history` guarda, por producto que cambia, cada campo distinto con su valor antes y ahora (sin stock ni fechas), mediante un disparador sobre `mhd_catalog_products`. Si fallara, se pierde esa fila, nunca la lectura. **No se monta nada más de cambios de ficha hasta tener varios días de datos** (David, 2026-10-30): puede que solo merezca la pena automatizar los portes.
+
 **Regla por encima de esta tabla (David, 2026-10-30):** «no queremos perder en las fichas la información que ya hay salvo casos excepcionales», porque desde Shopify se hacen arreglos a mano. Por eso los cambios de ficha:
 
 - **Tocan solo el campo que cambió.** Nunca se rehace la ficha entera: `productSet`, que usa el importador, reescribe casi todo y no vale para esto.
