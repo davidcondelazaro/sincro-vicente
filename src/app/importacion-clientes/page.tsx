@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { AppSidebar } from "@/components/app-sidebar";
 
 type Run = {
-  id: string; mode: "id" | "from_date" | "latest" | "all"; parameters: Record<string, unknown>; status: "queued" | "running" | "paused" | "stopped" | "completed" | "failed";
+  id: string; mode: "id" | "from_date" | "latest" | "all" | "retry_errors"; parameters: Record<string, unknown>; status: "queued" | "running" | "paused" | "stopped" | "completed" | "failed";
   total_count: number; processed_count: number; created_count: number; existing_count: number; error_count: number; created_at: string; started_at: string | null; finished_at: string | null;
 };
 type ImportEvent = { id: number; run_id: string; level: "info" | "success" | "warning" | "error"; outcome: "created" | "existing" | "error" | "status"; prestashop_customer_id: number | null; customer_email: string | null; shopify_customer_id: string | null; message: string; created_at: string };
@@ -31,8 +31,8 @@ export default function BulkImportsPage() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   const loadEvents = useCallback(async (runId: string) => {
-    const { data } = await createClient().from("customer_import_events").select("*").eq("run_id", runId).order("id", { ascending: true }).limit(300);
-    setEvents((data ?? []) as ImportEvent[]);
+    const { data } = await createClient().from("customer_import_events").select("*").eq("run_id", runId).order("id", { ascending: false }).limit(300);
+    setEvents(((data ?? []) as ImportEvent[]).reverse());
   }, []);
 
   const loadRun = useCallback(async () => {
@@ -58,12 +58,12 @@ export default function BulkImportsPage() {
     if (!run) return;
     const supabase = createClient();
     const channel = supabase.channel(`customer-import-${run.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "customer_import_runs", filter: `id=eq.${run.id}` }, () => { void loadRun(); })
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "customer_import_events", filter: `run_id=eq.${run.id}` }, () => { void loadEvents(run.id); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "customer_import_runs", filter: `id=eq.${run.id}` }, (payload) => { setRun((selected) => selected?.id === run.id ? { ...selected, ...(payload.new as Partial<Run>) } : selected); if ((payload.new as Run).status !== run.status) void loadRun(); })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "customer_import_events", filter: `run_id=eq.${run.id}` }, (payload) => { setEvents((items) => [...items, payload.new as ImportEvent].slice(-300)); })
       .subscribe();
     const timer = run.status === "queued" || run.status === "running" ? window.setInterval(() => { void loadRun(); }, 3_000) : undefined;
     return () => { if (timer) window.clearInterval(timer); void supabase.removeChannel(channel); };
-  }, [run?.id, run?.status, loadEvents, loadRun]);
+  }, [run?.id, run?.status, loadRun]);
 
   async function start(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setStarting(true); setError(null);
@@ -72,6 +72,16 @@ export default function BulkImportsPage() {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "No se pudo iniciar la importación.");
       setHistoryPage(0); setRun(body.run); setLogsExpanded(true); setHistory((items) => [body.run, ...items.filter((item) => item.id !== body.run.id)]); setHistoryHasMore(true); setEvents([]); await loadEvents(body.run.id);
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Error inesperado."); } finally { setStarting(false); }
+  }
+
+  async function retryErrors() {
+    if (!run) return; setStarting(true); setError(null);
+    try {
+      const response = await fetch("/api/bulk/runs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "retry_errors", sourceRunId: run.id }) });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "No se pudo reintentar.");
+      setHistoryPage(0); setRun(body.run); setLogsExpanded(true); setEvents([]); await loadRun();
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Error inesperado."); } finally { setStarting(false); }
   }
 
@@ -115,6 +125,7 @@ export default function BulkImportsPage() {
             <div className="flex gap-2">
               {(run.status === "queued" || run.status === "running") && <button disabled={changing} onClick={() => changeStatus("paused")} className="rounded-lg border border-amber-300 px-4 py-2 font-medium text-amber-900 hover:bg-amber-50">Pausar</button>}
               {run.status === "paused" && <button disabled={changing} onClick={() => changeStatus("queued")} className="rounded-lg bg-emerald-700 px-4 py-2 font-medium text-white hover:bg-emerald-800">Reanudar</button>}
+              {!active && run.error_count > 0 && <button disabled={starting} onClick={retryErrors} className="rounded-lg border border-emerald-300 px-4 py-2 font-medium text-emerald-800 hover:bg-emerald-50">Reintentar errores ({run.error_count})</button>}
               {active && <button disabled={changing} onClick={() => changeStatus("stopped")} className="rounded-lg border border-red-300 px-4 py-2 font-medium text-red-800 hover:bg-red-50">Detener</button>}
             </div>
           </div>
@@ -132,7 +143,7 @@ export default function BulkImportsPage() {
   </div>;
 }
 
-function scopeLabel(run: Run) { if (run.mode === "id") return `Cliente #${run.parameters.customerId}`; if (run.mode === "from_date") return `Desde ${formatSpanishDate(String(run.parameters.fromDate))}`; if (run.mode === "all") return "Todos los clientes"; return `Últimos ${run.parameters.latest} clientes`; }
+function scopeLabel(run: Run) { if (run.mode === "id") return `Cliente #${run.parameters.customerId}`; if (run.mode === "from_date") return `Desde ${formatSpanishDate(String(run.parameters.fromDate))}`; if (run.mode === "all") return "Todos los clientes"; if (run.mode === "retry_errors") return "Reintento de errores"; return `Últimos ${run.parameters.latest} clientes`; }
 function formatSpanishDate(value: string) { const [year, month, day] = value.slice(0, 10).split("-"); return year && month && day ? `${day}/${month}/${year}` : value; }
 function formatMadridDateTime(value: string) { return new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", dateStyle: "short", timeStyle: "short" }).format(new Date(value)); }
 function formatMadridTime(value: string) { return new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", timeStyle: "medium" }).format(new Date(value)); }

@@ -57,6 +57,7 @@ function syncType(run: RawRun) {
   if (run.mode === "selective" || run.mode === "id") return "Selectiva";
   if (run.mode === "from_date") return "Desde fecha";
   if (run.mode === "latest") return "Últimos registros";
+  if (run.mode === "retry_errors") return "Reintento de errores";
   const filters = run.filters ?? run.parameters ?? {};
   if (filters.modifiedSince || filters.changedSince) return "Parcial";
   if (Object.values(filters).some((value) => Array.isArray(value) && value.length || typeof value === "string" && value)) return "Selectiva";
