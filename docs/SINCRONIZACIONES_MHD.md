@@ -22,7 +22,7 @@ Solo las altas y las modificaciones importantes piden la ficha de detalle (una p
 - **Vuelta de un archivado** (David, 2026-10-27): si MHD vuelve a traer un producto que estaba archivado, se **reactiva** (activo, o borrador si tiene revisión pendiente o «Avisar a MHD»), conserva su URL y se **quita su redirección**: la de `/products/<handle>` se borra en Shopify y se descarta en la base de redirecciones. Ojo con las redirecciones cada vez que algo se reactive. Hecho en la subida (`shopify-draft.ts`, `releaseProductRedirects`).
 - **Lo ya subido no se reescribe sin pedirlo** (David, 2026-10-30): la subida del importador pisa casi toda la ficha, también lo arreglado a mano en Shopify. Ninguna tanda vuelve a subir un producto que esté activo o en borrador, ni lo busca solo por código ni por EAN; si lo ve, lo descarta sin gastar IA. Solo se reescribe con la opción expresa «Reescribir también los ya subidos» de una tanda o con el aviso del botón de una prueba. Los **archivados sí pasan**, porque se reactivan (punto anterior). Las altas automáticas pasan a `upload: "nuevos"`, el mismo modo: se publican igual, porque el estado no depende del modo. Detalle en [IMPORTADOR_PRODUCTOS_MHD.md](IMPORTADOR_PRODUCTOS_MHD.md) › Lo ya subido.
 - **Bajas también para lo que entró con la sincronización antigua** (SQL Server / Pladisel): el «ERP» y MHD son lo mismo (David, 2026-10-26). Sustituye a la decisión de esa mañana de archivar solo lo creado por el importador. El 26-10 había 440 productos activos de esa vía cuyo EAN MHD ya había dado de baja; se cruzan por EAN o por código.
-- **Seguros** (una lectura incompleta de MHD parecería una baja masiva; ver «Agotados en MHD»): nada se toca solo porque falte en el listado, cada producto se confirma con su ficha de MHD, y hay **freno** (`absence_brake_pct`, 2 %).
+- **Seguros** (una lectura incompleta de MHD parecería una baja masiva; ver «Agotados en MHD»): nada se toca solo porque falte en el listado, cada producto se confirma con su ficha de MHD, y hay **freno** (`absence_brake_pct`, 15 %).
 - **Histórico:** una tabla con todo lo ocurrido a cada producto (alta, baja, cambio, qué se hizo y con qué resultado), **sin caducidad**. El registro del importador (`mhd_importer_events`) se borra a los 60 días; este no.
 - **Correos:**
   - inmediato **solo con fallos graves**, también a david@aligeria.com: lectura de MHD fallida, freno de bajas, Anthropic sin saldo o con el tope de gasto alcanzado, Shopify rechazando la subida;
@@ -59,7 +59,7 @@ Propuesta inicial:
 | Familia o subfamilia | **Se recoloca solo en el árbol nuevo** (David, 2026-10-26): metacampos de apartado, grupo y familia, colecciones y migas de pan. Se recalculan también los filtros (`filtro.*`), que dependen de la familia. La dirección del producto no cambia, así que no hace falta redirección. |
 | Marca, EAN o modelo | **A revisión, sin tocar nada** (David, 2026-10-26): puede ser otro producto con el mismo código. Sale en el resumen diario. |
 | Clase energética | **Todo lo que depende de ella** (David, 2026-10-26): la etiqueta energética (`custom.etiqueta_energetica`), la ficha de información del producto de la UE y el enlace a EPREL (`custom.documentos`, `custom.eprel`), el filtro de eficiencia y la etiqueta «Energética». Como es un dato clave, también se rehacen los textos (regla de los cambios de datos). Si la etiqueta nueva no casa con el modelo, a revisión. |
-| Opciones de entrega | **Se actualizan solas, siempre** (David, 2026-10-26: «esta parte es importantísima»): portes, subida, instalación y retirada del viejo, con sus precios, al metacampo `custom.opciones_entrega`, sin IA. Se detectan en cada lectura del listado (cada hora), que trae los siete campos de portes y servicios. Hoy van dentro de la huella «precio» (`mhd_hash_parts`): conviene separarlos en una huella propia. Sale en el resumen diario. Si un servicio desaparece o su precio sube mucho, aviso en el resumen. |
+| Opciones de entrega | **Se actualizan solas, siempre** (David, 2026-10-26: «esta parte es importantísima»): portes, subida, instalación y retirada del viejo, con sus precios, al metacampo `custom.opciones_entrega`, sin IA. Se detectan en cada lectura del listado (cada hora), que trae los siete campos de portes y servicios. Hoy van dentro de la huella «precio» (`mhd_hash_parts`): conviene separarlos en una huella propia. Las escribe el paso «opciones-entrega» de la vuelta (ver [Opciones de entrega](#opciones-entrega)). Si un dato desaparece o su importe sube más de un 50 %, aviso. |
 
 ## Lo que cada subida avisa a la estructura de la tienda (acuerdo con la sesión del árbol, 2026-10-28)
 
@@ -124,4 +124,38 @@ Un producto es alta si viene en el listado de MHD, no existe en Shopify con su c
 
 ## Pendiente de decidir
 
-- ~~El porcentaje del freno de bajas~~: 2 % (David, 2026-10-29), en Configuración.
+- ~~El porcentaje del freno de bajas~~: 15 % (David, 2026-10-31; antes 2 %, que paraba con caídas normales de proveedor: lo máximo visto son unos 2.230, el 9 %), en Configuración.
+
+## Tarifas de servicios
+
+El tema ofrece cada servicio buscando la variante de su producto de Shopify con el
+precio que da MHD en ese aparato. Si la variante no existe, el servicio no sale en
+la ficha y no hay ningún error. El paso «tarifas-servicios» de la vuelta
+(`service-tariffs.ts`) compara los importes del listado con esas variantes:
+
+- Si falta alguna, manda un aviso con el importe, cuántos productos afecta, ejemplos
+  y el SKU a crear. Una tarifa nueva avisa al momento; mientras siga faltando, se
+  repite una vez al día. El resumen recoge los avisos enviados.
+- Para resolverlo, crear en el producto de servicio la variante con ese precio
+  exacto y ese SKU, sin seguimiento de stock y **sin requerir envío**. En subida e
+  instalación no hay que tocar código: el tema busca por precio y la exportación a
+  MHD reconoce el SKU. La retirada sí necesita un cambio en el tema, que hoy ofrece
+  su primera variante sin mirar el precio.
+- Lee el listado entero tras cada lectura, no los cambios ni la subida de fichas: un
+  producto nuevo avisa en la misma vuelta que entra, antes de subirse.
+- Si la comprobación falla, queda en el paso de la vuelta y no la para.
+
+## Opciones de entrega
+
+El paso «opciones-entrega» de la vuelta (`delivery-options-sync.ts`) lleva los siete
+campos de portes y servicios de MHD al metacampo `custom.opciones_entrega` de cada
+producto activo o en borrador, incluidos los ya publicados. Sin IA ni revisión.
+
+- Compara con lo último registrado (`mhd_shopify_delivery_options`) y, antes de
+  escribir, con lo que hay en Shopify. La primera pasada solo registra lo que coincide.
+- Lo que no quepa en 60 s sigue en la vuelta siguiente.
+- **Freno:** más de 500 productos cambiados de golpe no se envían y se avisa. Si el
+  cambio es real, subir `delivery_options_max` en `store_settings`.
+- Un valor puesto a mano en el metacampo se sobrescribe: manda MHD.
+- **Pedidos ya pagados:** si cambian los portes antes de exportar, el pedido deja de
+  cuadrar con lo cobrado y se bloquea con el motivo a la vista, hasta revisarlo.
