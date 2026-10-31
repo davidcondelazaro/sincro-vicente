@@ -89,7 +89,7 @@ Un solo reloj: pg_cron abre una vuelta cada 30 minutos (`mhd_sync_cycle_start`, 
 3. **Precio y stock** a Shopify (solo lo que cambia).
 4. **Agotados en MHD** (abajo).
 5. **Altas** (abajo): lo nuevo, a la tanda «Altas automáticas».
-6. **Avisos de tandas terminadas:** un correo por cada tanda del importador que acaba, con su resultado (`job-notices.ts`).
+6. **Avisos de tandas terminadas:** **apagados hasta nuevo aviso** (David, 2026-10-31: al momento, solo frenos y avisos graves; el resto, en el resumen diario). Se encienden con `job_notice_emails` = `true` en `store_settings` (`job-notices.ts`).
 7. Pendiente: cambios de ficha.
 
 Una sola vuelta a la vez; si una pasa de 25 minutos se da por atascada y se avisa. Se ve en utils › Catálogo › Sincronización con MHD (con el botón «Leer ahora y actualizar») y en Inicio. Pausa y frecuencia del resumen: Configuración. Resumen por correo a las 9:00 (el de cada hora se quitó el 2026-10-30).
@@ -104,12 +104,11 @@ Por eso (`src/lib/mhd-importer/absences.ts`, paso «agotados» de la vuelta, tab
 2. **Confirmado:** **stock 0** en «Almacén MHD» y, si se vendía sin stock (Balay, Bosch, Siemens, AEG, Electrolux y Zanussi en lavado, frío y cocción: `STORE_RULES.sellOutOfStock*`), **deja de venderse sin stock** mientras falte. **Sigue publicado**, con su dirección, precio y «Avísame cuando vuelva». Nada se archiva ni se redirige.
 3. **Vuelve a venir:** precio y stock lo reponen en esa misma vuelta y se le devuelve «vender sin stock» si lo tenía. Sin reprocesar ni tocar redirecciones.
 4. **30 días sin volver** (`absence_days`, en utils › Catálogo › Configuración): pasa a **pendiente de baja** (archivar y proponer redirección; esa parte está pendiente de montar).
-5. **Freno:** si en una vuelta se confirman más del `absence_brake_pct` % (2 %) de los activos de la tienda, no se toca nada y llega un aviso. La primera puesta al día (29-10, 14:12) se aplicó con el freno saltado, con el sí de David: **667 productos a stock 0** (4.739 unidades que MHD no podía servir), 12 de ellos dejaron de venderse sin stock; 2 los había saltado la lectura y no se tocaron.
+5. **Freno:** si se calcula que faltan más del `absence_brake_pct` % de los activos de la tienda, no se toca nada y llega un aviso, repetido cada 12 horas mientras siga. El cálculo aplica a todos los candidatos la parte sin ficha de los comprobados (`estimateAbsent`), porque en una vuelta solo da tiempo a comprobar unos 500 (David, 2026-10-31). Antes contaba solo los confirmados: con un tope alto no saltaría nunca, y una vuelta cortada por tiempo aplicó 339 con el freno activo. La primera puesta al día (29-10, 14:12) se aplicó con el freno saltado, con el sí de David: **667 productos a stock 0** (4.739 unidades que MHD no podía servir), 12 de ellos dejaron de venderse sin stock; 2 los había saltado la lectura y no se tocaron.
 
 6. **Ritmo con MHD** (desde el 30-10, tras la caída de esa mañana; informe en `docs/informe-mhd-2026-10-30/`): las fichas se piden **como mucho 5 por segundo**, 4 a la vez y en orden aleatorio. Antes iban 8 a la vez (unas 20 por segundo) y MHD rechazó con 429 casi un tercio de mil consultas.
    - **Si MHD falla en masa** (429, 5xx o sin respuesta): se para todo enseguida, se espera 10 s y se reintenta; si vuelve a fallar, 30 s y otro intento; a la tercera, se deja la ronda y llega un aviso (David: «pararía rápido y luego iría realizando ciertos reintentos»). Una ficha que falla por otra cosa se apunta y no para nada.
    - **Tope de tiempo:** 2 minutos de comprobaciones por vuelta, para que la vuelta quepa en sus 5 minutos.
-   - **Freno anticipado:** en cuanto los confirmados pasan del límite del freno, se deja de comprobar (el freno salta igual) y el aviso dice «al menos N».
    - Lo que no se llega a comprobar sigue siendo candidato y se mira en la vuelta siguiente (`unchecked`, `stoppedBy` en el paso de la vuelta).
    - Los candidatos y los que vuelven se leen por páginas: antes se cortaban en 1.000 (límite de filas de Supabase) y el 30-10 faltaban 1.454.
 

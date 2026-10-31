@@ -3,13 +3,16 @@ import { EMAIL_PREFIX, escapeHtml, sendEmail, settingRecipients } from "@/lib/em
 
 // Aviso de «tanda terminada» (David, 2026-10-29): al acabar una tanda del importador, un correo corto con su resultado
 // (subidos, a revisión, bloqueados, descartes por motivo, errores, coste y tiempo). Lo mira la vuelta cada 30 minutos;
-// cada tanda se avisa una sola vez (options.notified).
+// cada tanda se avisa una sola vez (options.notified). Apagado hasta nuevo aviso (David, 2026-10-31: solo frenos y avisos
+// graves al momento, y el resumen diario); se enciende con `job_notice_emails` = true en store_settings.
 const UTILS = "https://utils.electronicavicente.com";
 const integer = new Intl.NumberFormat("es-ES");
 const dollars = new Intl.NumberFormat("es-ES", { style: "currency", currency: "USD" });
 const duration = (ms: number) => { const minutes = Math.round(ms / 60_000); return minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} h ${minutes % 60} min`; };
 
 export async function notifyFinishedJobs(db: SupabaseClient) {
+  const { data: enabled } = await db.from("store_settings").select("value").eq("key", "job_notice_emails").maybeSingle();
+  if (enabled?.value !== true) return { notified: 0, off: true };
   const since = new Date(Date.now() - 2 * 86_400_000).toISOString();
   const { data: jobs, error } = await db.from("mhd_importer_jobs").select("id,title,options,started_at,finished_at").eq("status", "terminado").gte("finished_at", since).is("options->>notified", null);
   if (error) throw error;

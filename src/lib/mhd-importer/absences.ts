@@ -11,16 +11,17 @@ import { shopifyGraphql } from "./store-filters";
 //   1. Los productos de la tienda (activos o en borrador) que no vienen en la lectura se confirman uno a uno con su
 //      ficha de MHD: solo un «no existe» (404) cuenta; si existe, la lectura por páginas se lo saltó y no se toca.
 //   2. Confirmados: stock 0 en «Almacén MHD» y, si se vendían sin stock (BSH, Electrolux…), dejan de venderse así
-//      mientras falten. Siguen publicados. Freno: si en una vuelta son más del `absence_brake_pct` % de la tienda, no se
-//      toca nada y se avisa (salvo `force`, para la primera puesta al día).
+//      mientras falten. Siguen publicados. Freno: si se calcula que son más del `absence_brake_pct` % de la tienda, no
+//      se toca nada y se avisa (salvo `force`, para la primera puesta al día). Se calcula sobre todos los candidatos con
+//      la parte sin ficha de los comprobados (`estimateAbsent`): en una vuelta solo da tiempo a comprobar unos 500.
 //   3. Los que vuelven a venir: se les devuelve «vender sin stock» si lo tenían (el stock lo repone precio y stock).
 //   4. Los que llevan más de `absence_days` días sin volver quedan «pendientes de baja» (archivar y redirigir, aparte).
 // Ritmo con MHD al confirmar (2026-10-30: con 8 a la vez, unas 20 fichas por segundo, rechazó con 429 casi un tercio de
 // mil): como mucho 5 por segundo. Si MHD falla en masa (429, 5xx, sin respuesta) se para todo enseguida, se espera y se
 // reintenta; si sigue fallando tras las pausas, se deja la ronda (David). También se deja al pasar del tiempo de la
-// vuelta o en cuanto el freno ya va a saltar. Lo que no se comprueba sigue siendo candidato en la vuelta siguiente.
+// vuelta. Lo que no se comprueba sigue siendo candidato en la vuelta siguiente.
 const CONFIRM_CONCURRENCY = 4, CONFIRM_GAP_MS = 200, CONFIRM_BUDGET_MS = 120_000, CONFIRM_PAUSES_MS = [10_000, 30_000];
-const SHOPIFY_CONCURRENCY = 5, STOCK_BATCH = 250, PAGE = 1000;
+const SHOPIFY_CONCURRENCY = 5, STOCK_BATCH = 250, PAGE = 1000, BRAKE_QUIET_MINUTES = 720;
 type Candidate = { codigo: string; product_id: string; variant_id: string; inventory_item_id: string | null; product_status: string };
 type UserError = { message: string };
 
@@ -46,17 +47,22 @@ async function allRows<T>(page: (from: number, to: number) => PromiseLike<{ data
   }
 }
 
+// Cuántos faltan de verdad: la parte sin ficha de los comprobados, aplicada a todos los candidatos.
+export function estimateAbsent(candidates: number, confirmed: number, skipped: number) {
+  const checked = confirmed + skipped;
+  return checked ? Math.round(candidates * confirmed / checked) : 0;
+}
+
 // Confirma con la ficha de MHD, al ritmo de arriba, en orden aleatorio (si una ronda se deja a medias, la siguiente no
-// empieza siempre por los mismos). `stopAt`: en cuanto hay tantos confirmados, se deja (el freno ya va a saltar).
-async function confirmAbsent(mhd: MhdConfig, candidates: Candidate[], stopAt: number) {
+// empieza siempre por los mismos).
+async function confirmAbsent(mhd: MhdConfig, candidates: Candidate[]) {
   const queue = [...candidates].sort(() => Math.random() - 0.5);
   const confirmed: Candidate[] = [], skipped: string[] = [], errors: string[] = [];
   const deadline = Date.now() + CONFIRM_BUDGET_MS;
-  let nextStart = 0, pausedUntil = 0, pauses = 0, busyErrors = 0, lastBusy = "", stoppedBy: "errores" | "tiempo" | "freno" | null = null;
+  let nextStart = 0, pausedUntil = 0, pauses = 0, busyErrors = 0, lastBusy = "", stoppedBy: "errores" | "tiempo" | null = null;
   const worker = async () => {
     while (queue.length && !stoppedBy) {
       if (Date.now() > deadline) { stoppedBy = "tiempo"; break; }
-      if (confirmed.length >= stopAt) { stoppedBy = "freno"; break; }
       const at = Math.max(Date.now(), nextStart, pausedUntil);
       nextStart = at + CONFIRM_GAP_MS;
       if (at > Date.now()) await sleep(at - Date.now());
@@ -89,22 +95,23 @@ const setPolicy = (deps: { shopify: SourcesConfig["shopify"] }, productId: strin
 export async function syncAbsences(deps: { db: SupabaseClient; sources: SourcesConfig }, options: { runId: string; cycleId?: string; dryRun?: boolean; force?: boolean }) {
   const db = deps.db;
   const [days, brakePct] = await Promise.all([setting(db, "absence_days", 30), setting(db, "absence_brake_pct", 2)]);
-  const summary = { candidates: 0, confirmed: 0, skippedByRead: 0, unchecked: 0, stoppedBy: null as string | null, pauses: 0, busyErrors: 0, applied: 0, policyOff: 0, returned: 0, policyBack: 0, open: 0, due: 0, braked: false, errors: [] as string[] };
+  const summary = { candidates: 0, confirmed: 0, estimated: 0, skippedByRead: 0, unchecked: 0, stoppedBy: null as string | null, pauses: 0, busyErrors: 0, applied: 0, policyOff: 0, returned: 0, policyBack: 0, open: 0, due: 0, braked: false, errors: [] as string[] };
 
   // 1. Candidatos, confirmados con la ficha de MHD.
   const candidates = await allRows<Candidate>((from, to) => db.rpc("mhd_absence_candidates", { p_run: options.runId }).range(from, to));
   summary.candidates = candidates.length;
   const { count: storeSize } = await db.from("store_shopify_ids").select("codigo", { count: "exact", head: true }).eq("status", "ACTIVE");
   const limit = Math.max(1, Math.round((storeSize ?? 0) * brakePct / 100));
-  const check = await confirmAbsent(deps.sources.mhd, candidates, options.force ? Infinity : limit + 1);
+  const check = await confirmAbsent(deps.sources.mhd, candidates);
   const { confirmed, skipped } = check;
+  summary.estimated = estimateAbsent(candidates.length, confirmed.length, skipped.length);
   summary.errors.push(...check.errors);
   Object.assign(summary, { confirmed: confirmed.length, skippedByRead: skipped.length, unchecked: check.unchecked, stoppedBy: check.stoppedBy, pauses: check.pauses, busyErrors: check.busyErrors });
 
   // 2. Freno y aplicación.
-  if (confirmed.length > limit && !options.force) {
+  if (summary.estimated > limit && !options.force) {
     summary.braked = true;
-    if (!options.dryRun) await sendAlert(db, { key: "agotados:freno", subject: `Freno: más de ${limit} productos desaparecidos de MHD de golpe`, lines: [`En esta vuelta faltan en el listado de MHD ${candidates.length} productos de la tienda. Al comprobarlos uno a uno, al menos ${confirmed.length} ya no tienen ficha: más del ${brakePct} % (${limit}). Se dejó de comprobar ahí.`, "No se ha tocado nada: revisa si es normal antes de aplicarlo."], href: "/importar-datos-mhd" });
+    if (!options.dryRun) await sendAlert(db, { key: "agotados:freno", quietMinutes: BRAKE_QUIET_MINUTES, subject: `Freno: unos ${summary.estimated} productos desaparecidos de MHD de golpe`, lines: [`En esta vuelta faltan en el listado de MHD ${candidates.length} productos de la tienda. De los ${confirmed.length + skipped.length} comprobados uno a uno, ${confirmed.length} ya no tienen ficha: serían unos ${summary.estimated}, más del ${brakePct} % (${limit}).`, "No se ha tocado nada: revisa si es normal antes de aplicarlo.", "Mientras siga el freno, este aviso se repite cada 12 horas."], href: "/importar-datos-mhd" });
   } else if (!options.dryRun && confirmed.length) {
     // Estado actual de cada variante (política y stock), de 250 en 250.
     const current = new Map<string, { policy: string; stock: number | null }>();
