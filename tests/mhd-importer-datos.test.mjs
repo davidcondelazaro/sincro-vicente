@@ -470,3 +470,44 @@ test("tandas: sin encenderlos no se manda ningún correo ni se miran las tandas"
   assert.deepEqual(await notifyFinishedJobs(db), { notified: 0, off: true });
   assert.deepEqual(tables, ["store_settings"]);
 });
+
+const { missingServiceTariffs } = await jiti.import("../src/lib/mhd-importer/service-tariffs.ts");
+const tarifas = { "servicio-subida-a-puerta": [599, 899], "servicio-instalacion": [4999], "servicio-retirada-aparato-usado": [0] };
+const aparato = (codigo, subida, instalacion = null, retirada = null) => ({ codigo, subida_puerta_particulares: subida, instalacion_particulares: instalacion, retirada_usado_particulares: retirada });
+
+test("servicios: los importes con variante no avisan, y 0 cuenta como gratis", () => {
+  assert.deepEqual(missingServiceTariffs([aparato("A", "5.99", "49.99", "0"), aparato("B", "8.99")], tarifas), []);
+});
+
+test("servicios: un tramo nuevo se agrupa por importe y propone su SKU", () => {
+  const [faltante, ...resto] = missingServiceTariffs([aparato("A", "9.99"), aparato("B", "9.99"), aparato("C", "5.99")], tarifas);
+  assert.equal(resto.length, 0);
+  assert.deepEqual(faltante, { service: "Subida a puerta", handle: "servicio-subida-a-puerta", sku: "SUBIDA-999", cents: 999, products: 2, examples: ["A", "B"] });
+});
+
+test("servicios: una retirada con precio y una instalación sin variante también avisan", () => {
+  assert.deepEqual(missingServiceTariffs([aparato("A", null, "59.99", "10")], tarifas).map((item) => item.sku), ["INSTALACION-5999", "RETIRADA-1000"]);
+});
+
+test("servicios: sin valor o sin producto activo", () => {
+  assert.deepEqual(missingServiceTariffs([aparato("A", null), aparato("B", "")], tarifas), []);
+  assert.deepEqual(missingServiceTariffs([aparato("A", "5.99")], {}).map((item) => item.sku), ["SUBIDA-599"]);
+});
+
+const { sameDeliveryOptions, notableChanges } = await jiti.import("../src/lib/mhd-importer/delivery-options-sync.ts");
+
+test("opciones de entrega: se comparan importes, y sin metacampo equivale a todo vacío", () => {
+  assert.equal(sameDeliveryOptions({ gastos_envio_peninsula_particulares: 9.9, subida_puerta_particulares: null }, { gastos_envio_peninsula_particulares: "9.90" }), true);
+  assert.equal(sameDeliveryOptions(null, { subida_puerta_particulares: null }), true);
+  assert.equal(sameDeliveryOptions({ retirada_usado_particulares: 0 }, { retirada_usado_particulares: null }), false);
+  assert.equal(sameDeliveryOptions({ subida_puerta_particulares: 8.99 }, { subida_puerta_particulares: 13.99 }), false);
+  assert.equal(sameDeliveryOptions({ invalido: true }, { subida_puerta_particulares: 8.99 }), false);
+});
+
+test("opciones de entrega: avisa si un dato desaparece o sube más de un 50 %", () => {
+  assert.deepEqual(notableChanges({ subida_puerta_particulares: 8.99 }, { subida_puerta_particulares: null }), ["subida_puerta_particulares: 8.99 → sin dato"]);
+  assert.deepEqual(notableChanges({ gastos_envio_peninsula_particulares: 10 }, { gastos_envio_peninsula_particulares: 15.01 }), ["gastos_envio_peninsula_particulares: 10 → 15.01"]);
+  assert.deepEqual(notableChanges({ gastos_envio_peninsula_particulares: 10 }, { gastos_envio_peninsula_particulares: 15 }), []);
+  assert.deepEqual(notableChanges(null, { subida_puerta_particulares: 8.99 }), []);
+  assert.deepEqual(notableChanges({ retirada_usado_particulares: 0 }, { retirada_usado_particulares: 5 }), []);
+});
