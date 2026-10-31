@@ -1,10 +1,12 @@
 // Relaciones de Icecat en Shopify (David, 2026-10-30; docs/SINCRONIZACIONES_MHD.md). Una vez al día calcula en la base
 // los complementarios y relacionados de cada producto (mhd_relations_calc), y manda solo lo que cambia respecto a lo
-// último enviado (mhd_shopify_relations), en una operación masiva. Lo puesto a mano no se pisa: un metacampo que no está
+// último enviado (mhd_shopify_relations), en una operación masiva. En televisores, portátiles y monitores van primero
+// las recetas por familia (complement-recipes.ts) y detrás lo de Icecat, hasta 10. Lo puesto a mano no se pisa: un metacampo que no está
 // vacío ni coincide con lo último enviado se deja como está. Un producto que se queda sin relaciones conserva las suyas.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { shopifyGraphql, type ShopifyConfig } from "./store-filters";
 import { sendAlert } from "./alerts";
+import { computeComplements, mergeComplements, type RecipeProduct } from "./complement-recipes";
 
 type Relation = { product_id: string; complementary: string[]; related: string[] };
 type Current = { id: string; c: { value: string } | null; r: { value: string } | null };
@@ -29,6 +31,18 @@ async function allRows<T>(page: (from: number, to: number) => PromiseLike<{ data
   }
 }
 
+// Las recetas se calculan sobre lo último enviado, para no cambiar lo que sigue siendo válido.
+export function withRecipes(icecat: Relation[], products: RecipeProduct[], sent: Relation[]) {
+  const rows = new Map(icecat.map((row) => [row.product_id, row]));
+  const recipes = computeComplements(products, new Map(sent.map((row) => [row.product_id, row.complementary])));
+  for (const [product_id, slots] of recipes) {
+    if (!slots.length) continue;
+    const row = rows.get(product_id);
+    rows.set(product_id, { product_id, complementary: mergeComplements(slots, row?.complementary ?? []), related: row?.related ?? [] });
+  }
+  return [...rows.values()];
+}
+
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 const listField = (ownerId: string, key: string, ids: string[]): Field => ({ ownerId, namespace: NAMESPACE, key, type: "list.product_reference", value: JSON.stringify(ids) });
 
@@ -41,8 +55,10 @@ function writable(current: { value: string } | null | undefined, sent: string[] 
 export async function syncRelations(deps: { db: SupabaseClient; shopify: ShopifyConfig }, options: { dryRun?: boolean } = {}) {
   const { db, shopify } = deps;
   await checkLastBulk(deps);
-  const calculated = await allRows<Relation>((from, to) => db.rpc("mhd_relations_calc").range(from, to));
+  const icecat = await allRows<Relation>((from, to) => db.rpc("mhd_relations_calc").range(from, to));
+  const products = await allRows<RecipeProduct>((from, to) => db.rpc("mhd_complements_source").range(from, to));
   const sentRows = await allRows<Relation>((from, to) => db.from("mhd_shopify_relations").select("product_id,complementary,related").order("product_id").range(from, to));
+  const calculated = withRecipes(icecat, products, sentRows);
   if (calculated.length < sentRows.length * RELATIONS_SYNC.minShare) {
     const reason = `El cálculo da ${calculated.length} productos y hay ${sentRows.length} enviados.`;
     if (!options.dryRun) {

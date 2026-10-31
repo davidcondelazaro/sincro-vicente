@@ -132,6 +132,8 @@ Diseño actual, fuera de la vuelta de 30 minutos: pg_cron llamaría cada día a 
 - **Relacionados:** `alternative` del mismo tipo de producto; en cables, adaptadores, pilas y baterías, además con el mismo conector o formato. Se dejan en `only manual` para que Shopify no los rellene.
 - **Máximo 10 por lista.** Quedan fuera garantías, servicios y tarjeta regalo.
 - **Lo puesto a mano no se pisa:** un metacampo que no está vacío ni coincide con lo último enviado se respeta.
+- **Recetas por familia (2026-10-31):** en televisores, portátiles y monitores los complementarios salen primero de `complement-recipes.ts` y detrás va lo de Icecat, hasta 10. Un complemento por hueco, sin IA: filtro duro de compatibilidad, sin dato no hay sugerencia, stock mínimo de 5 para entrar, y nota de precio proporcionado (50), stock (30) y misma marca (20). Lee el stock de `mhd_shopify_price_stock` por `mhd_complements_source`, nunca de `mhd_catalog_products`. Lo ya sugerido se mantiene mientras siga compatible y tenga stock, para que las fichas no cambien cada día; si se agota o deja de encajar, entra el siguiente.
+- **Estado (2026-10-31):** migración `mhd_complements_source` aplicada y punto de partida guardado en `mhd_shopify_relations` (843 fichas). El TCL 55C6K PRO no se guarda: sus 8 puestos son manuales. Simulación con el código real: 41 fichas por escribir, todas por la cola de Icecat, y 1 respetada a mano. Falta desplegar y encender `sincro-vicente-relaciones`.
 - **Límites:** los archivados entran mientras sigan en `store_shopify_ids`; los antiguos que nunca estuvieron (137 con EAN) no. Un producto que se queda sin relaciones conserva las suyas. Los televisores no tienen enlaces en Icecat.
 
 ## Pendiente de decidir
