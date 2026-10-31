@@ -8,7 +8,7 @@ import { productDistinction, type Classification } from "./classification";
 import { PROCESSOR_MODEL } from "./ai";
 import { writeContent, writeElviForPage, type ProductContent } from "./content";
 import { fixBrandText, resolveBrand, type BrandChoice } from "./brands";
-import { sourceDisagreements } from "./facts";
+import { productWeightKg, sourceDisagreements } from "./facts";
 import { resolveModel, type ModelChoice } from "./models";
 import { energyClassReason, energyLetter } from "./review";
 import type { ListingProduct } from "./family";
@@ -22,7 +22,7 @@ import { classifyVideos, prepareVideos, type VideoKind } from "./videos";
 import { noTrace, type Trace } from "./trace";
 import { handleOwner, storeProductsByEan } from "./shopify-ids";
 import type { ShopifyConfig } from "./store-filters";
-import { applyProfile, discardReason, firstNumber, sourceValues, type AppliedRules, reviewReasons } from "./rules";
+import { applyProfile, discardReason, sourceValues, type AppliedRules, reviewReasons } from "./rules";
 import { fetchEprelClass, fetchIcecatByModel, fetchIcecatDocument, fetchMhdMedia } from "./sources";
 
 // Decisiones de David (2026-10-23), provisionales donde se indica.
@@ -74,14 +74,6 @@ type Listing = ListingProduct & { cod_familia: string | null; nombre_familia: st
 
 const json = (value: unknown) => JSON.stringify(value);
 const LISTS = new Set(["filtro.conectividad", "filtro.caracteristicas", "filtro.mas_especificaciones"]);
-
-function weightKg(values: Map<string, string>) {
-  for (const key of ["mhd:peso", "icecat:peso y dimensiones|peso"]) {
-    const raw = values.get(key); const n = raw ? firstNumber(raw) : null;
-    if (raw && n) return /\bg\b/i.test(raw) && !/kg/i.test(raw) ? n / 1000 : n;
-  }
-  return null;
-}
 
 // Dirección de la ficha (decidido 2026-10-23): tipo + marca + modelo; si existe, color, y en último caso -2, -3…
 // Una dirección que ya tiene este mismo producto (creado antes desde el importador) cuenta como libre.
@@ -410,7 +402,7 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
       shopify: {
         title: written.content.title, handle, status: "DRAFT", vendor, productType: classification.productType, tags, category: classification.category,
         descriptionHtml: written.content.long_description_html, seo: { title: written.content.meta_title, description: written.content.meta_description },
-        variant: { sku: listing.codigo, barcode: listing.codigo_ean, price: Number(listing.pvp ?? 0).toFixed(2), compareAtPrice: null, inventoryPolicy: sellWithoutStock ? "CONTINUE" : "DENY", weightKg: weightKg(values), tracked: true },
+        variant: { sku: listing.codigo, barcode: listing.codigo_ean, price: Number(listing.pvp ?? 0).toFixed(2), compareAtPrice: null, inventoryPolicy: sellWithoutStock ? "CONTINUE" : "DENY", weightKg: productWeightKg(values), tracked: true },
         inventory: [{ location: STORE_RULES.stockLocation, quantity: Math.max(0, Math.trunc(Number(listing.stock ?? 0))) }, ...STORE_RULES.zeroLocations.map((location) => ({ location, quantity: 0 }))],
         metafields, publications: ["Tienda online", "Shop"],
       },

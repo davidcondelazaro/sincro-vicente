@@ -7,7 +7,7 @@ import { createJiti } from "jiti";
 const jiti = createJiti(import.meta.url, { alias: { "@": new URL("../src", import.meta.url).pathname } });
 const { resolveModel } = await jiti.import("../src/lib/mhd-importer/models.ts");
 const { fixBrandText, resolveBrand, writtenBrand } = await jiti.import("../src/lib/mhd-importer/brands.ts");
-const { buildFactSheet, numbersIn, unsupportedNumbers, relativeDifference, sourceDisagreements } = await jiti.import("../src/lib/mhd-importer/facts.ts");
+const { buildFactSheet, numbersIn, productWeightKg, unsupportedNumbers, relativeDifference, sourceDisagreements } = await jiti.import("../src/lib/mhd-importer/facts.ts");
 const { applyProfile, discardReason, exclusionReason } = await jiti.import("../src/lib/mhd-importer/rules.ts");
 const { energyClassReason, median } = await jiti.import("../src/lib/mhd-importer/review.ts");
 const { estimateAbsent } = await jiti.import("../src/lib/mhd-importer/absences.ts");
@@ -127,6 +127,31 @@ test("hoja de datos: límites de las reglas y medidas de MHD frente a Icecat", (
   assert.deepEqual([...dims("72cm", "45 mm").keys()], ["mhd:altura"]);
   const weight = buildFactSheet(profile(), new Map([["mhd:peso", "1Kg"], ["icecat:peso y dimensiones|peso", "250 g"]]));
   assert.deepEqual([...weight.keys()], ["icecat:peso y dimensiones|peso"]); // 1 kg de MHD es un redondeo
+  assert.equal(buildFactSheet(profile(), new Map([["mhd:peso", "Soporta hasta 75 kg"]])).has("mhd:peso"), false);
+});
+
+test("peso de la variante: manda MHD, sin cifras falsas", () => {
+  const icecatKey = "icecat:peso y dimensiones|peso";
+  const weight = (mhd, ice) => productWeightKg(new Map([...(mhd ? [["mhd:peso", mhd]] : []), ...(ice ? [[icecatKey, ice]] : [])]));
+  assert.equal(weight("1Kg", "1,66 kg"), 1);
+  assert.equal(weight("4,96Kg", null), 4.96);
+  assert.equal(weight("7 Kilogramos", null), 7);
+  assert.equal(weight("980Kg", null), 0.98); // gramos escritos como kilos
+  assert.equal(weight("860Kg", "1 kg"), 0.86);
+  assert.equal(weight("150Kg", null), null); // entre 100 y 200 no se sabe
+  assert.equal(weight("5600 gramos", null), 5.6);
+  assert.equal(weight("1350 Gramos", null), 1.35);
+  assert.equal(weight("430 g", null), 0.43);
+  assert.equal(weight("1,09 kg (1120 g)", null), 1.09);
+  assert.equal(weight("461 g (peso del paquete)", null), 0.461);
+  assert.equal(weight("1.12 g", null), null);
+  assert.equal(weight("Soporta hasta 75 kg", null), null);
+  assert.equal(weight("Capacidad máxima 50 kg", "950 g"), 0.95); // MHD no da peso: entra Icecat
+  assert.equal(weight("0Kg", "2 kg"), 2);
+  assert.equal(weight("Ligero", null), null);
+  assert.equal(weight(null, "120 kg"), 120);
+  assert.equal(weight(null, "0,3 g"), 0.0003);
+  assert.equal(weight(null, "209 kg"), null);
 });
 
 test("diferencias de más de un 20 % entre MHD e Icecat", () => {
