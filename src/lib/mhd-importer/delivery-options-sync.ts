@@ -13,7 +13,7 @@ type Change = { codigo: string; product_id: string; options: Options; sent: Opti
 type Node = { id: string; metafield: { value: string } | null };
 type UserError = { field?: string[] | null; message: string };
 
-export const DELIVERY_OPTIONS_SYNC = { defaultMax: 500, readBatch: 100, writeBatch: 25, budgetMs: 60_000, riseShare: 1.5 };
+export const DELIVERY_OPTIONS_SYNC = { defaultMax: 500, compareBatch: 1000, readBatch: 100, writeBatch: 25, budgetMs: 60_000, riseShare: 1.5 };
 const SERVICE_KEYS = ["subida_puerta_particulares", "instalacion_particulares", "retirada_usado_particulares"];
 const AMOUNT_KEYS = [...SERVICE_KEYS, "gastos_envio_peninsula_particulares", "gastos_envio_baleares_particulares", "gastos_envio_portugal_baremo_1_particulares", "gastos_envio_portugal_baremo_2_particulares"];
 
@@ -54,13 +54,22 @@ export async function syncDeliveryOptions(deps: { db: SupabaseClient; shopify: S
   const deadline = Date.now() + (options.budgetMs ?? DELIVERY_OPTIONS_SYNC.budgetMs);
   const read = await latestRead(db, options.runId);
   if (!read.ok) return { skipped: true, reason: read.reason };
-  let changes: Change[] = [];
+  // Comparar todo el catálogo de una vez supera el límite de 8 s de la base de datos: se compara por tramos de códigos
+  const codes: string[] = [];
   for (let from = 0; ; from += 1000) {
-    const { data, error } = await db.rpc("mhd_delivery_options_changes", { p_run: read.run, p_limit: 50_000 }).range(from, from + 999);
-    if (error) throw error;
-    changes = changes.concat((data ?? []) as Change[]);
+    const { data, error } = await db.from("store_shopify_ids").select("codigo").in("status", ["ACTIVE", "DRAFT"]).order("codigo").range(from, from + 999);
+    if (error) throw new Error(error.message);
+    codes.push(...(data ?? []).map((row) => row.codigo as string));
     if (!data || data.length < 1000) break;
   }
+  let changes: Change[] = [];
+  for (let i = 0; i < codes.length; i += DELIVERY_OPTIONS_SYNC.compareBatch) {
+    const { data, error } = await db.rpc("mhd_delivery_options_changes", { p_run: read.run, p_codigos: codes.slice(i, i + DELIVERY_OPTIONS_SYNC.compareBatch) });
+    if (error) throw new Error(error.message);
+    changes = changes.concat((data ?? []) as Change[]);
+  }
+  // Primero lo ya comprobado, que es lo que de verdad ha cambiado
+  changes.sort((a, b) => Number(a.sent === null) - Number(b.sent === null));
   // Freno: muchos cambios de golpe en lo ya comprobado suelen ser datos rotos. Si es real, se sube delivery_options_max.
   const known = changes.filter((item) => item.sent !== null).length;
   const max = await maxChanges(db);
