@@ -20,7 +20,9 @@ type Stats = {
   conversion?: { orders: number; revenue: number; assisted_orders: number; assisted_revenue: number; influenced_orders: number; influenced_revenue: number; avg_ticket_chat: number | null; avg_ticket_other: number | null; conversations_with_order: number; unpaid_chat_orders?: number; first_order_at: string | null; top_sold: { id: number; title: string | null; units: number }[] };
   quality?: Record<string, number>;
   issue_types?: Record<string, number>;
+  alerts?: { stock: AlertStats; precio: AlertStats };
 };
+type AlertStats = { total: number; logged_in: number; anonymous: number; no_conversation: number; pending: number; notified: number; cancelled: number; failed: number };
 
 const ranges = [
   { key: "7", label: "Últimos 7 días" },
@@ -72,6 +74,7 @@ export function ChatbotStats() {
 
       {stats.conversion && <Conversion c={stats.conversion} conversations={t.conversations} />}
       {(stats.coupons?.length ?? 0) > 0 && <Coupons coupons={stats.coupons!} />}
+      {stats.alerts && <Alerts alerts={stats.alerts} />}
 
       <Panel title="Conversaciones por día"><DayChart days={fillDays(stats.by_day, range)} /></Panel>
 
@@ -150,6 +153,29 @@ function Coupons({ coupons }: { coupons: NonNullable<Stats["coupons"]> }) {
     </table></div>
     {leaked.length > 0 && <p className="mt-3 text-sm text-red-700">⚠ El chat mencionó {leaked.map((c) => c.code).join(", ")} sin tenerlo permitido: revisa esas conversaciones.</p>}
     <p className="mt-3 text-xs text-zinc-500">«Ofrecido» = el chat escribió el código en una conversación del periodo. «Tras ofrecerlo el chat» = pedido pagado con el código, atribuido a una conversación en la que el chat lo ofreció.</p>
+  </Panel>;
+}
+
+// Avisos de stock y de precio pedidos en el periodo: quién los pidió y en qué estado están ahora.
+function Alerts({ alerts }: { alerts: NonNullable<Stats["alerts"]> }) {
+  const rows = [{ label: "Stock", a: alerts.stock }, { label: "Bajada de precio", a: alerts.precio }];
+  const failed = alerts.stock.failed + alerts.precio.failed;
+  return <Panel title="Avisos de stock y de precio">
+    <div className="overflow-x-auto"><table className="w-full text-sm">
+      <thead className="text-left text-xs text-zinc-500"><tr><th className="py-1.5 pr-4 font-medium">Tipo</th><th className="py-1.5 pr-4 text-right font-medium">Altas</th><th className="py-1.5 pr-4 text-right font-medium">Con sesión</th><th className="py-1.5 pr-4 text-right font-medium">Sin sesión</th><th className="py-1.5 pr-4 text-right font-medium">Sin conversación</th><th className="py-1.5 pr-4 text-right font-medium">Esperando</th><th className="py-1.5 pr-4 text-right font-medium">Avisados</th><th className="py-1.5 text-right font-medium">Cancelados</th></tr></thead>
+      <tbody className="divide-y divide-zinc-100">{rows.map(({ label, a }) => <tr key={label}>
+        <td className="py-2 pr-4 font-medium text-zinc-900">{label}</td>
+        <td className="py-2 pr-4 text-right tabular-nums text-zinc-800">{number(a.total)}</td>
+        <td className="py-2 pr-4 text-right tabular-nums text-zinc-800">{number(a.logged_in)}</td>
+        <td className="py-2 pr-4 text-right tabular-nums text-zinc-800">{number(a.anonymous)}</td>
+        <td className="py-2 pr-4 text-right tabular-nums text-zinc-800">{number(a.no_conversation)}</td>
+        <td className="py-2 pr-4 text-right tabular-nums text-zinc-800">{number(a.pending)}</td>
+        <td className="py-2 pr-4 text-right tabular-nums text-zinc-800">{number(a.notified)}</td>
+        <td className="py-2 text-right tabular-nums text-zinc-800">{number(a.cancelled)}</td>
+      </tr>)}</tbody>
+    </table></div>
+    {failed > 0 && <p className="mt-3 text-sm text-red-700">⚠ {number(failed)} {failed === 1 ? "aviso falló" : "avisos fallaron"} al enviarse.</p>}
+    <p className="mt-3 text-xs text-zinc-500">Altas pedidas en el periodo y su estado actual; incluye las pruebas del equipo. «Con sesión» = sesión verificada al abrir la conversación: quien la inicia después cuenta como «sin sesión». «Sin conversación» = alta desde la web, directa o de una conversación borrada.</p>
   </Panel>;
 }
 

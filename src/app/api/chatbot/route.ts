@@ -85,9 +85,13 @@ export async function GET(request: Request) {
     }
 
     if (view === "stats") {
-      const { data, error } = await db.rpc("admin_conversation_stats", { p_from: since, p_to: until });
+      const [{ data, error }, alerts] = await Promise.all([
+        db.rpc("admin_conversation_stats", { p_from: since, p_to: until }),
+        db.rpc("admin_alert_stats", { p_from: since, p_to: until }),
+      ]);
       if (error) throw error;
-      return json({ stats: data });
+      if (alerts.error) throw alerts.error;
+      return json({ stats: { ...data, alerts: alerts.data } });
     }
 
     if (view === "support") {
