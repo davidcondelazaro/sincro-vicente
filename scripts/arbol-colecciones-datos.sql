@@ -311,7 +311,7 @@ insert into public.store_collections (handle,title,page_title,level,parent_handl
 ["radiodespertadores","Radiodespertadores",null,"familia","audio","tecnologia",false,[],14,null],
 ["despertadores","Despertadores",null,"familia","audio","tecnologia",false,[],15,null],
 ["radios-y-multimedia-para-coche","Radios y multimedia para coche",null,"familia","audio","tecnologia",false,[],16,null],
-["senalizacion-para-coche","Señalización para coche",null,"familia","audio","tecnologia",false,[],17,null],
+["senalizacion-para-coche","Balizas V16 para coche",null,"familia","movilidad","tecnologia",false,[],7,null],
 ["microfonos","Micrófonos",null,"familia","audio","tecnologia",false,[],18,null],
 ["megafonos","Megáfonos",null,"familia","audio","tecnologia",false,[],19,null],
 ["smartphones-reacondicionados","Smartphones reacondicionados",null,"familia","telefonia","tecnologia",false,[],2,null],
