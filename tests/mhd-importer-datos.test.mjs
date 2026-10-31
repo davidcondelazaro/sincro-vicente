@@ -10,6 +10,8 @@ const { fixBrandText, resolveBrand, writtenBrand } = await jiti.import("../src/l
 const { buildFactSheet, numbersIn, unsupportedNumbers, relativeDifference, sourceDisagreements } = await jiti.import("../src/lib/mhd-importer/facts.ts");
 const { applyProfile, discardReason, exclusionReason } = await jiti.import("../src/lib/mhd-importer/rules.ts");
 const { energyClassReason, median } = await jiti.import("../src/lib/mhd-importer/review.ts");
+const { estimateAbsent } = await jiti.import("../src/lib/mhd-importer/absences.ts");
+const { notifyFinishedJobs } = await jiti.import("../src/lib/mhd-importer/job-notices.ts");
 
 const model = (ref, brand = "X", titulo = "", icecat = null, extra = {}) => resolveModel({ ref_proved: ref, nombre_marca: brand, titulo, codigo_ean: "8445123456789", ...extra }, icecat);
 const icecat = (modelName, partCode, brand = "X") => ({ modelName, partCode, brand });
@@ -429,4 +431,17 @@ test("ya subido: bloqueado a mano sigue mandando sobre todo", async () => {
   const { db, calls } = fakeJobDb({ store_product_locks: { reason: "arreglado" }, store_shopify_ids: { codigo: jobItem.codigo } });
   await processJobItem({ db, config: {}, ai: noAi, upload: true }, jobItem);
   assert.match(itemUpdates(calls).at(-1).error, /bloqueado a mano/);
+});
+
+test("agotados: el freno calcula sobre todos los candidatos, no solo los comprobados", () => {
+  assert.equal(estimateAbsent(2003, 493, 7), 1975);
+  assert.equal(estimateAbsent(1000, 129, 603), 176); // lectura saltada: casi todos tienen ficha
+  assert.equal(estimateAbsent(500, 0, 0), 0); // sin comprobar nada no hay cálculo
+});
+
+test("tandas: sin encenderlos no se manda ningún correo ni se miran las tandas", async () => {
+  const tables = [];
+  const db = { from(table) { tables.push(table); return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null }) }) }) }; } };
+  assert.deepEqual(await notifyFinishedJobs(db), { notified: 0, off: true });
+  assert.deepEqual(tables, ["store_settings"]);
 });
