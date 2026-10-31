@@ -11,6 +11,7 @@ const { buildFactSheet, numbersIn, productWeightKg, unsupportedNumbers, relative
 const { applyProfile, discardReason, exclusionReason } = await jiti.import("../src/lib/mhd-importer/rules.ts");
 const { energyClassReason, median } = await jiti.import("../src/lib/mhd-importer/review.ts");
 const { estimateAbsent } = await jiti.import("../src/lib/mhd-importer/absences.ts");
+const { decideCollections, menuHandles, parseCollections } = await jiti.import("../src/lib/mhd-importer/empty-collections.ts");
 const { notifyFinishedJobs } = await jiti.import("../src/lib/mhd-importer/job-notices.ts");
 
 const model = (ref, brand = "X", titulo = "", icecat = null, extra = {}) => resolveModel({ ref_proved: ref, nombre_marca: brand, titulo, codigo_ean: "8445123456789", ...extra }, icecat);
@@ -510,4 +511,39 @@ test("opciones de entrega: avisa si un dato desaparece o sube más de un 50 %", 
   assert.deepEqual(notableChanges({ gastos_envio_peninsula_particulares: 10 }, { gastos_envio_peninsula_particulares: 15 }), []);
   assert.deepEqual(notableChanges(null, { subida_puerta_particulares: 8.99 }), []);
   assert.deepEqual(notableChanges({ retirada_usado_particulares: 0 }, { retirada_usado_particulares: 5 }), []);
+});
+
+test("colecciones vacías: solo cuentan los productos activos", () => {
+  const text = [
+    { id: "c1", handle: "satisfyer", title: "Satisfyer", tipo: { value: "marca" }, padre: null, oculta: null, p0: true, p1: false },
+    { id: "p1", status: "ARCHIVED", __parentId: "c1" },
+    { id: "c2", handle: "bosch", title: "Bosch", tipo: { value: "marca" }, padre: null, oculta: { value: "1" }, p0: false, p1: false },
+    { id: "p2", status: "ACTIVE", __parentId: "c2" },
+    { id: "p3", status: "DRAFT", __parentId: "c2" },
+  ].map((row) => JSON.stringify(row)).join("\n");
+  const [satisfyer, bosch] = parseCollections(text);
+  assert.deepEqual([satisfyer.active, satisfyer.published, satisfyer.seoHidden], [0, true, false]);
+  assert.deepEqual([bosch.active, bosch.published, bosch.seoHidden], [1, false, true]);
+});
+
+test("colecciones vacías: despublica, publica de nuevo y respeta los menús", () => {
+  const row = (id, handle, tipo, active, published, parentId = null) => ({ id, handle, title: handle, tipo, parentId, published, seoHidden: false, active });
+  const collections = [
+    row("g", "salud", "arbol-grupo", 0, true),
+    row("f", "salud-sexual", "arbol-familia", 0, true, "g"),
+    row("s", "juguetes-seo", "seo", 0, true, "f"),
+    row("f2", "telefonos-voip", "arbol-familia", 4, false, "g"),
+    row("f3", "con-menu", "arbol-familia", 0, true, "g"),
+    row("m", "satisfyer", "marca", 0, true),
+    row("o", "ofertas", "comercial", 0, true),
+  ];
+  const decision = decideCollections(collections, new Set(["con-menu"]));
+  assert.deepEqual(decision.unpublish.map((item) => [item.collection.handle, item.target]), [["salud-sexual", "/collections/salud"], ["juguetes-seo", "/collections/salud"], ["satisfyer", "/pages/marcas"]]);
+  assert.deepEqual(decision.recovered.map((item) => item.handle), ["telefonos-voip"]);
+  assert.deepEqual(decision.inMenu.map((item) => item.handle), ["con-menu"]);
+});
+
+test("colecciones vacías: enlaces de los menús en todos los niveles", () => {
+  const handles = menuHandles([{ items: [{ url: "/collections/uno?sort=x", items: [{ url: "https://x.es/collections/dos/", items: [{ url: "/pages/marcas" }] }] }, { url: null }] }]);
+  assert.deepEqual([...handles], ["uno", "dos"]);
 });

@@ -30,7 +30,7 @@ Solo las altas y las modificaciones importantes piden la ficha de detalle (una p
   - **Contenido completo (David, 2026-10-29).** Hecho el 29-10 (`src/lib/email.ts`, `alerts.ts`, `daily-report.ts`, ruta `/api/informes/diario`): los avisos de precio y stock y del freno del importador, y en el resumen las lecturas, precio y stock, productos procesados, cola de revisión y avisos del día. El resto se añade con cada pieza:
     - **Avisos al momento** (uno por motivo cada hora): precio y stock parados o con errores; caída de la sincronización; freno del importador; sin conexión con MHD, Shopify, Icecat o Supabase; Anthropic sin saldo o con el tope alcanzado (y parar los procesos); freno de bajas; un proceso del encadenado atascado.
     - **Resumen, lo hecho:** cada proceso con **su tiempo y su número de productos** (lecturas, precio y stock, altas, bajas, cambios, marcas, promociones); altas, bajas y productos que vuelven; descartes con su motivo; promociones caducadas.
-    - **Resumen, colecciones y redirecciones (ojo):** colecciones de categoría y de marca que se quedan vacías por las bajas (despublicadas, con redirección creada) y las que recuperan productos (republicadas, con la redirección quitada); redirecciones creadas y quitadas de productos (bajas y vueltas). Cada una con su origen y su destino, para revisarlas.
+    - **Resumen, colecciones y redirecciones (ojo):** colecciones de familia, selección y marca que se quedan sin productos activos (despublicadas, con redirección creada) y las que los recuperan (publicadas otra vez, con la redirección quitada), cada una con su origen y su destino, y las vacías que están en un menú. Hecho el 2026-10-31 (ver «Colecciones vacías»). Pendiente: redirecciones de productos (bajas y vueltas).
     - **Resumen, cosas raras y temas que revisar:** cola de revisión; cambios de precio de más del 30 %; cambios de marca, EAN o modelo (a revisión sin tocar); cambios de texto de MHD sin cambio de datos; opciones de entrega que desaparecen o suben mucho; avisos de ficha («Foto pequeña», «Cifras MHD frente a Icecat», «Avisar a MHD»); marcas nuevas, sin logotipo, despublicadas y que vuelven; proveedores con otra grafía de una marca existente.
     - **Enlaces** a utils para ver el detalle siempre que exista pantalla (proceso, producto, cola de revisión, redirecciones) y a la ficha del producto en Shopify.
   - **Durante la estabilización, cada hora** (David, 2026-10-29): el resumen sale cada hora con lo de esa hora (`/api/informes/diario?horas=1`) hasta que David diga que pasamos al diario de las 9:00.
@@ -67,7 +67,7 @@ David: «siempre hay que pensar en el importador para que todo lo nuevo vaya fin
 
 - **Proveedores sin colección de marca:** el informe de cada subida los lista; con ellos se lanza `theme-enterprise-vicente/tools/shopify/marcas_nuevas.py`, que crea solo las que faltan.
 - **Variantes nuevas de proveedor** (p. ej. «POLK AUDIO» frente a «polk»): el informe lista las que no estén en `theme-enterprise-vicente/snippets/marca-handle.liquid`, que traduce cada variante a su marca. El proveedor de los productos no se cambia (movería las colecciones de marca).
-- **Marcas despublicadas que vuelven a tener productos:** el informe lista los proveedores con productos activos cuya colección de marca está despublicada (19 despublicadas el 2026-10-28 por no tener productos, sin borrar: `theme-enterprise-vicente/reference/marcas/marcas-despublicadas-2026-10-28.json`), para volver a publicarla; mientras tanto su URL redirige a `/pages/marcas`.
+- **Colecciones y marcas que se quedan sin productos o los recuperan:** automático, ver «Colecciones vacías». Sustituye a la lista de marcas despublicadas del informe.
 - **Familia nueva** (en `store_collections` o como destino nuevo en `store_icecat_category_map`): su colección de Shopify se crea con `tools/shopify/arbol_colecciones.py` (sesión del árbol).
 - **Después de cambiar metacampos del árbol en bloque**, volver a guardar sin cambios la regla de las colecciones afectadas: Shopify no las recalcula solo.
 
@@ -90,7 +90,8 @@ Un solo reloj: pg_cron abre una vuelta cada 30 minutos (`mhd_sync_cycle_start`, 
 4. **Agotados en MHD** (abajo).
 5. **Altas** (abajo): lo nuevo, a la tanda «Altas automáticas».
 6. **Avisos de tandas terminadas:** **apagados hasta nuevo aviso** (David, 2026-10-31: al momento, solo frenos y avisos graves; el resto, en el resumen diario). Se encienden con `job_notice_emails` = `true` en `store_settings` (`job-notices.ts`).
-7. Pendiente: cambios de ficha.
+7. **Colecciones vacías** (abajo): tras cada subida y al menos una vez al día.
+8. Pendiente: cambios de ficha.
 
 Una sola vuelta a la vez; si una pasa de 25 minutos se da por atascada y se avisa. Se ve en utils › Catálogo › Sincronización con MHD (con el botón «Leer ahora y actualizar») y en Inicio. Pausa y frecuencia del resumen: Configuración. Resumen por correo a las 9:00 (el de cada hora se quitó el 2026-10-30).
 
@@ -121,6 +122,21 @@ Un producto es alta si viene en el listado de MHD, no existe en Shopify con su c
 - **Primera tanda, a mano (29-10, 14:20 → 16:44):** 1.301 (106 de códigos nuevos y 1.195 antiguos que MHD volvió a poner a la venta). Resultado: 1.239 subidos (59 en borrador para revisar), 27 fichas bloqueadas por el revisor, 25 «Sin imagen» y 10 fallidos por la saturación de la base, reintentados. 8,55 $. Los 57 que estaban en la tienda de PrestaShop con otro SKU reutilizaron su producto archivado (se reactivan, sin duplicar).
 - **Desde entonces, en cada vuelta** (`new-products.ts`): las altas se añaden a la tanda abierta «Altas automáticas» (o a una nueva) y se despierta al trabajador; si le falta la ficha de MHD, la pide él. **Freno:** más de `auto_altas_max` (300) en una vuelta → no se encola nada y llega un aviso. Se pausan con `auto_altas` en Configuración.
 - **Tope del importador** (`importer_max_workers` 3 × `importer_max_concurrency` 4, en Configuración): ninguna tanda lo pasa. El 29-10, con la base en Micro, 12 trabajadores × 4 la dejaron sin conexiones 25 minutos; se subió la base a **Small** (David) y con 3 × 4 fue más rápido (12-13 productos por minuto) que con 12 × 4, sin errores.
+
+## Colecciones vacías (automático desde el 2026-10-31)
+
+Regla de David (2026-10-28): una colección sin ningún producto activo no se borra. Se despublica y su dirección redirige al nivel de arriba. Antes era `theme-enterprise-vicente/tools/shopify/colecciones_vacias.py`, a mano; ahora es el paso `colecciones-vacias` de la vuelta (`src/lib/mhd-importer/empty-collections.ts`).
+
+- **Cuándo:** en la primera vuelta tras terminar una tanda del importador y, si no, una vez al día (cambios a mano en Shopify). El resto de vueltas se salta.
+- **Cómo cuenta:** una consulta masiva con cada colección y sus productos (1 llamada, 40 s y 14,5 MB medidos el 2026-10-31 con 1.034 colecciones) y solo cuenta los `ACTIVE`. `productsCount` incluye archivados: Satisfyer daba 7 con 0 activos. Se cuenta quién está de verdad en la colección, así que vale igual para familias, selecciones y marcas (con sus alias), sin mirar `custom.familia` ni el proveedor. Si no acaba en 60 s, la vuelta siguiente recoge el resultado.
+- **Alcance:** `custom.tipo_coleccion` = `arbol-familia`, `seo` o `marca`.
+- **Sin activos:** se despublica de los dos canales y se redirige: familia → su grupo, selección → su familia, marca → `/pages/marcas`. Si el de arriba también está vacío, sube otro nivel. Si la dirección ya tenía redirección, se conserva.
+- **Recupera activos:** solo las que tienen redirección en su dirección, que es la marca que deja este paso. Se publica, se quita la redirección y se borra `seo.hidden` si lo tiene. Lo despublicado a mano, sin redirección, queda fuera.
+- **En un menú:** no se toca; sale en el resumen.
+- **Sin tabla propia:** el estado es el de Shopify (publicada o no, y su redirección), la única fuente; `reference/arbol/colecciones-despublicadas.json` deja de usarse. Cada cambio queda en `mhd_sync_events` (`sync` = `colecciones`, `kind` = `despublicada` o `republicada`) con origen y destino.
+- **Simulación:** con `empty_collections_apply` distinto de `true` en `store_settings` no toca nada: la vuelta guarda lo que haría y el resumen lo enseña. Empieza así.
+- **Freno:** más de `empty_collections_max` (25) despublicaciones de golpe no se aplican y llega un aviso. Las publicaciones sí siguen.
+- **Si falla:** avisa una vez por hora, no tumba la vuelta y se reintenta en la siguiente.
 
 ## Relaciones de Icecat (preparada y apagada, 2026-10-30)
 

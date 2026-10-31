@@ -5,6 +5,7 @@ import { sendAlert } from "./alerts";
 import type { SourcesConfig } from "./gather";
 import { syncAbsences } from "./absences";
 import { syncDeliveryOptions } from "./delivery-options-sync";
+import { syncEmptyCollections } from "./empty-collections";
 import { notifyFinishedJobs } from "./job-notices";
 import { queueNewProducts } from "./new-products";
 import { syncPriceStock } from "./price-stock-sync";
@@ -15,7 +16,7 @@ import { shopifyGraphql } from "./store-filters";
 // minutos (mhd_sync_cycle_start) y la base llama a la ruta /api/sincronizaciones/vuelta en dos momentos:
 //   «inicio»: se comprueban las conexiones (si alguna falla, aviso y la vuelta se para) y se lanza la lectura del listado;
 //   «continuar»: al acabar la lectura, los pasos en orden: precio y stock, agotados en MHD (absences.ts), altas
-//   (new-products.ts), opciones de entrega (delivery-options-sync.ts), tarifas de servicios (service-tariffs.ts) y avisos de tandas terminadas (job-notices.ts);
+//   (new-products.ts), opciones de entrega (delivery-options-sync.ts), tarifas de servicios (service-tariffs.ts), avisos de tandas terminadas (job-notices.ts) y colecciones vacías (empty-collections.ts);
 //   pendiente: cambios de ficha.
 // Cada paso queda en mhd_sync_cycles.steps con su inicio, fin, cifras y error; de ahí salen el resumen diario y utils.
 type StepStatus = "ok" | "error" | "saltado";
@@ -165,6 +166,8 @@ export async function continueCycle(deps: Deps, cycleId: string) {
     await step(deps.db, cycle, "tarifas-servicios", async () => checkServiceTariffs({ db: deps.db, shopify: deps.sources.shopify }));
     // Tandas del importador terminadas desde la última vuelta: un correo con su resultado.
     await step(deps.db, cycle, "avisos-tandas", async () => notifyFinishedJobs(deps.db));
+    // Colecciones sin productos activos, tras cada subida y una vez al día. Si falla, avisa y no tumba la vuelta.
+    await step(deps.db, cycle, "colecciones-vacias", async () => syncEmptyCollections({ db: deps.db, shopify: deps.sources.shopify }, { budgetMs: 280_000 - (Date.now() - processingFrom) }));
     await finish(deps.db, cycle, "terminada");
   } catch (caught) {
     await finish(deps.db, cycle, "fallida", caught instanceof Error ? caught.message : String(caught));

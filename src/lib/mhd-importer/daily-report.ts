@@ -6,8 +6,8 @@ import type { CycleStep } from "./sync-cycle";
 // durante unos días, hasta que todo esté estable, y «mucho más detalle»). Cuenta lo de las últimas `hours` horas (24 en
 // el diario): vueltas con el tiempo de cada paso, catálogo frente a la tienda, precio y stock con los mayores cambios y
 // los que van y vuelven, agotados, importador con descartes por motivo, cola de revisión, gasto de IA y avisos. El
-// detalle lo agrupa la base (mhd_sync_report, mhd_catalog_overview). Lo pendiente de montar (altas y bajas, marcas
-// nuevas, colecciones y redirecciones) se añadirá aquí cuando exista.
+// detalle lo agrupa la base (mhd_sync_report, mhd_catalog_overview). Lo pendiente de montar (bajas y marcas nuevas) se
+// añadirá aquí cuando exista.
 type Cell = string | { text: string; href: string };
 type Section = { title: string; warn?: boolean; lines: string[]; table?: { head: string[]; rows: Cell[][] }; link?: { text: string; href: string } };
 type Product = { codigo: string; title: string | null; product_id: string | null };
@@ -19,6 +19,8 @@ type Report = {
   review: { pending: number; reasons: { reason: string; n: number }[] };
 };
 type Absences = { days: number; out: number; out_selling: number; out_list: Product[]; back: number; back_list: Product[]; open: number; due: number; near: number; due_list: (Product & { missing_since: string })[]; skipped_by_read: number };
+type CollectionChange = { handle: string; origen: string; destino: string | null };
+type CollectionsRun = { mode?: string; failed?: string; braked?: boolean; errors?: string[]; inMenu?: string[]; unpublish?: CollectionChange[]; publish?: CollectionChange[] };
 type Overview = { read_at: string | null; in_listing: number; not_in_store: number; active_missing: number; active: number; draft: number; archived: number };
 
 const UTILS = "https://utils.electronicavicente.com";
@@ -38,13 +40,14 @@ const STATUS: Record<string, string> = { terminada: "terminada", fallida: "FALLI
 export async function buildDailyReport(db: SupabaseClient, now = new Date(), hours = 24) {
   const since = new Date(now.getTime() - hours * 3_600_000).toISOString();
   const period = hours === 1 ? "la última hora" : `las últimas ${hours} horas`;
-  const [cyclesResult, reportResult, overviewResult, alertsResult, absencesResult, altasResult] = await Promise.all([
+  const [cyclesResult, reportResult, overviewResult, alertsResult, absencesResult, altasResult, collectionsResult] = await Promise.all([
     db.from("mhd_sync_cycles").select("id,trigger,status,started_at,finished_at,steps,error").gte("started_at", since).order("started_at"),
     db.rpc("mhd_sync_report", { p_since: since }),
     db.rpc("mhd_catalog_overview"),
     db.from("mhd_sync_events").select("detail,created_at").eq("sync", "avisos").eq("kind", "correo").gte("created_at", since).order("created_at"),
     db.rpc("mhd_absence_report", { p_since: since }),
     db.from("mhd_sync_events").select("detail").eq("sync", "altas").eq("kind", "encolado").gte("created_at", since).limit(5000),
+    db.from("mhd_sync_events").select("kind,detail").eq("sync", "colecciones").gte("created_at", since).order("created_at").limit(500),
   ]);
   const report = reportResult.data as Report | null;
   const overview = overviewResult.data as Overview | null;
@@ -131,6 +134,25 @@ export async function buildDailyReport(db: SupabaseClient, now = new Date(), hou
       link: { text: "Revisar en utils", href: `${UTILS}/importador-productos` },
     });
   } else sections.push({ title: "Detalle no disponible", warn: true, lines: [`No se pudo leer el detalle: ${reportResult.error?.message ?? "sin motivo"}`] });
+
+  // Colecciones vacías (empty-collections.ts): lo hecho, con su origen y destino, y lo que dice la última comprobación.
+  const collectionRuns = cycles.flatMap((cycle) => cycle.steps.filter((item) => item.name === "colecciones-vacias" && (item.counts?.mode || item.counts?.failed)));
+  const lastRun = collectionRuns.at(-1)?.counts as CollectionsRun | undefined;
+  const done = (collectionsResult.data ?? []) as { kind: string; detail: { handle: string; origen: string; destino: string | null } }[];
+  const simulated = lastRun?.mode === "simulación";
+  const pending = simulated ? [...(lastRun.unpublish ?? []).map((item) => ({ kind: "despublicaría", detail: item })), ...(lastRun.publish ?? []).map((item) => ({ kind: "publicaría", detail: item }))] : [];
+  const collectionErrors = collectionRuns.flatMap((item) => [...((item.counts as CollectionsRun).errors ?? []), ...((item.counts as CollectionsRun).failed ? [String((item.counts as CollectionsRun).failed)] : [])]);
+  if (lastRun || done.length) sections.push({
+    title: "Colecciones y redirecciones", warn: done.length > 0 || Boolean(lastRun?.inMenu?.length) || Boolean(lastRun?.braked) || collectionErrors.length > 0,
+    lines: [
+      `En ${period}: ${done.filter((item) => item.kind === "despublicada").length} despublicadas y ${done.filter((item) => item.kind === "republicada").length} publicadas otra vez.`,
+      ...(simulated ? ["Están en simulación: no se ha tocado nada, abajo sale lo que haría."] : []),
+      ...(lastRun?.inMenu?.length ? [`Sin productos activos pero en un menú, no se tocan: ${lastRun.inMenu.join(", ")}.`] : []),
+      ...(lastRun?.braked ? ["Freno: demasiadas colecciones vacías de golpe, no se ha despublicado ninguna."] : []),
+      ...collectionErrors.map((item) => `Error: ${item}`),
+    ],
+    table: done.length || pending.length ? { head: ["Cambio", "Colección", "Origen", "Destino"], rows: [...done, ...pending].map((item) => [item.kind, item.detail.handle, item.detail.origen, item.detail.destino ?? "—"]) } : undefined,
+  });
 
   const sent = alertsResult.data ?? [];
   if (sent.length) sections.push({ title: "Avisos enviados", warn: true, lines: sent.map((item) => {
