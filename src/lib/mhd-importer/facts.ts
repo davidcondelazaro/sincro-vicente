@@ -48,6 +48,7 @@ export function buildFactSheet(profile: FamilyProfile, values: SourceValues, sub
     }
   }
   for (const [source, ok] of bounded) if (!ok) losers.add(source);
+  if (values.has(MHD_WEIGHT) && readWeightKg(values.get(MHD_WEIGHT)!, MHD_RANGE) === null) losers.add(MHD_WEIGHT);
   // Medidas y peso (regla de David del 2026-10-24: si MHD e Icecat no cuadran, manda MHD): Icecat va primero por sus mm,
   // pero si su cifra no cuadra con la de MHD y la de MHD es razonable, gana MHD. Una cifra absurda («845cm» de alto en
   // MHD, «209 kg» en Icecat) no gana nunca si la otra es razonable.
@@ -66,6 +67,34 @@ export function buildFactSheet(profile: FamilyProfile, values: SourceValues, sub
     if (winner) for (const source of group.sources) if (source !== winner) losers.add(source);
   }
   return new Map([...values].filter(([key]) => !losers.has(key) && key !== "texto:descripcion"));
+}
+
+// Peso de la variante (corregido 2026-10-31). En «Peso» MHD mezcla gramos escritos como kilos («980Kg» son 980 g, ninguna
+// ficha llega de verdad a 100 kg) y la carga máxima de los soportes («Soporta hasta 75 kg»). Manda MHD (David, 2026-10-31);
+// Icecat solo entra si MHD no da un peso. De 200 «kg» en adelante son gramos; entre 100 y 200 no se sabe y no se usan.
+const MHD_WEIGHT = "mhd:peso";
+const ICECAT_WEIGHT = "icecat:peso y dimensiones|peso";
+const MHD_RANGE: [number, number] = [0.01, 100]; // «1.12 g» de un proyector son 1,12 kg
+const MHD_GRAMS_FROM = 200;
+const ICECAT_RANGE: [number, number] = [0.00001, 200]; // Icecat falla poco («209 kg» de un patinete) y hay tarjetas de 0,25 g y frigoríficos de más de 100 kg
+const NOT_PRODUCT_WEIGHT = /soporta|capacidad|carga|m[aá]x|hasta|balda/i;
+
+export function readWeightKg(raw: string, [min, max]: [number, number]) {
+  if (NOT_PRODUCT_WEIGHT.test(raw)) return null;
+  const n = firstNumber(raw);
+  if (n === null) return null;
+  const kg = /^\D*[\d.,]+\s*(?:g|gr|gramos?)(?![\p{L}])/iu.test(raw) ? n / 1000 : n;
+  return kg >= min && kg < max ? Math.round(kg * 10000) / 10000 : null;
+}
+
+function mhdWeightKg(raw: string) {
+  const kg = readWeightKg(raw, [MHD_RANGE[0], Infinity]);
+  return kg !== null && kg >= MHD_GRAMS_FROM ? kg / 1000 : kg !== null && kg < MHD_RANGE[1] ? kg : null;
+}
+
+export function productWeightKg(values: SourceValues) {
+  const icecat = values.get(ICECAT_WEIGHT); const mhd = values.get(MHD_WEIGHT);
+  return (mhd ? mhdWeightKg(mhd) : null) ?? (icecat ? readWeightKg(icecat, ICECAT_RANGE) : null);
 }
 
 // Cifras con unidad: «9 kg», «1400 rpm», «84,5 cm», «0,489 kWh», «80 a 200 °C». Se pasan a una unidad base para comparar
