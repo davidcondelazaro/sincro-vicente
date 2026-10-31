@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { AppSidebar } from "@/components/app-sidebar";
 
-type Run = { id: string; mode: "id" | "from_date" | "latest" | "all"; parameters: Record<string, unknown>; status: "queued" | "running" | "paused" | "stopped" | "completed" | "failed"; total_count: number; processed_count: number; created_count: number; existing_count: number; error_count: number; started_at: string | null; finished_at: string | null; created_at: string };
+type Run = { id: string; mode: "id" | "from_date" | "latest" | "all" | "retry_errors"; parameters: Record<string, unknown>; status: "queued" | "running" | "paused" | "stopped" | "completed" | "failed"; total_count: number; processed_count: number; created_count: number; existing_count: number; error_count: number; started_at: string | null; finished_at: string | null; created_at: string };
 type ImportEvent = { id: number; outcome: "created" | "existing" | "error" | "status"; level: "info" | "success" | "warning" | "error"; prestashop_customer_id: number | null; customer_email: string | null; shopify_customer_id: string | null; message: string; created_at: string };
 type EventFilter = "all" | "created" | "existing" | "error";
 
@@ -43,7 +43,7 @@ export default function ExecutionPage() {
   return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[17.5rem_minmax(0,1fr)]"><AppSidebar active="customers" userEmail={userEmail} />{page}</div>;
 }
 
-function scopeLabel(run: Run) { return run.mode === "id" ? `Cliente #${run.parameters.customerId}` : run.mode === "from_date" ? `Desde ${formatSpanishDate(String(run.parameters.fromDate))}` : run.mode === "all" ? "Todos los clientes" : `Últimos ${run.parameters.latest} clientes`; }
+function scopeLabel(run: Run) { return run.mode === "id" ? `Cliente #${run.parameters.customerId}` : run.mode === "from_date" ? `Desde ${formatSpanishDate(String(run.parameters.fromDate))}` : run.mode === "all" ? "Todos los clientes" : run.mode === "retry_errors" ? "Reintento de errores" : `Últimos ${run.parameters.latest} clientes`; }
 function formatSpanishDate(value: string) { const [year, month, day] = value.slice(0, 10).split("-"); return year && month && day ? `${day}/${month}/${year}` : value; }
 function formatMadridDateTime(value: string) { return new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", dateStyle: "short", timeStyle: "short" }).format(new Date(value)); }
 function statusLabel(status: Run["status"]) { return ({ queued: "En cola", running: "En marcha", paused: "Pausada", stopped: "Detenida", completed: "Completada", failed: "Con error" } as const)[status]; }

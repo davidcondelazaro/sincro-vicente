@@ -4,7 +4,7 @@ import { createClient as createSupabaseClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type Mode = "from_date" | "latest" | "all";
+type Mode = "from_date" | "latest" | "all" | "retry_errors";
 const madridTimeZone = "Europe/Madrid";
 
 function required(name: string) {
@@ -56,6 +56,11 @@ function validInput(input: Record<string, unknown>) {
     return { mode, parameters: { latest, onlyWithValidOrders: input.onlyWithValidOrders === true } } as const;
   }
   if (mode === "all") return { mode, parameters: { onlyWithValidOrders: input.onlyWithValidOrders === true } } as const;
+  if (mode === "retry_errors") {
+    const sourceRunId = String(input.sourceRunId ?? "");
+    if (!/^[0-9a-f-]{36}$/i.test(sourceRunId)) throw new Error("Indica la ejecución que quieres reintentar.");
+    return { mode, parameters: { sourceRunId } } as const;
+  }
   throw new Error("Elige el alcance de la importación.");
 }
 
@@ -79,8 +84,13 @@ export async function POST(request: Request) {
     const ownerId = claims?.claims.sub;
     if (!ownerId) return Response.json({ error: "Necesitas iniciar sesión." }, { status: 401 });
     const { mode, parameters } = validInput(await request.json() as Record<string, unknown>);
-    const count = await countCustomers(mode, parameters);
-    if (!count.total) return Response.json({ error: "No hay clientes activos para el criterio indicado." }, { status: 422 });
+    let count = { total: 0, maxId: 0 };
+    if (mode === "retry_errors") {
+      const { count: failed, error: countError } = await supabase.from("customer_import_events").select("id", { count: "exact", head: true }).eq("run_id", String(parameters.sourceRunId)).eq("outcome", "error").not("prestashop_customer_id", "is", null);
+      if (countError) throw countError;
+      count = { total: failed ?? 0, maxId: 0 };
+    } else count = await countCustomers(mode, parameters);
+    if (!count.total) return Response.json({ error: mode === "retry_errors" ? "Esta ejecución no tiene clientes con error." : "No hay clientes activos para el criterio indicado." }, { status: 422 });
     const { data: run, error: insertError } = await supabase.from("customer_import_runs").insert({
       owner_id: ownerId, mode, parameters: { ...parameters, maxCustomerId: count.maxId }, total_count: count.total,
     }).select("*").single();
