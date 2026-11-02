@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { outcomeLabels, sentimentLabels, topicLabels } from "@/lib/chatbot-labels";
+import Link from "next/link";
+import { outcomeLabels, ratingReasonLabels, ratingTriggerLabels, sentimentLabels, topicLabels } from "@/lib/chatbot-labels";
 
 // Indicadores de las conversaciones del chatbot (/api/chatbot?view=stats → función admin_conversation_stats).
 // Un solo color (el verde de la app) en todos los gráficos: cada barra lleva su nombre y su cifra, así que nada depende del color.
@@ -22,6 +23,15 @@ type Stats = {
   issue_types?: Record<string, number>;
 };
 
+// Valoración de los clientes (función admin_rating_stats) y los últimos comentarios de los 👎 (tabla conversation_ratings).
+type Ratings = {
+  shown: number; answered: number; positive: number; negative: number; with_comment: number;
+  by_trigger: Record<string, { shown: number; answered: number; positive: number }>;
+  reasons: Record<string, number>;
+  vs_review: Record<string, number>;
+  comments: { conversation_id: string; trigger: string; reasons: string[]; comment: string; rated_at: string | null }[];
+};
+
 const ranges = [
   { key: "7", label: "Últimos 7 días" },
   { key: "30", label: "Últimos 30 días" },
@@ -38,6 +48,7 @@ const madridDay = (date: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "
 export function ChatbotStats() {
   const [range, setRange] = useState<(typeof ranges)[number]["key"]>("30");
   const [stats, setStats] = useState<Stats | null>(null);
+  const [ratings, setRatings] = useState<Ratings | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -48,7 +59,7 @@ export function ChatbotStats() {
       .then(async (response) => {
         const body = await response.json();
         if (!response.ok) throw new Error(body.error ?? "No se pudieron leer las estadísticas.");
-        if (!cancelled) { setStats(body.stats); setError(null); }
+        if (!cancelled) { setStats(body.stats); setRatings(body.ratings ?? null); setError(null); }
       })
       .catch((caught) => { if (!cancelled) setError(caught instanceof Error ? caught.message : "No se pudieron leer las estadísticas."); });
     return () => { cancelled = true; };
@@ -81,6 +92,8 @@ export function ChatbotStats() {
         <Panel title="Motivo"><Bars items={entries(stats.topic, topicLabels)} total={t.conversations} /></Panel>
       </div>
       <p className="-mt-3 text-xs text-zinc-500">Sentimiento, resultado y motivo los estima un modelo de IA al terminar cada conversación: sirven para ver tendencias, no como nota exacta de cada una.</p>
+
+      {ratings && <CustomerRatings r={ratings} />}
 
       <h2 className="mt-2 text-xl font-semibold text-zinc-900">Calidad de las respuestas</h2>
       <div className="grid gap-6 lg:grid-cols-2">
@@ -130,6 +143,52 @@ function Conversion({ c, conversations }: { c: NonNullable<Stats["conversion"]>;
     {(c.unpaid_chat_orders ?? 0) > 0 && <p className="-mt-3 text-sm text-amber-800">{number(c.unpaid_chat_orders ?? 0)} {c.unpaid_chat_orders === 1 ? "pedido del chat pendiente de pago: contará" : "pedidos del chat pendientes de pago: contarán"} cuando se pague.</p>}
     {c.top_sold.length > 0 && <Panel title="Productos recomendados por el chat que se vendieron"><ol className="flex flex-col gap-2 text-sm">{c.top_sold.map((product, index) => <li key={product.id} className="flex items-baseline gap-3"><span className="w-5 shrink-0 text-right tabular-nums text-zinc-400">{index + 1}</span><span className="min-w-0 flex-1 truncate text-zinc-800">{product.title ?? `Producto ${product.id}`}</span><span className="tabular-nums text-zinc-600">{number(product.units)} uds.</span></li>)}</ol></Panel>}
     <p className="-mt-3 text-xs text-zinc-500"><strong className="font-medium text-zinc-600">Asistido:</strong> el pedido se hizo con un carrito en el que se usó el chat. <strong className="font-medium text-zinc-600">Influido:</strong> el cliente, con sesión iniciada, compró en los 7 días siguientes un producto que el chat le mostró. Solo cuentan los pedidos pagados (total o parcialmente), descontando lo reembolsado. Se mide desde el 11/10/2026; los pedidos anteriores no llevan la marca. Quien usa el chat ya suele tener más intención de compra: el ticket o la conversión más altos no significan que el chat los cause.</p>
+  </>;
+}
+
+// «¿Te he ayudado?» al final del chat: satisfacción sobre los que contestaron, tasa de respuesta, motivos de los 👎,
+// momento en que se preguntó y cruce con la revisión automática.
+const reviewColumns = [["bien", "Bien"], ["mejorable", "Mejorable"], ["mal", "Mal"], ["sin_revisar", "Sin revisar"]] as const;
+const dateTime = new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", dateStyle: "short", timeStyle: "short" });
+function CustomerRatings({ r }: { r: Ratings }) {
+  return <>
+    <h2 className="mt-2 text-xl font-semibold text-zinc-900">Valoración de los clientes</h2>
+    <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <Tile label="Satisfechos" value={percent(r.positive, r.answered)} note={`👍 ${number(r.positive)} · 👎 ${number(r.negative)} de ${number(r.answered)} que respondieron`} />
+      <Tile label="Tasa de respuesta" value={percent(r.answered, r.shown)} note={`${number(r.answered)} de ${number(r.shown)} a los que se preguntó`} />
+      <Tile label="👎 con comentario" value={number(r.with_comment)} note={`${percent(r.with_comment, r.negative)} de los 👎`} />
+    </section>
+    {r.shown > 0 && <div className="grid gap-6 lg:grid-cols-2">
+      <Panel title="Motivos de los 👎"><Bars items={entries(r.reasons, ratingReasonLabels)} total={r.negative} /></Panel>
+      <Panel title="Cuándo se preguntó">
+        <div className="overflow-x-auto"><table className="w-full text-sm">
+          <thead className="text-left text-xs text-zinc-500"><tr><th className="py-1.5 pr-4 font-medium">Momento</th><th className="py-1.5 pr-4 text-right font-medium">Preguntados</th><th className="py-1.5 pr-4 text-right font-medium">Respondieron</th><th className="py-1.5 text-right font-medium">Satisfechos</th></tr></thead>
+          <tbody className="divide-y divide-zinc-100">{Object.entries(r.by_trigger).sort((a, b) => b[1].shown - a[1].shown).map(([key, t]) => <tr key={key}>
+            <td className="py-2 pr-4 text-zinc-800">{ratingTriggerLabels[key] ?? key}</td>
+            <td className="py-2 pr-4 text-right tabular-nums text-zinc-800">{number(t.shown)}</td>
+            <td className="py-2 pr-4 text-right tabular-nums text-zinc-800">{number(t.answered)} <span className="text-zinc-400">{percent(t.answered, t.shown)}</span></td>
+            <td className="py-2 text-right tabular-nums text-zinc-800">{percent(t.positive, t.answered)}</td>
+          </tr>)}</tbody>
+        </table></div>
+      </Panel>
+    </div>}
+    {r.answered > 0 && <Panel title="Valoración del cliente frente a la revisión automática">
+      <div className="overflow-x-auto"><table className="w-full text-sm">
+        <thead className="text-left text-xs text-zinc-500"><tr><th className="py-1.5 pr-4 font-medium">Cliente</th>{reviewColumns.map(([key, label]) => <th key={key} className="py-1.5 pr-4 text-right font-medium">{label}</th>)}</tr></thead>
+        <tbody className="divide-y divide-zinc-100">{(["positiva", "negativa"] as const).map((rating) => <tr key={rating}>
+          <td className="py-2 pr-4 text-zinc-800">{rating === "positiva" ? "👍 Le ayudó" : "👎 No le ayudó"}</td>
+          {reviewColumns.map(([key]) => <td key={key} className="py-2 pr-4 text-right tabular-nums text-zinc-800">{number(r.vs_review[`${rating}/${key}`] ?? 0)}</td>)}
+        </tr>)}</tbody>
+      </table></div>
+      <p className="mt-3 text-xs text-zinc-500">Un 👎 con revisión «Bien» suele ser algo que el bot no podía resolver (stock, precio, política); un 👍 con «Mal», un fallo que el cliente no notó.</p>
+    </Panel>}
+    {r.comments.length > 0 && <Panel title="Últimos comentarios de los 👎">
+      <ul className="flex flex-col divide-y divide-zinc-100 text-sm">{r.comments.map((c) => <li key={c.conversation_id} className="py-2.5 first:pt-0">
+        <p className="text-zinc-800">«{c.comment}»</p>
+        <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">{c.reasons.map((reason) => <span key={reason} className="rounded-full bg-zinc-100 px-2 font-medium text-zinc-700">{ratingReasonLabels[reason] ?? reason}</span>)}<span>{ratingTriggerLabels[c.trigger] ?? c.trigger}</span>{c.rated_at && <span>{dateTime.format(new Date(c.rated_at))}</span>}<Link href={`/chatbot/conversaciones?conversacion=${c.conversation_id}`} className="font-medium text-emerald-700 hover:underline">Ver la conversación →</Link></p>
+      </li>)}</ul>
+    </Panel>}
+    <p className="-mt-3 text-xs text-zinc-500">Al final del chat se pregunta «¿Te he ayudado?» al despedirse, tras un rato sin escribir o al cerrar el chat. Se mide desde el 02/11/2026. Satisfechos = 👍 sobre los que respondieron.</p>
   </>;
 }
 
