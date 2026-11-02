@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 // Configuración editable del chatbot (/api/chatbot/settings → tabla bot_settings del chatbot).
 type Settings = {
+  chatEnabled: boolean;
   phone: string;
   supportEmail: string;
   whatsapp: { number: string | null; hours: string | null; schedule: { days: number[]; from: string; to: string } };
@@ -12,7 +13,7 @@ type Settings = {
   priceAlerts: { minPercent: number; minEuros: number };
 };
 const teamLists: { key: keyof Settings["teamEmails"]; label: string; help: string }[] = [
-  { key: "alerts", label: "Avisos de errores", help: "Sincronizaciones que fallan o se retrasan, tareas con error, tickets que no se envían y picos de errores del widget." },
+  { key: "alerts", label: "Avisos de errores", help: "Sincronizaciones que fallan o se retrasan, tareas con error, tickets que no se envían, respuestas fallidas del chat y picos de errores del widget." },
   { key: "tickets", label: "Tickets de soporte", help: "Incidencias, reclamaciones y devoluciones que abren los clientes en el chat. Al responder, se contesta al cliente." },
   { key: "quotes", label: "Presupuestos", help: "Solicitudes de presupuesto a medida del chat, con los precios del día. Al responder, se contesta al cliente." },
   { key: "reports", label: "Resúmenes", help: "Resumen semanal (lunes, 8:00) y aviso diario de conversaciones a revisar." },
@@ -61,6 +62,15 @@ export function ChatbotSettings() {
 
   const schedule = settings.whatsapp.schedule;
   return <div className="flex flex-col gap-6">
+    <section className={`rounded-2xl border p-5 shadow-sm ${settings.chatEnabled ? "border-zinc-200 bg-white" : "border-amber-300 bg-amber-50"}`}>
+      <h2 className="text-lg font-semibold text-zinc-900">Chat en la tienda</h2>
+      <label className="mt-3 flex items-center gap-3 text-sm font-medium text-zinc-800">
+        <input type="checkbox" checked={settings.chatEnabled} onChange={(event) => update((draft) => { draft.chatEnabled = event.target.checked; })} className="h-5 w-5 rounded border-zinc-300" />
+        {settings.chatEnabled ? "Encendido: el chat aparece en la tienda" : "Apagado: el chat no aparece en la tienda"}
+      </label>
+      <p className="mt-2 text-xs text-zinc-500">Apagado, desaparecen la burbuja y los botones que abren el chat, y quien lo tuviera abierto recibe un aviso con el teléfono de contacto. Los avisos de stock y precio, los emails y las sincronizaciones siguen funcionando. Tarda hasta 2 minutos en llegar a todos los visitantes. Recuerda guardar.</p>
+    </section>
+
     <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
       <h2 className="text-lg font-semibold text-zinc-900">Emails del equipo</h2>
       <p className="mt-1 text-sm text-zinc-500">Quién recibe los emails internos del chatbot. Varios emails, separados por comas. Si una lista está vacía, ese email no se envía a nadie.</p>
@@ -124,6 +134,7 @@ export function ChatbotSettings() {
 function normalize(raw: unknown): Settings {
   const value = (raw ?? {}) as Partial<Settings>;
   return {
+    chatEnabled: value.chatEnabled !== false,
     phone: value.phone ?? "",
     supportEmail: value.supportEmail ?? "",
     whatsapp: {

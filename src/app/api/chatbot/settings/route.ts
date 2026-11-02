@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 // Configuración del chatbot (tabla bot_settings, una fila). El chatbot la relee como mucho una vez por minuto
 // y valida lo mismo en src/config/settings.ts: si algo no es válido allí, usa el valor de su código.
 type Settings = {
+  chatEnabled: boolean;
   phone: string;
   supportEmail: string;
   whatsapp: { number: string | null; hours: string | null; schedule: { days: number[]; from: string; to: string } };
@@ -52,6 +53,8 @@ function validate(raw: unknown): { settings?: Settings; error?: string } {
   if (!HHMM.test(from) || !HHMM.test(to) || from >= to) return { error: "El horario de WhatsApp debe tener «desde» y «hasta» en formato HH:MM, y «desde» antes que «hasta»." };
   return {
     settings: {
+      // Interruptor general del chat: solo se apaga con un false explícito.
+      chatEnabled: body.chatEnabled !== false,
       phone,
       supportEmail,
       whatsapp: { number: number || null, hours: text(whatsapp.hours) || null, schedule: { days, from, to } },
