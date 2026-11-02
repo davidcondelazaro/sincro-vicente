@@ -75,5 +75,7 @@ Ritmo y límites:
   huella propia. Condición para el refresco: la sincronización parcial de precio también reescribe
   `custom.opciones_entrega` (portes, subida, retirada e instalación), no solo el precio de la variante.
 - Usar la vista de cambios en el refresco de Shopify (textos, filtros, imágenes, precio y stock por separado).
-- Comprobar con datos reales que MHD cambia `fecha_modificacion_producto` cuando cambia las características o las
-  fotos. Si no, la importación de fichas habrá que lanzarla de vez en cuando con `details_all`.
+- ~~Comprobar con datos reales que MHD cambia `fecha_modificacion_producto` cuando cambia las características o las
+  fotos.~~ **Comprobado el 2026-11-02: no siempre.** Ver «La fecha de modificación de MHD no es fiable» en
+  [SINCRONIZACIONES_MHD.md](SINCRONIZACIONES_MHD.md). La importación «Fichas de detalle» (`details`), que solo pide las
+  de fecha distinta, se deja cambios sin ver; además, nadie la lanza desde el 29-10.

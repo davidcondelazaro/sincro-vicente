@@ -20,7 +20,7 @@ async function event(db: SupabaseClient, kind: string, detail: Record<string, un
 }
 
 // Lectura del listado de MHD que se usa: la de la vuelta (`runId`) o la última terminada, si es reciente y completa.
-async function latestRead(db: SupabaseClient, runId?: string) {
+export async function latestRead(db: SupabaseClient, runId?: string) {
   let query = db.from("mhd_catalog_import_runs").select("id,entity_progress,last_activity_at").eq("status", "completed").contains("entities", ["products"]).not("last_activity_at", "is", null);
   query = runId ? query.eq("id", runId) : query.order("last_activity_at", { ascending: false, nullsFirst: false });
   const { data: runs, error } = await query.limit(1);

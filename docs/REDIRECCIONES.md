@@ -2,6 +2,10 @@
 
 Una fila por URL de la web vieja (tabla `store_redirects` en Supabase de producción), con su clave: a qué apunta. El destino final (`target`) se calcula después desde la clave, con el árbol nuevo de colecciones y las direcciones nuevas de los productos, para que **nunca haya cadenas**. Se ve en utils: **Tienda › Redirecciones**.
 
+## Regla durante el desarrollo (David, 2026-10-31)
+
+Hasta la salida a producción no se crean redirecciones desde URLs nuevas de Shopify: solo cuentan las de URLs de PrestaShop, en esta tabla. Excepciones y estado real: `theme-enterprise-vicente/docs/REDIRECCIONES-MIGRACION.md`.
+
 ## Fuentes (por orden de autoridad)
 
 1. Las redirecciones ya cargadas en Shopify (6.369 el 26-10): ahí está el trabajo de colecciones, productos, marcas y páginas. Se leen de la tienda, solo lectura.

@@ -94,6 +94,7 @@ function OrderCard({ order, onChanged }: { order: Order; onChanged: () => Promis
         {invoices.map((item) => <a key={item.url_factura} href={item.url_factura} target="_blank" rel="noreferrer" className="font-medium text-emerald-700 underline underline-offset-2">Factura {item.nombre_factura ?? ""}</a>)}
         {latestAttempt && latestAttempt.outcome !== "success" && <details className="text-sm"><summary className="cursor-pointer font-medium text-red-700">Ver errores</summary><div className="mt-3 max-w-2xl rounded-lg border border-red-200 bg-red-50 p-3 text-red-950"><p className="font-medium">Último intento · {date(latestAttempt.created_at)}{latestAttempt.http_status ? ` · HTTP ${latestAttempt.http_status}` : ""}</p>{latestAttempt.error_message && <p className="mt-1">{latestAttempt.error_message}</p>}{latestAttempt.response_payload?.errors?.length ? <ul className="mt-2 list-disc space-y-1 pl-5">{latestAttempt.response_payload.errors.map((error, index) => <li key={`${error}-${index}`}>{error}</li>)}</ul> : null}</div></details>}
       </div>
+      <ExportPanel order={order} onChanged={onChanged} />
       {order.fulfillment_status !== "FULFILLED" && <FulfillPanel order={order} tracking={tracking} mhdShipped={[10, 11, 12].includes(exported?.mhd_status_payload?.id_estado_cliente ?? 0)} onChanged={onChanged} />}
       {showOrderDetail && <div className="mt-3">
         <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg bg-zinc-50 p-3 text-zinc-700 min-[520px]:grid-cols-4">
@@ -111,6 +112,65 @@ function OrderCard({ order, onChanged }: { order: Order; onChanged: () => Promis
         {showMhdDetail && exported?.mhd_order_id && <div className="mt-3 max-w-2xl space-y-3"><p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-950"><span className="font-medium">Pedido asignado por MHD: </span>#{exported.mhd_order_id}{exported.mhd_transaction_id ? ` · Transacción ${exported.mhd_transaction_id}` : ""}{exported.mhd_status ? ` · Estado ${exported.mhd_status}` : ""}</p>{exported.mhd_status_payload?.arr_estados?.length ? <section className="rounded-lg bg-zinc-50 p-3 text-sm text-zinc-800"><h4 className="font-semibold">Estados comunicados por MHD</h4><ol className="mt-2 space-y-1">{exported.mhd_status_payload.arr_estados.map((item, index) => <li key={`${item.estado ?? "estado"}-${item.fecha ?? index}`} className={`flex flex-wrap justify-between gap-x-3 rounded-md px-2 py-1 ${index % 2 === 0 ? "bg-white" : "bg-zinc-100/70"}`}><span>{item.estado ?? "Estado sin literal"}</span><span className="text-zinc-500">{item.fecha != null ? date(mhdDate(item.fecha)) : "Fecha no disponible"}</span></li>)}</ol></section> : <p className="rounded-lg bg-zinc-50 p-3 text-zinc-600">Aún no se ha consultado el estado en MHD.</p>}</div>}
     </div>
   </article>;
+}
+type Product = { codigo: string; cantidad: number; precio: number; portes: number; subida: boolean; precio_subida: number | null; instalacion: boolean; precio_instalacion: number | null; retirada: boolean; precio_retirada: number | null };
+type MhdAddress = { nombre: string; apellidos: string; nif: string; telefono: string; direccion: string; cp: string; localidad: string; provincia: string };
+type Preview = { email: string; observaciones: string; envio: MhdAddress; facturacion?: MhdAddress; productos: Product[]; titulos: Record<string, string>; warning: string | null; yaEnMhd: number | null; canceladosEnMhd: number };
+type ActionFailure = { error?: string; trace?: string; mhdErrors?: string[] };
+// Exporta el pedido a MHD a mano. Primero enseña lo que se va a enviar y solo envía al confirmarlo.
+function ExportPanel({ order, onChanged }: { order: Order; onChanged: () => Promise<void> }) {
+  const [preview, setPreview] = useState<Preview | null>(null); const [busy, setBusy] = useState(false); const [message, setMessage] = useState<{ ok: boolean; text: string; details?: string[] } | null>(null);
+  const status = order.exports?.[0]?.status;
+  const unresolved = status === "unknown" || status === "exporting";
+  const exportable = order.eligibility_status === "eligible" && (!status || status === "ready" || status === "failed");
+  if (!unresolved && !exportable && !message) return null;
+  async function call<T>(path: string) {
+    setBusy(true); setMessage(null);
+    try {
+      const response = await fetch(`/api/mhd-orders/${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId: order.id }) });
+      const body = await response.json() as T & ActionFailure;
+      if (response.ok) return body;
+      setMessage({ ok: false, text: [body.error ?? `HTTP ${response.status}`, body.trace].filter(Boolean).join(" "), details: body.mhdErrors });
+    } catch (caught) { setMessage({ ok: false, text: caught instanceof Error ? caught.message : "No se pudo completar la acción." }); } finally { setBusy(false); }
+    return null;
+  }
+  async function finish(path: string) {
+    const body = await call<{ mhdOrderId: number | null; status: string | null; recovered: boolean }>(path);
+    setPreview(null);
+    if (body) setMessage({ ok: true, text: `${body.recovered ? "Ya estaba en MHD" : "Exportado a MHD"} como #${body.mhdOrderId ?? "—"}${body.status ? ` · ${body.status}` : ""}.` });
+    await onChanged();
+  }
+  const button = "h-9 cursor-pointer rounded-lg bg-emerald-700 px-4 font-medium text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50";
+  return <div className="mt-3 text-sm">
+    {unresolved && <button type="button" disabled={busy} onClick={() => void finish("export/check")} className={button}>{busy ? "Comprobando…" : "Comprobar en MHD"}</button>}
+    {exportable && !preview && <button type="button" disabled={busy} onClick={() => void call<Preview>("export/preview").then(setPreview)} className={button}>{busy ? "Preparando…" : status === "failed" ? "Reintentar exportación a MHD" : "Exportar a MHD"}</button>}
+    {exportable && preview && <div className="grid max-w-3xl gap-3 rounded-lg bg-zinc-50 p-3">
+      <p className="font-medium text-zinc-950">Esto es lo que se enviará a MHD como {order.shopify_order_name}</p>
+      {preview.yaEnMhd && <p className="rounded bg-sky-50 p-2 text-sky-900">MHD ya tiene este pedido como #{preview.yaEnMhd}: no se reenviará, solo se recuperan sus datos.</p>}
+      {preview.canceladosEnMhd > 0 && <p className="rounded bg-amber-50 p-2 text-amber-900">MHD tiene {preview.canceladosEnMhd === 1 ? "un pedido cancelado" : `${preview.canceladosEnMhd} pedidos cancelados`} con esta referencia. Se creará uno nuevo.</p>}
+      {preview.warning && <p className="rounded bg-amber-50 p-2 text-amber-900">{preview.warning}</p>}
+      <div className="overflow-x-auto"><table className="w-full text-left text-xs">
+        <thead className="text-zinc-500"><tr><th className="pr-3 font-medium">Artículo</th><th className="pr-3 font-medium">Uds.</th><th className="pr-3 font-medium">Precio</th><th className="pr-3 font-medium">Portes</th><th className="font-medium">Servicios</th></tr></thead>
+        <tbody className="text-zinc-800">{preview.productos.map((line) => <tr key={line.codigo} className="border-t border-zinc-200 align-top">
+          <td className="py-1 pr-3"><span className="font-medium">{line.codigo}</span> {preview.titulos[line.codigo]}</td><td className="py-1 pr-3">{line.cantidad}</td><td className="py-1 pr-3">{money(String(line.precio), order.currency_code)}</td><td className="py-1 pr-3">{money(String(line.portes), order.currency_code)}</td>
+          <td className="py-1">{[line.subida && `Subida ${money(String(line.precio_subida), order.currency_code)}`, line.instalacion && `Instalación ${money(String(line.precio_instalacion), order.currency_code)}`, line.retirada && `Retirada ${money(String(line.precio_retirada), order.currency_code)}`].filter(Boolean).join(" · ") || "—"}</td>
+        </tr>)}</tbody>
+      </table></div>
+      <p className="text-xs text-zinc-500">Precios y portes por unidad.</p>
+      <AddressLine label="Envío" address={preview.envio} />
+      {preview.facturacion && <AddressLine label="Facturación" address={preview.facturacion} />}
+      <p className="text-zinc-700"><span className="font-medium">Email: </span>{preview.email}</p>
+      {preview.observaciones && <p className="text-zinc-700"><span className="font-medium">Observaciones: </span>{preview.observaciones}</p>}
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="button" disabled={busy} onClick={() => void finish("export")} className={button}>{busy ? "Enviando…" : preview.yaEnMhd ? "Recuperar datos de MHD" : "Confirmar y enviar a MHD"}</button>
+        <button type="button" disabled={busy} onClick={() => setPreview(null)} className="cursor-pointer text-zinc-600">Cancelar</button>
+      </div>
+    </div>}
+    {message && <div className={`mt-2 ${message.ok ? "text-emerald-700" : "text-red-700"}`}><p>{message.text}</p>{message.details?.map((item) => <p key={item}>· {item}</p>)}</div>}
+  </div>;
+}
+function AddressLine({ label, address }: { label: string; address: MhdAddress }) {
+  return <p className="text-zinc-700"><span className="font-medium">{label}: </span>{address.nombre} {address.apellidos} · {address.nif} · {address.direccion}, {address.cp} {address.localidad} ({address.provincia}){address.telefono ? ` · ${address.telefono}` : ""}</p>;
 }
 // Marca el pedido como enviado en Shopify. Se rellena con el seguimiento de MHD si lo hay y se puede corregir:
 // cualquier nombre de transportista y, por número, un enlace opcional (sin enlace, Shopify solo enlaza transportistas que conoce).

@@ -11,7 +11,7 @@ import { fetchMhdMedia } from "./sources";
 
 export type ImageKind = "frontal" | "tres_cuartos" | "lateral" | "trasera" | "abierto" | "detalle" | "ambiente" | "medidas" | "icono_o_logo" | "etiqueta_energetica" | "otro";
 export type Background = "blanco" | "negro" | "otro";
-export type PreparedImage = { url: string; contentType: string; width: number; height: number; bytes: Uint8Array; hash: string; thumbnail: string; background: Background; source: "mhd" | "icecat"; visualHash: string };
+export type PreparedImage = { url: string; contentType: string; width: number; height: number; bytes: Uint8Array; hash: string; thumbnail: string; background: Background; source: "mhd" | "icecat"; visualHash: string; blackMatte: boolean };
 export type ClassifiedImage = Omit<PreparedImage, "bytes" | "thumbnail" | "visualHash"> & { kind: ImageKind; quality: "buena" | "regular" | "mala"; duplicateOf: number | null; description: string; isMhdMain: boolean };
 export type OrderedImages = { keep: ClassifiedImage[]; dropped: (ClassifiedImage & { reason: string })[] };
 export type ProcessedImageFile = { bytes: Uint8Array; contentType: string; width: number; height: number; treatment: string };
@@ -34,6 +34,44 @@ async function backgroundOf(bytes: Uint8Array): Promise<Background> {
   }
   // Umbral bajo a propósito: en las fotos que llenan el encuadre (un lateral) el producto toca los bordes.
   return white / total > 0.6 ? "blanco" : black / total > 0.6 ? "negro" : "otro";
+}
+
+// Negro de recorte (2026-10-31): MHD guarda como JPEG recortes con transparencia y lo transparente queda en negro puro
+// (Bosch y Balay sobre todo; a veces da la misma foto bien, en menor resolución). Se reconoce por el negro casi exacto
+// unido a los bordes: las fotos de marca sobre negro, que sí son válidas, tienen un fondo oscuro con matices y no entran.
+function borderDarkMask(data: Uint8Array, width: number, height: number, channels: number, limit: number) {
+  const mask = new Uint8Array(width * height); const stack: number[] = [];
+  const push = (x: number, y: number) => {
+    if (x < 0 || y < 0 || x >= width || y >= height) return;
+    const p = y * width + x; const i = p * channels;
+    if (mask[p] || data[i] > limit || data[i + 1] > limit || data[i + 2] > limit) return;
+    mask[p] = 1; stack.push(p);
+  };
+  for (let x = 0; x < width; x += 1) { push(x, 0); push(x, height - 1); }
+  for (let y = 0; y < height; y += 1) { push(0, y); push(width - 1, y); }
+  while (stack.length) { const p = stack.pop()!; const x = p % width; const y = (p - x) / width; push(x + 1, y); push(x - 1, y); push(x, y + 1); push(x, y - 1); }
+  return mask;
+}
+
+export async function hasBlackMatte(bytes: Uint8Array) {
+  const { data, info } = await sharp(bytes).flatten({ background: "#ffffff" }).resize(256, 256, { fit: "inside" }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { width, height, channels } = info; const mask = borderDarkMask(data, width, height, channels, 24);
+  let area = 0; let sum = 0;
+  mask.forEach((on, p) => { if (on) { area += 1; sum += data[p * channels]; } });
+  const corners = [[1, 1], [width - 2, 1], [1, height - 2], [width - 2, height - 2]].filter(([x, y]) => mask[y * width + x]).length;
+  return corners >= 2 && area / (width * height) >= 0.02 && sum / Math.max(1, area) <= 3;
+}
+
+// Pinta de blanco ese negro si el producto es claro. Si no lo es (una campana negra), devuelve null: el relleno se
+// comería el producto.
+export async function whitenBlackMatte(bytes: Uint8Array) {
+  const { data, info } = await sharp(bytes).flatten({ background: "#ffffff" }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { width, height, channels } = info; const mask = borderDarkMask(data, width, height, channels, 40);
+  let rest = 0; let light = 0;
+  mask.forEach((on, p) => { if (on) return; rest += 1; if (data[p * channels] > 150 && data[p * channels + 1] > 150 && data[p * channels + 2] > 150) light += 1; });
+  if (light / Math.max(1, rest) < 0.5) return null;
+  mask.forEach((on, p) => { if (on) data.fill(255, p * channels, p * channels + 3); });
+  return new Uint8Array(await sharp(data, { raw: { width, height, channels } }).png({ compressionLevel: 1 }).toBuffer());
 }
 
 // Huella visual (dHash de 64 bits): dos fotos iguales en distinto tamaño o formato dan huellas casi iguales. Sirve para
@@ -64,7 +102,7 @@ export async function prepareImages(urls: string[], source: "mhd" | "icecat" = "
       // medidas siguen siendo las del original.
       const bytes = Math.max(meta.width ?? 0, meta.height ?? 0) > MAX_SOURCE_SIDE ? new Uint8Array(await sharp(media.bytes).resize(MAX_SOURCE_SIDE, MAX_SOURCE_SIDE, { fit: "inside" }).toBuffer()) : media.bytes;
       const thumbnail = (await sharp(bytes).resize(384, 384, { fit: "inside" }).flatten({ background: "#ffffff" }).jpeg({ quality: 70 }).toBuffer()).toString("base64");
-      images.push({ url, contentType: media.contentType, width: meta.width ?? 0, height: meta.height ?? 0, bytes, hash, thumbnail, background: await backgroundOf(bytes), source, visualHash: await visualHashOf(bytes) });
+      images.push({ url, contentType: media.contentType, width: meta.width ?? 0, height: meta.height ?? 0, bytes, hash, thumbnail, background: await backgroundOf(bytes), source, visualHash: await visualHashOf(bytes), blackMatte: await hasBlackMatte(bytes) });
     } catch (caught) { errors.push(caught instanceof Error ? caught.message : `No se pudo leer ${url}`); }
   }
   return { images, errors };
@@ -87,9 +125,9 @@ export async function classifyImages(client: Anthropic, productName: string, ima
   if (message.stop_reason !== "end_turn") throw new Error(`La clasificación de imágenes terminó con ${message.stop_reason}.`);
   const text = message.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("");
   const parsed = JSON.parse(text) as { images: { index: number; kind: ImageKind; quality: ClassifiedImage["quality"]; duplicate_of: number | null; description: string }[] };
-  const classified: ClassifiedImage[] = images.map(({ url, contentType, width, height, hash, background, source }, index) => {
+  const classified: ClassifiedImage[] = images.map(({ url, contentType, width, height, hash, background, source, blackMatte }, index) => {
     const item = parsed.images.find((entry) => entry.index === index);
-    return { url, contentType, width, height, hash, background, source, kind: item?.kind ?? "otro", quality: item?.quality ?? "regular", duplicateOf: item?.duplicate_of ?? null, description: item?.description ?? "", isMhdMain: url === mhdMainUrl };
+    return { url, contentType, width, height, hash, background, source, blackMatte, kind: item?.kind ?? "otro", quality: item?.quality ?? "regular", duplicateOf: item?.duplicate_of ?? null, description: item?.description ?? "", isMhdMain: url === mhdMainUrl };
   });
   return { classified, usage: message.usage, costUsd: costUsd(PROCESSOR_MODEL, message.usage) };
 }
@@ -103,9 +141,14 @@ const RANK: Record<ImageKind, number> = { frontal: 0, tres_cuartos: 1, abierto: 
 const MIN_SIDE = 500;
 export function orderImages(classified: ClassifiedImage[]): OrderedImages {
   const dropped: OrderedImages["dropped"] = []; const keep: ClassifiedImage[] = [];
+  // Entre dos fotos repetidas, la de blanco gana al recorte sobre negro aunque tenga menos resolución (2026-10-31).
+  const isCleanTwin = (clean: ClassifiedImage, matte: ClassifiedImage) => matte.blackMatte && !clean.blackMatte && clean.background === "blanco" && RANK[clean.kind] < 99 && Math.max(clean.width, clean.height) >= MIN_SIDE;
   classified.forEach((image, index) => {
     const other = image.duplicateOf !== null && image.duplicateOf !== index ? classified[image.duplicateOf] : undefined;
+    const cleanTwin = classified.find((candidate, candidateIndex) => candidateIndex !== index && isCleanTwin(candidate, image) && (candidate.duplicateOf === index || image.duplicateOf === candidateIndex));
     if (RANK[image.kind] >= 99) dropped.push({ ...image, reason: image.kind === "etiqueta_energetica" ? "Etiqueta energética: va en su metacampo" : "Icono o logo" });
+    else if (cleanTwin) dropped.push({ ...image, reason: "Recorte sobre negro: se queda la misma foto sobre blanco" });
+    else if (other && isCleanTwin(image, other)) keep.push(image);
     else if (other && other.width * other.height >= image.width * image.height) dropped.push({ ...image, reason: "Repetida (se queda la de más resolución)" });
     else if (Math.max(image.width, image.height) < MIN_SIDE) dropped.push({ ...image, reason: `Demasiado pequeña (${image.width}×${image.height})` });
     else keep.push(image);
@@ -123,10 +166,13 @@ export function orderImages(classified: ClassifiedImage[]): OrderedImages {
 }
 
 // Tratamiento (decidido 2026-10-23): vistas del producto sobre blanco → se recorta el margen blanco y se encuadra en
-// cuadrado sobre blanco con un margen igual; el resto, como viene. Todas con 2.048 px como máximo y en JPG.
+// cuadrado sobre blanco con un margen igual; el resto, como viene. Todas con 2.048 px como máximo y en JPG. Un recorte
+// sobre negro de un producto claro se pasa antes a blanco; si es oscuro, se queda como viene.
 const MAX_SIDE = 2048; const MARGIN = 0.05;
-export async function processImage(bytes: Uint8Array, image: Pick<ClassifiedImage, "kind" | "background">): Promise<ProcessedImageFile> {
-  if (PRODUCT_VIEWS.has(image.kind) && image.background === "blanco") {
+export async function processImage(source: Uint8Array, image: Pick<ClassifiedImage, "kind" | "background" | "blackMatte">): Promise<ProcessedImageFile> {
+  const whitened = image.blackMatte && PRODUCT_VIEWS.has(image.kind) ? await whitenBlackMatte(source) : null;
+  const bytes = whitened ?? source;
+  if (PRODUCT_VIEWS.has(image.kind) && (image.background === "blanco" || whitened)) {
     const trimmed = await sharp(bytes).flatten({ background: "#ffffff" }).trim({ background: "#ffffff", threshold: 12 }).toBuffer({ resolveWithObject: true });
     const side = Math.min(MAX_SIDE, Math.round(Math.max(trimmed.info.width, trimmed.info.height) / (1 - 2 * MARGIN)));
     const inner = Math.round(side * (1 - 2 * MARGIN));
@@ -134,7 +180,7 @@ export async function processImage(bytes: Uint8Array, image: Pick<ClassifiedImag
     const out = await sharp({ create: { width: side, height: side, channels: 3, background: "#ffffff" } })
       .composite([{ input: fitted.data, left: Math.round((side - fitted.info.width) / 2), top: Math.round((side - fitted.info.height) / 2) }])
       .jpeg({ quality: 90, mozjpeg: true }).toBuffer();
-    return { bytes: new Uint8Array(out), contentType: "image/jpeg", width: side, height: side, treatment: "recortada y encuadrada" };
+    return { bytes: new Uint8Array(out), contentType: "image/jpeg", width: side, height: side, treatment: whitened ? "negro a blanco, recortada y encuadrada" : "recortada y encuadrada" };
   }
   const out = await sharp(bytes).flatten({ background: "#ffffff" }).resize(MAX_SIDE, MAX_SIDE, { fit: "inside", withoutEnlargement: true }).jpeg({ quality: 90, mozjpeg: true }).toBuffer({ resolveWithObject: true });
   return { bytes: new Uint8Array(out.data), contentType: "image/jpeg", width: out.info.width, height: out.info.height, treatment: "como viene" };

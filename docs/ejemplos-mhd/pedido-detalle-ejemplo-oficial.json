@@ -1,0 +1,137 @@
+{
+  "success": true,
+  "data": {
+    "id": 42941,
+    "id_transaccion": "W260305042941",
+    "fecha_alta": 1772702649000,
+    "fecha": 1772702188000,
+    "email": "[oculto]",
+    "nif_envio": "[oculto]",
+    "nombre_envio": "[oculto]",
+    "apellidos_envio": "[oculto]",
+    "direccion_envio": "[oculto]",
+    "localidad_envio": "ALCALA DE HENARES",
+    "cp_envio": "28806",
+    "id_provincia_envio": 28,
+    "provincia_envio": "Madrid",
+    "id_pais_envio": 724,
+    "pais_envio": "España",
+    "telefono_envio": "[oculto]",
+    "nif_facturacion": "[oculto]",
+    "nombre_facturacion": "[oculto]",
+    "apellidos_facturacion": "[oculto]",
+    "direccion_facturacion": "[oculto]",
+    "localidad_facturacion": "ALCALA DE HENARES",
+    "cp_facturacion": "28806",
+    "id_provincia_facturacion": 28,
+    "provincia_facturacion": "Madrid",
+    "provincia_original_facturacion": "MADRID",
+    "id_pais_facturacion": 724,
+    "pais_facturacion": "España",
+    "telefono_facturacion": "[oculto]",
+    "id_forma_pago": 13,
+    "forma_pago": "Carrefour",
+    "observaciones_cliente": null,
+    "pagado": true,
+    "id_estado_cliente": 10,
+    "estado_cliente": "Enviado",
+    "subtotal_productos": 146.08,
+    "subtotal_servicios_adicionales": 0,
+    "subtotal_portes": 0,
+    "subtotal_bono": 0,
+    "subtotal": 0,
+    "total": 146.08,
+    "id_bono": null,
+    "bono": null,
+    "tkn": "[oculto]",
+    "arr_productos": [
+      {
+        "id": 51531,
+        "cd_articulo": "10047607",
+        "titulo": "Placa Vitrocerámica 59cm 3, incluida doble zona Zonas Fuego 27cm FAGOR 3VFT-33AC  | Negro, 5700W",
+        "precio": 146.08,
+        "iva": 21,
+        "cantidad": 1,
+        "guid": "placa-induccion-576cm-fagor-fag-8435582500440-10047607",
+        "subida": false,
+        "coste_subida": null,
+        "instalacion": false,
+        "coste_instalacion": null,
+        "retirada": false,
+        "coste_retirada": null,
+        "descripcion_servicio_subida": null,
+        "descripcion_servicio_instalacion": null,
+        "descripcion_servicio_retirada": null,
+        "codigo_ean": "8435582500440"
+      }
+    ],
+    "arr_estados": [
+      {
+        "estado": "Enviado",
+        "fecha": 1772804717000
+      },
+      {
+        "estado": "Procesado",
+        "fecha": 1772703533000
+      },
+      {
+        "estado": "Revisado",
+        "fecha": 1772703533000
+      },
+      {
+        "estado": "Pendiente de revisión",
+        "fecha": 1772702650000
+      },
+      {
+        "estado": "Pagado",
+        "fecha": 1772702650000
+      },
+      {
+        "estado": "Registrado",
+        "fecha": 1772702649000
+      }
+    ],
+    "arr_tracking_info_erp_full": [
+      {
+        "carrier_code": "ONTIME",
+        "carrier_name": "ON TIME Logistics",
+        "tracking_number": "999947511488",
+        "carrier_url": "https://ontimegts.alertran.net/gts/pub/locNumSeguimiento.seam?cliente=04148042&localizador=999947511488&rango=360",
+        "zip_code": "28806"
+      }
+    ],
+    "arr_tracking_info_erp": [
+      {
+        "carrier_code": "ONTIME",
+        "carrier_name": "ON TIME Logistics",
+        "tracking_number": "999947511488",
+        "carrier_url": "https://ontimegts.alertran.net/gts/pub/locNumSeguimiento.seam?cliente=04148042&localizador=999947511488&rango=360",
+        "zip_code": "28806"
+      }
+    ],
+    "arr_tracking_info_manual": [
+      {
+        "carrier_code": "ONTIME",
+        "carrier_name": "ON TIME Logistics",
+        "tracking_number": "999947511488",
+        "carrier_url": "https://ontimegts.alertran.net/gts/pub/locNumSeguimiento.seam?cliente=04148042&localizador=999947511488",
+        "zip_code": "28806"
+      }
+    ],
+    "arr_facturas_info_full": [
+      {
+        "url_factura": "https://www.mihogardigital.es/df/4n6scuf2nr/2026/MV_3552.pdf",
+        "nombre_factura": "2026_MV_3552.pdf"
+      }
+    ],
+    "id_cliente": "[oculto]",
+    "referencia_web": "74934917-A",
+    "arr_seguimiento_info": {
+      "carrier_code": "ONTIME",
+      "carrier_name": "ON TIME Logistics",
+      "tracking_number": "999947511488",
+      "carrier_url": "https://ontimegts.alertran.net/gts/pub/locNumSeguimiento.seam?cliente=04148042&localizador=999947511488",
+      "zip_code": "28806"
+    }
+  }
+}

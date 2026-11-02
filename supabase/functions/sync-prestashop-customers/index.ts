@@ -74,6 +74,8 @@ async function loadCustomer(id: number) {
   } finally { await connection.end(); }
 }
 
+// Erratas vistas en PrestaShop que Shopify rechaza: un punto antes de la arroba y números pegados tras el dominio.
+function cleanEmail(value: string) { return value.trim().replace(/\.+@/, "@").replace(/(\.[a-z]{2,})\d+$/i, "$1"); }
 function phone(value: string | null) { if (!value?.trim()) return null; let normalized = [...value.trim()].filter((char, index) => /\d/.test(char) || (char === "+" && index === 0)).join(""); if (normalized.startsWith("00")) normalized = `+${normalized.slice(2)}`; const digits = normalized.replace(/^\+/, ""); return digits.length < 6 ? null : digits.length > 15 ? `${normalized.startsWith("+") ? "+" : ""}${digits.slice(0, 9)}` : normalized; }
 function addressKey(row: Address) { return [row.address1, row.address2, row.city, row.postcode, row.country_code].map((value) => value?.trim().toLowerCase() ?? "").join("|"); }
 function addresses(rows: Address[]) {
@@ -157,7 +159,7 @@ async function processMessage(message: any) {
         const loaded = await loadCustomer(id); let outcome = "error"; let shopifyId: string | null = null; let messageText = ""; let email: string | null = null;
         try {
           if (!loaded) throw new Error("Cliente no activo o eliminado en PrestaShop.");
-          email = loaded.customer.email; const found = await findCustomer(email);
+          email = cleanEmail(loaded.customer.email); loaded.customer.email = email; const found = await findCustomer(email);
           if (found) { shopifyId = found.id; const { changes, dropped } = await completeCustomer(found, loaded.customer, loaded.addresses); outcome = "existing"; messageText = `El cliente ya existe en Shopify.${changes.length ? ` Añadido: ${changes.join(", ")}.` : ""}${droppedText(dropped)}`; }
           else { const saved = await createCustomer(loaded.customer, loaded.addresses); shopifyId = saved.id; outcome = "created"; messageText = `Cliente creado en Shopify.${droppedText(saved.dropped)}`; }
         } catch (error) { if (error instanceof TransientError) throw error; messageText = error instanceof Error ? error.message : String(error); }

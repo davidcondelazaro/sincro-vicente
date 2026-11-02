@@ -30,7 +30,7 @@ Solo las altas y las modificaciones importantes piden la ficha de detalle (una p
   - **Contenido completo (David, 2026-10-29).** Hecho el 29-10 (`src/lib/email.ts`, `alerts.ts`, `daily-report.ts`, ruta `/api/informes/diario`): los avisos de precio y stock y del freno del importador, y en el resumen las lecturas, precio y stock, productos procesados, cola de revisión y avisos del día. El resto se añade con cada pieza:
     - **Avisos al momento** (uno por motivo cada hora): precio y stock parados o con errores; caída de la sincronización; freno del importador; sin conexión con MHD, Shopify, Icecat o Supabase; Anthropic sin saldo o con el tope alcanzado (y parar los procesos); freno de bajas; un proceso del encadenado atascado.
     - **Resumen, lo hecho:** cada proceso con **su tiempo y su número de productos** (lecturas, precio y stock, altas, bajas, cambios, marcas, promociones); altas, bajas y productos que vuelven; descartes con su motivo; promociones caducadas.
-    - **Resumen, colecciones y redirecciones (ojo):** colecciones de categoría y de marca que se quedan vacías por las bajas (despublicadas, con redirección creada) y las que recuperan productos (republicadas, con la redirección quitada); redirecciones creadas y quitadas de productos (bajas y vueltas). Cada una con su origen y su destino, para revisarlas.
+    - **Resumen, colecciones y redirecciones (ojo):** colecciones de familia, selección y marca que se quedan sin productos activos (despublicadas, con redirección creada) y las que los recuperan (publicadas otra vez, con la redirección quitada), cada una con su origen y su destino, y las vacías que están en un menú. Hecho el 2026-10-31 (ver «Colecciones vacías»). Pendiente: redirecciones de productos (bajas y vueltas).
     - **Resumen, cosas raras y temas que revisar:** cola de revisión; cambios de precio de más del 30 %; cambios de marca, EAN o modelo (a revisión sin tocar); cambios de texto de MHD sin cambio de datos; opciones de entrega que desaparecen o suben mucho; avisos de ficha («Foto pequeña», «Cifras MHD frente a Icecat», «Avisar a MHD»); marcas nuevas, sin logotipo, despublicadas y que vuelven; proveedores con otra grafía de una marca existente.
     - **Enlaces** a utils para ver el detalle siempre que exista pantalla (proceso, producto, cola de revisión, redirecciones) y a la ficha del producto en Shopify.
   - **Durante la estabilización, cada hora** (David, 2026-10-29): el resumen sale cada hora con lo de esa hora (`/api/informes/diario?horas=1`) hasta que David diga que pasamos al diario de las 9:00.
@@ -67,7 +67,7 @@ David: «siempre hay que pensar en el importador para que todo lo nuevo vaya fin
 
 - **Proveedores sin colección de marca:** el informe de cada subida los lista; con ellos se lanza `theme-enterprise-vicente/tools/shopify/marcas_nuevas.py`, que crea solo las que faltan.
 - **Variantes nuevas de proveedor** (p. ej. «POLK AUDIO» frente a «polk»): el informe lista las que no estén en `theme-enterprise-vicente/snippets/marca-handle.liquid`, que traduce cada variante a su marca. El proveedor de los productos no se cambia (movería las colecciones de marca).
-- **Marcas despublicadas que vuelven a tener productos:** el informe lista los proveedores con productos activos cuya colección de marca está despublicada (19 despublicadas el 2026-10-28 por no tener productos, sin borrar: `theme-enterprise-vicente/reference/marcas/marcas-despublicadas-2026-10-28.json`), para volver a publicarla; mientras tanto su URL redirige a `/pages/marcas`.
+- **Colecciones y marcas que se quedan sin productos o los recuperan:** automático, ver «Colecciones vacías». Sustituye a la lista de marcas despublicadas del informe.
 - **Familia nueva** (en `store_collections` o como destino nuevo en `store_icecat_category_map`): su colección de Shopify se crea con `tools/shopify/arbol_colecciones.py` (sesión del árbol).
 - **Después de cambiar metacampos del árbol en bloque**, volver a guardar sin cambios la regla de las colecciones afectadas: Shopify no las recalcula solo.
 
@@ -90,7 +90,8 @@ Un solo reloj: pg_cron abre una vuelta cada 30 minutos (`mhd_sync_cycle_start`, 
 4. **Agotados en MHD** (abajo).
 5. **Altas** (abajo): lo nuevo, a la tanda «Altas automáticas».
 6. **Avisos de tandas terminadas:** **apagados hasta nuevo aviso** (David, 2026-10-31: al momento, solo frenos y avisos graves; el resto, en el resumen diario). Se encienden con `job_notice_emails` = `true` en `store_settings` (`job-notices.ts`).
-7. Pendiente: cambios de ficha.
+7. **Colecciones vacías** (abajo): tras cada subida y al menos una vez al día.
+8. Pendiente: cambios de ficha.
 
 Una sola vuelta a la vez; si una pasa de 25 minutos se da por atascada y se avisa. Se ve en utils › Catálogo › Sincronización con MHD (con el botón «Leer ahora y actualizar») y en Inicio. Pausa y frecuencia del resumen: Configuración. Resumen por correo a las 9:00 (el de cada hora se quitó el 2026-10-30).
 
@@ -122,6 +123,21 @@ Un producto es alta si viene en el listado de MHD, no existe en Shopify con su c
 - **Desde entonces, en cada vuelta** (`new-products.ts`): las altas se añaden a la tanda abierta «Altas automáticas» (o a una nueva) y se despierta al trabajador; si le falta la ficha de MHD, la pide él. **Freno:** más de `auto_altas_max` (300) en una vuelta → no se encola nada y llega un aviso. Se pausan con `auto_altas` en Configuración.
 - **Tope del importador** (`importer_max_workers` 3 × `importer_max_concurrency` 4, en Configuración): ninguna tanda lo pasa. El 29-10, con la base en Micro, 12 trabajadores × 4 la dejaron sin conexiones 25 minutos; se subió la base a **Small** (David) y con 3 × 4 fue más rápido (12-13 productos por minuto) que con 12 × 4, sin errores.
 
+## Colecciones vacías (automático desde el 2026-10-31)
+
+Regla de David (2026-10-28): una colección sin ningún producto activo no se borra. Se despublica y su dirección redirige al nivel de arriba. Antes era `theme-enterprise-vicente/tools/shopify/colecciones_vacias.py`, a mano; ahora es el paso `colecciones-vacias` de la vuelta (`src/lib/mhd-importer/empty-collections.ts`).
+
+- **Cuándo:** en la primera vuelta tras terminar una tanda del importador y, si no, una vez al día (cambios a mano en Shopify). El resto de vueltas se salta.
+- **Cómo cuenta:** una consulta masiva con cada colección y sus productos (1 llamada, 40 s y 14,5 MB medidos el 2026-10-31 con 1.034 colecciones) y solo cuenta los `ACTIVE`. `productsCount` incluye archivados: Satisfyer daba 7 con 0 activos. Se cuenta quién está de verdad en la colección, así que vale igual para familias, selecciones y marcas (con sus alias), sin mirar `custom.familia` ni el proveedor. Si no acaba en 60 s, la vuelta siguiente recoge el resultado.
+- **Alcance:** `custom.tipo_coleccion` = `arbol-familia`, `seo` o `marca`.
+- **Sin activos:** se despublica de los dos canales y se redirige: familia → su grupo, selección → su familia, marca → `/pages/marcas`. Si el de arriba también está vacío, sube otro nivel. Si la dirección ya tenía redirección, se conserva.
+- **Recupera activos:** solo las que tienen redirección en su dirección, que es la marca que deja este paso. Se publica, se quita la redirección y se borra `seo.hidden` si lo tiene. Lo despublicado a mano, sin redirección, queda fuera.
+- **En un menú:** no se toca; sale en el resumen.
+- **Sin tabla propia:** el estado es el de Shopify (publicada o no, y su redirección), la única fuente; `reference/arbol/colecciones-despublicadas.json` deja de usarse. Cada cambio queda en `mhd_sync_events` (`sync` = `colecciones`, `kind` = `despublicada` o `republicada`) con origen y destino.
+- **Simulación:** con `empty_collections_apply` distinto de `true` en `store_settings` no toca nada: la vuelta guarda lo que haría y el resumen lo enseña. Empieza así.
+- **Freno:** más de `empty_collections_max` (25) despublicaciones de golpe no se aplican y llega un aviso. Las publicaciones sí siguen.
+- **Si falla:** avisa una vez por hora, no tumba la vuelta y se reintenta en la siguiente.
+
 ## Relaciones de Icecat (preparada y apagada, 2026-10-30)
 
 **No está en marcha.** Se hizo una carga puntual el 2026-10-30; David definirá las reglas del proceso antes de activarlo. La tarea `sincro-vicente-relaciones` está apagada y la ruta sin desplegar.
@@ -135,6 +151,55 @@ Diseño actual, fuera de la vuelta de 30 minutos: pg_cron llamaría cada día a 
 - **Recetas por familia (2026-10-31):** en televisores, portátiles y monitores los complementarios salen primero de `complement-recipes.ts` y detrás va lo de Icecat, hasta 10. Un complemento por hueco, sin IA: filtro duro de compatibilidad, sin dato no hay sugerencia, stock mínimo de 5 para entrar, y nota de precio proporcionado (50), stock (30) y misma marca (20). Lee el stock de `mhd_shopify_price_stock` por `mhd_complements_source`, nunca de `mhd_catalog_products`. Lo ya sugerido se mantiene mientras siga compatible y tenga stock, para que las fichas no cambien cada día; si se agota o deja de encajar, entra el siguiente.
 - **Estado (2026-10-31):** migración `mhd_complements_source` aplicada y punto de partida guardado en `mhd_shopify_relations` (843 fichas). El TCL 55C6K PRO no se guarda: sus 8 puestos son manuales. Simulación con el código real: 41 fichas por escribir, todas por la cola de Icecat, y 1 respetada a mano. Falta desplegar y encender `sincro-vicente-relaciones`.
 - **Límites:** los archivados entran mientras sigan en `store_shopify_ids`; los antiguos que nunca estuvieron (137 con EAN) no. Un producto que se queda sin relaciones conserva las suyas. Los televisores no tienen enlaces en Icecat.
+
+## La fecha de modificación de MHD no es fiable (medido el 2026-11-02)
+
+Origen: el Alza 6012 (10049131), una cafetera italiana que MHD daba como superautomática. El 2-11 a las 20:24 MHD
+corrigió sus características en la ficha de detalle (no el título ni la descripción del listado). La vuelta no lo vio:
+lee el listado, que no trae características, y la ficha guardada (`mhd_catalog_product_details`) no se lee desde el
+29-10. El importador además usa esa copia guardada antes que la API, así que reprocesar repetía el error.
+
+MHD dice que `fecha_modificacion_producto` cambia con cualquier cambio. Los datos dicen que no siempre:
+
+- **26.898 productos** tienen la misma fecha, 19-05-2026 22:00: es una fecha de carga, no de último cambio.
+- **Títulos:** 1.473 productos tienen hoy un título distinto del de su ficha guardada; en **863 la fecha no cambió**.
+  Muchos títulos se generan de las características («Diadema» → «Intrauditivos», «Bluetooth» → «Inalámbrico»).
+- **Muestra de 160 productos activos con la fecha sin cambiar**, ficha pedida de nuevo: 2 con las características
+  cambiadas (1,4 %), 7 con las fotos cambiadas (5 %; 5 que no tenían ninguna foto en la ficha y ahora sí), y ninguno con
+  la fecha nueva. Ninguno de los 2 cambiaba nuestros filtros.
+- **Muestra de 80 activos con la fecha cambiada:** 48 con las características cambiadas (60 %), 12 con fotos, y **10
+  con nuestros filtros distintos** (13 %): centrifugado 1.350 → 1.400 rpm, zonas 3 → 4, nivel sonoro, tipo de gas…
+  El resto de cambios de características son de formato («60» → «60cm», «Negra» → «Negro») y no mueven nada.
+- Productos activos con la fecha cambiada desde que se guardó su ficha (26-29 oct.): 874, unos 150 al día.
+
+**¿Sirven las fechas para que la vuelta lea solo lo cambiado?** Era la idea de los filtros por fecha. Medido el
+mismo día contra lo que la lectura completa vio cambiar:
+
+| Qué | Con filtro por fecha se habría perdido |
+| --- | --- |
+| Precio | `fecha_modificacion_producto` no cambia con el precio (14 de 3.007). `fecha_modificacion_precio`: con un margen de 24 h, `/prices` deja fuera el 8 % de los cambios vistos (86 de 1.130); algunos llevan fechas de julio. Además MHD la fecha antes de que el cambio se vea: el 1-11, 339 precios fechados a las 5:45 (hora de Madrid) no salieron en las lecturas de las 6:00, 6:30 y 7:00, solo en la de las 7:30. «Cambiados desde la última lectura» se los habría saltado. |
+| Stock | `/stocks` con `fecha_modificacion_stock` de 24 h deja fuera el **40 %** (1.091 de 2.696). Los cambios son reales: la vuelta los mandó a Shopify. |
+| Vueltas de agotados | De 1.719 productos que volvieron, 546 (32 %) no tienen ninguna fecha de stock posterior a su desaparición, y solo 36 tienen la de producto. |
+| Altas | De 551 altas automáticas desde el 29-10, 130 (24 %) no tienen ninguna de las tres fechas en los 3 días anteriores: son productos antiguos que MHD vuelve a poner. |
+| Bajas | Un filtro de «cambiados desde» no puede enseñar lo que desaparece. Hace falta la lista entera de códigos. |
+
+Al mismo tiempo, `/prices` y `/stocks` completos (29.384 productos, ~9 s cada uno) coinciden ya con el listado en
+códigos, precio y stock: las diferencias medidas (14 precios, 73 stocks, 8 códigos) caben en los 25 minutos entre una
+lectura y otra. Ya no hay la tarifa distinta en `/prices` ni los retirados en `/stocks` del 29-10.
+
+Conclusiones:
+
+1. La fecha sirve como **aviso prioritario** (cuando cambia, suele haber cambio real), nunca como único criterio: se
+   cumple la regla de no depender de que MHD diga qué ha cambiado (David, 2026-10-26).
+2. Lo que viene en el listado (título, descripción, precio, stock, portes) ya se compara entero en cada vuelta y no
+   necesita la fecha.
+3. **Lo que solo viene en la ficha (características y fotos) necesita un barrido propio**, porque cambia sin aviso.
+4. La mayoría de cambios de características son de formato: hay que medir el efecto con nuestras reglas (filtros y
+   datos clave), no comparar el texto, o la cola de revisión se llena de nada.
+5. **La vuelta sigue leyendo el listado entero** (~3½ min cada 30 min). Ninguna de las tres fechas permite leer solo
+   lo cambiado sin perder precios, stock, vueltas y altas, y las bajas no se ven nunca con un filtro. Leer de nuevo
+   `/prices` y `/stocks` solo tendría sentido para ir más rápido que cada 30 minutos, y también enteros, sin fecha.
+6. Mediciones de un solo día: repetirlas en una semana antes de dar nada por cerrado con MHD.
 
 ## Pendiente de decidir
 

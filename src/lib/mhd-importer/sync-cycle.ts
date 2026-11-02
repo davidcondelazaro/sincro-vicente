@@ -4,16 +4,19 @@ import { anthropicKey, PROCESSOR_MODEL } from "./ai";
 import { sendAlert } from "./alerts";
 import type { SourcesConfig } from "./gather";
 import { syncAbsences } from "./absences";
+import { syncDeliveryOptions } from "./delivery-options-sync";
 import { notifyFinishedJobs } from "./job-notices";
 import { queueNewProducts } from "./new-products";
 import { syncPriceStock } from "./price-stock-sync";
+import { checkServiceTariffs } from "./service-tariffs";
 import { shopifyGraphql } from "./store-filters";
 
 // Vuelta de sincronización con MHD (David, 2026-10-29; diseño en docs/SINCRONIZACIONES_MHD.md). La abre pg_cron cada 30
 // minutos (mhd_sync_cycle_start) y la base llama a la ruta /api/sincronizaciones/vuelta en dos momentos:
 //   «inicio»: se comprueban las conexiones (si alguna falla, aviso y la vuelta se para) y se lanza la lectura del listado;
 //   «continuar»: al acabar la lectura, los pasos en orden: precio y stock, agotados en MHD (absences.ts), altas
-//   (new-products.ts) y avisos de tandas terminadas (job-notices.ts); pendiente: cambios de ficha.
+//   (new-products.ts), opciones de entrega (delivery-options-sync.ts), tarifas de servicios (service-tariffs.ts) y avisos de tandas terminadas (job-notices.ts);
+//   pendiente: cambios de ficha.
 // Cada paso queda en mhd_sync_cycles.steps con su inicio, fin, cifras y error; de ahí salen el resumen diario y utils.
 type StepStatus = "ok" | "error" | "saltado";
 export type CycleStep = { name: string; started_at: string; finished_at?: string; status?: StepStatus; counts?: Record<string, unknown>; error?: string };
@@ -142,6 +145,7 @@ export async function continueCycle(deps: Deps, cycleId: string) {
     return finish(deps.db, cycle, "fallida", run?.error_message ?? "La lectura de MHD no terminó bien.");
   }
   await saveCycle(deps.db, cycle, { status: "procesando" });
+  const processingFrom = Date.now();
   try {
     await step(deps.db, cycle, "precio-stock", async () => {
       const result = await syncPriceStock({ db: deps.db, shopify: deps.sources.shopify }, { runId: cycle.read_run_id! });
@@ -155,6 +159,10 @@ export async function continueCycle(deps: Deps, cycleId: string) {
     });
     // Altas: lo nuevo de MHD a la tanda «Altas automáticas» (new-products.ts).
     await step(deps.db, cycle, "altas", async () => queueNewProducts({ db: deps.db }, { runId: cycle.read_run_id!, cycleId: cycle.id }) as unknown as Promise<Record<string, unknown>>);
+    // Portes y servicios al metacampo de cada ficha. La ruta tiene 300 s: no se come el tiempo de lo que queda detrás.
+    await step(deps.db, cycle, "opciones-entrega", async () => syncDeliveryOptions({ db: deps.db, shopify: deps.sources.shopify }, { runId: cycle.read_run_id!, budgetMs: Math.min(60_000, 250_000 - (Date.now() - processingFrom)) }));
+    // Importes de servicios de MHD sin variante en Shopify: la web dejaría de ofrecerlos sin avisar.
+    await step(deps.db, cycle, "tarifas-servicios", async () => checkServiceTariffs({ db: deps.db, shopify: deps.sources.shopify }));
     // Tandas del importador terminadas desde la última vuelta: un correo con su resultado.
     await step(deps.db, cycle, "avisos-tandas", async () => notifyFinishedJobs(deps.db));
     await finish(deps.db, cycle, "terminada");
