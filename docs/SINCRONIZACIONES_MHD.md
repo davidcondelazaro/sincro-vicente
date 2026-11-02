@@ -152,6 +152,36 @@ Diseño actual, fuera de la vuelta de 30 minutos: pg_cron llamaría cada día a 
 - **Estado (2026-10-31):** migración `mhd_complements_source` aplicada y punto de partida guardado en `mhd_shopify_relations` (843 fichas). El TCL 55C6K PRO no se guarda: sus 8 puestos son manuales. Simulación con el código real: 41 fichas por escribir, todas por la cola de Icecat, y 1 respetada a mano. Falta desplegar y encender `sincro-vicente-relaciones`.
 - **Límites:** los archivados entran mientras sigan en `store_shopify_ids`; los antiguos que nunca estuvieron (137 con EAN) no. Un producto que se queda sin relaciones conserva las suyas. Los televisores no tienen enlaces en Icecat.
 
+## La fecha de modificación de MHD no es fiable (medido el 2026-11-02)
+
+Origen: el Alza 6012 (10049131), una cafetera italiana que MHD daba como superautomática. El 2-11 a las 20:24 MHD
+corrigió sus características en la ficha de detalle (no el título ni la descripción del listado). La vuelta no lo vio:
+lee el listado, que no trae características, y la ficha guardada (`mhd_catalog_product_details`) no se lee desde el
+29-10. El importador además usa esa copia guardada antes que la API, así que reprocesar repetía el error.
+
+MHD dice que `fecha_modificacion_producto` cambia con cualquier cambio. Los datos dicen que no siempre:
+
+- **26.898 productos** tienen la misma fecha, 19-05-2026 22:00: es una fecha de carga, no de último cambio.
+- **Títulos:** 1.473 productos tienen hoy un título distinto del de su ficha guardada; en **863 la fecha no cambió**.
+  Muchos títulos se generan de las características («Diadema» → «Intrauditivos», «Bluetooth» → «Inalámbrico»).
+- **Muestra de 160 productos activos con la fecha sin cambiar**, ficha pedida de nuevo: 2 con las características
+  cambiadas (1,4 %), 7 con las fotos cambiadas (5 %; 5 que no tenían ninguna foto en la ficha y ahora sí), y ninguno con
+  la fecha nueva. Ninguno de los 2 cambiaba nuestros filtros.
+- **Muestra de 80 activos con la fecha cambiada:** 48 con las características cambiadas (60 %), 12 con fotos, y **10
+  con nuestros filtros distintos** (13 %): centrifugado 1.350 → 1.400 rpm, zonas 3 → 4, nivel sonoro, tipo de gas…
+  El resto de cambios de características son de formato («60» → «60cm», «Negra» → «Negro») y no mueven nada.
+- Productos activos con la fecha cambiada desde que se guardó su ficha (26-29 oct.): 874, unos 150 al día.
+
+Conclusiones:
+
+1. La fecha sirve como **aviso prioritario** (cuando cambia, suele haber cambio real), nunca como único criterio: se
+   cumple la regla de no depender de que MHD diga qué ha cambiado (David, 2026-10-26).
+2. Lo que viene en el listado (título, descripción, precio, stock, portes) ya se compara entero en cada vuelta y no
+   necesita la fecha.
+3. **Lo que solo viene en la ficha (características y fotos) necesita un barrido propio**, porque cambia sin aviso.
+4. La mayoría de cambios de características son de formato: hay que medir el efecto con nuestras reglas (filtros y
+   datos clave), no comparar el texto, o la cola de revisión se llena de nada.
+
 ## Pendiente de decidir
 
 - ~~El porcentaje del freno de bajas~~: 15 % (David, 2026-10-31; antes 2 %, que paraba con caídas normales de proveedor: lo máximo visto son unos 2.230, el 9 %), en Configuración.
