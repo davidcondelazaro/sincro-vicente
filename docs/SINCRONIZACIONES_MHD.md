@@ -4,7 +4,7 @@ Diseño acordado con David para mantener la tienda al día una vez terminado el 
 
 ## Qué se hace y cada cuánto
 
-**Se lee siempre todo y la comparación la hacemos nosotros** (David, 2026-10-26: «no quiero que dependamos de que nos digan que se ha modificado»). No se usan los filtros por fecha. Cada producto guarda sus huellas (precio, stock, contenido, fotos y entrega); se calculan las nuevas y se actúa sobre las que cambian. Si una lectura falla, la siguiente lo recoge todo.
+**Se lee siempre todo y la comparación la hacemos nosotros** (David, 2026-10-26: «no quiero que dependamos de que nos digan que se ha modificado»). No se usan los filtros por fecha: el 2-11 se midió que perderían cambios y David lo confirmó (ver «La fecha de modificación de MHD no es fiable»). Cada producto guarda sus huellas (precio, stock, contenido, fotos y entrega); se calculan las nuevas y se actúa sobre las que cambian. Si una lectura falla, la siguiente lo recoge todo.
 
 | Cada | Lectura de MHD (medida el 2026-10-26) | Qué se hace |
 | --- | --- | --- |
@@ -172,6 +172,24 @@ MHD dice que `fecha_modificacion_producto` cambia con cualquier cambio. Los dato
   El resto de cambios de características son de formato («60» → «60cm», «Negra» → «Negro») y no mueven nada.
 - Productos activos con la fecha cambiada desde que se guardó su ficha (26-29 oct.): 874, unos 150 al día.
 
+**¿Sirven las fechas para que la vuelta lea solo lo cambiado?** Era la idea de los filtros por fecha. Medido el
+mismo día contra lo que la lectura completa vio cambiar:
+
+| Qué | Con filtro por fecha se habría perdido |
+| --- | --- |
+| Precio | `fecha_modificacion_producto` no cambia con el precio (14 de 3.007). `fecha_modificacion_precio`: con un margen de 24 h, `/prices` deja fuera el 8 % de los cambios vistos (86 de 1.130); algunos llevan fechas de julio. Además MHD la fecha antes de que el cambio se vea: el 1-11, 339 precios fechados a las 5:45 (hora de Madrid) no salieron en las lecturas de las 6:00, 6:30 y 7:00, solo en la de las 7:30. «Cambiados desde la última lectura» se los habría saltado. |
+| Stock | `/stocks` con `fecha_modificacion_stock` de 24 h deja fuera el **40 %** (1.091 de 2.696). Los cambios son reales: la vuelta los mandó a Shopify. |
+| Vueltas de agotados | De 1.719 productos que volvieron, 546 (32 %) no tienen ninguna fecha de stock posterior a su desaparición, y solo 36 tienen la de producto. |
+| Altas | De 551 altas automáticas desde el 29-10, 130 (24 %) no tienen ninguna de las tres fechas en los 3 días anteriores: son productos antiguos que MHD vuelve a poner. |
+| Bajas | Un filtro de «cambiados desde» no puede enseñar lo que desaparece. Hace falta la lista entera de códigos. |
+
+Al mismo tiempo, `/prices` y `/stocks` completos (29.384 productos, ~9 s cada uno) coinciden ya con el listado en
+códigos, precio y stock: las diferencias medidas (14 precios, 73 stocks, 8 códigos) caben en los 25 minutos entre una
+lectura y otra. Ya no hay la tarifa distinta en `/prices` ni los retirados en `/stocks` del 29-10.
+
+**Decisión (David, 2026-11-02): se mantiene la lectura completa del listado cada 30 minutos y se descartan los
+filtros por fecha.** Las fechas solo sirven como pista (por ejemplo, qué fichas de detalle releer antes).
+
 Conclusiones:
 
 1. La fecha sirve como **aviso prioritario** (cuando cambia, suele haber cambio real), nunca como único criterio: se
@@ -181,6 +199,10 @@ Conclusiones:
 3. **Lo que solo viene en la ficha (características y fotos) necesita un barrido propio**, porque cambia sin aviso.
 4. La mayoría de cambios de características son de formato: hay que medir el efecto con nuestras reglas (filtros y
    datos clave), no comparar el texto, o la cola de revisión se llena de nada.
+5. **La vuelta sigue leyendo el listado entero** (~3½ min cada 30 min). Ninguna de las tres fechas permite leer solo
+   lo cambiado sin perder precios, stock, vueltas y altas, y las bajas no se ven nunca con un filtro. Leer de nuevo
+   `/prices` y `/stocks` solo tendría sentido para ir más rápido que cada 30 minutos, y también enteros, sin fecha.
+6. Mediciones de un solo día: repetirlas en una semana antes de dar nada por cerrado con MHD.
 
 ## Pendiente de decidir
 
