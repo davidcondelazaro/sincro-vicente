@@ -56,14 +56,15 @@ export async function GET(request: Request) {
     if (view === "conversation") {
       const id = url.searchParams.get("id");
       if (!id) return json({ error: "Falta la conversación." }, 400);
-      const [conversation, voice, messages, support, errors] = await Promise.all([
+      const [conversation, voice, messages, support, errors, rating] = await Promise.all([
         db.from("conversations").select("id, started_at, last_at, page_url, metadata, summary, sentiment, outcome, topic, needs_review, review_reason, quality_rating, quality_issues, reviewed_at").eq("id", id).maybeSingle(),
         db.from("voice_sessions").select("customer_name, page, started_at").eq("conversation_id", id).order("started_at"),
         db.from("messages").select("id, role, content, tool_calls, product_ids, model, input_tokens, output_tokens, latency_ms, channel, created_at").eq("conversation_id", id).order("id"),
         db.from("support_requests").select("id, kind, name, email, phone, order_number, description, status, created_at").eq("conversation_id", id).order("created_at"),
         db.from("widget_errors").select("id, kind, message, context, page_url, created_at").eq("conversation_id", id).order("created_at"),
+        db.from("conversation_ratings").select("trigger, shown_at, rating, reasons, comment, rated_at").eq("conversation_id", id).maybeSingle(),
       ]);
-      const failed = conversation.error ?? voice.error ?? messages.error ?? support.error ?? errors.error;
+      const failed = conversation.error ?? voice.error ?? messages.error ?? support.error ?? errors.error ?? rating.error;
       if (failed) throw failed;
       const attachments = await signedAttachments(db, "conversation_id", [id]);
       // Pedidos atribuidos a la conversación (vista attributed_orders del chatbot).
@@ -81,17 +82,23 @@ export async function GET(request: Request) {
         db.from("customer_emails").select("id, email, kind, product_ids, created_at").eq("conversation_id", id).order("created_at"),
       ]);
       return json({
-        consents: consents.data ?? [], subscriptions: subscriptions.data ?? [], sentEmails: sentEmails.data ?? [], attachments, conversation: conversation.data, voice: voice.data, messages: messages.data, support: support.data, errors: errors.data, orders: (orders ?? []).map((order) => ({ ...order, attribution: attributionOf.get(order.id) })) });
+        consents: consents.data ?? [], subscriptions: subscriptions.data ?? [], sentEmails: sentEmails.data ?? [], attachments, rating: rating.data, conversation: conversation.data, voice: voice.data, messages: messages.data, support: support.data, errors: errors.data, orders: (orders ?? []).map((order) => ({ ...order, attribution: attributionOf.get(order.id) })) });
     }
 
     if (view === "stats") {
-      const [{ data, error }, alerts] = await Promise.all([
+      // Valoraciones de los clientes (👍/👎): resumen y los últimos comentarios de los 👎, con el mismo periodo.
+      let comments = db.from("conversation_ratings").select("conversation_id, trigger, reasons, comment, rated_at").eq("rating", "negativa").not("comment", "is", null).neq("comment", "");
+      if (since) comments = comments.gte("shown_at", since);
+      if (until) comments = comments.lt("shown_at", until);
+      const [stats, alerts, ratings, recent] = await Promise.all([
         db.rpc("admin_conversation_stats", { p_from: since, p_to: until }),
         db.rpc("admin_alert_stats", { p_from: since, p_to: until }),
+        db.rpc("admin_rating_stats", { p_from: since, p_to: until }),
+        comments.order("rated_at", { ascending: false }).limit(10),
       ]);
-      if (error) throw error;
-      if (alerts.error) throw alerts.error;
-      return json({ stats: { ...data, alerts: alerts.data } });
+      const failed = stats.error ?? alerts.error ?? ratings.error ?? recent.error;
+      if (failed) throw failed;
+      return json({ stats: { ...stats.data, alerts: alerts.data }, ratings: { ...ratings.data, comments: recent.data ?? [] } });
     }
 
     if (view === "support") {
@@ -141,6 +148,7 @@ export async function GET(request: Request) {
       p_with_guard: url.searchParams.get("guard") === "1" ? true : null,
       p_with_order: url.searchParams.get("order") === "1" ? true : null,
       p_with_attachments: url.searchParams.get("attachments") === "1" ? true : null,
+      p_rating: pick(url.searchParams.get("rating"), ["positiva", "negativa"]),
     });
     if (error) throw error;
     const rows = (data ?? []) as (Row & { total: number })[];
