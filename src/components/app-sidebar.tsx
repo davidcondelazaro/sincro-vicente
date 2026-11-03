@@ -61,7 +61,7 @@ function subscribeCollapsed(callback: () => void) { window.addEventListener(COLL
 
 export function AppSidebar({ active, userEmail }: { active: Section; userEmail: string | null }) {
   const [open, setOpen] = useState(false);
-  const itemClass = (section: Section) => `flex min-w-0 items-center gap-3 rounded-lg px-3 py-2 text-sm ${active === section ? "bg-emerald-50 font-semibold text-emerald-900" : "text-zinc-600 hover:bg-zinc-50"}`;
+  const itemClass = (section: Section) => `group flex min-w-0 items-center gap-3 rounded-lg px-3 py-2 text-sm ${active === section ? "bg-emerald-50 font-semibold text-emerald-900" : "text-zinc-600 hover:bg-zinc-100"}`;
   const close = () => setOpen(false);
   const collapsed = JSON.parse(useSyncExternalStore(subscribeCollapsed, readCollapsed, () => "[]")) as string[];
   const toggle = (label: string) => saveCollapsed(collapsed.includes(label) ? collapsed.filter((item) => item !== label) : [...collapsed, label]);
@@ -84,7 +84,7 @@ export function AppSidebar({ active, userEmail }: { active: Section; userEmail: 
         if (!group.label) return <div key="inicio" className="flex flex-col gap-1">{links}</div>;
         const id = `menu-${group.label.toLowerCase().replaceAll(" ", "-")}`;
         return <div key={group.label} className="mt-3">
-          <button type="button" onClick={() => toggle(group.label!)} disabled={containsActive} aria-expanded={expanded} aria-controls={id} className="flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-left text-xs font-medium tracking-wide text-zinc-500 uppercase hover:bg-zinc-50 disabled:cursor-default disabled:hover:bg-transparent enabled:cursor-pointer">
+          <button type="button" onClick={() => toggle(group.label!)} disabled={containsActive} aria-expanded={expanded} aria-controls={id} className="flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-left text-xs font-medium tracking-wide text-zinc-500 uppercase hover:bg-zinc-100 disabled:cursor-default disabled:hover:bg-transparent enabled:cursor-pointer">
             <span>{group.label}</span>{!containsActive && <svg viewBox="0 0 24 24" className={`h-4 w-4 transition-transform ${expanded ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>}
           </button>
           {expanded && <div id={id} className="mt-1 flex flex-col gap-1">{links}</div>}
@@ -128,7 +128,7 @@ function UserMenu({ email }: { email: string | null }) {
       <div className="border-b border-zinc-100 px-3 py-2.5"><p className="truncate text-sm font-medium text-zinc-900">{name || label}</p><p className="truncate text-xs text-zinc-500">{label}</p></div>
       <form action="/auth/logout" method="post" className="p-1"><button type="submit" role="menuitem" className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-zinc-700 hover:bg-zinc-100"><Icon name="export" />Cerrar sesión</button></form>
     </div>}
-    <button type="button" onClick={() => setOpen((value) => !value)} aria-haspopup="menu" aria-expanded={open} className="flex w-full min-w-0 cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 text-left hover:bg-zinc-50">
+    <button type="button" onClick={() => setOpen((value) => !value)} aria-haspopup="menu" aria-expanded={open} className="flex w-full min-w-0 cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 text-left hover:bg-zinc-100">
       <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-emerald-500 to-lime-400 text-sm font-semibold text-white uppercase" aria-hidden="true">{email ? email[0] : ""}</span>
       <span className="min-w-0 flex-1 truncate text-sm font-medium text-zinc-800">{name || label}</span>
       <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-zinc-200 text-zinc-500" aria-hidden="true"><svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor"><circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" /></svg></span>
@@ -164,5 +164,5 @@ function Icon({ name }: { name: IconName }) {
     settings: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" /></>,
     export: <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /></>,
   };
-  return <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
+  return <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
