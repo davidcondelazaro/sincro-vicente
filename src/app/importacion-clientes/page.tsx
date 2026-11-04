@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { AppSidebar } from "@/components/app-sidebar";
 
 type Run = {
-  id: string; mode: "id" | "from_date" | "latest" | "all" | "retry_errors"; parameters: Record<string, unknown>; status: "queued" | "running" | "paused" | "stopped" | "completed" | "failed";
+  id: string; mode: "id" | "from_date" | "latest" | "all" | "retry_errors" | "list"; parameters: Record<string, unknown>; status: "queued" | "running" | "paused" | "stopped" | "completed" | "failed";
   total_count: number; processed_count: number; created_count: number; existing_count: number; error_count: number; created_at: string; started_at: string | null; finished_at: string | null;
 };
 type ImportEvent = { id: number; run_id: string; level: "info" | "success" | "warning" | "error"; outcome: "created" | "existing" | "error" | "status"; prestashop_customer_id: number | null; customer_email: string | null; shopify_customer_id: string | null; message: string; created_at: string };
@@ -143,7 +143,7 @@ export default function BulkImportsPage() {
   </div>;
 }
 
-function scopeLabel(run: Run) { if (run.mode === "id") return `Cliente #${run.parameters.customerId}`; if (run.mode === "from_date") return `Desde ${formatSpanishDate(String(run.parameters.fromDate))}`; if (run.mode === "all") return "Todos los clientes"; if (run.mode === "retry_errors") return "Reintento de errores"; return `Últimos ${run.parameters.latest} clientes`; }
+function scopeLabel(run: Run) { if (run.mode === "id") return `Cliente #${run.parameters.customerId}`; if (run.mode === "from_date") return `Desde ${formatSpanishDate(String(run.parameters.fromDate))}`; if (run.mode === "all") return "Todos los clientes"; if (run.mode === "retry_errors") return "Reintento de errores"; if (run.mode === "list") return String(run.parameters.label ?? "Lista de clientes"); return `Últimos ${run.parameters.latest} clientes`; }
 function formatSpanishDate(value: string) { const [year, month, day] = value.slice(0, 10).split("-"); return year && month && day ? `${day}/${month}/${year}` : value; }
 function formatMadridDateTime(value: string) { return new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", dateStyle: "short", timeStyle: "short" }).format(new Date(value)); }
 function formatMadridTime(value: string) { return new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", timeStyle: "medium" }).format(new Date(value)); }

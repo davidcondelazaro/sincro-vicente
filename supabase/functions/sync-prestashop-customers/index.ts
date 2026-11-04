@@ -41,10 +41,16 @@ async function mysqlConnection() {
   return mysql.createConnection({ host: env("MYSQL_HOST"), port: Number(Deno.env.get("MYSQL_PORT") ?? 3306), database: env("MYSQL_DATABASE"), user: env("MYSQL_USER"), password: env("MYSQL_PASSWORD"), ssl: Deno.env.get("MYSQL_SSL") === "true" ? {} : undefined, connectTimeout: 10_000 });
 }
 
-async function idsForRun(mode: string, parameters: Parameters, cursor: number | null, remaining: number) {
+async function idsForRun(runId: string, mode: string, parameters: Parameters, cursor: number | null, remaining: number) {
   if (mode === "id") return cursor ? [] : [Number(parameters.customerId)];
   if (mode === "retry_errors") {
     let query = db.from("customer_import_events").select("prestashop_customer_id").eq("run_id", parameters.sourceRunId!).eq("outcome", "error").not("prestashop_customer_id", "is", null).order("prestashop_customer_id", { ascending: false }).limit(Math.min(25, remaining));
+    if (cursor) query = query.lt("prestashop_customer_id", cursor);
+    const { data, error } = await query; if (error) throw new TransientError(error.message);
+    return (data ?? []).map((row) => Number(row.prestashop_customer_id));
+  }
+  if (mode === "list") {
+    let query = db.from("customer_import_queue").select("prestashop_customer_id").eq("run_id", runId).order("prestashop_customer_id", { ascending: false }).limit(Math.min(25, remaining));
     if (cursor) query = query.lt("prestashop_customer_id", cursor);
     const { data, error } = await query; if (error) throw new TransientError(error.message);
     return (data ?? []).map((row) => Number(row.prestashop_customer_id));
@@ -66,7 +72,8 @@ async function loadCustomer(id: number) {
   const connection = await mysqlConnection();
   try {
     // Varias cuentas con el mismo email son un solo cliente en Shopify: se suman sus pedidos y direcciones.
-    const [customers] = await connection.execute<mysql.RowDataPacket[]>(`SELECT t.id_customer,t.firstname,t.lastname,t.email,t.note,MAX(c.newsletter) AS newsletter,MIN(c.date_add) AS fecha_alta,COUNT(DISTINCT o.id_order) AS total_pedidos,SUM(od.total_price_tax_incl) AS importe_total,GROUP_CONCAT(DISTINCT c.id_customer) AS cuentas FROM ev_customer t JOIN ev_customer c ON c.email=t.email AND c.active=1 AND c.deleted=0 LEFT JOIN ev_orders o ON c.id_customer=o.id_customer AND o.valid=1 LEFT JOIN ev_order_detail od ON o.id_order=od.id_order WHERE t.id_customer=? AND t.active=1 AND t.deleted=0 GROUP BY t.id_customer,t.firstname,t.lastname,t.email,t.note`, [id]);
+    // Cuentan los pedidos cobrados y no cancelados según su historial: la marca valid no es fiable aquí.
+    const [customers] = await connection.execute<mysql.RowDataPacket[]>(`SELECT t.id_customer,t.firstname,t.lastname,t.email,t.note,MAX(c.newsletter) AS newsletter,MIN(c.date_add) AS fecha_alta,COUNT(DISTINCT o.id_order) AS total_pedidos,SUM(od.total_price_tax_incl) AS importe_total,GROUP_CONCAT(DISTINCT c.id_customer) AS cuentas FROM ev_customer t JOIN ev_customer c ON c.email=t.email AND c.active=1 AND c.deleted=0 LEFT JOIN ev_orders o ON c.id_customer=o.id_customer AND o.current_state NOT IN (6,25) AND EXISTS(SELECT 1 FROM ev_order_history h WHERE h.id_order=o.id_order AND h.id_order_state IN (2,3,4,5,9,11,22,24,27,29,32)) LEFT JOIN ev_order_detail od ON o.id_order=od.id_order WHERE t.id_customer=? AND t.active=1 AND t.deleted=0 GROUP BY t.id_customer,t.firstname,t.lastname,t.email,t.note`, [id]);
     const customer = customers[0] as Row | undefined;
     if (!customer) return null;
     const [addresses] = await connection.execute<mysql.RowDataPacket[]>(`SELECT a.firstname,a.lastname,a.address1,a.address2,a.city,a.postcode,a.phone,a.dni,a.company,a.vat_number,s.name AS province_name,co.iso_code AS country_code FROM ev_address a LEFT JOIN ev_state s ON a.id_state=s.id_state LEFT JOIN ev_country co ON a.id_country=co.id_country WHERE FIND_IN_SET(a.id_customer,?) AND a.active=1 AND a.deleted=0`, [customer.cuentas]);
@@ -149,7 +156,7 @@ async function processMessage(message: any) {
       const { data: fresh } = await db.from("customer_import_runs").select("*").eq("id", runId).single(); current = fresh;
       if (current.status === "stopped") return archive(messageId);
       if (current.status !== "running") return;
-      const ids = await idsForRun(current.mode, current.parameters as Parameters, current.cursor_customer_id, current.total_count - current.processed_count);
+      const ids = await idsForRun(runId, current.mode, current.parameters as Parameters, current.cursor_customer_id, current.total_count - current.processed_count);
       if (!ids.length) break;
       for (const id of ids) {
         if (Date.now() > deadline) return release(messageId);
