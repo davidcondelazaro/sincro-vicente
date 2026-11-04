@@ -233,3 +233,23 @@ historial. Afecta a 2.975 pedidos. Resultado recalculado:
 seguimiento solo existe dentro del HTML del mensaje automático («Enviado por»,
 «Código/Número de seguimiento», enlace «Seguimiento»). Pendiente de comprobar
 si se extrae bien en todos y llevarlo al envío del pedido en Shopify.
+
+## Importación desde la app (preparada el 4-11-2026, sin lanzar)
+
+Utils → Pladisel (antiguo) → **Importación de pedidos** (`/importacion-pedidos`).
+Mismo esquema que la de clientes: tablas `order_import_runs`,
+`order_import_queue` y `order_import_events`, cola pgmq `order_import_jobs`,
+cron cada minuto y Edge Function `sync-prestashop-orders` en tandas de 110 s.
+
+- Las reglas de este documento viven en
+  `supabase/functions/_shared/pedido-prestashop.ts`, que usan a la vez la
+  función y el script `scripts/preparar-pedido-prestashop.mjs`.
+- Alcances: pedidos concretos (hasta 200 referencias), todos (97.748 el
+  4-11: cobrados, no cancelados y enviados o reembolsados; quedan fuera los
+  cobrados sin enviar) y reintento de errores.
+- Por cada pedido: si ya hay uno con ese nombre en Shopify se salta; si el
+  cliente no existe, queda como error para reintentarlo; `orderCreate` nunca
+  se repite a ciegas (si se pierde la respuesta, el siguiente intento lo busca
+  por nombre).
+- «Todos los pedidos» pide confirmación y recuerda apagar antes los avisos al
+  personal.

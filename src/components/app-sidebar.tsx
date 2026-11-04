@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
-type Section = "warrantyContracts" | "home" | "customer" | "customers" | "catalog" | "priorities" | "icecat" | "supabase" | "mhdImport" | "mhdCatalog" | "prices" | "stock" | "orders" | "productImporter" | "chatbotStats" | "chatbotConversations" | "chatbotImprovements" | "chatbotSupport" | "chatbotErrors" | "chatbotSyncs" | "chatbotDiscounts" | "chatbotSettings" | "chatbotPrivacy" | "stockAlerts" | "priceAlerts" | "quotes" | "redirects" | "warranties" | "productLocks" | "familyRules" | "storeSettings";
+type Section = "warrantyContracts" | "home" | "customer" | "customers" | "prestashopOrders" | "catalog" | "priorities" | "icecat" | "supabase" | "mhdImport" | "mhdCatalog" | "prices" | "stock" | "orders" | "productImporter" | "chatbotStats" | "chatbotConversations" | "chatbotImprovements" | "chatbotSupport" | "chatbotErrors" | "chatbotSyncs" | "chatbotDiscounts" | "chatbotSettings" | "chatbotPrivacy" | "stockAlerts" | "priceAlerts" | "quotes" | "redirects" | "warranties" | "productLocks" | "familyRules" | "storeSettings";
 type IconName = "home" | "database" | "users" | "catalog" | "price" | "stock" | "sort" | "icecat" | "orders" | "bell" | "tag" | "shield" | "quote" | "spark" | "ticket" | "chart" | "chat" | "support" | "alert" | "sync" | "settings" | "export" | "lock" | "package" | "bag";
 
 type NavEntry = { section: Section; href: string; label: string; icon: IconName };
@@ -43,6 +43,7 @@ const navigation: { label: string | null; entries: NavEntry[] }[] = [
   { label: "Pladisel (antiguo)", entries: [
     { section: "supabase", href: "/importar-datos-sql-server", label: "Importar de SQL Server", icon: "database" },
     { section: "customers", href: "/importacion-clientes", label: "Importación de clientes", icon: "users" },
+    { section: "prestashopOrders", href: "/importacion-pedidos", label: "Importación de pedidos", icon: "orders" },
     { section: "catalog", href: "/importacion-catalogo", label: "Importación catálogo", icon: "catalog" },
     { section: "prices", href: "/importacion-precios", label: "Importación de precios", icon: "price" },
     { section: "stock", href: "/importacion-stock", label: "Importación de stock", icon: "stock" },

@@ -2,11 +2,12 @@
 // Uso: node --env-file=.env.local scripts/crear-pedido-prestashop.mjs ruta/PS-4-5101813.json
 // No reintenta: si la respuesta se pierde, hay que buscar el pedido por nombre antes de repetir.
 import { readFileSync } from "node:fs";
+import { assertSilent } from "../supabase/functions/_shared/pedido-prestashop.ts";
 
 const file = process.argv[2];
 if (!file) throw new Error("Falta el JSON del pedido preparado");
 const { order, options } = JSON.parse(readFileSync(file, "utf8"));
-if (options.sendReceipt !== false || options.sendFulfillmentReceipt !== false || (order.fulfillment && order.fulfillment.notifyCustomer !== false)) throw new Error("El pedido avisaría al cliente: se cancela.");
+assertSilent(order, options);
 
 const store = process.env.SHOPIFY_STORE_URL.replace(/^https?:\/\//, "").replace(/\/$/, "");
 async function shopify(query, variables = {}) {

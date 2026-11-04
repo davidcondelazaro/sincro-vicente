@@ -394,6 +394,9 @@ backend = "postgres"
 [functions.sync-prestashop-customers]
 verify_jwt = false
 
+[functions.sync-prestashop-orders]
+verify_jwt = false
+
 [functions.import-source-catalog]
 verify_jwt = false
 
