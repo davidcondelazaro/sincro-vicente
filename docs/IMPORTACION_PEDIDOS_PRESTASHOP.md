@@ -253,3 +253,12 @@ cron cada minuto y Edge Function `sync-prestashop-orders` en tandas de 110 s.
   por nombre).
 - «Todos los pedidos» pide confirmación y recuerda apagar antes los avisos al
   personal.
+
+**Lanzamiento (4-11-2026, noche).** David desactivó los avisos al personal
+(destinatarios de «Notificaciones para empleados») y pidió que la importación
+de pedidos arrancase sola al acabar la de clientes. Ejecución «Todos los
+pedidos» `ac6f8449-…` preparada en pausa con 97.886 pedidos; el cron
+`sincro-vicente-start-orders-after-customers` (cada 5 min,
+`start_order_import_after_customers`) la encola cuando la de clientes
+`41cd2530-…` queda completada y se borra a sí mismo. Al terminar hay que
+reactivar los avisos al personal.
