@@ -1,3 +1,6 @@
+import { sameInvoices, sendPendingInvoiceEmails, toShopifyInvoices, writeInvoicesToShopify, type InvoiceSent, type ShopifyInvoice } from "@/lib/mhd-invoices";
+import { mhdHeaders, mhdUrl } from "@/lib/mhd-order-sync";
+import { invoicesFrom, type MhdOrderData } from "@/lib/mhd-order-status";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -8,6 +11,8 @@ export const dynamic = "force-dynamic";
 // MHD no indica qué productos lleva cada envío, así que se envía el pedido completo en un solo fulfillment
 // por ubicación, con todos los números de seguimiento. La recogida en tienda no se toca.
 // Requiere el permiso write_merchant_managed_fulfillment_orders en la app de Shopify.
+// Antes del fulfillment se vuelven a leer las facturas en MHD y se escriben en mhd.facturas, para que la «Confirmación de
+// envío» de Shopify las lleve; las que no vayan en ella salen después en el correo de factura (src/lib/mhd-invoices.ts).
 
 type TrackingInput = { company?: string; entries?: { number?: string; url?: string }[] };
 type FulfillmentOrder = { id: string; status: string; deliveryMethod: { methodType: string } | null; assignedLocation: { name: string } | null; lineItems: { nodes: { remainingQuantity: number }[] } };
@@ -34,7 +39,7 @@ export async function POST(request: Request) {
 
   const [{ data: order }, { data: exported }] = await Promise.all([
     supabase.from("shopify_mhd_orders").select("id,shopify_order_id,shopify_order_name").eq("id", input.orderId).single(),
-    supabase.from("mhd_order_exports").select("mhd_status_payload").eq("order_id", input.orderId).maybeSingle(),
+    supabase.from("mhd_order_exports").select("id,mhd_order_id,mhd_status_payload,facturas_cliente").eq("order_id", input.orderId).maybeSingle(),
   ]);
   if (!order) return Response.json({ error: "No se encontró el pedido." }, { status: 404 });
 
@@ -59,6 +64,27 @@ export async function POST(request: Request) {
       && item.lineItems.nodes.some((line) => line.remainingQuantity > 0));
     if (!pending.length) return Response.json({ error: `No hay nada pendiente de enviar en Shopify (${data.order.displayFulfillmentStatus}).` }, { status: 422 });
 
+    // Facturas de MHD en mhd.facturas antes del fulfillment. Se leen de nuevo en MHD; si no responde, vale la última lectura.
+    // Si falla la escritura se sigue: la factura llegará luego en su propio correo.
+    const payload = (exported?.mhd_status_payload ?? {}) as { facturas?: { url_factura: string; nombre_factura: string | null }[]; facturas_en_shopify?: ShopifyInvoice[] | null };
+    let invoices = payload.facturas ?? [];
+    let invoicesInShopify = payload.facturas_en_shopify ?? null;
+    if (exported?.mhd_order_id) {
+      try {
+        const response = await fetch(mhdUrl(`/orders/${exported.mhd_order_id}`), { headers: mhdHeaders(), cache: "no-store", signal: AbortSignal.timeout(15_000) });
+        const body = await response.json().catch(() => ({})) as { success?: boolean; data?: MhdOrderData };
+        if (response.ok && body.success && body.data) invoices = invoicesFrom(body.data);
+      } catch { /* se usa la última lectura */ }
+      const shopifyInvoices = toShopifyInvoices(invoices);
+      if (shopifyInvoices.length && !sameInvoices(shopifyInvoices, invoicesInShopify)) {
+        try {
+          await writeInvoicesToShopify(order.shopify_order_id, shopifyInvoices);
+          invoicesInShopify = shopifyInvoices;
+          await supabase.from("mhd_order_exports").update({ mhd_status_payload: { ...payload, facturas: invoices, facturas_en_shopify: invoicesInShopify } }).eq("id", exported.id);
+        } catch { /* sin factura en el correo de envío; irá aparte */ }
+      }
+    }
+
     // Un fulfillment solo puede agrupar pedidos de envío de la misma ubicación
     const byLocation = new Map<string, FulfillmentOrder[]>();
     for (const item of pending) { const key = item.assignedLocation?.name ?? "—"; byLocation.set(key, [...(byLocation.get(key) ?? []), item]); }
@@ -78,6 +104,17 @@ export async function POST(request: Request) {
       fulfillment_status: "FULFILLED",
       shopify_fulfillment_payload: { mhd_tracking: (exported?.mhd_status_payload as { seguimiento?: unknown } | null)?.seguimiento ?? null, notify_customer: Boolean(input.notifyCustomer), tracking: trackingInfo, fulfillments, created_at: new Date().toISOString() },
     }).eq("id", order.id);
+    // Las facturas que estaban en mhd.facturas han ido en la «Confirmación de envío» si se avisó al cliente; si no, o
+    // si llegan más tarde, sale el correo de factura.
+    if (exported) {
+      if (input.notifyCustomer && invoicesInShopify?.length) {
+        const at = new Date().toISOString();
+        const received = (exported.facturas_cliente ?? []) as InvoiceSent[];
+        const known = new Set(received.map((item) => item.url));
+        await supabase.from("mhd_order_exports").update({ facturas_cliente: [...received, ...invoicesInShopify.filter((invoice) => !known.has(invoice.url)).map((invoice) => ({ url: invoice.url, via: "envio", at }))] }).eq("id", exported.id);
+      }
+      await sendPendingInvoiceEmails(supabase, [exported.id]);
+    }
     return Response.json({ fulfillments: fulfillments.length });
   } catch (error) {
     const message = error instanceof Error ? error.message : "No se pudo marcar como enviado en Shopify.";

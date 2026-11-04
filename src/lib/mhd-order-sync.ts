@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildMhdProductLines } from "@/lib/mhd-order-lines";
+import { sameInvoices, sendPendingInvoiceEmails, toShopifyInvoices, writeInvoicesToShopify } from "@/lib/mhd-invoices";
 import { invoicesFrom, trackingFrom, type MhdOrderData } from "@/lib/mhd-order-status";
 
 // Lectura de pedidos de Shopify y de estados de MHD. La usan los botones de Pedidos MHD (con la sesión) y la tarea
@@ -49,13 +50,13 @@ function discountSummary(order: ShopifyOrder) {
 type MhdStatusEntry = { estado?: string; fecha?: number | string | null };
 type MhdOrderResponse = { success?: boolean; data?: MhdOrderData };
 
-function mhdUrl(path: string) {
+export function mhdUrl(path: string) {
   const base = required("MHD_API_URL").replace(/\/$/, "");
   const version = required("MHD_API_VERSION").replace(/^\/+|\/+$/g, "");
   const subPath = required("MHD_API_SUB_PATH").replace(/^\/+|\/+$/g, "");
   return `${base}/api/${version}/${subPath}${path}`;
 }
-function mhdHeaders() {
+export function mhdHeaders() {
   const credentials = Buffer.from(`${required("MHD_API_USER")}:${required("MHD_API_PASS")}`).toString("base64");
   return { Accept: "application/json", Authorization: `Basic ${credentials}` };
 }
@@ -118,17 +119,6 @@ export async function syncShopifyOrders(db: SupabaseClient, ownerId: string, pro
   return { count: orders.length, createdCount, updatedCount };
 }
 
-// Facturas de MHD en el metacampo de pedido mhd.facturas (JSON [{ url, nombre }]), que leen el correo de envío, Elvi y el
-// helpdesk. Se escribe solo cuando la lista cambia respecto a la última que se escribió (facturas_en_shopify del payload),
-// así no se gasta ninguna lectura en Shopify y lo corregido a mano se respeta hasta que MHD cambie sus facturas.
-async function writeInvoicesToShopify(shopifyOrderId: string, invoices: { url: string; nombre: string | null }[]) {
-  const store = required("SHOPIFY_STORE_URL").replace(/^https?:\/\//, "").replace(/\/$/, "");
-  const response = await fetch(`https://${store}/admin/api/2026-07/graphql.json`, { method: "POST", headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": required("SHOPIFY_ACCESS_TOKEN") }, cache: "no-store", signal: AbortSignal.timeout(20_000), body: JSON.stringify({ query: `mutation($m: [MetafieldsSetInput!]!) { metafieldsSet(metafields: $m) { userErrors { message } } }`, variables: { m: [{ ownerId: shopifyOrderId, namespace: "mhd", key: "facturas", type: "json", value: JSON.stringify(invoices) }] } }) });
-  const body = await response.json().catch(() => ({})) as { data?: { metafieldsSet?: { userErrors: { message: string }[] } }; errors?: { message: string }[] };
-  const problems = [...(body.errors ?? []), ...(body.data?.metafieldsSet?.userErrors ?? [])].map((item) => item.message);
-  if (!response.ok || problems.length || !body.data?.metafieldsSet) throw new Error(`Shopify no guardó las facturas: ${problems.join("; ") || `HTTP ${response.status}`}`);
-}
-
 export async function refreshMhdStatuses(db: SupabaseClient) {
   const { data: exports, error: exportsError } = await db
     .from("mhd_order_exports")
@@ -152,10 +142,11 @@ export async function refreshMhdStatuses(db: SupabaseClient) {
       const invoices = invoicesFrom(body.data);
       const previous = (item.mhd_status_payload ?? {}) as { facturas_en_shopify?: unknown };
       let invoicesInShopify = previous.facturas_en_shopify ?? null;
-      const shopifyInvoices = invoices.map((invoice) => ({ url: invoice.url_factura, nombre: invoice.nombre_factura }));
+      const shopifyInvoices = toShopifyInvoices(invoices);
       const shopifyOrderId = (item.order as unknown as { shopify_order_id: string } | null)?.shopify_order_id;
-      // Sin facturas en MHD no se toca el metacampo, para no borrar lo que ya haya
-      if (shopifyInvoices.length && shopifyOrderId && canonicalJson(shopifyInvoices) !== canonicalJson(invoicesInShopify)) {
+      // Facturas en el metacampo mhd.facturas (src/lib/mhd-invoices.ts), solo si la lista cambia respecto a la última
+      // escrita: sin leer Shopify, y lo corregido a mano se respeta hasta que MHD cambie. Sin facturas no se toca.
+      if (shopifyInvoices.length && shopifyOrderId && !sameInvoices(shopifyInvoices, invoicesInShopify)) {
         try {
           await writeInvoicesToShopify(shopifyOrderId, shopifyInvoices);
           invoicesInShopify = shopifyInvoices;
@@ -180,5 +171,8 @@ export async function refreshMhdStatuses(db: SupabaseClient) {
       await db.from("mhd_order_exports").update({ last_checked_at: new Date().toISOString() }).eq("id", item.id);
     }
   }
-  return { checkedCount, changedCount, errors };
+  // Correo de factura a quien aún no la tenga (apagado por defecto: utils › store_settings factura_correo_activo)
+  const invoiceEmails = await sendPendingInvoiceEmails(db, (exports ?? []).map((item) => item.id));
+  errors.push(...invoiceEmails.errors);
+  return { checkedCount, changedCount, errors, invoiceEmailsSent: invoiceEmails.sent };
 }

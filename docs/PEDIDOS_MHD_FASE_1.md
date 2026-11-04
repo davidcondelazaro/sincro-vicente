@@ -258,6 +258,35 @@ mostrarlas en la cuenta del cliente queda para una extensión de app.
 El seguimiento sigue sin escribirse en Shopify desde aquí: va con «Marcar como
 enviado».
 
+**Factura en el correo de envío y correo de factura (4-11-2026).** Código en
+`src/lib/mhd-invoices.ts`.
+
+- «Marcar como enviado» vuelve a leer el pedido en MHD (si no responde, vale la
+  última lectura) y, si ya hay facturas, las escribe en `mhd.facturas` **antes**
+  de crear el fulfillment. La plantilla «Confirmación de envío» del tema las
+  muestra («descargar factura», o todas con su nombre si son varias). Si la
+  escritura falla, el envío se marca igual y la factura irá en su propio correo.
+- `mhd_order_exports.facturas_cliente` guarda las facturas que el cliente ya ha
+  recibido: `via: "envio"` las que estaban en el campo al marcar el envío con
+  «Avisar al cliente»; `via: "correo"` las del correo de factura.
+- **Correo de factura:** sale cuando hay una factura que el cliente no ha
+  recibido, porque se marcó el envío sin avisar o porque llegó después. Se
+  comprueba al marcar el envío y en cada «Actualizar desde MHD» o tarea diaria.
+  Solo en pedidos cuyo envío se ha marcado desde sincro-vicente (antes, la
+  factura irá en la confirmación de envío). Un botón «Descargar factura» por
+  factura y «Ver mi pedido» (`statusPageUrl`). El diseño es el de las
+  notificaciones de la tienda (cabecera, ayuda y pie, sin teléfono). Remitente
+  `EMAIL_FROM_CUSTOMER` (por defecto `pedidos@mail.electronicavicente.com`) y
+  respuestas a `soporte@electronicavicente.com`.
+- **Interruptor:** `store_settings.factura_correo_activo` (apagado de serie) y
+  `factura_correo_desde` (fecha ISO de corte). Sin fecha no se envía nada, y los
+  pedidos exportados a MHD antes de esa fecha nunca reciben el correo. Los de
+  PrestaShop no pasan por `mhd_order_exports` y tampoco.
+- Límite: si el envío se marca en el admin de Shopify y no desde sincro-vicente,
+  no hay correo de factura (no se sabe si el cliente fue avisado).
+- Varias facturas: se envían todas las nuevas en un correo; qué hacer si MHD
+  manda rectificativas se verá cuando ocurra (David, 4-11-2026).
+
 ### Marcar como enviado en Shopify (10-10-2026, en pruebas)
 
 Formulario manual en la tarjeta del pedido (`POST /api/mhd-orders/fulfill`):
