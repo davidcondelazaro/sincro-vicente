@@ -236,8 +236,27 @@ los aparatos enviados.
   `arr_facturas_info_full` (o del antiguo `arr_facturas_info`).
 
 La tarjeta del pedido muestra el transportista y el número de seguimiento con
-su enlace, y los enlaces a las facturas. De momento solo dentro de
-sincro-vicente: no se escribe nada en Shopify ni se envía al cliente.
+su enlace, y los enlaces a las facturas.
+
+**Facturas en Shopify (4-11-2026).** Cada lectura del pedido en MHD (botón
+«Actualizar desde MHD» y tarea diaria de Garantía3, las dos por
+`refreshMhdStatuses` en `src/lib/mhd-order-sync.ts`) escribe las facturas en el
+metacampo de pedido `mhd.facturas` («MHD · Facturas», tipo JSON) con
+`metafieldsSet`, como lista `[{ "url": "…", "nombre": "…" }]`. De ahí las toman
+el correo de envío (botón «Descargar factura»), Elvi y el helpdesk de Aligeria;
+mostrarlas en la cuenta del cliente queda para una extensión de app.
+
+- Solo se escribe si la lista cambia respecto a la última escrita, que se guarda
+  en `mhd_status_payload.facturas_en_shopify`. No se lee el metacampo en
+  Shopify (cero llamadas extra) y, si alguien lo corrige a mano, se respeta
+  hasta que MHD cambie sus facturas.
+- Si MHD no devuelve facturas no se toca el campo: no se borra lo que haya.
+- Si Shopify falla, el error sale en la lista de errores de la actualización y
+  se reintenta en la siguiente lectura.
+- Requiere `write_orders` (concedido, comprobado el 4-11-2026).
+
+El seguimiento sigue sin escribirse en Shopify desde aquí: va con «Marcar como
+enviado».
 
 ### Marcar como enviado en Shopify (10-10-2026, en pruebas)
 

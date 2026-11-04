@@ -118,10 +118,21 @@ export async function syncShopifyOrders(db: SupabaseClient, ownerId: string, pro
   return { count: orders.length, createdCount, updatedCount };
 }
 
+// Facturas de MHD en el metacampo de pedido mhd.facturas (JSON [{ url, nombre }]), que leen el correo de envío, Elvi y el
+// helpdesk. Se escribe solo cuando la lista cambia respecto a la última que se escribió (facturas_en_shopify del payload),
+// así no se gasta ninguna lectura en Shopify y lo corregido a mano se respeta hasta que MHD cambie sus facturas.
+async function writeInvoicesToShopify(shopifyOrderId: string, invoices: { url: string; nombre: string | null }[]) {
+  const store = required("SHOPIFY_STORE_URL").replace(/^https?:\/\//, "").replace(/\/$/, "");
+  const response = await fetch(`https://${store}/admin/api/2026-07/graphql.json`, { method: "POST", headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": required("SHOPIFY_ACCESS_TOKEN") }, cache: "no-store", signal: AbortSignal.timeout(20_000), body: JSON.stringify({ query: `mutation($m: [MetafieldsSetInput!]!) { metafieldsSet(metafields: $m) { userErrors { message } } }`, variables: { m: [{ ownerId: shopifyOrderId, namespace: "mhd", key: "facturas", type: "json", value: JSON.stringify(invoices) }] } }) });
+  const body = await response.json().catch(() => ({})) as { data?: { metafieldsSet?: { userErrors: { message: string }[] } }; errors?: { message: string }[] };
+  const problems = [...(body.errors ?? []), ...(body.data?.metafieldsSet?.userErrors ?? [])].map((item) => item.message);
+  if (!response.ok || problems.length || !body.data?.metafieldsSet) throw new Error(`Shopify no guardó las facturas: ${problems.join("; ") || `HTTP ${response.status}`}`);
+}
+
 export async function refreshMhdStatuses(db: SupabaseClient) {
   const { data: exports, error: exportsError } = await db
     .from("mhd_order_exports")
-    .select("id,mhd_order_id,mhd_status,mhd_status_payload")
+    .select("id,mhd_order_id,mhd_status,mhd_status_payload,order:shopify_mhd_orders(shopify_order_id)")
     .eq("status", "exported")
     .not("mhd_order_id", "is", null);
   if (exportsError) throw new Error("No se pudieron cargar los pedidos exportados.");
@@ -138,9 +149,25 @@ export async function refreshMhdStatuses(db: SupabaseClient) {
       const received = (body.data.arr_estados ?? []).filter((entry) => entry.estado).map((entry) => ({ status: entry.estado!, occurred_at: dateFromMhd(entry.fecha), source_payload: entry }));
       const latest = received.sort((a, b) => (b.occurred_at ?? "").localeCompare(a.occurred_at ?? ""))[0];
       const currentStatus = body.data.estado_cliente ?? latest?.status ?? item.mhd_status;
+      const invoices = invoicesFrom(body.data);
+      const previous = (item.mhd_status_payload ?? {}) as { facturas_en_shopify?: unknown };
+      let invoicesInShopify = previous.facturas_en_shopify ?? null;
+      const shopifyInvoices = invoices.map((invoice) => ({ url: invoice.url_factura, nombre: invoice.nombre_factura }));
+      const shopifyOrderId = (item.order as unknown as { shopify_order_id: string } | null)?.shopify_order_id;
+      // Sin facturas en MHD no se toca el metacampo, para no borrar lo que ya haya
+      if (shopifyInvoices.length && shopifyOrderId && canonicalJson(shopifyInvoices) !== canonicalJson(invoicesInShopify)) {
+        try {
+          await writeInvoicesToShopify(shopifyOrderId, shopifyInvoices);
+          invoicesInShopify = shopifyInvoices;
+        } catch (error) {
+          errors.push(`Pedido MHD #${item.mhd_order_id}: ${error instanceof Error ? error.message : "no se guardaron las facturas en Shopify."}`);
+        }
+      }
       const statusPayload = {
         estado_cliente: body.data.estado_cliente ?? null, id_estado_cliente: body.data.id_estado_cliente ?? null, arr_estados: body.data.arr_estados ?? [],
-        seguimiento: trackingFrom(body.data), facturas: invoicesFrom(body.data),
+        seguimiento: trackingFrom(body.data), facturas: invoices,
+        // Última lista escrita en el metacampo mhd.facturas del pedido de Shopify
+        facturas_en_shopify: invoicesInShopify,
         // Respuesta completa de MHD tal como llega, para no perder ningún campo que añadan
         respuesta_mhd: body.data,
       };
