@@ -13,10 +13,9 @@ export const CANCELLED_STATES = [6, 25];
 const PREFIX: Record<string, string> = { PT: "+351", ES: "+34", FR: "+33", IT: "+39", DE: "+49", GB: "+44" };
 export const ORDER_OPTIONS = { sendReceipt: false, sendFulfillmentReceipt: false, inventoryBehaviour: "BYPASS" };
 
-// Pedidos que se importan: cobrados alguna vez y no cancelados; sin enviar, solo los reembolsados (los 138 cobrados sin enviar esperan a Vicente).
+// Pedidos que se importan: cobrados alguna vez y no cancelados.
 export const IMPORTABLE_ORDERS_SQL = `SELECT o.id_order FROM ev_orders o
-  WHERE o.current_state NOT IN (${CANCELLED_STATES}) AND EXISTS (SELECT 1 FROM ev_order_history h WHERE h.id_order = o.id_order AND h.id_order_state IN (${PAID_STATES}))
-  AND (o.current_state IN (7, 18) OR EXISTS (SELECT 1 FROM ev_order_history h WHERE h.id_order = o.id_order AND h.id_order_state IN (${SHIPPED_STATES})))`;
+  WHERE o.current_state NOT IN (${CANCELLED_STATES}) AND EXISTS (SELECT 1 FROM ev_order_history h WHERE h.id_order = o.id_order AND h.id_order_state IN (${PAID_STATES}))`;
 
 // PrestaShop guarda la hora de Madrid sin zona: se convierte a UTC con el desfase real de ese día.
 export function madridToIso(value: string) {
@@ -201,6 +200,10 @@ export function buildOrder(data: OrderData, customerId: string | null) {
     ...refunds.map((refund) => ({ kind: "REFUND", status: "SUCCESS", gateway: order.payment, amountSet: money(refund.amount), processedAt: madridToIso(refund.date), authorizationCode: redsysOrder(refund.redsys?.ds_order), receiptJson: redsysReceipt(refund.redsys) })),
   ];
   const shipped = history.some((item) => SHIPPED_STATES.includes(item.id_order_state));
+  // Cobrado y sin cerrar en PrestaShop (nunca pasó por enviado ni se reembolsó): en Vicente no quedan pedidos abiertos,
+  // así que se da por enviado y se etiqueta para poder revisarlo.
+  const unclosed = !shipped && financialStatus === "PAID";
+  if (unclosed) warnings.push("Cobrado y sin enviar en PrestaShop: se da por enviado con la etiqueta PrestaShop-estado-sin-cerrar.");
   const input = {
     name: `PS-${reference}`,
     sourceIdentifier: String(order.id_order),
@@ -217,10 +220,10 @@ export function buildOrder(data: OrderData, customerId: string | null) {
     discountCode: discountTotal > 0 ? { itemFixedDiscountCode: { code: discountName || "Descuento PrestaShop", amountSet: money(discountTotal) } } : undefined,
     financialStatus,
     transactions,
-    fulfillment: shipped ? { locationId: LOCATION_ID, notifyCustomer: false, trackingCompany: trackings[0]?.company || undefined, trackingNumbers: trackings.length ? [...new Set(trackings.map((item) => item.number))] : undefined } : undefined,
+    fulfillment: shipped || unclosed ? { locationId: LOCATION_ID, notifyCustomer: false, trackingCompany: trackings[0]?.company || undefined, trackingNumbers: trackings.length ? [...new Set(trackings.map((item) => item.number))] : undefined } : undefined,
     note: original ? plain(original) : undefined,
     customAttributes: partial?.value === "false" ? [{ key: "Enviar todo junto", value: "Sí" }] : undefined,
-    tags: ["PrestaShop"],
+    tags: unclosed ? ["PrestaShop", "PrestaShop-estado-sin-cerrar"] : ["PrestaShop"],
     metafields: [
       { namespace: "prestashop", key: "estado", type: "single_line_text_field", value: stateName?.name ?? String(order.current_state) },
       { namespace: "prestashop", key: "forma_pago", type: "single_line_text_field", value: order.payment },

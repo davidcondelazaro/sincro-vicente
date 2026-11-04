@@ -59,7 +59,7 @@ Se clasifica cada pedido por su estado actual y por su historial
 | Grupo | Pedidos | Se importa | En Shopify |
 |---|---|---|---|
 | Enviado (cobrado y enviado) | 81.584 | Sí | Pagado · Enviado |
-| Cobrado sin enviar | 138 | Sí, pendiente de Vicente | Pagado · Enviado (provisional) |
+| Cobrado sin enviar | 138 | Sí (decidido el 4-11) | Pagado · Enviado · etiqueta `PrestaShop-estado-sin-cerrar` |
 | Reembolso parcial (estado 18) | 1.755 | Sí | Reembolsado parcialmente · Enviado |
 | Reembolsado total (estado 7) | 14.381 | Sí | Reembolsado |
 | Cancelado tras cobrar (6 o 25) | 3.005 | No | — |
@@ -71,9 +71,9 @@ cancelado); nada de «Solicitar opinión». Todos los pedidos importados quedan
 cerrados y archivados.
 
 **Los 138 cobrados sin enviar**: 124 son de 2025-2026, casi todos en «Pago
-realizado». En Vicente no debería haber pedidos abiertos; David lo ha
-preguntado a Vicente. Mientras tanto, propuesta: pagados y enviados con la
-etiqueta `PrestaShop-estado-sin-cerrar`.
+realizado». En Vicente no debería haber pedidos abiertos. Decisión de David
+(4-11): se importan como pagados y enviados, con la etiqueta
+`PrestaShop-estado-sin-cerrar` para poder localizarlos.
 
 ## Estados de PrestaShop mal configurados
 
@@ -244,9 +244,9 @@ cron cada minuto y Edge Function `sync-prestashop-orders` en tandas de 110 s.
 - Las reglas de este documento viven en
   `supabase/functions/_shared/pedido-prestashop.ts`, que usan a la vez la
   función y el script `scripts/preparar-pedido-prestashop.mjs`.
-- Alcances: pedidos concretos (hasta 200 referencias), todos (97.748 el
-  4-11: cobrados, no cancelados y enviados o reembolsados; quedan fuera los
-  cobrados sin enviar) y reintento de errores.
+- Alcances: pedidos concretos (hasta 200 referencias), todos (cobrados y no
+  cancelados, incluidos los 138 cobrados sin enviar, que entran como enviados
+  con la etiqueta `PrestaShop-estado-sin-cerrar`) y reintento de errores.
 - Por cada pedido: si ya hay uno con ese nombre en Shopify se salta; si el
   cliente no existe, queda como error para reintentarlo; `orderCreate` nunca
   se repite a ciegas (si se pierde la respuesta, el siguiente intento lo busca

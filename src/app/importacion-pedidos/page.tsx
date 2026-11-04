@@ -108,7 +108,7 @@ export default function OrderImportsPage() {
           <label className={`cursor-pointer rounded-xl border p-4 ${mode === "all" ? "border-emerald-600 bg-emerald-50" : "border-zinc-200"}`}><input className="mr-2" type="radio" checked={mode === "all"} onChange={() => setMode("all")} />Todos los pedidos</label>
         </div>
         {mode === "references" && <label className="block text-sm font-medium">Referencias de PrestaShop<textarea required value={references} onChange={(event) => setReferences(event.target.value)} rows={4} placeholder="4-5101813, 4-5104424…" className="mt-1 block w-full rounded-lg border border-zinc-300 p-3 font-mono" /><span className="mt-1 block font-normal text-zinc-500">Separadas por comas, espacios o líneas; hasta 200.</span></label>}
-        {mode === "all" && <p className="text-sm text-zinc-600">Todos los pedidos cobrados y no cancelados: enviados, reembolsados y con reembolso parcial. Los cobrados sin enviar quedan fuera hasta decidir qué hacer con ellos.</p>}
+        {mode === "all" && <p className="text-sm text-zinc-600">Todos los pedidos cobrados y no cancelados: enviados, reembolsados y con reembolso parcial. Los cobrados que nunca se marcaron como enviados entran como enviados, con la etiqueta PrestaShop-estado-sin-cerrar.</p>}
         <button className="h-11 rounded-lg bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800 disabled:opacity-60">{starting ? "Preparando la lista…" : "Iniciar el proceso"}</button></fieldset>
       </form>
       {loading ? <p className="text-zinc-500">Cargando ejecuciones…</p> : run ? (
