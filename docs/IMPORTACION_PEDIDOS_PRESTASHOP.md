@@ -289,3 +289,15 @@ Correcciones (migración `20261105074030_order_import_single_worker`):
   como error.
 - Antes de crear, se mira también nuestro registro (`order_import_events`): si
   el pedido ya se creó en cualquier ejecución, cuenta como existente.
+
+Limpieza (5-11-2026): borradas en Shopify las 504 segundas copias, tras
+comprobar que las dos existían con el mismo nombre y la etiqueta PrestaShop
+(resultado en `outputs/pedidos-duplicados-a-borrar-resultado.csv`). Quedan
+1.855 pedidos con la etiqueta PrestaShop: 1.846 de la ejecución y 9 de
+antes. Contadores recalculados: 25.178 procesados, 1.846 creados, 7 ya
+existentes y 23.325 errores, casi todos «Too many attempts», que se recuperan
+con «Reintentar errores». La ejecución sigue en pausa.
+
+Paralelizar con varios trabajadores, cada uno con su tramo, no sirve
+mientras la tienda esté en plan Development, porque el límite es de toda la
+tienda. Se hará si se pasa a un plan de pago.
