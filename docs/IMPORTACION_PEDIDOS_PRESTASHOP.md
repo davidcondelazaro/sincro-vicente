@@ -262,3 +262,30 @@ pedidos» `ac6f8449-…` preparada en pausa con 97.886 pedidos; el cron
 `start_order_import_after_customers`) la encola cuando la de clientes
 `41cd2530-…` queda completada y se borra a sí mismo. Al terminar hay que
 reactivar los avisos al personal.
+
+**Qué pasó esa noche y cómo se corrigió (5-11-2026).** La ejecución arrancó a
+las 23:25 y siguió hasta las 07:33, cuando la pausamos. Hubo dos problemas:
+
+1. *Límite de Shopify.* La tienda está en plan Development y ahí `orderCreate`
+   solo admite 5 pedidos por minuto; el resto responde «Too many attempts» sin
+   crear el pedido. El trabajador lo trataba como error del pedido: 23.468
+   errores, que en realidad son pedidos pendientes. En un plan de pago no hay
+   tope de pedidos por minuto, solo el límite general de la API (100 puntos/s
+   en Basic; una mutación ≈ 10 puntos).
+2. *Dos trabajadores a la vez.* Reanudar y pausar a mano dejó un mensaje vivo
+   en la cola y el arranque automático añadió otro. Los dos recorrieron los
+   mismos pedidos; la búsqueda por nombre de Shopify tarda unos segundos en
+   ver un pedido nuevo y se crearon **504 pedidos duplicados** (lista en
+   `outputs/pedidos-duplicados-a-borrar.csv`; se conserva la primera copia).
+
+Correcciones (migración `20261105074030_order_import_single_worker`):
+
+- Un solo trabajador por ejecución: `claim_order_import_run` reclama la
+  ejecución durante 240 s; un mensaje que no la consigue y no es el suyo se
+  descarta como duplicado.
+- Reanudar y el arranque automático reutilizan el mensaje si sigue en la cola.
+- En tienda de desarrollo o en prueba, un `orderCreate` cada 12,5 s; ante
+  «Too many attempts» se espera 20 s y se repite el mismo pedido, sin marcarlo
+  como error.
+- Antes de crear, se mira también nuestro registro (`order_import_events`): si
+  el pedido ya se creó en cualquier ejecución, cuenta como existente.
