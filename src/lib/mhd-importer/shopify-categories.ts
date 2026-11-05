@@ -148,6 +148,7 @@ export const SHOPIFY_CATEGORY_BY_FAMILY: Record<string, string> = {
   "fundas-y-accesorios-para-tablets": "gid://shopify/TaxonomyCategory/el-7-8-4-3", // Accesorios para tabletas
   "fundas-y-maletines-para-portatiles": "gid://shopify/TaxonomyCategory/lb-15", // Bolsos para computadora portátil
   "gafas-de-realidad-virtual": "gid://shopify/TaxonomyCategory/el-6-7", // Gafas inteligentes
+  "gafas-inteligentes": "gid://shopify/TaxonomyCategory/el-6-7", // Gafas inteligentes (familia nueva, 2026-11-05)
   "gofreras-y-creperas": "gid://shopify/TaxonomyCategory/hg-11-7-46", // Tostadores y parrillas
   "grabadoras-de-cd-dvd-y-blu-ray": "gid://shopify/TaxonomyCategory/el-7-9-14-6", // Unidades de disco óptico
   "grabadoras-de-voz": "gid://shopify/TaxonomyCategory/el-2-3-11", // Grabadoras de voz
