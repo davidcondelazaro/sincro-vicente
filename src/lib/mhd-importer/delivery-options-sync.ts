@@ -35,6 +35,15 @@ export function notableChanges(before: Options | null, after: Options) {
   return notes;
 }
 
+// Pura. Lo que parece dato roto y no un ajuste de tarifas: un porte o servicio que desaparece o pasa a 0. Las subidas
+// y bajadas de importe, aunque toquen a miles de productos, son normales en MHD (David, 2026-11-08) y no frenan.
+export function looksBroken(before: Options | null, after: Options) {
+  return AMOUNT_KEYS.some((key) => {
+    const was = amount(before?.[key]); const now = amount(after[key]);
+    return was !== null && was > 0 && (now === null || now === 0 || Number.isNaN(now));
+  });
+}
+
 function parsed(metafield: { value: string } | null) {
   if (!metafield) return null;
   try { return JSON.parse(metafield.value) as Options; } catch { return { invalido: true } as Options; }
@@ -70,13 +79,15 @@ export async function syncDeliveryOptions(deps: { db: SupabaseClient; shopify: S
   }
   // Primero lo ya comprobado, que es lo que de verdad ha cambiado
   changes.sort((a, b) => Number(a.sent === null) - Number(b.sent === null));
-  // Freno: muchos cambios de golpe en lo ya comprobado suelen ser datos rotos. Si es real, se sube delivery_options_max.
+  // Freno: solo cuenta lo ya comprobado que parece roto (un porte o servicio que desaparece o pasa a 0). Los ajustes
+  // de tarifas pasan siempre, y los fuertes llegan en el aviso de cambios a revisar. Si es real, se sube delivery_options_max.
   const known = changes.filter((item) => item.sent !== null).length;
+  const broken = changes.filter((item) => item.sent !== null && looksBroken(item.sent, item.options));
   const max = await maxChanges(db);
-  if (known > max) {
-    const reason = `${known} productos con portes o servicios cambiados en una vuelta (máximo ${max}).`;
+  if (broken.length > max) {
+    const reason = `${broken.length} productos pierden portes o servicios, o pasan a 0, en una vuelta (máximo ${max}).`;
     if (!options.dryRun) {
-      await event(db, "freno", { reason, run: read.run, sample: changes.slice(0, 5).map((item) => item.codigo) });
+      await event(db, "freno", { reason, run: read.run, sample: broken.slice(0, 5).map((item) => item.codigo) });
       await sendAlert(db, { key: "opciones-entrega:freno", quietMinutes: 24 * 60, subject: "Opciones de entrega paradas", lines: ["No se ha enviado nada a Shopify:", reason, "Si el cambio es real, sube delivery_options_max en store_settings."] });
     }
     return { skipped: true, reason };

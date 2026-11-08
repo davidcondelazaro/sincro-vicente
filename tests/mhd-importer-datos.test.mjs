@@ -495,7 +495,7 @@ test("servicios: sin valor o sin producto activo", () => {
   assert.deepEqual(missingServiceTariffs([aparato("A", "5.99")], {}).map((item) => item.sku), ["SUBIDA-599"]);
 });
 
-const { sameDeliveryOptions, notableChanges } = await jiti.import("../src/lib/mhd-importer/delivery-options-sync.ts");
+const { sameDeliveryOptions, notableChanges, looksBroken } = await jiti.import("../src/lib/mhd-importer/delivery-options-sync.ts");
 
 test("opciones de entrega: se comparan importes, y sin metacampo equivale a todo vacío", () => {
   assert.equal(sameDeliveryOptions({ gastos_envio_peninsula_particulares: 9.9, subida_puerta_particulares: null }, { gastos_envio_peninsula_particulares: "9.90" }), true);
@@ -511,6 +511,15 @@ test("opciones de entrega: avisa si un dato desaparece o sube más de un 50 %", 
   assert.deepEqual(notableChanges({ gastos_envio_peninsula_particulares: 10 }, { gastos_envio_peninsula_particulares: 15 }), []);
   assert.deepEqual(notableChanges(null, { subida_puerta_particulares: 8.99 }), []);
   assert.deepEqual(notableChanges({ retirada_usado_particulares: 0 }, { retirada_usado_particulares: 5 }), []);
+});
+
+test("opciones de entrega: el freno solo mira datos que desaparecen o pasan a 0, no ajustes de tarifas", () => {
+  assert.equal(looksBroken({ gastos_envio_peninsula_particulares: 31.99 }, { gastos_envio_peninsula_particulares: 38.99 }), false);
+  assert.equal(looksBroken({ gastos_envio_peninsula_particulares: 15.99 }, { gastos_envio_peninsula_particulares: 12.99 }), false);
+  assert.equal(looksBroken({ subida_puerta_particulares: 8.99 }, { subida_puerta_particulares: null }), true);
+  assert.equal(looksBroken({ gastos_envio_peninsula_particulares: 20.99 }, { gastos_envio_peninsula_particulares: 0 }), true);
+  assert.equal(looksBroken({ retirada_usado_particulares: null }, { retirada_usado_particulares: 5 }), false);
+  assert.equal(looksBroken({ retirada_usado_particulares: 0 }, { retirada_usado_particulares: null }), false);
 });
 
 test("colecciones vacías: solo cuentan los productos activos", () => {

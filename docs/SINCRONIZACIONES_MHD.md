@@ -236,8 +236,12 @@ producto activo o en borrador, incluidos los ya publicados. Sin IA ni revisión.
 - Compara con lo último registrado (`mhd_shopify_delivery_options`) y, antes de
   escribir, con lo que hay en Shopify. La primera pasada solo registra lo que coincide.
 - Lo que no quepa en 60 s sigue en la vuelta siguiente.
-- **Freno:** más de 500 productos cambiados de golpe no se envían y se avisa. Si el
-  cambio es real, subir `delivery_options_max` en `store_settings`.
+- **Freno:** solo para lo que parece dato roto. Si en una vuelta más de 500 productos
+  pierden un porte o servicio, o lo tienen a 0, no se envía nada y se avisa. Si el
+  cambio es real, subir `delivery_options_max` en `store_settings`. Las subidas y
+  bajadas de importe pasan siempre, aunque sean miles: MHD ajusta tarifas a menudo y
+  es normal (David, 2026-11-08; el 5-11 frenó 1.750 productos por un ajuste de portes
+  a península). Las subidas de más del 50 % llegan en el aviso de cambios a revisar.
 - Un valor puesto a mano en el metacampo se sobrescribe: manda MHD.
 - **Pedidos ya pagados:** si cambian los portes antes de exportar, el pedido deja de
   cuadrar con lo cobrado y se bloquea con el motivo a la vista, hasta revisarlo.
