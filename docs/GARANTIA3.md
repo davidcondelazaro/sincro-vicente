@@ -123,19 +123,22 @@ Devoluciones: mientras no haya vía por API, la fila pasa a `anulacion_pendiente
 
 Hoy «Traer pedidos» y «Actualizar desde MHD» exigen sesión y el botón manual. Su lógica debe pasar a funciones comunes para que las use también la tarea, sin duplicarla.
 
-## Pendiente de Garantía3
+## Respuesta de Garantía3 (2026-11-10)
 
-Correo enviado por David el 2026-10-30. Falta su respuesta sobre:
+Respuesta en línea a su correo del 2026-10-30. El correo no se guarda en el repositorio: lleva el token.
 
-- Bajo qué cliente se compran y facturan los contratos.
-- API vigente, token de producción y si se mantiene la IP.
-- Entorno y token de pruebas. El 2026-10-30 `testwebshop.bcwm.es` existe pero su certificado no se valida y el proxy no conecta (respuesta 0). No se desactiva la comprobación: hay que pedirles que lo arreglen o que confirmen otra dirección.
-- Vigencia de los 9 EAN con la cuenta nueva.
-- Acceso al portal Webshop.
-- Anulaciones, duplicados y uso de `note` en este modo.
-- Envío del contrato al cliente y plazo de activación.
-- Si Garantía3 envía recordatorios de activación. No iba en el correo: hay que preguntárselo.
-- Reglamento de 3 años, reacondicionados y Portugal.
+- **Token propio de la web**, ligado a la IP `93.189.94.124`. Si la IP cambia, el token deja de valer. Dirección: la misma de producción. Sustituye en `GARANTIA3_TOKEN` al token compartido de Pladisel.
+- **Cuenta:** los contratos son del cliente final; la facturación queda para Manuel Agudo.
+- **Portal:** las altas se ven bajo el usuario `webservice-mihogardigital@devel.local`, si Mihogardigital Electrónica Vicente ya tiene acceso a Webshop.
+- **Correo al cliente:** dicen que se envía cuando el contrato está ACTIVO. Queda por aclarar quién le manda el contrato y las instrucciones de activación tras el alta, y en qué plazo.
+- **`note`:** se puede enviar el pedido y además marca, producto, número de serie y precio. Falta saber con qué campos.
+
+Pendiente de esa respuesta:
+
+- Las «instrucciones» que anuncian para documentación, pruebas y EAN, y lo que remiten a «más arriba» sobre duplicados: no venían en lo recibido.
+- Entorno y token de pruebas. El 2026-10-30 `testwebshop.bcwm.es` existía pero su certificado no se validaba y el proxy no conectaba.
+- Anulaciones, facturación, reglamento de 3 años, reacondicionados y Portugal: los explicará Manuel Agudo.
+- Si envían recordatorios de activación.
 
 ## Sin resolver en utils
 
