@@ -136,7 +136,7 @@ Respuesta en línea a su correo del 2026-10-30. El correo no se guarda en el rep
 Pendiente de esa respuesta:
 
 - Las «instrucciones» que anuncian para documentación, pruebas y EAN, y lo que remiten a «más arriba» sobre duplicados: no venían en lo recibido.
-- Entorno y token de pruebas. El 2026-10-30 `testwebshop.bcwm.es` existía pero su certificado no se validaba y el proxy no conectaba.
+- Token de pruebas. El 2026-11-10 `testwebshop.bcwm.es` ya conecta, pero rechaza el token de desarrollo de Pladisel (401). El token nuevo de producción funciona (comprobado el 2026-11-10).
 - Anulaciones, facturación, reglamento de 3 años, reacondicionados y Portugal: los explicará Manuel Agudo.
 - Si envían recordatorios de activación.
 
