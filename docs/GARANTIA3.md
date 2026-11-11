@@ -133,6 +133,15 @@ Respuesta en línea a su correo del 2026-10-30. El correo no se guarda en el rep
 - **Correo al cliente:** dicen que se envía cuando el contrato está ACTIVO. Queda por aclarar quién le manda el contrato y las instrucciones de activación tras el alta, y en qué plazo.
 - **`note`:** se puede enviar el pedido y además marca, producto, número de serie y precio. Falta saber con qué campos.
 
+### Segunda respuesta (2026-11-11) y formulario de Webshop
+
+Copia del formulario en `theme-enterprise-vicente/reference/garantia3/documentacion/Formulario de Webshop - Con y Sin AA.pdf`. Explica el formulario manual del portal, no la API.
+
+- **Activación automática (AA):** solo si aparato y garantía van en la misma factura, como en nuestros pedidos, donde la garantía va anidada a su aparato. Con la casilla «Activar el contrato» marcada hay que dar categoría (un desplegable suyo), marca, modelo y precio del aparato. Telefonía e Informática exigen además IMEI o número de serie en la factura del aparato. Con AA, Garantía3 manda al cliente la confirmación y el contrato activado.
+- **Sin AA:** el cliente activa a mano en `garantia3.es/activacion-extension-de-garantia-online/`. Es lo que hace hoy utils (y hacía PrestaShop): no envía esos datos.
+- **Pruebas:** no hay token de pruebas. La primera alta es real; dándoles su número, generan un abono.
+- **Sin respuesta:** nombres de los campos de AA en la API, lista de categorías, y cómo saber si un contrato se creó tras un corte. Ofrecen una videollamada.
+
 Pendiente de esa respuesta:
 
 - Las «instrucciones» que anuncian para documentación, pruebas y EAN, y lo que remiten a «más arriba» sobre duplicados: no venían en lo recibido.
