@@ -58,7 +58,7 @@ const ADVANTAGES: [string, string, string, string][] = [
   ["asesoramiento", "Asesoramiento", "antes y después", "/pages/preguntas-frecuentes"],
   ["tiendas", "Dos tiendas", "en Burgos", "/pages/tiendas"],
 ];
-const LEGAL = { razon: "HOGARCONECTADO S.L.", cif: "B70420286", domicilio: "Ledin 18, 15866 Balcaide - Teo (A Coruña)", tienda: "Calle de la Concepción, 16 · 09002 Burgos", correo: "soporte@electronicavicente.com" };
+const LEGAL = { razon: "HOGARCONECTADO S.L.", cif: "B70420286", domicilio: "Ledin 18, 15866 Balcaide - Teo (A Coruña)", correo: "soporte@electronicavicente.com" };
 
 function button(href: string, label: string) {
   return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:14px;"><tr><td class="btn" bgcolor="${C.azul}" style="background:${C.azul};border-radius:12px;">
@@ -101,8 +101,6 @@ function layout(title: string, tag: string, preheader: string, body: string) {
     </tr></table>
   </td></tr><tr>
     <td class="px" align="center" style="padding:26px 36px 0;font-family:${FONT};font-size:12px;line-height:19px;color:#8a8d91;">
-      <strong style="color:#5d6064;">Electrónica Vicente</strong><br>
-      ${LEGAL.tienda}<br>
       <a href="${SHOP}" style="color:#5d6064;font-weight:700;text-decoration:none;">electronicavicente.com</a><br>
       <span style="font-size:11px;">${LEGAL.razon} · CIF ${LEGAL.cif} · ${LEGAL.domicilio}</span>
       <div style="padding:14px 0;"><a href="${SHOP}/policies/refund-policy" style="color:#5d6064;">Devoluciones</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="${SHOP}/policies/terms-of-service" style="color:#5d6064;">Condiciones de venta</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="${SHOP}/policies/privacy-policy" style="color:#5d6064;">Privacidad</a></div>
