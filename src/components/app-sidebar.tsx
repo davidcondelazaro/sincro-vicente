@@ -26,9 +26,9 @@ const navigation: { label: string | null; entries: NavEntry[] }[] = [
   { label: "Tienda", entries: [
     { section: "warrantyContracts", href: "/tienda/contratos-garantia3", label: "Contratos Garantía3", icon: "shield" },
     { section: "quotes", href: "/tienda/presupuestos", label: "Presupuestos", icon: "quote" },
-    { section: "stockAlerts", href: "/tienda/avisos-stock", label: "Avisos de stock", icon: "bell" },
-    { section: "priceAlerts", href: "/tienda/avisos-precio", label: "Avisos de precio", icon: "tag" },
   ] },
+  // Avisos de stock y de precio: se administran desde el helpdesk (Avisos y la ficha del cliente) y no salen en el
+  // menú (David, 2026-11-12); sus páginas siguen abriéndose por URL.
   // Lo del chatbot que ya se administra desde el helpdesk (Estadísticas, Conversaciones, Mejoras, Errores, Cupones,
   // Configuración y Datos de clientes) no sale en el menú (David, 2026-11-12); sus páginas siguen abriéndose por URL.
   { label: "Chatbot IA", entries: [
