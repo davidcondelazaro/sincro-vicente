@@ -20,11 +20,13 @@ const navigation: { label: string | null; entries: NavEntry[] }[] = [
     { section: "productLocks", href: "/productos-bloqueados", label: "Productos bloqueados", icon: "lock" },
     { section: "redirects", href: "/tienda/redirecciones", label: "Redirecciones", icon: "export" },
     { section: "warranties", href: "/tienda/garantias", label: "Productos con garantía", icon: "shield" },
+    // Los contratos se ven y se gestionan en el helpdesk (Contratos Garantía3, ficha y ticket); aquí queda lo técnico:
+    // la conexión, los ajustes y la vuelta (helpdesk › docs/integracion-elvi.md § 3.8). La página sigue enseñando los contratos.
+    { section: "warrantyContracts", href: "/tienda/contratos-garantia3", label: "Garantía3: conexión y ajustes", icon: "shield" },
     { section: "mhdCatalog", href: "/importacion-catalogo-mhd", label: "Consultar catálogo MHD", icon: "catalog" },
     { section: "storeSettings", href: "/configuracion", label: "Configuración", icon: "settings" },
   ] },
   { label: "Tienda", entries: [
-    { section: "warrantyContracts", href: "/tienda/contratos-garantia3", label: "Contratos Garantía3", icon: "shield" },
     { section: "quotes", href: "/tienda/presupuestos", label: "Presupuestos", icon: "quote" },
   ] },
   // Avisos de stock y de precio: se administran desde el helpdesk (Avisos y la ficha del cliente) y no salen en el

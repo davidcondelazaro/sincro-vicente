@@ -1,4 +1,5 @@
 import { csvContratos } from "@/lib/garantia3";
+import { AccionNoValida, accionContrato } from "@/lib/garantia3-contratos";
 import { enviarPedidoDePrueba, leerAjustes, vueltaGarantia3 } from "@/lib/garantia3-vuelta";
 import { createClient } from "@/lib/supabase/server";
 
@@ -39,11 +40,6 @@ export async function POST(request: Request) {
   const auth = await session();
   if (!auth) return Response.json({ error: "Sin sesión" }, { status: 401 });
   const body = await request.json().catch(() => ({})) as { action?: string; id?: string; key?: string; value?: unknown; contrato?: string };
-  const cambiar = async (desde: string[], cambios: Record<string, unknown>) => {
-    const { data, error } = await auth.db.from("garantia3_contratos").update({ ...cambios, updated_at: new Date().toISOString() }).eq("id", body.id ?? "").in("estado", desde).select("id");
-    if (error) return Response.json({ error: error.message }, { status: 500 });
-    return data?.length ? Response.json({ ok: true }) : Response.json({ error: "Ese contrato ya no está en ese estado." }, { status: 409 });
-  };
 
   switch (body.action) {
     case "ajustes": {
@@ -72,12 +68,19 @@ export async function POST(request: Request) {
     case "vuelta": return Response.json(await vueltaGarantia3(auth.db, process.env, "manual", auth.userId));
     case "prueba":
       try { return Response.json(await enviarPedidoDePrueba(auth.db, process.env)); } catch (caught) { return Response.json({ error: caught instanceof Error ? caught.message : "No se pudo enviar la prueba." }, { status: 422 }); }
-    case "reintentar": return cambiar(["error", "bloqueado"], { estado: "lista", motivo: null, ultimo_aviso: null });
-    case "pedir_ya": return cambiar(["espera"], { estado: "lista" });
-    case "dudoso_creado": return body.contrato?.trim() ? cambiar(["dudoso"], { estado: "creado", contrato: body.contrato.trim(), motivo: null, fecha_alta: new Date().toISOString() }) : Response.json({ error: "Falta el número de contrato." }, { status: 422 });
-    case "dudoso_no_creado": return cambiar(["dudoso"], { estado: "lista", motivo: null, ultimo_aviso: null });
-    case "anular": return cambiar(["creado"], { estado: "anulacion_pendiente" });
-    case "anulado": return cambiar(["anulacion_pendiente"], { estado: "anulado" });
+    case "reintentar":
+    case "pedir_ya":
+    case "dudoso_creado":
+    case "dudoso_no_creado":
+    case "anular":
+    case "anulado":
+      try {
+        const fila = await accionContrato(auth.db, body.id ?? "", body.action, body.contrato);
+        return fila ? Response.json({ ok: true }) : Response.json({ error: "Ese contrato ya no está en ese estado." }, { status: 409 });
+      } catch (caught) {
+        if (caught instanceof AccionNoValida) return Response.json({ error: caught.message }, { status: 422 });
+        return Response.json({ error: caught instanceof Error ? caught.message : "No se pudo completar." }, { status: 500 });
+      }
     default: return Response.json({ error: "Acción desconocida." }, { status: 400 });
   }
 }
