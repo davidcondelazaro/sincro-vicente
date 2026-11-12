@@ -29,16 +29,11 @@ const navigation: { label: string | null; entries: NavEntry[] }[] = [
     { section: "stockAlerts", href: "/tienda/avisos-stock", label: "Avisos de stock", icon: "bell" },
     { section: "priceAlerts", href: "/tienda/avisos-precio", label: "Avisos de precio", icon: "tag" },
   ] },
+  // Lo del chatbot que ya se administra desde el helpdesk (Estadísticas, Conversaciones, Mejoras, Errores, Cupones,
+  // Configuración y Datos de clientes) no sale en el menú (David, 2026-11-12); sus páginas siguen abriéndose por URL.
   { label: "Chatbot IA", entries: [
-    { section: "chatbotStats", href: "/chatbot/estadisticas", label: "Estadísticas", icon: "chart" },
-    { section: "chatbotConversations", href: "/chatbot/conversaciones", label: "Conversaciones", icon: "chat" },
-    { section: "chatbotImprovements", href: "/chatbot/mejoras", label: "Mejoras", icon: "spark" },
     { section: "chatbotSupport", href: "/chatbot/soporte", label: "Soporte", icon: "support" },
-    { section: "chatbotErrors", href: "/chatbot/errores", label: "Errores del widget", icon: "alert" },
-    { section: "chatbotDiscounts", href: "/chatbot/cupones", label: "Cupones descuento", icon: "ticket" },
     { section: "chatbotSyncs", href: "/chatbot/sincronizaciones", label: "Sincronizaciones", icon: "sync" },
-    { section: "chatbotSettings", href: "/chatbot/configuracion", label: "Configuración", icon: "settings" },
-    { section: "chatbotPrivacy", href: "/chatbot/datos-clientes", label: "Datos de clientes", icon: "shield" },
   ] },
   { label: "Pladisel (antiguo)", entries: [
     { section: "supabase", href: "/importar-datos-sql-server", label: "Importar de SQL Server", icon: "database" },
