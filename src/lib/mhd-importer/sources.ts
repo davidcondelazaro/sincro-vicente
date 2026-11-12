@@ -22,7 +22,7 @@ export class MhdBusyError extends Error { retryAfterMs: number | null; construct
 // `img_ficha_eficiencia` (solo el listado), así que nunca debe pisar lo que viene del listado.
 export async function fetchMhdProductDetail(config: MhdConfig, codigo: string): Promise<FetchResult<MhdProductDetail>> {
   const url = `${config.url.replace(/\/$/, "")}/api/${trim(config.version)}/${trim(config.subPath)}/products/${encodeURIComponent(codigo)}`;
-  const response = await fetch(url, { headers: { Accept: "application/json", Authorization: `Basic ${btoa(`${config.user}:${config.pass}`)}` }, signal: AbortSignal.timeout(30_000) });
+  const response = await fetch(url, { headers: { ...MHD_API_ORIGIN_HEADERS, Accept: "application/json", Authorization: `Basic ${btoa(`${config.user}:${config.pass}`)}` }, signal: AbortSignal.timeout(30_000) });
   const body = await response.json().catch(() => null) as { success?: boolean; data?: MhdProductDetail } | null;
   if (response.status === 404) return { status: 404, payload: null };
   if (response.status === 429 || response.status >= 500) throw new MhdBusyError(`MHD no devolvió la ficha ${codigo} (HTTP ${response.status}).`, Number(response.headers.get("retry-after")) * 1000 || null);
@@ -55,6 +55,10 @@ export async function fetchIcecatByModel(config: IcecatConfig, brand: string, mo
   const body = await response.json().catch(() => null) as Record<string, unknown> | null;
   return response.ok ? { status: response.status, payload: body } : { status: response.status, payload: null };
 }
+
+// Todas las llamadas a la API de MHD dicen de qué dominio vienen: MHD (12-11-2026) filtra su cortafuegos por dominio
+// porque nuestras peticiones salen de Vercel y Supabase con IP variables, y desde el 10-11 respondía 403 a ratos.
+export const MHD_API_ORIGIN_HEADERS = { Origin: "https://utils.electronicavicente.com", Referer: "https://utils.electronicavicente.com/" };
 
 // Las fotos de MHD (cdn.mihogardigital.es) y sus etiquetas (S3) solo se sirven a dominios autorizados (Referer). MHD (Ayco)
 // autorizó electronicavicente.com el 28-09-2026; electronica-vicente.myshopify.com y sincro-vicente.vercel.app, el 02-10,

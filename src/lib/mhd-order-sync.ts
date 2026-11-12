@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildMhdProductLines } from "@/lib/mhd-order-lines";
 import { sameInvoices, sendPendingInvoiceEmails, toShopifyInvoices, writeInvoicesToShopify } from "@/lib/mhd-invoices";
+import { MHD_API_ORIGIN_HEADERS } from "@/lib/mhd-importer/sources";
 import { invoicesFrom, trackingFrom, type MhdOrderData } from "@/lib/mhd-order-status";
 
 // Lectura de pedidos de Shopify y de estados de MHD. La usan los botones de Pedidos MHD (con la sesión) y la tarea
@@ -58,7 +59,7 @@ export function mhdUrl(path: string) {
 }
 export function mhdHeaders() {
   const credentials = Buffer.from(`${required("MHD_API_USER")}:${required("MHD_API_PASS")}`).toString("base64");
-  return { Accept: "application/json", Authorization: `Basic ${credentials}` };
+  return { ...MHD_API_ORIGIN_HEADERS, Accept: "application/json", Authorization: `Basic ${credentials}` };
 }
 function dateFromMhd(value: MhdStatusEntry["fecha"]) {
   if (typeof value === "number") return new Date(value).toISOString();

@@ -1,4 +1,5 @@
 import mysql from "mysql2/promise";
+import { MHD_API_ORIGIN_HEADERS } from "@/lib/mhd-importer/sources";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -88,6 +89,7 @@ async function checkMhd() {
   const password = required("MHD_API_PASS");
   const response = await fetch(`${baseUrl}/api/${version}/${subPath}/categories?page=1&pageSize=1`, {
     headers: {
+      ...MHD_API_ORIGIN_HEADERS,
       Accept: "application/json",
       Authorization: `Basic ${Buffer.from(`${user}:${password}`).toString("base64")}`,
     },

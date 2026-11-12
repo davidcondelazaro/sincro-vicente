@@ -1,6 +1,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
 
+// Igual que en utils (src/lib/mhd-importer/sources.ts): el cortafuegos de MHD filtra por dominio.
+const MHD_API_ORIGIN_HEADERS = { Origin: "https://utils.electronicavicente.com", Referer: "https://utils.electronicavicente.com/" };
+
 // Importación de MHD por páginas: cada llamada procesa una página y la base de
 // datos encadena la siguiente (mhd_import_ingest_page → pg_net → esta función).
 // Contesta enseguida y trabaja en segundo plano (EdgeRuntime.waitUntil).
@@ -35,7 +38,7 @@ async function fetchPage(entity: string, part: number, page: number) {
   let lastError = "";
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
-      const response = await fetch(url, { headers: { Accept: "application/json", Authorization: authorization }, signal: AbortSignal.timeout(60_000) });
+      const response = await fetch(url, { headers: { ...MHD_API_ORIGIN_HEADERS, Accept: "application/json", Authorization: authorization }, signal: AbortSignal.timeout(60_000) });
       const body = await response.json().catch(() => null) as MhdResponse | null;
       if (!response.ok || !body?.success || !Array.isArray(body.data)) {
         lastError = `HTTP ${response.status}${body?.errors ? `: ${JSON.stringify(body.errors).slice(0, 300)}` : ""}`;
@@ -69,7 +72,7 @@ async function fetchDetail(codigo: string) {
   let lastError = "";
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
-      const response = await fetch(url, { headers: { Accept: "application/json", Authorization: authorization }, signal: AbortSignal.timeout(20_000) });
+      const response = await fetch(url, { headers: { ...MHD_API_ORIGIN_HEADERS, Accept: "application/json", Authorization: authorization }, signal: AbortSignal.timeout(20_000) });
       if (response.status === 404) return { error: "MHD no tiene la ficha (404)" };
       // Alguna ficha trae el carácter nulo (\u0000), que jsonb no admite y tumbaría la tanda entera: se quita.
       const text = (await response.text()).replace(/\\u0000/g, "");

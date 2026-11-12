@@ -1,4 +1,5 @@
 import { buildMhdProductLines, type MhdProductLine, type ShopifyLinePayload } from "@/lib/mhd-order-lines";
+import { MHD_API_ORIGIN_HEADERS } from "@/lib/mhd-importer/sources";
 import { buildMhdOrderObservations } from "@/lib/mhd-order-notes";
 import { createClient } from "@/lib/supabase/server";
 
@@ -32,7 +33,7 @@ function mhdUrl(path: string) {
 }
 function mhdHeaders() {
   const credentials = Buffer.from(`${required("MHD_API_USER")}:${required("MHD_API_PASS")}`).toString("base64");
-  return { Accept: "application/json", "Content-Type": "application/json", Authorization: `Basic ${credentials}` };
+  return { ...MHD_API_ORIGIN_HEADERS, Accept: "application/json", "Content-Type": "application/json", Authorization: `Basic ${credentials}` };
 }
 function splitName(address: Address) {
   const fullName = address.name?.trim() ?? "";
