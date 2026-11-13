@@ -24,6 +24,21 @@ type MhdResponse = { success?: boolean; data?: Record<string, unknown>[]; extra?
 type Claim = { lease_token: string; entity: string; part: number; page: number; failures: number };
 
 function env(name: string) { const value = Deno.env.get(name); if (!value) throw new Error(`Falta la variable ${name} en la función.`); return value; }
+
+// Desde el 10-11-2026 MHD responde 403 a ratos según la IP de quien llama, y esta función sale con las de
+// Supabase, que cambian a cada rato. Con MHD_PROXY_URL y MHD_PROXY_TOKEN puestas, las llamadas salen por el
+// proxy de Pladisel (IP fija, ver pladisel/proxy-mhd.php); sin ellas van directas, como siempre.
+// El proxy ya pone Origin, Referer y User-Agent: aquí solo se ponen cuando se va directo.
+function mhdFetch(url: string, timeoutMs: number) {
+  const authorization = `Basic ${btoa(`${env("MHD_API_USER")}:${env("MHD_API_PASS")}`)}`;
+  const proxyUrl = Deno.env.get("MHD_PROXY_URL"), proxyToken = Deno.env.get("MHD_PROXY_TOKEN");
+  const common = { signal: AbortSignal.timeout(timeoutMs) };
+  if (!proxyUrl || !proxyToken) {
+    return fetch(url, { ...common, headers: { ...MHD_API_ORIGIN_HEADERS, Accept: "application/json", Authorization: authorization } });
+  }
+  const target = `${proxyUrl}${proxyUrl.includes("?") ? "&" : "?"}url=${encodeURIComponent(url)}`;
+  return fetch(target, { ...common, headers: { "X-Proxy-Token": proxyToken, "X-MHD-Authorization": authorization, Accept: "application/json" } });
+}
 function mhdUrl(endpoint: string, page: number, pageSize: number, extra = "") {
   const trim = (value: string) => value.replace(/^\/+|\/+$/g, "");
   return `${env("MHD_API_URL").replace(/\/$/, "")}/api/${trim(env("MHD_API_VERSION"))}/${trim(env("MHD_API_SUB_PATH"))}/${endpoint}?page=${page}&pageSize=${pageSize}${extra}`;
@@ -34,11 +49,10 @@ async function fetchPage(entity: string, part: number, page: number) {
   const config = entities[entity];
   if (!config) throw new Error(`Entidad desconocida: ${entity}`);
   const url = mhdUrl(config.endpoint, page, config.pageSize, config.query?.(part) ?? "");
-  const authorization = `Basic ${btoa(`${env("MHD_API_USER")}:${env("MHD_API_PASS")}`)}`;
   let lastError = "";
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
-      const response = await fetch(url, { headers: { ...MHD_API_ORIGIN_HEADERS, Accept: "application/json", Authorization: authorization }, signal: AbortSignal.timeout(60_000) });
+      const response = await mhdFetch(url, 60_000);
       const body = await response.json().catch(() => null) as MhdResponse | null;
       if (!response.ok || !body?.success || !Array.isArray(body.data)) {
         lastError = `HTTP ${response.status}${body?.errors ? `: ${JSON.stringify(body.errors).slice(0, 300)}` : ""}`;
@@ -68,11 +82,10 @@ const DETAIL_BATCH = 300, DETAIL_CONCURRENCY = 8, DETAIL_BUDGET_MS = 55_000;
 
 async function fetchDetail(codigo: string) {
   const url = mhdUrl(`products/${encodeURIComponent(codigo)}`, 1, 1).replace(/\?.*$/, "");
-  const authorization = `Basic ${btoa(`${env("MHD_API_USER")}:${env("MHD_API_PASS")}`)}`;
   let lastError = "";
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
-      const response = await fetch(url, { headers: { ...MHD_API_ORIGIN_HEADERS, Accept: "application/json", Authorization: authorization }, signal: AbortSignal.timeout(20_000) });
+      const response = await mhdFetch(url, 20_000);
       if (response.status === 404) return { error: "MHD no tiene la ficha (404)" };
       // Alguna ficha trae el carácter nulo (\u0000), que jsonb no admite y tumbaría la tanda entera: se quita.
       const text = (await response.text()).replace(/\\u0000/g, "");
@@ -80,8 +93,9 @@ async function fetchDetail(codigo: string) {
       try { body = JSON.parse(text); } catch { body = null; }
       if (response.ok && body?.success && body.data) return { row: { ...body.data, codigo: String(body.data.codigo ?? codigo) } };
       lastError = `HTTP ${response.status}`;
-      // Con 4xx que no sean de saturación no tiene sentido insistir.
-      if (response.status < 500 && response.status !== 429) break;
+      // Con 4xx que no sean de saturación no tiene sentido insistir, salvo el 403: ese no habla de la ficha,
+      // sino de que MHD ha rechazado la IP de salida (10-11-2026), y al siguiente intento suele pasar.
+      if (response.status < 500 && response.status !== 429 && response.status !== 403) break;
     } catch (error) {
       lastError = error instanceof Error ? error.message : String(error);
     }
