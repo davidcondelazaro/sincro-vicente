@@ -556,3 +556,27 @@ test("colecciones vacías: enlaces de los menús en todos los niveles", () => {
   const handles = menuHandles([{ items: [{ url: "/collections/uno?sort=x", items: [{ url: "https://x.es/collections/dos/", items: [{ url: "/pages/marcas" }] }] }, { url: null }] }]);
   assert.deepEqual([...handles], ["uno", "dos"]);
 });
+
+const { shopifySupplier, sameSupplier, supplierSwitched, supplierMetafields } = await jiti.import("../src/lib/mhd-importer/supplier-sync.ts");
+
+test("proveedor: lo de Shopify se lee como código y nombre, y sin los dos es nada", () => {
+  assert.deepEqual(shopifySupplier({ codigo: { value: "26" }, nombre: { value: "DESYMAN" } }), { codigo: 26, nombre: "DESYMAN" });
+  assert.equal(shopifySupplier({ codigo: null, nombre: null }), null);
+  assert.equal(shopifySupplier({ codigo: { value: "26" }, nombre: null }), null);
+  assert.equal(sameSupplier({ codigo: 26, nombre: "DESYMAN" }, { codigo: 26, nombre: "DESYMAN" }), true);
+  assert.equal(sameSupplier(null, { codigo: 26, nombre: "DESYMAN" }), false);
+  assert.equal(sameSupplier({ codigo: 12, nombre: " TAURUS " }, { codigo: 12, nombre: "TAURUS" }), false);
+});
+
+test("proveedor: solo avisa si cambia el código, no en el primer relleno ni por el nombre", () => {
+  assert.equal(supplierSwitched(null, { codigo: 26, nombre: "DESYMAN" }), false);
+  assert.equal(supplierSwitched({ codigo: 26, nombre: "Desyman" }, { codigo: 26, nombre: "DESYMAN" }), false);
+  assert.equal(supplierSwitched({ codigo: 5, nombre: "JOFER" }, { codigo: 107, nombre: "JOFER ENTREGAS DIRECTAS" }), true);
+});
+
+test("proveedor: dos metacampos por producto", () => {
+  assert.deepEqual(supplierMetafields("gid://shopify/Product/1", { codigo: 26, nombre: "DESYMAN" }), [
+    { ownerId: "gid://shopify/Product/1", namespace: "custom", key: "proveedor_codigo", type: "number_integer", value: "26" },
+    { ownerId: "gid://shopify/Product/1", namespace: "custom", key: "proveedor_nombre", type: "single_line_text_field", value: "DESYMAN" },
+  ]);
+});

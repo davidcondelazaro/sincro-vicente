@@ -58,12 +58,8 @@ async function maxChanges(db: SupabaseClient) {
   return Number(data?.value ?? DELIVERY_OPTIONS_SYNC.defaultMax);
 }
 
-export async function syncDeliveryOptions(deps: { db: SupabaseClient; shopify: ShopifyConfig }, options: { runId?: string; dryRun?: boolean; budgetMs?: number } = {}) {
-  const { db, shopify } = deps;
-  const deadline = Date.now() + (options.budgetMs ?? DELIVERY_OPTIONS_SYNC.budgetMs);
-  const read = await latestRead(db, options.runId);
-  if (!read.ok) return { skipped: true, reason: read.reason };
-  // Comparar todo el catálogo de una vez supera el límite de 8 s de la base de datos: se compara por tramos de códigos
+// Códigos MHD de lo publicado en Shopify (activo o en borrador). También lo usa el paso del proveedor.
+export async function publishedCodes(db: SupabaseClient) {
   const codes: string[] = [];
   for (let from = 0; ; from += 1000) {
     const { data, error } = await db.from("store_shopify_ids").select("codigo").in("status", ["ACTIVE", "DRAFT"]).order("codigo").range(from, from + 999);
@@ -71,6 +67,16 @@ export async function syncDeliveryOptions(deps: { db: SupabaseClient; shopify: S
     codes.push(...(data ?? []).map((row) => row.codigo as string));
     if (!data || data.length < 1000) break;
   }
+  return codes;
+}
+
+export async function syncDeliveryOptions(deps: { db: SupabaseClient; shopify: ShopifyConfig }, options: { runId?: string; dryRun?: boolean; budgetMs?: number } = {}) {
+  const { db, shopify } = deps;
+  const deadline = Date.now() + (options.budgetMs ?? DELIVERY_OPTIONS_SYNC.budgetMs);
+  const read = await latestRead(db, options.runId);
+  if (!read.ok) return { skipped: true, reason: read.reason };
+  // Comparar todo el catálogo de una vez supera el límite de 8 s de la base de datos: se compara por tramos de códigos
+  const codes = await publishedCodes(db);
   let changes: Change[] = [];
   for (let i = 0; i < codes.length; i += DELIVERY_OPTIONS_SYNC.compareBatch) {
     const { data, error } = await db.rpc("mhd_delivery_options_changes", { p_run: read.run, p_codigos: codes.slice(i, i + DELIVERY_OPTIONS_SYNC.compareBatch) });

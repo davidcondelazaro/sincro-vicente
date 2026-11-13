@@ -70,7 +70,7 @@ export type ProcessedProduct = {
 export type MediaFile = { role: "image" | "energy_label" | "video"; position: number; filename: string; contentType: string; width: number; height: number; bytes: Uint8Array; meta: Record<string, unknown> };
 export type ProcessResult = { status: "ok"; product: ProcessedProduct; media: MediaFile[]; warnings: string[]; review_reasons: string[]; costUsd: number; usage: Record<string, unknown> } | { status: "discarded"; reason: string; warnings: string[] };
 
-type Listing = ListingProduct & { cod_familia: string | null; nombre_familia: string | null; cod_linea: string | null; descripcion: string | null; pvp_antes: number | null; iva: number | null; triple_neto?: number | null; img_eficiencia: string | null; opciones_entrega: Record<string, unknown> | null };
+type Listing = ListingProduct & { cod_familia: string | null; nombre_familia: string | null; cod_linea: string | null; descripcion: string | null; pvp_antes: number | null; iva: number | null; triple_neto?: number | null; img_eficiencia: string | null; opciones_entrega: Record<string, unknown> | null; proveedor?: { codigo: number; nombre: string } | null };
 
 const json = (value: unknown) => JSON.stringify(value);
 const LISTS = new Set(["filtro.conectividad", "filtro.caracteristicas", "filtro.mas_especificaciones"]);
@@ -370,6 +370,8 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
     { namespace: "custom", key: "disponibilidad_sin_stock", type: "single_line_text_field", value: STORE_RULES.availabilityOutOfStock },
     { namespace: "custom", key: "descripcion_corta", type: "multi_line_text_field", value: written.content.short_description },
     ...(listing.opciones_entrega ? [{ namespace: "custom", key: "opciones_entrega", type: "json", value: json(listing.opciones_entrega) }] : []),
+    // Proveedor de MHD (supplier-sync.ts lo mantiene después en cada vuelta).
+    ...(listing.proveedor ? [{ namespace: "custom", key: "proveedor_codigo", type: "number_integer", value: String(listing.proveedor.codigo) }, { namespace: "custom", key: "proveedor_nombre", type: "single_line_text_field", value: listing.proveedor.nombre }] : []),
     ...(icecat?.eprelId ? [{ namespace: "custom", key: "eprel", type: "single_line_text_field", value: icecat.eprelId }] : []),
     ...(technical ? [{ namespace: "custom", key: "icecat", type: "json", value: json(technical) }] : []),
     ...(content.elvi_tip.text.trim() ? [{ namespace: "custom", key: "consejo_elvi", type: "multi_line_text_field", value: content.elvi_tip.text.trim() }] : []),

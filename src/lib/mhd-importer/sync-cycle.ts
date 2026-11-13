@@ -5,6 +5,7 @@ import { sendAlert } from "./alerts";
 import type { SourcesConfig } from "./gather";
 import { syncAbsences } from "./absences";
 import { syncDeliveryOptions } from "./delivery-options-sync";
+import { syncSuppliers } from "./supplier-sync";
 import { syncEmptyCollections } from "./empty-collections";
 import { notifyFinishedJobs } from "./job-notices";
 import { queueNewProducts } from "./new-products";
@@ -17,7 +18,7 @@ import { shopifyGraphql } from "./store-filters";
 // minutos (mhd_sync_cycle_start) y la base llama a la ruta /api/sincronizaciones/vuelta en dos momentos:
 //   «inicio»: se comprueban las conexiones (si alguna falla, aviso y la vuelta se para) y se lanza la lectura del listado;
 //   «continuar»: al acabar la lectura, los pasos en orden: precio y stock, agotados en MHD (absences.ts), altas
-//   (new-products.ts), opciones de entrega (delivery-options-sync.ts), tarifas de servicios (service-tariffs.ts), avisos de tandas terminadas (job-notices.ts) y colecciones vacías (empty-collections.ts);
+//   (new-products.ts), opciones de entrega (delivery-options-sync.ts), proveedor (supplier-sync.ts), tarifas de servicios (service-tariffs.ts), avisos de tandas terminadas (job-notices.ts) y colecciones vacías (empty-collections.ts);
 //   pendiente: cambios de ficha.
 // Cada paso queda en mhd_sync_cycles.steps con su inicio, fin, cifras y error; de ahí salen el resumen diario y utils.
 type StepStatus = "ok" | "error" | "saltado";
@@ -162,6 +163,8 @@ export async function continueCycle(deps: Deps, cycleId: string) {
     await step(deps.db, cycle, "altas", async () => queueNewProducts({ db: deps.db }, { runId: cycle.read_run_id!, cycleId: cycle.id }) as unknown as Promise<Record<string, unknown>>);
     // Portes y servicios al metacampo de cada ficha. La ruta tiene 300 s: no se come el tiempo de lo que queda detrás.
     await step(deps.db, cycle, "opciones-entrega", async () => syncDeliveryOptions({ db: deps.db, shopify: deps.sources.shopify }, { runId: cycle.read_run_id!, budgetMs: Math.min(60_000, 250_000 - (Date.now() - processingFrom)) }));
+    // Proveedor de MHD a sus dos metacampos (supplier-sync.ts). Normalmente no hay nada que hacer: 30 s como mucho.
+    await step(deps.db, cycle, "proveedor", async () => syncSuppliers({ db: deps.db, shopify: deps.sources.shopify }, { runId: cycle.read_run_id!, budgetMs: Math.max(5_000, Math.min(30_000, 250_000 - (Date.now() - processingFrom))) }));
     // Importes de servicios de MHD sin variante en Shopify: la web dejaría de ofrecerlos sin avisar.
     await step(deps.db, cycle, "tarifas-servicios", async () => checkServiceTariffs({ db: deps.db, shopify: deps.sources.shopify }));
     // Tandas del importador terminadas desde la última vuelta: un correo con su resultado.

@@ -359,9 +359,13 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
     ...(warranty.eligible === null ? [] : [{ namespace: "custom", key: "admite_garantia", type: "boolean", value: String(warranty.eligible) }]),
   ];
   const KEEP_ON_REFRESH = new Set(["custom.disponibilidad_con_stock", "custom.disponibilidad_sin_stock", "custom.prioridad"]);
+  // El proveedor se conserva solo si esta vez no llega de MHD (no se borra lo que ya había).
+  const KEEP_IF_NOT_SENT = new Set(["custom.proveedor_codigo", "custom.proveedor_nombre"]);
+  const sentKeys = new Set(metafields.map((item) => `${item.namespace}.${item.key}`));
+  const keepOnRefresh = (key: string) => KEEP_ON_REFRESH.has(key) || (KEEP_IF_NOT_SENT.has(key) && !sentKeys.has(key));
   // productSet deja el producto solo con los metacampos que se le pasan: en el refresco, los que se conservan se
   // vuelven a enviar con su valor actual (comprobado 2026-10-23: omitirlos los borraba).
-  const keptValues = refresh && existing ? (await shopifyGraphql<{ product: { metafields: { nodes: { namespace: string; key: string; type: string; value: string }[] } } }>(deps.shopify, `query($id: ID!) { product(id: $id) { metafields(first: 100) { nodes { namespace key type value } } } }`, { id: existing.id })).product.metafields.nodes.filter((item) => KEEP_ON_REFRESH.has(`${item.namespace}.${item.key}`)) : [];
+  const keptValues = refresh && existing ? (await shopifyGraphql<{ product: { metafields: { nodes: { namespace: string; key: string; type: string; value: string }[] } } }>(deps.shopify, `query($id: ID!) { product(id: $id) { metafields(first: 100) { nodes { namespace key type value } } } }`, { id: existing.id })).product.metafields.nodes.filter((item) => keepOnRefresh(`${item.namespace}.${item.key}`)) : [];
   const finalMetafields = refresh ? [...metafields.filter((item) => !KEEP_ON_REFRESH.has(`${item.namespace}.${item.key}`)), ...keptValues] : metafields;
   const current = existing?.variants.nodes[0];
   // Precio, stock, SKU y EAN de MHD en todo lo que se sube (David, 2026-10-27), también al pisar un producto que ya

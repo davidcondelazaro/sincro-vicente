@@ -60,6 +60,7 @@ Propuesta inicial:
 | Marca, EAN o modelo | **A revisión, sin tocar nada** (David, 2026-10-26): puede ser otro producto con el mismo código. Sale en el resumen diario. |
 | Clase energética | **Todo lo que depende de ella** (David, 2026-10-26): la etiqueta energética (`custom.etiqueta_energetica`), la ficha de información del producto de la UE y el enlace a EPREL (`custom.documentos`, `custom.eprel`), el filtro de eficiencia y la etiqueta «Energética». Como es un dato clave, también se rehacen los textos (regla de los cambios de datos). Si la etiqueta nueva no casa con el modelo, a revisión. |
 | Opciones de entrega | **Se actualizan solas, siempre** (David, 2026-10-26: «esta parte es importantísima»): portes, subida, instalación y retirada del viejo, con sus precios, al metacampo `custom.opciones_entrega`, sin IA. Se detectan en cada lectura del listado (cada hora), que trae los siete campos de portes y servicios. Hoy van dentro de la huella «precio» (`mhd_hash_parts`): conviene separarlos en una huella propia. Las escribe el paso «opciones-entrega» de la vuelta (ver [Opciones de entrega](#opciones-entrega)). Si un dato desaparece o su importe sube más de un 50 %, aviso. |
+| Proveedor | **Se actualiza solo, siempre** (David, 2026-11-13): `cd_proveedor` y `nombre_proveedor`, que MHD manda desde el 12-11-2026, a los metacampos `custom.proveedor_codigo` y `custom.proveedor_nombre`, de los que colgarán reglas. Lo escribe el paso «proveedor» de la vuelta (ver [Proveedor](#proveedor)). Si un producto cambia de proveedor, aviso. |
 
 ## Lo que cada subida avisa a la estructura de la tienda (acuerdo con la sesión del árbol, 2026-10-28)
 
@@ -245,3 +246,28 @@ producto activo o en borrador, incluidos los ya publicados. Sin IA ni revisión.
 - Un valor puesto a mano en el metacampo se sobrescribe: manda MHD.
 - **Pedidos ya pagados:** si cambian los portes antes de exportar, el pedido deja de
   cuadrar con lo cobrado y se bloquea con el motivo a la vista, hasta revisarlo.
+
+## Proveedor
+
+MHD manda desde el 12-11-2026 en cada producto `cd_proveedor` (número) y `nombre_proveedor`
+(texto), en el listado y en la ficha. Van a dos metacampos de producto de Shopify, con
+definición, filtrables en el admin y usables en colecciones automáticas, sin acceso desde
+la tienda (el nombre del proveedor no debe verse en la web):
+
+- `custom.proveedor_codigo` (número entero): el que deben mirar las reglas.
+- `custom.proveedor_nombre` (texto, sin espacios sobrantes: Taurus llega como « ELECTRODOMÉSTICOS TAURUS SL »).
+
+Quién los escribe:
+
+- **Importador:** los pone al crear o refrescar la ficha. Si esa vez no llegan de MHD, se
+  conserva lo que hubiera.
+- **Paso «proveedor» de la vuelta** (`supplier-sync.ts`): igual que las opciones de
+  entrega. Compara con lo último registrado (`mhd_shopify_suppliers`) y, antes de escribir,
+  con lo que hay en Shopify. Como mucho 30 s por vuelta; lo que no quepa sigue en la
+  siguiente. Lo que MHD ya no trae (agotados fuera del listado) no se borra: cuando
+  vuelva, se rellena.
+- **Aviso** si un producto cambia de código de proveedor. **Freno:** si más de 300
+  cambian en una vuelta, no se envía nada y se avisa; si es real, subir
+  `supplier_switch_max` en `store_settings`.
+- **Relleno inicial** (13-11-2026): `scripts/rellenar-proveedor-shopify.mjs`, puntual.
+  Lee el listado entero de MHD y todos los productos de Shopify por SKU.
