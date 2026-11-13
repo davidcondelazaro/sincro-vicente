@@ -103,6 +103,16 @@ Si un pedido ya exportado se cancela o se modifica en Shopify, esta primera fase
 
 La actualización inversa hacia Shopify se diseñará cuando se conozcan y validen los estados MHD, el momento que representa realmente el envío y el formato de tracking disponible.
 
+### Trabajo rescatado sin integrar (2026-11-02)
+
+En la rama `rescate/pedidos-mhd-imagenes-2026-11-02` (commit `f340ad3`, también en GitHub) quedó trabajo que estaba sin commit en la carpeta local y que todavía no está en `main`:
+
+- exportación de pedidos MHD con comprobación previa y vista previa (`src/app/api/mhd-orders/export/check` y `preview`, y cambios en `mhd-orders-page.tsx`);
+- imágenes del importador y fotos sobre fondo negro (`scripts/preparar-fotos-negro.mjs` y `publicar-fotos-negro.mjs`);
+- `docs/AUDITORIA_CATALOGO_2026-10-31.md` y ampliaciones de esta guía y de `SINCRONIZACIONES_MHD.md`.
+
+Parte de una versión antigua de `main`: antes de usarlo hay que traerlo sobre la actual y comparar archivo por archivo. `delivery-options-sync.ts` ya está en `main` con otra versión. De esa rama hay que descartar `eeac6eb` (valoraciones del chatbot, ya en `main` como `1bd45a5`) y revisar `a145412` (relaciones de Icecat), que tiene el mismo título que `f38a527` de `main` pero otro contenido.
+
 ## Información por confirmar
 
 - Esquema real de pedidos de Shopify y campos disponibles en un pedido de prueba.
