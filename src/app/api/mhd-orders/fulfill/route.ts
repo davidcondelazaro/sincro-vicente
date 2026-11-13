@@ -1,5 +1,5 @@
 import { sameInvoices, sendPendingInvoiceEmails, toShopifyInvoices, writeInvoicesToShopify, type InvoiceSent, type ShopifyInvoice } from "@/lib/mhd-invoices";
-import { mhdHeaders, mhdUrl } from "@/lib/mhd-order-sync";
+import { mhdOrdersFetch } from "@/lib/mhd-order-sync";
 import { invoicesFrom, type MhdOrderData } from "@/lib/mhd-order-status";
 import { createClient } from "@/lib/supabase/server";
 
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
     let invoicesInShopify = payload.facturas_en_shopify ?? null;
     if (exported?.mhd_order_id) {
       try {
-        const response = await fetch(mhdUrl(`/orders/${exported.mhd_order_id}`), { headers: mhdHeaders(), cache: "no-store", signal: AbortSignal.timeout(15_000) });
+        const response = await mhdOrdersFetch(`/orders/${exported.mhd_order_id}`, { timeoutMs: 15_000 });
         const body = await response.json().catch(() => ({})) as { success?: boolean; data?: MhdOrderData };
         if (response.ok && body.success && body.data) invoices = invoicesFrom(body.data);
       } catch { /* se usa la última lectura */ }

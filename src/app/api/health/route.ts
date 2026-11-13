@@ -1,5 +1,5 @@
 import mysql from "mysql2/promise";
-import { MHD_API_ORIGIN_HEADERS } from "@/lib/mhd-importer/sources";
+import { mhdApiUrl, mhdConfigFromEnv, mhdFetch } from "@/lib/mhd-importer/sources";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -82,20 +82,8 @@ async function checkSqlServer() {
 }
 
 async function checkMhd() {
-  const baseUrl = required("MHD_API_URL").replace(/\/$/, "");
-  const version = required("MHD_API_VERSION");
-  const subPath = required("MHD_API_SUB_PATH");
-  const user = required("MHD_API_USER");
-  const password = required("MHD_API_PASS");
-  const response = await fetch(`${baseUrl}/api/${version}/${subPath}/categories?page=1&pageSize=1`, {
-    headers: {
-      ...MHD_API_ORIGIN_HEADERS,
-      Accept: "application/json",
-      Authorization: `Basic ${Buffer.from(`${user}:${password}`).toString("base64")}`,
-    },
-    signal: AbortSignal.timeout(8_000),
-    cache: "no-store",
-  });
+  const config = mhdConfigFromEnv(process.env);
+  const response = await mhdFetch(config, mhdApiUrl(config, "/categories?page=1&pageSize=1"), { timeoutMs: 8_000 });
   const body = await response.json().catch(() => null) as { success?: boolean } | null;
   if (!response.ok || body?.success !== true) throw new Error(`MHD: ${response.status}`);
 }

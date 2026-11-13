@@ -1,5 +1,5 @@
 import { buildMhdProductLines, type MhdProductLine, type ShopifyLinePayload } from "@/lib/mhd-order-lines";
-import { MHD_API_ORIGIN_HEADERS } from "@/lib/mhd-importer/sources";
+import { mhdOrdersFetch } from "@/lib/mhd-order-sync";
 import { buildMhdOrderObservations } from "@/lib/mhd-order-notes";
 import { createClient } from "@/lib/supabase/server";
 
@@ -24,17 +24,6 @@ type Mapping = { mhd_province_id: number; mhd_province_name: string; active: boo
 type Country = { mhd_country_id: number; shipping_enabled: boolean };
 type MhdResponse = { success?: boolean; data?: { id?: number; id_transaccion?: string; estado_cliente?: string; arr_productos?: { cd_articulo?: string; cantidad?: number }[] }; errors?: unknown };
 
-function required(name: string) { const value = process.env[name]; if (!value) throw new Error(`Falta la variable ${name}.`); return value; }
-function mhdUrl(path: string) {
-  const base = required("MHD_API_URL").replace(/\/$/, "");
-  const version = required("MHD_API_VERSION").replace(/^\/+|\/+$/g, "");
-  const subPath = required("MHD_API_SUB_PATH").replace(/^\/+|\/+$/g, "");
-  return `${base}/api/${version}/${subPath}${path}`;
-}
-function mhdHeaders() {
-  const credentials = Buffer.from(`${required("MHD_API_USER")}:${required("MHD_API_PASS")}`).toString("base64");
-  return { ...MHD_API_ORIGIN_HEADERS, Accept: "application/json", "Content-Type": "application/json", Authorization: `Basic ${credentials}` };
-}
 function splitName(address: Address) {
   const fullName = address.name?.trim() ?? "";
   const firstName = address.firstName?.trim() || fullName.split(/\s+/)[0] || "Cliente";
@@ -138,7 +127,7 @@ export async function POST(request: Request) {
   const exportId = exportRow.data.id;
 
   try {
-    const response = await fetch(mhdUrl("/orders"), { method: "POST", headers: mhdHeaders(), body: JSON.stringify(payload), cache: "no-store", signal: AbortSignal.timeout(30_000) });
+    const response = await mhdOrdersFetch("/orders", { method: "POST", body: JSON.stringify(payload), timeoutMs: 30_000 });
     const responsePayload = await response.json().catch(() => ({})) as MhdResponse;
     const mhdOrderId = responsePayload.data?.id ?? null;
     const success = response.ok && responsePayload.success === true && mhdOrderId && mhdProductMatches(productPayload, responsePayload);

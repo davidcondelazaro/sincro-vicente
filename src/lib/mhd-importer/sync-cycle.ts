@@ -10,7 +10,7 @@ import { notifyFinishedJobs } from "./job-notices";
 import { queueNewProducts } from "./new-products";
 import { syncPriceStock } from "./price-stock-sync";
 import { checkServiceTariffs } from "./service-tariffs";
-import { MHD_API_ORIGIN_HEADERS } from "./sources";
+import { mhdApiUrl, mhdFetch } from "./sources";
 import { shopifyGraphql } from "./store-filters";
 
 // Vuelta de sincronización con MHD (David, 2026-10-29; diseño en docs/SINCRONIZACIONES_MHD.md). La abre pg_cron cada 30
@@ -67,8 +67,7 @@ export async function checkConnections(sources: SourcesConfig, env: Record<strin
   return Promise.all([
     timed("Shopify", true, () => shopifyGraphql(sources.shopify, "{ shop { id } }")),
     timed("MHD", true, async () => {
-      const url = `${mhd.url.replace(/\/$/, "")}/api/${mhd.version.replace(/^\/+|\/+$/g, "")}/${mhd.subPath.replace(/^\/+|\/+$/g, "")}/categories?page=1&pageSize=1`;
-      const response = await fetch(url, { headers: { ...MHD_API_ORIGIN_HEADERS, Accept: "application/json", Authorization: `Basic ${btoa(`${mhd.user}:${mhd.pass}`)}` }, signal: AbortSignal.timeout(15_000) });
+      const response = await mhdFetch(mhd, mhdApiUrl(mhd, "/categories?page=1&pageSize=1"), { timeoutMs: 15_000 });
       if (!response.ok) throw new Error(`MHD respondió HTTP ${response.status}`);
     }),
     timed("Anthropic", false, async () => {

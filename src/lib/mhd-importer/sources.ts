@@ -2,14 +2,14 @@
 // Sin dependencias de Next ni de Deno: solo `fetch` y la configuración que se les pasa, para poder usarlas
 // igual desde la web (rutas de Next) y desde una función de Supabase. Ver docs/IMPORTADOR_PRODUCTOS_MHD.md.
 
-export type MhdConfig = { url: string; version: string; subPath: string; user: string; pass: string };
+export type MhdConfig = { url: string; version: string; subPath: string; user: string; pass: string; proxyUrl?: string; proxyToken?: string };
 export type IcecatConfig = { username: string; appKey: string; language: string; proxyUrl?: string; proxyToken?: string };
 export type FetchResult<T> = { status: number; payload: T | null };
 export type MhdProductDetail = Record<string, unknown> & { codigo: string; caracteristicas?: { nombre: string; valor: string }[]; fotos?: string[] };
 
 type Env = Record<string, string | undefined>;
 function required(env: Env, name: string) { const value = env[name]; if (!value) throw new Error(`Falta la variable ${name}.`); return value; }
-export function mhdConfigFromEnv(env: Env): MhdConfig { return { url: required(env, "MHD_API_URL"), version: required(env, "MHD_API_VERSION"), subPath: required(env, "MHD_API_SUB_PATH"), user: required(env, "MHD_API_USER"), pass: required(env, "MHD_API_PASS") }; }
+export function mhdConfigFromEnv(env: Env): MhdConfig { return { url: required(env, "MHD_API_URL"), version: required(env, "MHD_API_VERSION"), subPath: required(env, "MHD_API_SUB_PATH"), user: required(env, "MHD_API_USER"), pass: required(env, "MHD_API_PASS"), proxyUrl: env.MHD_PROXY_URL, proxyToken: env.MHD_PROXY_TOKEN }; }
 export function icecatConfigFromEnv(env: Env): IcecatConfig { return { username: required(env, "ICECAT_USERNAME"), appKey: required(env, "ICECAT_APP_KEY"), language: env.ICECAT_LANGUAGE || "es", proxyUrl: env.ICECAT_PROXY_URL, proxyToken: env.ICECAT_PROXY_TOKEN }; }
 
 const trim = (value: string) => value.replace(/^\/+|\/+$/g, "");
@@ -18,11 +18,33 @@ const trim = (value: string) => value.replace(/^\/+|\/+$/g, "");
 // Retry-After si MHD la manda.
 export class MhdBusyError extends Error { retryAfterMs: number | null; constructor(message: string, retryAfterMs: number | null) { super(message); this.retryAfterMs = retryAfterMs; } }
 
+// Dirección de un recorrido de la API de MHD: `mhdApiUrl(config, "/orders")` → `.../api/v1/evicente/orders`.
+export function mhdApiUrl(config: MhdConfig, path: string) { return `${config.url.replace(/\/$/, "")}/api/${trim(config.version)}/${trim(config.subPath)}${path.startsWith("/") ? path : `/${path}`}`; }
+export function mhdAuthorization(config: MhdConfig) { return `Basic ${btoa(`${config.user}:${config.pass}`)}`; }
+
+// Única puerta de salida hacia la API de MHD. Desde el 10-11-2026 MHD responde 403 a ratos según la IP de quien
+// llama, y las nuestras son las de Vercel y Supabase, que cambian a cada rato: con MHD_PROXY_URL puesto, las
+// llamadas salen por el proxy de Pladisel (IP fija), igual que ya se hacía con Icecat. Sin esa variable van
+// directas, como siempre, así que el proxy se enciende y se apaga sin tocar código.
+// El proxy ya pone Origin, Referer y User-Agent: aquí solo se ponen cuando se va directo.
+export function mhdFetch(config: MhdConfig, target: string, options: { method?: "GET" | "POST"; body?: string; timeoutMs: number }) {
+  const { method = "GET", body, timeoutMs } = options;
+  const common = { method, body, cache: "no-store" as const, signal: AbortSignal.timeout(timeoutMs) };
+  const json: Record<string, string> = body ? { "Content-Type": "application/json" } : {};
+  if (!config.proxyUrl || !config.proxyToken) {
+    return fetch(target, { ...common, headers: { ...MHD_API_ORIGIN_HEADERS, Accept: "application/json", ...json, Authorization: mhdAuthorization(config) } });
+  }
+  const url = `${config.proxyUrl}${config.proxyUrl.includes("?") ? "&" : "?"}url=${encodeURIComponent(target)}`;
+  // La credencial va en X-MHD-Authorization porque Apache se queda la cabecera Authorization antes de que el
+  // proxy la vea (ver pladisel/proxy-mhd.php).
+  return fetch(url, { ...common, headers: { "X-Proxy-Token": config.proxyToken, "X-MHD-Authorization": mhdAuthorization(config), Accept: "application/json", ...json } });
+}
+
 // Ficha de detalle `/products/:codigo`: trae `caracteristicas` y `fotos`, que el listado no tiene. Ojo: no trae
 // `img_ficha_eficiencia` (solo el listado), así que nunca debe pisar lo que viene del listado.
 export async function fetchMhdProductDetail(config: MhdConfig, codigo: string): Promise<FetchResult<MhdProductDetail>> {
-  const url = `${config.url.replace(/\/$/, "")}/api/${trim(config.version)}/${trim(config.subPath)}/products/${encodeURIComponent(codigo)}`;
-  const response = await fetch(url, { headers: { ...MHD_API_ORIGIN_HEADERS, Accept: "application/json", Authorization: `Basic ${btoa(`${config.user}:${config.pass}`)}` }, signal: AbortSignal.timeout(30_000) });
+  const url = mhdApiUrl(config, `/products/${encodeURIComponent(codigo)}`);
+  const response = await mhdFetch(config, url, { timeoutMs: 30_000 });
   const body = await response.json().catch(() => null) as { success?: boolean; data?: MhdProductDetail } | null;
   if (response.status === 404) return { status: 404, payload: null };
   if (response.status === 429 || response.status >= 500) throw new MhdBusyError(`MHD no devolvió la ficha ${codigo} (HTTP ${response.status}).`, Number(response.headers.get("retry-after")) * 1000 || null);

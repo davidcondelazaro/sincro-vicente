@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildMhdProductLines } from "@/lib/mhd-order-lines";
 import { sameInvoices, sendPendingInvoiceEmails, toShopifyInvoices, writeInvoicesToShopify } from "@/lib/mhd-invoices";
-import { MHD_API_ORIGIN_HEADERS } from "@/lib/mhd-importer/sources";
+import { mhdApiUrl, mhdConfigFromEnv, mhdFetch } from "@/lib/mhd-importer/sources";
 import { invoicesFrom, trackingFrom, type MhdOrderData } from "@/lib/mhd-order-status";
 
 // Lectura de pedidos de Shopify y de estados de MHD. La usan los botones de Pedidos MHD (con la sesión) y la tarea
@@ -51,15 +51,11 @@ function discountSummary(order: ShopifyOrder) {
 type MhdStatusEntry = { estado?: string; fecha?: number | string | null };
 type MhdOrderResponse = { success?: boolean; data?: MhdOrderData };
 
-export function mhdUrl(path: string) {
-  const base = required("MHD_API_URL").replace(/\/$/, "");
-  const version = required("MHD_API_VERSION").replace(/^\/+|\/+$/g, "");
-  const subPath = required("MHD_API_SUB_PATH").replace(/^\/+|\/+$/g, "");
-  return `${base}/api/${version}/${subPath}${path}`;
-}
-export function mhdHeaders() {
-  const credentials = Buffer.from(`${required("MHD_API_USER")}:${required("MHD_API_PASS")}`).toString("base64");
-  return { ...MHD_API_ORIGIN_HEADERS, Accept: "application/json", Authorization: `Basic ${credentials}` };
+// Todas las llamadas de pedidos a MHD salen por aquí, para que pasen por el proxy de Pladisel cuando esté
+// configurado (ver mhdFetch en mhd-importer/sources.ts).
+export function mhdOrdersFetch(path: string, options: { method?: "GET" | "POST"; body?: string; timeoutMs: number }) {
+  const config = mhdConfigFromEnv(process.env);
+  return mhdFetch(config, mhdApiUrl(config, path), options);
 }
 function dateFromMhd(value: MhdStatusEntry["fecha"]) {
   if (typeof value === "number") return new Date(value).toISOString();
@@ -133,7 +129,7 @@ export async function refreshMhdStatuses(db: SupabaseClient) {
   const errors: string[] = [];
   for (const item of exports ?? []) {
     try {
-      const response = await fetch(mhdUrl(`/orders/${item.mhd_order_id}`), { headers: mhdHeaders(), cache: "no-store", signal: AbortSignal.timeout(20_000) });
+      const response = await mhdOrdersFetch(`/orders/${item.mhd_order_id}`, { timeoutMs: 20_000 });
       const body = await response.json().catch(() => ({})) as MhdOrderResponse;
       if (!response.ok || !body.success || !body.data) throw new Error(`MHD respondió HTTP ${response.status}.`);
       checkedCount += 1;
