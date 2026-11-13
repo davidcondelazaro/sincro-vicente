@@ -26,15 +26,13 @@ const navigation: { label: string | null; entries: NavEntry[] }[] = [
     { section: "mhdCatalog", href: "/importacion-catalogo-mhd", label: "Consultar catálogo MHD", icon: "catalog" },
     { section: "storeSettings", href: "/configuracion", label: "Configuración", icon: "settings" },
   ] },
-  { label: "Tienda", entries: [
-    { section: "quotes", href: "/tienda/presupuestos", label: "Presupuestos", icon: "quote" },
-  ] },
   // Avisos de stock y de precio: se administran desde el helpdesk (Avisos y la ficha del cliente) y no salen en el
   // menú (David, 2026-11-12); sus páginas siguen abriéndose por URL.
+  // Presupuestos (Tienda) y Soporte (Chatbot IA) tampoco: las peticiones de Elvi ya entran como tickets del helpdesk
+  // (David, 2026-11-13); sus páginas siguen abriéndose por URL para consultar las antiguas.
   // Lo del chatbot que ya se administra desde el helpdesk (Estadísticas, Conversaciones, Mejoras, Errores, Cupones,
   // Configuración y Datos de clientes) no sale en el menú (David, 2026-11-12); sus páginas siguen abriéndose por URL.
   { label: "Chatbot IA", entries: [
-    { section: "chatbotSupport", href: "/chatbot/soporte", label: "Soporte", icon: "support" },
     { section: "chatbotSyncs", href: "/chatbot/sincronizaciones", label: "Sincronizaciones", icon: "sync" },
   ] },
   { label: "Pladisel (antiguo)", entries: [
