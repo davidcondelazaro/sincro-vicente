@@ -94,7 +94,7 @@ export function direccionDeExportacion(pedido: PedidoConEntrega, lineas: { requi
     const cliente = pedido.billingAddress ?? pedido.shippingAddress ?? null;
     const nombre = cliente?.name?.trim() || [cliente?.firstName, cliente?.lastName].filter(Boolean).join(" ").trim() || pedido.customer?.displayName?.trim() || "Cliente";
     return {
-      name: punto.name, firstName: punto.name, lastName: [nombre, cliente?.phone?.trim()].filter(Boolean).join(" · "), company: cliente?.company ?? null,
+      name: punto.name, firstName: punto.name, lastName: [nombre, cliente?.phone?.trim()].filter(Boolean).join(" "), company: cliente?.company ?? null,
       address1: punto.address.address1, address2: punto.address.address2, city: punto.address.city, zip: punto.address.zip, phone: punto.address.phone,
       countryCodeV2: punto.address.countryCode, provinceCode: punto.address.provinceCode, province: punto.address.province,
     };

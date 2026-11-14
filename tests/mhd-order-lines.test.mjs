@@ -98,7 +98,7 @@ const recogida = { shippingAddress: null, billingAddress: { name: "Ana Pérez", 
 test("la recogida va a MHD con la dirección de la tienda y el cliente en apellidos", () => {
   const direccion = direccionDeExportacion(recogida, [{ requiresShipping: true }]);
   assert.equal(puntoDeRecogida(recogida).name, "Yois");
-  assert.deepEqual([direccion.firstName, direccion.lastName, direccion.address1, direccion.zip, direccion.provinceCode, direccion.phone, direccion.company], ["Yois", "Ana Pérez · 600111222", "Calle Vitoria, 160", "09007", "BU", "+34947225750", ""]);
+  assert.deepEqual([direccion.firstName, direccion.lastName, direccion.address1, direccion.zip, direccion.provinceCode, direccion.phone, direccion.company], ["Yois", "Ana Pérez 600111222", "Calle Vitoria, 160", "09007", "BU", "+34947225750", ""]);
 });
 
 test("sin recogida se usa la dirección de envío", () => {
