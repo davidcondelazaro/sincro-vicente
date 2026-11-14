@@ -351,8 +351,10 @@ recogida como dirección de envío. Solo en lo enviado a MHD; el pedido de Shopi
 se toca.
 
 - **Origen de los datos:** la tienda sale de Shopify, nunca escrita en el código. Es la
-  ubicación del pedido de preparación con método `PICK_UP` (`fulfillmentOrders ›
-  assignedLocation › location`), con su dirección, provincia, país y teléfono. Hoy son
+  ubicación de destino del pedido de preparación con método `PICK_UP`
+  (`fulfillmentOrders › destination › location`), con su dirección, provincia, país y
+  teléfono. No sirve `assignedLocation`: es de donde sale el stock (en el pedido de
+  prueba EV61500, el Almacén MHD). Hoy son
   Electrónica Vicente y Yois, en Burgos (`direccionDeExportacion` en
   `src/lib/mhd-order-lines.ts`).
 - **Envío:** de nombre, la tienda; de apellidos, el nombre y el teléfono del cliente; el

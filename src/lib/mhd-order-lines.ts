@@ -77,12 +77,13 @@ export type DireccionShopify = {
 type PuntoDeRecogida = { name: string; address: { address1?: string | null; address2?: string | null; city?: string | null; zip?: string | null; provinceCode?: string | null; province?: string | null; countryCode?: string | null; phone?: string | null } };
 export type PedidoConEntrega = {
   shippingAddress?: DireccionShopify | null; billingAddress?: DireccionShopify | null; customer?: { displayName?: string | null } | null;
-  fulfillmentOrders?: { nodes: { deliveryMethod?: { methodType?: string | null } | null; assignedLocation?: { location?: PuntoDeRecogida | null } | null }[] } | null;
+  fulfillmentOrders?: { nodes: { deliveryMethod?: { methodType?: string | null } | null; destination?: { location?: PuntoDeRecogida | null } | null }[] } | null;
 };
 
-// Recogida en tienda: la ubicación de Shopify elegida por el cliente, con su dirección tal como está en Shopify
+// Recogida en tienda: la ubicación de Shopify elegida por el cliente, con su dirección tal como está en Shopify. Está en
+// destination.location; assignedLocation es de donde sale el stock (en EV61500, el Almacén MHD), no la tienda.
 export function puntoDeRecogida(pedido: PedidoConEntrega) {
-  return pedido.fulfillmentOrders?.nodes.find((item) => item.deliveryMethod?.methodType === "PICK_UP")?.assignedLocation?.location ?? null;
+  return pedido.fulfillmentOrders?.nodes.find((item) => item.deliveryMethod?.methodType === "PICK_UP")?.destination?.location ?? null;
 }
 
 // Dirección que va a MHD como envío. En la recogida (David, 14-11-2026) es la de la tienda: de nombre, la tienda; de

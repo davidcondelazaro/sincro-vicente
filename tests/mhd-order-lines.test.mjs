@@ -93,7 +93,7 @@ test("los errores de MHD se aplanan sea cual sea su forma", () => {
 });
 
 const tienda = { name: "Yois", address: { address1: "Calle Vitoria, 160", address2: null, city: "Burgos", zip: "09007", provinceCode: "BU", province: "Burgos", countryCode: "ES", phone: "+34947225750" } };
-const recogida = { shippingAddress: null, billingAddress: { name: "Ana Pérez", phone: "600111222", company: "", address1: "Calle Mayor 1", city: "León", zip: "24001", countryCodeV2: "ES", provinceCode: "LE" }, fulfillmentOrders: { nodes: [{ deliveryMethod: { methodType: "PICK_UP" }, assignedLocation: { location: tienda } }] } };
+const recogida = { shippingAddress: null, billingAddress: { name: "Ana Pérez", phone: "600111222", company: "", address1: "Calle Mayor 1", city: "León", zip: "24001", countryCodeV2: "ES", provinceCode: "LE" }, fulfillmentOrders: { nodes: [{ deliveryMethod: { methodType: "PICK_UP" }, destination: { location: tienda } }] } };
 
 test("la recogida va a MHD con la dirección de la tienda y el cliente en apellidos", () => {
   const direccion = direccionDeExportacion(recogida, [{ requiresShipping: true }]);
@@ -102,7 +102,7 @@ test("la recogida va a MHD con la dirección de la tienda y el cliente en apelli
 });
 
 test("sin recogida se usa la dirección de envío", () => {
-  const envio = { ...recogida, shippingAddress: { address1: "Calle Real 2" }, fulfillmentOrders: { nodes: [{ deliveryMethod: { methodType: "SHIPPING" }, assignedLocation: { location: tienda } }] } };
+  const envio = { ...recogida, shippingAddress: { address1: "Calle Real 2" }, fulfillmentOrders: { nodes: [{ deliveryMethod: { methodType: "SHIPPING" }, destination: { location: tienda } }] } };
   assert.equal(direccionDeExportacion(envio, [{ requiresShipping: true }]).address1, "Calle Real 2");
 });
 
