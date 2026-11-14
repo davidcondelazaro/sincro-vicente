@@ -109,10 +109,10 @@ Cada línea de `productos`: `codigo`, `cantidad`, `precio`, `portes`, `subida`,
   devolvió `201` y creó un pedido **vacío**, así que MHD lo cambió entre medias. Las
   líneas devueltas se siguen validando por seguridad. Falta ver un pedido con unas
   líneas válidas y otras no: en el 16-8 eran inválidas todas.
-- Por aclarar: con portes 0 el 16-8 también devolvió «Error en la propiedad `portes`»,
-  junto a los códigos inexistentes. Con portes 0,01 y códigos válidos se aceptó. No
-  se ha probado portes 0 con un código válido, que es lo que llevarán las tarjetas.
-  Se supone que lo tolerará: a vigilar en los primeros pedidos reales.
+- Portes 0 no se aceptan: con un código válido devuelve `400` «Error en la propiedad
+  `portes` de `productos[0]`» (EV61500, 14-11-2026). Con 0,01 € se acepta: el mismo
+  pedido entró como #62668 con `subtotal_portes` 0,01.
+- `nif` y las observaciones se devuelven como `nif_envio` y `observaciones_cliente`.
 - Una dirección no válida (país sin envío, provincia incorrecta) devuelve `400`
   con un array `errors`.
 - No hay límite de cantidad: 999999 unidades se aceptan.
