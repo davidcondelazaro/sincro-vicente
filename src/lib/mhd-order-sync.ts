@@ -97,7 +97,7 @@ async function otherActiveInMhd(reference: string, mhdOrderId: number) {
   return otrosVigentes(details, mhdOrderId);
 }
 // Sin reembolso (se hace a mano) y con el correo de cancelación de Shopify al cliente. Devuelve el resultado para
-// guardarlo: no se reintenta, para no repetir un error cada 30 minutos.
+// guardarlo: no se reintenta, para no repetir un error en cada lectura de estados.
 async function cancelInShopify(shopifyOrderId: string, mhdOrderId: number) {
   const store = required("SHOPIFY_STORE_URL").replace(/^https?:\/\//, "").replace(/\/$/, "");
   const response = await fetch(`https://${store}/admin/api/2026-07/graphql.json`, {

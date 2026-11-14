@@ -396,8 +396,11 @@ entró como #62670 (W261114062670) con `nif_envio` y `nif_facturacion` = " ".
 
 ### Cancelados en MHD (14-11-2026)
 
-Cuando MHD cancela un pedido (estado 13), la vuelta de estados lo cancela también en
-Shopify (decisión de David):
+Cuando MHD cancela un pedido (estado 13), la lectura de estados (`refreshMhdStatuses`)
+lo cancela también en Shopify (decisión de David). Esa lectura no va en la vuelta de
+cada 30 minutos (que es solo de catálogo): corre en la tarea diaria de Garantía3
+(pg_cron `sincro-vicente-garantia3-vuelta`, 9:00 UTC) y con «Actualizar estados» en
+Pedidos MHD. Encendido el 14-11-2026 con corte 2026-11-14T16:04:05Z.
 
 - **Sin reembolso:** `refundMethod: { originalPaymentMethodsRefund: false }`. El
   reembolso se hace a mano; la nota interna lo recuerda: «Cancelado en MHD (pedido
@@ -409,7 +412,7 @@ Shopify (decisión de David):
   reexportó), ni si Shopify ya lo tiene cancelado.
 - **Una sola vez por pedido:** el resultado se guarda en
   `mhd_status_payload.cancelacion_shopify` (`{ at, ok, job, error }`) y no se
-  reintenta, para no repetir un error cada 30 minutos. Un fallo sale en los errores
+  reintenta, para no repetir un error en cada lectura. Un fallo sale en los errores
   de la vuelta.
 - **Interruptor** en utils (`store_settings`): `cancelar_en_shopify_activo`, apagado,
   y `cancelar_en_shopify_desde`, el corte. Solo cuentan las cancelaciones de MHD a
