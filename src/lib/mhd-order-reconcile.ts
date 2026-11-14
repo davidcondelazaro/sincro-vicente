@@ -57,3 +57,17 @@ export function erroresDeMhd(errors: unknown): string[] {
   if (typeof errors === "object") return Object.values(errors).flatMap(erroresDeMhd);
   return [String(errors)];
 }
+
+// Pedidos cancelados en MHD que se cancelan también en Shopify (David, 14-11-2026), sin reembolso y con aviso al
+// cliente. Solo con el interruptor encendido, con cancelaciones de MHD posteriores al corte (así no se tocan las
+// antiguas ni las de prueba), una sola vez por pedido, y nunca si Shopify ya lo tiene cancelado.
+export function debeCancelarEnShopify(input: { activo: boolean; desde: string | null; pedido: MhdFoundOrder; canceladoEn: string | null; yaIntentado: boolean; canceladoEnShopify: boolean }) {
+  if (!input.activo || !input.desde || input.yaIntentado || input.canceladoEnShopify) return false;
+  if (!esCanceladoEnMhd(input.pedido) || !input.canceladoEn) return false;
+  return new Date(input.canceladoEn).getTime() >= new Date(input.desde).getTime();
+}
+
+// Si se reexportó, MHD tiene otro pedido vigente con la misma referencia y el de Shopify sigue vivo.
+export function otrosVigentes(found: MhdFoundOrder[], mhdOrderId: number) {
+  return found.filter((order) => order.id !== mhdOrderId && !esCanceladoEnMhd(order));
+}

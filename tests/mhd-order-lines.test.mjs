@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildMhdProductLines, direccionDeExportacion, estadoDeEnvio, pedidoSinEnvio, puntoDeRecogida } from "../src/lib/mhd-order-lines.ts";
-import { erroresDeMhd, reconciliar, resultadoDeEnvio } from "../src/lib/mhd-order-reconcile.ts";
+import { debeCancelarEnShopify, erroresDeMhd, otrosVigentes, reconciliar, resultadoDeEnvio } from "../src/lib/mhd-order-reconcile.ts";
 
 const destination = { country: "ES", province: "SA", postalCode: "37900" };
 const tarjeta = (sku, quantity = 1, unitPrice = "25.00") => ({ sku, quantity, unitPrice, payload: { requiresShipping: false, product: { metafield: null }, lineItemGroup: null } });
@@ -110,4 +110,21 @@ test("en la recogida todos los portes van a 0 y cuadran con los 0 € cobrados",
   const result = buildMhdProductLines({ lines: [aparato], destination: { country: "ES", province: "BU", postalCode: "09007" }, shippingAmount: "0.00", recogida: true });
   assert.equal(result.ok, true);
   assert.equal(result.productos[0].portes, 0.01);
+});
+
+test("cancelados en MHD: se cancelan en Shopify solo con el interruptor y después del corte", () => {
+  const cancelado = { id: 62670, id_estado_cliente: 13, estado_cliente: "Cancelado" };
+  const base = { activo: true, desde: "2026-11-14T10:00:00Z", pedido: cancelado, canceladoEn: "2026-11-14T11:00:00Z", yaIntentado: false, canceladoEnShopify: false };
+  assert.equal(debeCancelarEnShopify(base), true);
+  assert.equal(debeCancelarEnShopify({ ...base, activo: false }), false);
+  assert.equal(debeCancelarEnShopify({ ...base, canceladoEn: "2026-11-14T08:47:00Z" }), false);
+  assert.equal(debeCancelarEnShopify({ ...base, yaIntentado: true }), false);
+  assert.equal(debeCancelarEnShopify({ ...base, canceladoEnShopify: true }), false);
+  assert.equal(debeCancelarEnShopify({ ...base, pedido: { id: 62670, id_estado_cliente: 7, estado_cliente: "Pendiente de revisión" } }), false);
+});
+
+test("cancelados en MHD: no se cancela en Shopify si se reexportó y hay otro vigente", () => {
+  const found = [{ id: 62670, id_estado_cliente: 13 }, { id: 62700, id_estado_cliente: 7 }];
+  assert.deepEqual(otrosVigentes(found, 62670).map((order) => order.id), [62700]);
+  assert.equal(otrosVigentes([{ id: 62670, id_estado_cliente: 13 }], 62670).length, 0);
 });

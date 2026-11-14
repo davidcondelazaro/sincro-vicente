@@ -394,6 +394,30 @@ Solución (David, 14-11-2026): si el pedido no trae NIF, se manda un espacio en 
 envío es siempre el espacio, con o sin NIF del cliente. **MHD lo acepta**: EV61599
 entró como #62670 (W261114062670) con `nif_envio` y `nif_facturacion` = " ".
 
+### Cancelados en MHD (14-11-2026)
+
+Cuando MHD cancela un pedido (estado 13), la vuelta de estados lo cancela también en
+Shopify (decisión de David):
+
+- **Sin reembolso:** `refundMethod: { originalPaymentMethodsRefund: false }`. El
+  reembolso se hace a mano; la nota interna lo recuerda: «Cancelado en MHD (pedido
+  #N). Reembolso pendiente, a mano.».
+- **Con aviso al cliente:** `notifyCustomer: true`, el correo de cancelación de Shopify.
+- **Con reposición de stock** (`restock: true`), al Almacén MHD; la sincronización de
+  stock lo corrige igualmente.
+- **No se cancela** si MHD tiene otro pedido vigente con la misma referencia (se
+  reexportó), ni si Shopify ya lo tiene cancelado.
+- **Una sola vez por pedido:** el resultado se guarda en
+  `mhd_status_payload.cancelacion_shopify` (`{ at, ok, job, error }`) y no se
+  reintenta, para no repetir un error cada 30 minutos. Un fallo sale en los errores
+  de la vuelta.
+- **Interruptor** en utils (`store_settings`): `cancelar_en_shopify_activo`, apagado,
+  y `cancelar_en_shopify_desde`, el corte. Solo cuentan las cancelaciones de MHD a
+  partir de esa fecha; así no se tocan las antiguas (#1003) ni las de prueba
+  (EV61500, EV61599).
+
+La cancelación en Shopify no se puede deshacer.
+
 ### Automatización de pedidos: decisiones (31-10-2026, sin implementar)
 
 Al salir a producción, David exporta a mano para ver la salida y los errores. Los

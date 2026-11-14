@@ -3,6 +3,7 @@ import { buildMhdProductLines, direccionDeExportacion, estadoDeEnvio, pedidoSinE
 import { sameInvoices, sendPendingInvoiceEmails, toShopifyInvoices, writeInvoicesToShopify } from "@/lib/mhd-invoices";
 import { mhdApiUrl, mhdConfigFromEnv, mhdFetch } from "@/lib/mhd-importer/sources";
 import { invoicesFrom, trackingFrom, type MhdOrderData } from "@/lib/mhd-order-status";
+import { debeCancelarEnShopify, otrosVigentes, type MhdFoundOrder } from "@/lib/mhd-order-reconcile";
 
 // Lectura de pedidos de Shopify y de estados de MHD. La usan los botones de Pedidos MHD (con la sesión) y la tarea
 // diaria de Garantía3 (docs/GARANTIA3.md), para que haya una sola forma de traerlos.
@@ -75,6 +76,42 @@ function dateFromMhd(value: MhdStatusEntry["fecha"]) {
   }
   return null;
 }
+// Interruptor y corte en utils (store_settings), apagado por defecto. Ver docs/PEDIDOS_MHD_FASE_1.md › Cancelados en MHD.
+async function cancelSettings(db: SupabaseClient) {
+  const { data } = await db.from("store_settings").select("key,value").in("key", ["cancelar_en_shopify_activo", "cancelar_en_shopify_desde"]);
+  const values = new Map((data ?? []).map((row) => [row.key as string, row.value as unknown]));
+  const desde = typeof values.get("cancelar_en_shopify_desde") === "string" ? String(values.get("cancelar_en_shopify_desde")) : null;
+  return { activo: values.get("cancelar_en_shopify_activo") === true && Boolean(desde), desde };
+}
+async function otherActiveInMhd(reference: string, mhdOrderId: number) {
+  const response = await mhdOrdersFetch(`/orders?referencia_web=${encodeURIComponent(reference)}`, { timeoutMs: 20_000 });
+  const body = await response.json().catch(() => ({})) as { success?: boolean; data?: MhdFoundOrder[] };
+  if (!response.ok || !body.success) throw new Error(`MHD respondió HTTP ${response.status} al buscar otros pedidos con la referencia ${reference}.`);
+  // El estado se lee del detalle, como en la exportación: la búsqueda no trae todos los campos
+  const details = await Promise.all((body.data ?? []).filter((order) => order.id !== mhdOrderId).map(async (order) => {
+    const detail = await mhdOrdersFetch(`/orders/${order.id}`, { timeoutMs: 20_000 });
+    const detailBody = await detail.json().catch(() => ({})) as { success?: boolean; data?: MhdFoundOrder };
+    if (!detail.ok || !detailBody.success || !detailBody.data) throw new Error(`MHD respondió HTTP ${detail.status} al leer el pedido #${order.id}.`);
+    return detailBody.data;
+  }));
+  return otrosVigentes(details, mhdOrderId);
+}
+// Sin reembolso (se hace a mano) y con el correo de cancelación de Shopify al cliente. Devuelve el resultado para
+// guardarlo: no se reintenta, para no repetir un error cada 30 minutos.
+async function cancelInShopify(shopifyOrderId: string, mhdOrderId: number) {
+  const store = required("SHOPIFY_STORE_URL").replace(/^https?:\/\//, "").replace(/\/$/, "");
+  const response = await fetch(`https://${store}/admin/api/2026-07/graphql.json`, {
+    method: "POST", headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": required("SHOPIFY_ACCESS_TOKEN") }, cache: "no-store", signal: AbortSignal.timeout(20_000),
+    body: JSON.stringify({
+      query: "mutation($id: ID!, $note: String) { orderCancel(orderId: $id, reason: OTHER, restock: true, notifyCustomer: true, refundMethod: { originalPaymentMethodsRefund: false }, staffNote: $note) { job { id } orderCancelUserErrors { message } } }",
+      variables: { id: shopifyOrderId, note: `Cancelado en MHD (pedido #${mhdOrderId}). Reembolso pendiente, a mano.` },
+    }),
+  });
+  const body = await response.json().catch(() => ({})) as { data?: { orderCancel?: { job?: { id: string } | null; orderCancelUserErrors: { message: string }[] } }; errors?: { message: string }[] };
+  const userErrors = body.data?.orderCancel?.orderCancelUserErrors ?? [];
+  const error = body.errors?.map((item) => item.message).join(" ") || userErrors.map((item) => item.message).join("; ") || (!response.ok || !body.data?.orderCancel ? `Shopify devolvió HTTP ${response.status}.` : null);
+  return { at: new Date().toISOString(), ok: !error, job: body.data?.orderCancel?.job?.id ?? null, error };
+}
 function canonicalJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
   if (value && typeof value === "object") {
@@ -130,13 +167,15 @@ export async function syncShopifyOrders(db: SupabaseClient, ownerId: string, pro
 export async function refreshMhdStatuses(db: SupabaseClient) {
   const { data: exports, error: exportsError } = await db
     .from("mhd_order_exports")
-    .select("id,mhd_order_id,mhd_status,mhd_status_payload,order:shopify_mhd_orders(shopify_order_id)")
+    .select("id,mhd_order_id,mhd_reference_web,mhd_status,mhd_status_payload,order:shopify_mhd_orders(shopify_order_id,cancelled_at)")
     .eq("status", "exported")
     .not("mhd_order_id", "is", null);
   if (exportsError) throw new Error("No se pudieron cargar los pedidos exportados.");
 
+  const cancelling = await cancelSettings(db);
   let checkedCount = 0;
   let changedCount = 0;
+  let cancelledCount = 0;
   const errors: string[] = [];
   for (const item of exports ?? []) {
     try {
@@ -148,10 +187,21 @@ export async function refreshMhdStatuses(db: SupabaseClient) {
       const latest = received.sort((a, b) => (b.occurred_at ?? "").localeCompare(a.occurred_at ?? ""))[0];
       const currentStatus = body.data.estado_cliente ?? latest?.status ?? item.mhd_status;
       const invoices = invoicesFrom(body.data);
-      const previous = (item.mhd_status_payload ?? {}) as { facturas_en_shopify?: unknown };
+      const previous = (item.mhd_status_payload ?? {}) as { facturas_en_shopify?: unknown; cancelacion_shopify?: unknown };
       let invoicesInShopify = previous.facturas_en_shopify ?? null;
       const shopifyInvoices = toShopifyInvoices(invoices);
-      const shopifyOrderId = (item.order as unknown as { shopify_order_id: string } | null)?.shopify_order_id;
+      const shopifyOrder = item.order as unknown as { shopify_order_id: string; cancelled_at: string | null } | null;
+      const shopifyOrderId = shopifyOrder?.shopify_order_id;
+      let cancellation = previous.cancelacion_shopify ?? null;
+      const cancelledAtMhd = received.filter((entry) => /cancel/i.test(entry.status)).map((entry) => entry.occurred_at).filter(Boolean).sort().at(-1) ?? null;
+      if (shopifyOrderId && debeCancelarEnShopify({ activo: cancelling.activo, desde: cancelling.desde, pedido: body.data as MhdFoundOrder, canceladoEn: cancelledAtMhd, yaIntentado: Boolean(cancellation), canceladoEnShopify: Boolean(shopifyOrder?.cancelled_at) })) {
+        const others = await otherActiveInMhd(item.mhd_reference_web, item.mhd_order_id);
+        if (!others.length) {
+          cancellation = await cancelInShopify(shopifyOrderId, item.mhd_order_id);
+          if ((cancellation as { ok: boolean }).ok) cancelledCount += 1;
+          else errors.push(`Pedido MHD #${item.mhd_order_id}: no se canceló en Shopify. ${(cancellation as { error: string }).error}`);
+        }
+      }
       // Facturas en el metacampo mhd.facturas (src/lib/mhd-invoices.ts), solo si la lista cambia respecto a la última
       // escrita: sin leer Shopify, y lo corregido a mano se respeta hasta que MHD cambie. Sin facturas no se toca.
       if (shopifyInvoices.length && shopifyOrderId && !sameInvoices(shopifyInvoices, invoicesInShopify)) {
@@ -167,6 +217,8 @@ export async function refreshMhdStatuses(db: SupabaseClient) {
         seguimiento: trackingFrom(body.data), facturas: invoices,
         // Última lista escrita en el metacampo mhd.facturas del pedido de Shopify
         facturas_en_shopify: invoicesInShopify,
+        // Cancelación en Shopify de un pedido cancelado en MHD: { at, ok, job, error }. Se intenta una sola vez.
+        cancelacion_shopify: cancellation,
         // Respuesta completa de MHD tal como llega, para no perder ningún campo que añadan
         respuesta_mhd: body.data,
       };
@@ -182,5 +234,5 @@ export async function refreshMhdStatuses(db: SupabaseClient) {
   // Correo de factura a quien aún no la tenga (apagado por defecto: utils › store_settings factura_correo_activo)
   const invoiceEmails = await sendPendingInvoiceEmails(db, (exports ?? []).map((item) => item.id));
   errors.push(...invoiceEmails.errors);
-  return { checkedCount, changedCount, errors, invoiceEmailsSent: invoiceEmails.sent };
+  return { checkedCount, changedCount, cancelledCount, errors, invoiceEmailsSent: invoiceEmails.sent };
 }
