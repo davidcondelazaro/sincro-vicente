@@ -365,8 +365,13 @@ se toca.
 - **Portes:** 0,01 € en todas las líneas (ver «Portes mínimos»).
 - **Servicios** (subida, instalación, retirada): no se bloquean y se envían tal cual.
   El cliente los elige al final y aún no hay forma de evitarlos en la web.
-- **Pendiente:** avisar al cliente de que ya puede recoger cuando MHD lo entregue en
-  la tienda, y registrar la recogida.
+- **Aviso al cliente (David, 14-11-2026): manual por ahora.** Cuando el pedido llega a
+  la tienda, el dependiente lo marca en Shopify como «Listo para recoger» (Shopify
+  manda el correo al cliente) y, al entregarlo, como recogido. No se automatiza
+  porque no sabemos qué señal da MHD: el seguimiento llega al salir del almacén
+  (estado 10), no al llegar, y no sabemos si la entrega en tienda es el estado 12
+  «Finalizado» ni si hay agencia con seguimiento (el almacén también está en Burgos).
+  Queda preguntárselo a MHD.
 
 ### Portes mínimos (14-11-2026)
 
