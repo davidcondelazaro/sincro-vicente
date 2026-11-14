@@ -384,10 +384,10 @@ dirección de envío» y «No se ha enviado el NIF/CIF de la dirección de factu
 En EV61500 no salió porque llevaba el NIF del cliente en las dos; no es un cambio de
 MHD. En las recogidas también se pide.
 
-Prueba en curso (David, 14-11-2026): si el pedido no trae NIF, se manda un espacio en
-blanco (`NIF_VACIO`) en las dos direcciones y se avisa en pantalla. En la recogida,
-el NIF de envío es siempre el espacio, con o sin NIF del cliente. Si MHD lo rechaza
-también, habrá que bloquear la exportación sin NIF.
+Solución (David, 14-11-2026): si el pedido no trae NIF, se manda un espacio en blanco
+(`NIF_VACIO`) en las dos direcciones y se avisa en pantalla. En la recogida, el NIF de
+envío es siempre el espacio, con o sin NIF del cliente. **MHD lo acepta**: EV61599
+entró como #62670 (W261114062670) con `nif_envio` y `nif_facturacion` = " ".
 
 ### Automatización de pedidos: decisiones (31-10-2026, sin implementar)
 

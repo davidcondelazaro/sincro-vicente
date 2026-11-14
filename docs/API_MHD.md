@@ -115,6 +115,7 @@ Cada línea de `productos`: `codigo`, `cantidad`, `precio`, `portes`, `subida`,
 - El `nif` es obligatorio en `envio` y en `facturacion`: vacío en las dos devuelve
   `400` «No se ha enviado el NIF/CIF de la dirección de envío» y «… de la dirección de
   facturación» (EV61599, 14-11-2026). La recogida en tienda no lo libra.
+  Un espacio en blanco sí se acepta y se guarda tal cual (EV61599 → #62670).
 - `nif` y las observaciones se devuelven como `nif_envio` y `observaciones_cliente`.
 - Una dirección no válida (país sin envío, provincia incorrecta) devuelve `400`
   con un array `errors`.
