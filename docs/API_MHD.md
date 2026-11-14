@@ -104,8 +104,15 @@ Cada línea de `productos`: `codigo`, `cantidad`, `precio`, `portes`, `subida`,
 
 ### Comportamientos comprobados en pruebas
 
-- Un SKU inexistente devuelve `201` y `success=true`, pero crea un pedido
-  **vacío** (`arr_productos=[]`, total 0). Hay que validar las líneas devueltas.
+- Un SKU inexistente devuelve `400` con «El producto con código `…` no existe» y no
+  crea nada (visto en los intentos reales del 16-8-2026). El 2-6-2026 la misma prueba
+  devolvió `201` y creó un pedido **vacío**, así que MHD lo cambió entre medias. Las
+  líneas devueltas se siguen validando por seguridad. Falta ver un pedido con unas
+  líneas válidas y otras no: en el 16-8 eran inválidas todas.
+- Por aclarar: con portes 0 el 16-8 también devolvió «Error en la propiedad `portes`»,
+  junto a los códigos inexistentes. Con portes 0,01 y códigos válidos se aceptó. No
+  se ha probado portes 0 con un código válido, que es lo que llevarán las tarjetas.
+  Se supone que lo tolerará: a vigilar en los primeros pedidos reales.
 - Una dirección no válida (país sin envío, provincia incorrecta) devuelve `400`
   con un array `errors`.
 - No hay límite de cantidad: 999999 unidades se aceptan.

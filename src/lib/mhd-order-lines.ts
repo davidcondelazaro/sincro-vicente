@@ -1,9 +1,12 @@
 // Líneas de producto de un pedido de Shopify en el formato de POST /orders de MHD.
 // Ver docs/API_MHD.md y docs/PEDIDOS_MHD_FASE_1.md.
 // - Aparatos: líneas sin lineItemGroup. Van a MHD con su precio y sus portes por unidad.
-// - Servicios (SUBIDA-*, RETIRADA, INSTALACION-*): líneas anidadas bajo su aparato. No van como productos, sino
+// - Servicios (SUBIDA-*, RETIRADA[-*], INSTALACION-*): líneas anidadas bajo su aparato. No van como productos, sino
 //   como subida/retirada/instalacion de la línea del aparato, con el precio unitario pagado.
 // - Otras líneas anidadas (garantías): no son de MHD y no se envían.
+// - Cada variante es un SKU propio y va en su propia línea, sea cual sea el producto.
+// - Líneas sin envío (requiresShipping false, como las tarjetas regalo): un SKU más, con su precio y sin portes.
+//   Pueden venir solas o con otros artículos, y no cuentan para el estado de envío del pedido.
 // - Portes: los del metacampo custom.opciones_entrega de cada aparato para la zona de envío, los mismos que usó
 //   el servicio de portes del checkout. La suma (porte × cantidad) debe coincidir con el envío cobrado.
 
@@ -41,6 +44,7 @@ export function zonaDeEnvio(destino: { country?: string | null; province?: strin
 }
 
 export type ShopifyLinePayload = {
+  requiresShipping?: boolean | null;
   lineItemGroup?: { variantSku?: string | null } | null;
   product?: { metafield?: { value?: string | null } | null } | null;
 };
@@ -56,8 +60,54 @@ type Servicio = "subida" | "instalacion" | "retirada";
 function servicioDeSku(sku: string): Servicio | null {
   if (/^SUBIDA-/.test(sku)) return "subida";
   if (/^INSTALACION-/.test(sku)) return "instalacion";
-  if (sku === "RETIRADA") return "retirada";
+  if (/^RETIRADA(-|$)/.test(sku)) return "retirada";
   return null;
+}
+
+// Un pedido en el que nada requiere envío no tiene dirección de envío: a MHD va la de facturación
+export function pedidoSinEnvio(lineas: { requiresShipping?: boolean | null }[]) {
+  return lineas.length > 0 && lineas.every((linea) => linea.requiresShipping === false);
+}
+
+export type DireccionShopify = {
+  name?: string | null; firstName?: string | null; lastName?: string | null; company?: string | null;
+  address1?: string | null; address2?: string | null; city?: string | null; zip?: string | null; phone?: string | null;
+  countryCodeV2?: string | null; provinceCode?: string | null; province?: string | null;
+};
+type PuntoDeRecogida = { name: string; address: { address1?: string | null; address2?: string | null; city?: string | null; zip?: string | null; provinceCode?: string | null; province?: string | null; countryCode?: string | null; phone?: string | null } };
+export type PedidoConEntrega = {
+  shippingAddress?: DireccionShopify | null; billingAddress?: DireccionShopify | null; customer?: { displayName?: string | null } | null;
+  fulfillmentOrders?: { nodes: { deliveryMethod?: { methodType?: string | null } | null; assignedLocation?: { location?: PuntoDeRecogida | null } | null }[] } | null;
+};
+
+// Recogida en tienda: la ubicación de Shopify elegida por el cliente, con su dirección tal como está en Shopify
+export function puntoDeRecogida(pedido: PedidoConEntrega) {
+  return pedido.fulfillmentOrders?.nodes.find((item) => item.deliveryMethod?.methodType === "PICK_UP")?.assignedLocation?.location ?? null;
+}
+
+// Dirección que va a MHD como envío. En la recogida (David, 14-11-2026) es la de la tienda: de nombre, la tienda; de
+// apellidos, el cliente y su teléfono; el teléfono, el de la tienda. El NIF, el del cliente si lo hay.
+export function direccionDeExportacion(pedido: PedidoConEntrega, lineas: { requiresShipping?: boolean | null }[]): DireccionShopify | null {
+  const punto = puntoDeRecogida(pedido);
+  if (punto) {
+    const cliente = pedido.billingAddress ?? pedido.shippingAddress ?? null;
+    const nombre = cliente?.name?.trim() || [cliente?.firstName, cliente?.lastName].filter(Boolean).join(" ").trim() || pedido.customer?.displayName?.trim() || "Cliente";
+    return {
+      name: punto.name, firstName: punto.name, lastName: [nombre, cliente?.phone?.trim()].filter(Boolean).join(" · "), company: cliente?.company ?? null,
+      address1: punto.address.address1, address2: punto.address.address2, city: punto.address.city, zip: punto.address.zip, phone: punto.address.phone,
+      countryCodeV2: punto.address.countryCode, provinceCode: punto.address.provinceCode, province: punto.address.province,
+    };
+  }
+  return pedido.shippingAddress ?? (pedidoSinEnvio(lineas) ? pedido.billingAddress ?? null : null);
+}
+
+// Shopify cumple sola las tarjetas regalo, así que un pedido con una tarjeta y un aparato sin enviar sale como parcial.
+// Solo cuentan las líneas con envío; en el resto de estados manda el de Shopify.
+export function estadoDeEnvio(estadoShopify: string, lineas: { requiresShipping?: boolean | null; quantity: number; unfulfilledQuantity: number }[]) {
+  const conEnvio = lineas.filter((linea) => linea.requiresShipping !== false);
+  if (estadoShopify !== "PARTIALLY_FULFILLED" || !conEnvio.length) return estadoShopify;
+  if (conEnvio.every((linea) => linea.unfulfilledQuantity === 0)) return "FULFILLED";
+  return conEnvio.every((linea) => linea.unfulfilledQuantity === linea.quantity) ? "UNFULFILLED" : "PARTIALLY_FULFILLED";
 }
 
 const centimos = (importe: number | string) => Math.round(Number(importe) * 100);
@@ -67,6 +117,7 @@ export function buildMhdProductLines(input: {
   lines: OrderLineInput[];
   destination: { country?: string | null; province?: string | null; postalCode?: string | null };
   shippingAmount: string | number;
+  recogida?: boolean; // Recogida en tienda: portes 0 en todas las líneas
 }): { ok: true; productos: MhdProductLine[]; warning: string | null } | { ok: false; reason: string } {
   // Pedidos sincronizados antes de leer servicios y portes no traen product ni lineItemGroup
   if (input.lines.some((line) => !line.payload || !("product" in line.payload) || !("lineItemGroup" in line.payload))) {
@@ -85,7 +136,8 @@ export function buildMhdProductLines(input: {
   for (const aparato of aparatos) {
     const valor = aparato.payload?.product?.metafield?.value;
     let portes = 0; // Sin datos de MHD: 0 €, como en el servicio de portes (decisión del 10-10-2026: se exporta igual, con aviso)
-    if (!valor) sinDatos.push(aparato.sku!);
+    if (aparato.payload?.requiresShipping === false || input.recogida) portes = 0; // No se envía o se recoge: sin portes
+    else if (!valor) sinDatos.push(aparato.sku!);
     else {
       const porte = (JSON.parse(valor) as Record<string, unknown>)[CLAVE_PORTES[zona]];
       if (porte === null || porte === undefined || porte === "") return { ok: false, reason: `${aparato.sku} no tiene portes para la zona ${zona}` };

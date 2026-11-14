@@ -31,7 +31,7 @@ Los pedidos no elegibles también se conservarán localmente, con el motivo de b
 
 ## Controles imprescindibles
 
-- Validar las líneas devueltas por MHD: `201` o `success=true` no bastan, porque MHD puede crear un pedido vacío si un SKU no existe.
+- Validar las líneas devueltas por MHD: `201` o `success=true` no bastan. En junio creaba un pedido vacío si un SKU no existía; desde agosto responde 400, pero se mantiene la comprobación.
 - No reintentar automáticamente un envío cuyo resultado sea desconocido (por ejemplo, un corte de red tras enviar el `POST`). Podría duplicar un pedido en MHD.
 - Antes de marcar un resultado como desconocido, consultar MHD por `referencia_web`; si existe un pedido, recuperar y guardar sus identificadores en lugar de volver a crearlo.
 - Registrar el payload enviado y la respuesta recibida, con acceso limitado y datos personales minimizados en la interfaz.
@@ -320,3 +320,124 @@ Formulario manual en la tarjeta del pedido (`POST /api/mhd-orders/fulfill`):
   queda como `FULFILLED`.
 - Requiere el permiso `write_merchant_managed_fulfillment_orders` en la app de
   Shopify.
+
+### Variantes y artículos sin envío (30-10-2026)
+
+Cada variante con SKU es un artículo independiente para MHD, sea del producto
+que sea: basta con que su SKU exista allí. La tarjeta regalo es el primer caso
+(`10153333` a `10153337`). Lo que cambia el tratamiento no es ser tarjeta, sino
+`requiresShipping = false` en la línea de Shopify, y las líneas sin envío:
+
+- Se exportan con su precio y portes 0 €, solas, varias o con otros artículos.
+- No cuentan para el estado de envío. Shopify cumple sola las tarjetas regalo y
+  deja «parcial» un pedido con un aparato sin enviar; aquí se guarda como
+  pendiente (`estadoDeEnvio`), y como enviado si ya salieron todas las líneas
+  con envío. La etiqueta del admin de Shopify no se puede cambiar.
+- Si ninguna línea requiere envío, Shopify no pide dirección de envío y el pedido
+  llega sin ella. Entonces `envio` lleva la dirección de facturación, con los
+  mismos requisitos que cualquier otra (NIF en Empresa, provincia con envío en
+  MHD). Si hay algo que enviar, se usa la dirección de envío de siempre.
+- La sincronización los trae con `delivery_method:none`, porque Shopify los da
+  por enviados, y `fulfillment_status:partial`.
+
+Si un SKU no existe en MHD, responde 400 y no crea el pedido: queda como fallido, con
+su respuesta a la vista. Las líneas sin envío van con portes 0, y falta confirmar que
+MHD los acepta (ver [API_MHD.md](API_MHD.md)).
+
+### Recogida en tienda (14-11-2026)
+
+Confirmado con el cliente: el pedido se manda a MHD con la dirección del punto de
+recogida como dirección de envío. Solo en lo enviado a MHD; el pedido de Shopify no
+se toca.
+
+- **Origen de los datos:** la tienda sale de Shopify, nunca escrita en el código. Es la
+  ubicación del pedido de preparación con método `PICK_UP` (`fulfillmentOrders ›
+  assignedLocation › location`), con su dirección, provincia, país y teléfono. Hoy son
+  Electrónica Vicente y Yois, en Burgos (`direccionDeExportacion` en
+  `src/lib/mhd-order-lines.ts`).
+- **Envío:** de nombre, la tienda; de apellidos, el nombre y el teléfono del cliente; el
+  teléfono, el de la tienda. El NIF, el del cliente si lo hay.
+- **Facturación:** la del cliente.
+- **Observaciones:** empiezan por «Pedido para recoger en tienda: <tienda>.».
+- **Portes:** 0 en todas las líneas. Si MHD rechaza el 0, se probará con 0,01.
+- **Servicios** (subida, instalación, retirada): no se bloquean y se envían tal cual.
+  El cliente los elige al final y aún no hay forma de evitarlos en la web.
+- **Pendiente:** avisar al cliente de que ya puede recoger cuando MHD lo entregue en
+  la tienda, y registrar la recogida.
+
+### NIF (14-11-2026)
+
+Ya no bloquea la exportación: si falta, se envía vacío y se avisa. Nunca se había
+probado y la documentación de MHD no lo marca como obligatorio.
+
+### Automatización de pedidos: decisiones (31-10-2026, sin implementar)
+
+Al salir a producción, David exporta a mano para ver la salida y los errores. Los
+procesos se preparan apagados, cada uno con su interruptor.
+
+- **Botón de exportar:** hoy no existe en la pantalla. Uno por pedido exportable, con
+  confirmación que muestre artículos, unidades, precio, portes, servicios y dirección.
+- **Proceso 1, cada 15 min:** trae de Shopify los pedidos pagados y, al terminar,
+  exporta los que estén listos, con la misma lógica que el botón.
+- **Proceso 2, cada 30 min:** actualiza los estados de MHD y marca el envío y el
+  seguimiento en Shopify, que avisa al cliente. La factura queda por decidir.
+- **Avisos en tiempo real:** Shopify o MHD sin responder, fallo al exportar con la
+  respuesta de MHD (uno por pedido), pedido bloqueado y fallo al marcar un envío.
+
+**Envíos parciales, regla provisional hasta tener un ejemplo real de MHD:** Enviado con
+un solo seguimiento se marca como envío completo, también con varios artículos. Con
+dos o más seguimientos no se marca nada y se avisa. Ojo: David espera que MHD detalle
+productos y seguimiento de cada envío, y [API_MHD.md](API_MHD.md) recoge lo contrario.
+
+**Servicios en el envío:** cada producto que MHD dé por enviado arrastra sus servicios
+asociados, que también se marcan como enviados. El envío completo ya cierra las líneas
+sin envío; con envíos por artículo habrá que incluirlas por `lineItemGroup`. Sin probar
+con un pedido real: si Shopify acepta mezclar líneas con y sin envío en una operación,
+y que el cliente no reciba dos correos si los servicios están en otra ubicación.
+Falta confirmar si las garantías siguen la misma regla.
+
+### Fallos en la vuelta de sincronización (31-10-2026, sin implementar)
+
+Propuesto y sin objeción de David: si falla un paso, los demás siguen y la vuelta queda
+como fallida, con un correo por hora por paso mientras dure el fallo. Las garantías se
+marcan enviadas con su aparato, como los servicios.
+
+### Exportar con datos viejos (pendiente del cliente, 31-10-2026)
+
+**Trasladado al cliente, a la espera de respuesta.** Hoy la exportación se fía de la
+copia guardada: un pedido reembolsado o cancelado después sigue como exportable y se
+usa `quantity`, no `currentQuantity`.
+
+Propuesta: releer el pedido en Shopify justo antes de exportar, con el botón y en
+automático. Si ya no está pagado, está cancelado o está enviado, se bloquea y se avisa;
+cantidades y dirección, las actuales. La sincronización refrescaría además los pedidos
+guardados sin exportar.
+
+Preguntas al cliente: qué hacer con un reembolso parcial (propuesta: bloquear y
+revisar), si se editan pedidos en Shopify o se cancelan y rehacen, y si un cambio de
+dirección tras el pago se hace en Shopify.
+
+### Duplicados en MHD: decisiones (31-10-2026)
+
+Buscar en MHD por `referencia_web` antes de cada envío y tras cualquier fallo. La
+búsqueda es exacta y hay que pasar el `#`: el 31-10 `#1003` devolvió su pedido, y
+`1003` y `#1009`, ninguno. Si existe completo, se recuperan sus datos sin reenviar; si
+existe incompleto, a revisión manual con aviso; si la búsqueda falla, no se envía nada.
+Sin reintentos automáticos: el proceso 1 intenta una vez y avisa. Un botón «Comprobar
+en MHD» resuelve los pedidos con resultado desconocido.
+
+### Exportación manual (31-10-2026)
+
+Pedidos MHD muestra «Exportar a MHD» en los pedidos exportables, con una confirmación
+de lo que se va a enviar. La lógica está en `src/lib/mhd-order-export.ts`, sin depender
+de la sesión, para que la use también el proceso automático.
+
+- Antes de enviar se relee el pedido en Shopify: si está cancelado, ya no figura como
+  pagado o cambió desde la última lectura, no se envía. Si Shopify o MHD no responden,
+  tampoco.
+- La búsqueda por referencia no trae artículos: se compara con `GET /orders/:id`. Un
+  pedido cancelado en MHD (estado 13) no impide exportar; solo se avisa.
+- Solo un rechazo 4xx sin pedido creado permite reintentar. Un 5xx, un corte o una
+  respuesta incompleta quedan como resultado desconocido y se busca en MHD al momento.
+- «Comprobar en MHD» nunca envía: si encuentra el pedido, recupera sus datos; si no
+  existe, el pedido vuelve a poder exportarse; si no coincide, se revisa a mano.

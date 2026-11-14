@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { buildMhdProductLines } from "@/lib/mhd-order-lines";
+import { buildMhdProductLines, direccionDeExportacion, estadoDeEnvio, pedidoSinEnvio, puntoDeRecogida, type PedidoConEntrega } from "@/lib/mhd-order-lines";
 import { sameInvoices, sendPendingInvoiceEmails, toShopifyInvoices, writeInvoicesToShopify } from "@/lib/mhd-invoices";
 import { mhdApiUrl, mhdConfigFromEnv, mhdFetch } from "@/lib/mhd-importer/sources";
 import { invoicesFrom, trackingFrom, type MhdOrderData } from "@/lib/mhd-order-status";
@@ -10,7 +10,7 @@ import { invoicesFrom, trackingFrom, type MhdOrderData } from "@/lib/mhd-order-s
 type MoneySet = { shopMoney: { amount: string } };
 type DiscountApplication = { __typename: string; allocationMethod: string; targetSelection: string; targetType: string; value: { amount?: string; currencyCode?: string; percentage?: number }; code?: string; title?: string };
 type ShopifyAddress = { name: string | null; firstName: string | null; lastName: string | null; company: string | null; address1: string | null; address2: string | null; city: string | null; zip: string | null; phone: string | null; countryCodeV2: string | null; provinceCode: string | null; province: string | null };
-type ShopifyOrder = { id: string; name: string; createdAt: string; updatedAt: string; cancelledAt: string | null; displayFinancialStatus: string; displayFulfillmentStatus: string; email: string | null; note: string | null; customAttributes: { key: string; value: string | null }[]; customer: { displayName: string } | null; currencyCode: string; discountCodes: string[]; discountApplications: { nodes: DiscountApplication[] }; currentSubtotalPriceSet: MoneySet; currentTotalDiscountsSet: MoneySet; currentShippingPriceSet: MoneySet; currentTotalPriceSet: MoneySet; shippingAddress: ShopifyAddress | null; billingAddress: ShopifyAddress | null; lineItems: { nodes: { id: string; sku: string | null; title: string; quantity: number; discountedUnitPriceSet: MoneySet; product: { id: string; metafield: { value: string } | null } | null; lineItemGroup: { id: string; quantity: number; variantSku: string | null; productId: string | null } | null }[] } };
+type ShopifyOrder = PedidoConEntrega & { id: string; name: string; createdAt: string; updatedAt: string; cancelledAt: string | null; displayFinancialStatus: string; displayFulfillmentStatus: string; email: string | null; note: string | null; customAttributes: { key: string; value: string | null }[]; customer: { displayName: string } | null; currencyCode: string; discountCodes: string[]; discountApplications: { nodes: DiscountApplication[] }; currentSubtotalPriceSet: MoneySet; currentTotalDiscountsSet: MoneySet; currentShippingPriceSet: MoneySet; currentTotalPriceSet: MoneySet; shippingAddress: ShopifyAddress | null; billingAddress: ShopifyAddress | null; lineItems: { nodes: { id: string; sku: string | null; title: string; quantity: number; requiresShipping: boolean; unfulfilledQuantity: number; discountedUnitPriceSet: MoneySet; product: { id: string; metafield: { value: string } | null } | null; lineItemGroup: { id: string; quantity: number; variantSku: string | null; productId: string | null } | null }[] } };
 type ProvinceMapping = { country_iso_2: string; shopify_province_code: string; active: boolean; mhd_province_id: number; mhd_province_name: string };
 
 function required(name: string) { const value = process.env[name]; if (!value) throw new Error(`Falta la variable ${name}.`); return value; }
@@ -23,25 +23,35 @@ export function messageOf(error: unknown) {
   }
   return "No se pudieron actualizar los pedidos.";
 }
+function fulfillmentStatus(order: ShopifyOrder) {
+  return estadoDeEnvio(order.displayFulfillmentStatus, order.lineItems.nodes);
+}
+function exportAddress(order: ShopifyOrder) {
+  return direccionDeExportacion(order, order.lineItems.nodes);
+}
 function eligibility(order: ShopifyOrder, provinceMapping: ProvinceMapping | undefined) {
+  const address = exportAddress(order);
   if (order.cancelledAt) return ["blocked", "Pedido cancelado en Shopify"] as const;
   if (order.displayFinancialStatus !== "PAID") return ["blocked", "Pendiente de pago"] as const;
-  if (order.displayFulfillmentStatus === "FULFILLED") return ["blocked", "Ya enviado completamente en Shopify"] as const;
+  // Sin líneas con envío no hay nada que esperar: Shopify da por enviadas las tarjetas regalo nada más pagarlas
+  if (fulfillmentStatus(order) === "FULFILLED" && !pedidoSinEnvio(order.lineItems.nodes)) return ["blocked", "Ya enviado completamente en Shopify"] as const;
   if (!order.email?.trim()) return ["blocked", "Falta el email del cliente"] as const;
-  if (!order.shippingAddress || !["ES", "PT"].includes(order.shippingAddress.countryCodeV2 ?? "")) return ["blocked", "Destino fuera de España o Portugal"] as const;
-  if (!order.shippingAddress.provinceCode) return ["blocked", "Falta provincia o distrito en la dirección"] as const;
-  if (!order.shippingAddress.address1?.trim() || !order.shippingAddress.city?.trim() || !order.shippingAddress.zip?.trim()) return ["blocked", "Falta calle, localidad o código postal en la dirección de envío"] as const;
-  if (!order.shippingAddress.company?.trim()) return ["blocked", "Falta NIF/CIF en el campo Empresa de Shopify"] as const;
+  if (!address || !["ES", "PT"].includes(address.countryCodeV2 ?? "")) return ["blocked", "Destino fuera de España o Portugal"] as const;
+  if (!address.provinceCode) return ["blocked", "Falta provincia o distrito en la dirección"] as const;
+  if (!address.address1?.trim() || !address.city?.trim() || !address.zip?.trim()) return ["blocked", "Falta calle, localidad o código postal en la dirección de envío"] as const;
   if (order.lineItems.nodes.some((line) => !line.sku)) return ["blocked", "Hay líneas sin SKU"] as const;
   if (!provinceMapping) return ["blocked", "No hay correspondencia de provincia entre Shopify y MHD"] as const;
   if (!provinceMapping.active) return ["blocked", `MHD no presta envío en ${provinceMapping.mhd_province_name}`] as const;
   const mhdLines = buildMhdProductLines({
     lines: order.lineItems.nodes.map((line) => ({ sku: line.sku, quantity: line.quantity, unitPrice: line.discountedUnitPriceSet.shopMoney.amount, payload: line })),
-    destination: { country: order.shippingAddress.countryCodeV2, province: order.shippingAddress.provinceCode, postalCode: order.shippingAddress.zip },
+    destination: { country: address.countryCodeV2, province: address.provinceCode, postalCode: address.zip },
     shippingAmount: order.currentShippingPriceSet.shopMoney.amount,
+    recogida: Boolean(puntoDeRecogida(order)),
   });
   if (!mhdLines.ok) return ["blocked", mhdLines.reason] as const;
-  return ["eligible", mhdLines.warning] as const;
+  // Sin NIF se exporta igual (David, 14-11-2026: a probar si MHD lo acepta vacío)
+  const notes = [puntoDeRecogida(order) ? `Recogida en ${puntoDeRecogida(order)!.name}` : null, address.company?.trim() ? null : "Sin NIF: se envía vacío", mhdLines.warning];
+  return ["eligible", notes.filter(Boolean).join(" · ") || null] as const;
 }
 function discountSummary(order: ShopifyOrder) {
   const labels = new Set([...order.discountCodes, ...order.discountApplications.nodes.map((discount) => discount.code ?? discount.title ?? discount.__typename.replace("DiscountApplication", ""))]);
@@ -79,7 +89,7 @@ export async function syncShopifyOrders(db: SupabaseClient, ownerId: string, pro
   const orders: ShopifyOrder[] = [];
   let cursor: string | null = null;
   do {
-    const response = await fetch(`https://${store}/admin/api/2026-07/graphql.json`, { method: "POST", headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": required("SHOPIFY_ACCESS_TOKEN") }, cache: "no-store", body: JSON.stringify({ query: `query RecentOrders($cursor: String) { orders(first: 100, after: $cursor, query: "financial_status:paid fulfillment_status:unfulfilled", sortKey: UPDATED_AT, reverse: true) { nodes { id name createdAt updatedAt cancelledAt displayFinancialStatus displayFulfillmentStatus email note customAttributes { key value } customer { displayName } currencyCode discountCodes discountApplications(first: 50) { nodes { __typename allocationMethod targetSelection targetType value { ... on MoneyV2 { amount currencyCode } ... on PricingPercentageValue { percentage } } ... on DiscountCodeApplication { code } ... on AutomaticDiscountApplication { title } ... on ManualDiscountApplication { title } ... on ScriptDiscountApplication { title } } } currentSubtotalPriceSet { shopMoney { amount } } currentTotalDiscountsSet { shopMoney { amount } } currentShippingPriceSet { shopMoney { amount } } currentTotalPriceSet { shopMoney { amount } } shippingAddress { name firstName lastName company address1 address2 city zip phone countryCodeV2 provinceCode province } billingAddress { name firstName lastName company address1 address2 city zip phone countryCodeV2 provinceCode province } lineItems(first: 250) { nodes { id sku title quantity discountedUnitPriceSet { shopMoney { amount } } product { id metafield(namespace: \"custom\", key: \"opciones_entrega\") { value } } lineItemGroup { id quantity variantSku productId } } } } pageInfo { hasNextPage endCursor } } }`, variables: { cursor } }) });
+    const response = await fetch(`https://${store}/admin/api/2026-07/graphql.json`, { method: "POST", headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": required("SHOPIFY_ACCESS_TOKEN") }, cache: "no-store", body: JSON.stringify({ query: `query RecentOrders($cursor: String) { orders(first: 100, after: $cursor, query: "financial_status:paid (fulfillment_status:unfulfilled OR fulfillment_status:partial OR delivery_method:none)", sortKey: UPDATED_AT, reverse: true) { nodes { id name createdAt updatedAt cancelledAt displayFinancialStatus displayFulfillmentStatus email note customAttributes { key value } customer { displayName } currencyCode discountCodes discountApplications(first: 50) { nodes { __typename allocationMethod targetSelection targetType value { ... on MoneyV2 { amount currencyCode } ... on PricingPercentageValue { percentage } } ... on DiscountCodeApplication { code } ... on AutomaticDiscountApplication { title } ... on ManualDiscountApplication { title } ... on ScriptDiscountApplication { title } } } currentSubtotalPriceSet { shopMoney { amount } } currentTotalDiscountsSet { shopMoney { amount } } currentShippingPriceSet { shopMoney { amount } } currentTotalPriceSet { shopMoney { amount } } shippingAddress { name firstName lastName company address1 address2 city zip phone countryCodeV2 provinceCode province } billingAddress { name firstName lastName company address1 address2 city zip phone countryCodeV2 provinceCode province } fulfillmentOrders(first: 10) { nodes { deliveryMethod { methodType } assignedLocation { location { name address { address1 address2 city zip provinceCode province countryCode phone } } } } } lineItems(first: 250) { nodes { id sku title quantity requiresShipping unfulfilledQuantity discountedUnitPriceSet { shopMoney { amount } } product { id metafield(namespace: \"custom\", key: \"opciones_entrega\") { value } } lineItemGroup { id quantity variantSku productId } } } } pageInfo { hasNextPage endCursor } } }`, variables: { cursor } }) });
     const body = await response.json() as { data?: { orders?: { nodes: ShopifyOrder[]; pageInfo: { hasNextPage: boolean; endCursor: string | null } } }; errors?: { message: string }[] };
     if (!response.ok || body.errors?.length) throw new Error(body.errors?.map((item) => item.message).join(" ") || `Shopify devolvió HTTP ${response.status}.`);
     const connection = body.data?.orders;
@@ -104,11 +114,12 @@ export async function syncShopifyOrders(db: SupabaseClient, ownerId: string, pro
     const previousUpdatedAt = storedByShopifyId.get(order.id);
     if (!previousUpdatedAt) createdCount += 1;
     else if (new Date(previousUpdatedAt).getTime() !== new Date(order.updatedAt).getTime()) updatedCount += 1;
-    const provinceMapping = order.shippingAddress?.countryCodeV2 && order.shippingAddress.provinceCode
-      ? provinceMappingByKey.get(`${order.shippingAddress.countryCodeV2}:${order.shippingAddress.provinceCode}`)
+    const address = exportAddress(order);
+    const provinceMapping = address?.countryCodeV2 && address.provinceCode
+      ? provinceMappingByKey.get(`${address.countryCodeV2}:${address.provinceCode}`)
       : undefined;
     const [eligibilityStatus, eligibilityReason] = eligibility(order, provinceMapping);
-    const { data: saved, error } = await db.from("shopify_mhd_orders").upsert({ owner_id: ownerId, shopify_order_id: order.id, shopify_order_name: order.name, financial_status: order.displayFinancialStatus, fulfillment_status: order.displayFulfillmentStatus, cancelled_at: order.cancelledAt, email: order.email, order_note: order.note, currency_code: order.currencyCode, discount_codes: order.discountCodes, discount_summary: discountSummary(order), discount_applications: order.discountApplications.nodes, subtotal_amount: order.currentSubtotalPriceSet.shopMoney.amount, discount_amount: order.currentTotalDiscountsSet.shopMoney.amount, shipping_amount: order.currentShippingPriceSet.shopMoney.amount, total_amount: order.currentTotalPriceSet.shopMoney.amount, shipping_country_code: order.shippingAddress?.countryCodeV2 ?? null, shipping_province_code: order.shippingAddress?.provinceCode ?? null, shipping_province_name: order.shippingAddress?.province ?? null, eligibility_status: eligibilityStatus, eligibility_reason: eligibilityReason, source_updated_at: order.updatedAt, source_payload: order, synced_at: new Date().toISOString() }, { onConflict: "owner_id,shopify_order_id" }).select("id").single();
+    const { data: saved, error } = await db.from("shopify_mhd_orders").upsert({ owner_id: ownerId, shopify_order_id: order.id, shopify_order_name: order.name, financial_status: order.displayFinancialStatus, fulfillment_status: fulfillmentStatus(order), cancelled_at: order.cancelledAt, email: order.email, order_note: order.note, currency_code: order.currencyCode, discount_codes: order.discountCodes, discount_summary: discountSummary(order), discount_applications: order.discountApplications.nodes, subtotal_amount: order.currentSubtotalPriceSet.shopMoney.amount, discount_amount: order.currentTotalDiscountsSet.shopMoney.amount, shipping_amount: order.currentShippingPriceSet.shopMoney.amount, total_amount: order.currentTotalPriceSet.shopMoney.amount, shipping_country_code: address?.countryCodeV2 ?? null, shipping_province_code: address?.provinceCode ?? null, shipping_province_name: address?.province ?? null, eligibility_status: eligibilityStatus, eligibility_reason: eligibilityReason, source_updated_at: order.updatedAt, source_payload: order, synced_at: new Date().toISOString() }, { onConflict: "owner_id,shopify_order_id" }).select("id").single();
     if (error || !saved) throw error ?? new Error("No se pudo guardar un pedido de Shopify.");
     const lines = order.lineItems.nodes.map((line) => ({ order_id: saved.id, shopify_line_id: line.id, sku: line.sku, title: line.title, quantity: line.quantity, unit_price: line.discountedUnitPriceSet.shopMoney.amount, line_payload: line }));
     if (lines.length) { const { error: lineError } = await db.from("shopify_mhd_order_lines").upsert(lines, { onConflict: "order_id,shopify_line_id" }); if (lineError) throw lineError; }
