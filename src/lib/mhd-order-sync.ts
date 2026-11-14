@@ -49,8 +49,8 @@ function eligibility(order: ShopifyOrder, provinceMapping: ProvinceMapping | und
     recogida: Boolean(puntoDeRecogida(order)),
   });
   if (!mhdLines.ok) return ["blocked", mhdLines.reason] as const;
-  // Sin NIF se exporta igual (David, 14-11-2026: a probar si MHD lo acepta vacío)
-  const notes = [puntoDeRecogida(order) ? `Recogida en ${puntoDeRecogida(order)!.name}` : null, address.company?.trim() ? null : "Sin NIF: se envía vacío", mhdLines.warning];
+  // Sin NIF se exporta con un espacio en blanco (MHD rechaza el vacío; David, 14-11-2026: a probar)
+  const notes = [puntoDeRecogida(order) ? `Recogida en ${puntoDeRecogida(order)!.name}` : null, address.company?.trim() ? null : "Sin NIF: se envía un espacio en blanco", mhdLines.warning];
   return ["eligible", notes.filter(Boolean).join(" · ") || null] as const;
 }
 function discountSummary(order: ShopifyOrder) {

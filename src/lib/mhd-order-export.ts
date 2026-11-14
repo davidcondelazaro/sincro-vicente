@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { buildMhdProductLines, direccionDeExportacion, puntoDeRecogida, type MhdProductLine, type PedidoConEntrega, type ShopifyLinePayload } from "@/lib/mhd-order-lines";
+import { buildMhdProductLines, direccionDeExportacion, NIF_VACIO, puntoDeRecogida, type MhdProductLine, type PedidoConEntrega, type ShopifyLinePayload } from "@/lib/mhd-order-lines";
 import { buildMhdOrderObservations } from "@/lib/mhd-order-notes";
 import { mhdOrdersFetch } from "@/lib/mhd-order-sync";
 import { erroresDeMhd, reconciliar, resultadoDeEnvio, type MhdFoundOrder, type MhdPostResponse } from "@/lib/mhd-order-reconcile";
@@ -40,7 +40,7 @@ function splitName(address: Address) {
 function mhdAddress(address: Address, mapping: Mapping, country: Country, fallbackNif?: string | null) {
   const { nombre, apellidos } = splitName(address);
   return {
-    nombre, apellidos, nif: address.company?.trim() || fallbackNif?.trim() || "", telefono: address.phone?.trim() || "",
+    nombre, apellidos, nif: address.company?.trim() || fallbackNif?.trim() || NIF_VACIO, telefono: address.phone?.trim() || "",
     direccion: [address.address1, address.address2].filter(Boolean).join(", "),
     cp: address.zip?.trim() || "", localidad: address.city?.trim() || "",
     id_provincia: mapping.mhd_province_id, provincia: mapping.mhd_province_name,
@@ -109,11 +109,12 @@ async function prepare(db: SupabaseClient, orderId: string) {
   const payload = {
     email: typedOrder.email.trim(), referencia_web: typedOrder.shopify_order_name,
     observaciones: [pickup ? `Pedido para recoger en tienda: ${pickup.name}.` : null, buildMhdOrderObservations({ orderNote: typedOrder.order_note, discountSummary: typedOrder.discount_summary, customAttributes: typedOrder.source_payload.customAttributes })].filter(Boolean).join("\n"),
-    envio: mhdAddress(address!, typedMapping, typedCountry),
+    // En la recogida el envío va a la tienda: su NIF siempre es el espacio, el del cliente va solo en facturación
+    envio: { ...mhdAddress(address!, typedMapping, typedCountry), ...(pickup ? { nif: NIF_VACIO } : {}) },
     ...(billing ? { facturacion: billing } : {}),
     productos: mhdLines.productos,
   };
-  const warning = [pickup ? `Recogida en ${pickup.name}: se envía a la tienda, sin portes` : null, payload.envio.nif ? null : "Sin NIF: se envía vacío, a ver si MHD lo acepta", mhdLines.warning].filter(Boolean).join(" · ") || null;
+  const warning = [pickup ? `Recogida en ${pickup.name}: se envía a la tienda, sin portes` : null, (billing ?? payload.envio).nif.trim() ? null : "Sin NIF: se envía un espacio en blanco, a ver si MHD lo acepta", mhdLines.warning].filter(Boolean).join(" · ") || null;
   return { ok: true as const, order: typedOrder, lines: typedLines, prior: typedPrior, payload, warning };
 }
 

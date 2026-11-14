@@ -112,6 +112,9 @@ Cada línea de `productos`: `codigo`, `cantidad`, `precio`, `portes`, `subida`,
 - Portes 0 no se aceptan: con un código válido devuelve `400` «Error en la propiedad
   `portes` de `productos[0]`» (EV61500, 14-11-2026). Con 0,01 € se acepta: el mismo
   pedido entró como #62668 con `subtotal_portes` 0,01.
+- El `nif` es obligatorio en `envio` y en `facturacion`: vacío en las dos devuelve
+  `400` «No se ha enviado el NIF/CIF de la dirección de envío» y «… de la dirección de
+  facturación» (EV61599, 14-11-2026). La recogida en tienda no lo libra.
 - `nif` y las observaciones se devuelven como `nif_envio` y `observaciones_cliente`.
 - Una dirección no válida (país sin envío, provincia incorrecta) devuelve `400`
   con un array `errors`.

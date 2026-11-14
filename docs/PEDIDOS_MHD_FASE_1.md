@@ -358,7 +358,8 @@ se toca.
   Electrónica Vicente y Yois, en Burgos (`direccionDeExportacion` en
   `src/lib/mhd-order-lines.ts`).
 - **Envío:** de nombre, la tienda; de apellidos, el nombre y el teléfono del cliente; el
-  teléfono, el de la tienda. El NIF, el del cliente si lo hay.
+  teléfono, el de la tienda. El NIF, siempre un espacio en blanco (`NIF_VACIO`): el del
+  cliente va solo en facturación (David, 14-11-2026).
 - **Facturación:** la del cliente.
 - **Observaciones:** empiezan por «Pedido para recoger en tienda: <tienda>.».
 - **Portes:** 0,01 € en todas las líneas (ver «Portes mínimos»).
@@ -376,8 +377,17 @@ comprobación con lo cobrado en Shopify se hace antes, con los portes reales.
 
 ### NIF (14-11-2026)
 
-Ya no bloquea la exportación: si falta, se envía vacío y se avisa. Nunca se había
-probado y la documentación de MHD no lo marca como obligatorio.
+MHD exige el NIF en la dirección de envío y en la de facturación, aunque su
+documentación no lo marca como obligatorio. Con el NIF vacío en las dos devuelve 400
+con dos errores (pedido de prueba EV61599): «No se ha enviado el NIF/CIF de la
+dirección de envío» y «No se ha enviado el NIF/CIF de la dirección de facturación».
+En EV61500 no salió porque llevaba el NIF del cliente en las dos; no es un cambio de
+MHD. En las recogidas también se pide.
+
+Prueba en curso (David, 14-11-2026): si el pedido no trae NIF, se manda un espacio en
+blanco (`NIF_VACIO`) en las dos direcciones y se avisa en pantalla. En la recogida,
+el NIF de envío es siempre el espacio, con o sin NIF del cliente. Si MHD lo rechaza
+también, habrá que bloquear la exportación sin NIF.
 
 ### Automatización de pedidos: decisiones (31-10-2026, sin implementar)
 

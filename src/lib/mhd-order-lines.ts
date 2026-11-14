@@ -87,7 +87,7 @@ export function puntoDeRecogida(pedido: PedidoConEntrega) {
 }
 
 // Dirección que va a MHD como envío. En la recogida (David, 14-11-2026) es la de la tienda: de nombre, la tienda; de
-// apellidos, el cliente y su teléfono; el teléfono, el de la tienda. El NIF, el del cliente si lo hay.
+// apellidos, el cliente y su teléfono; el teléfono, el de la tienda. El NIF de envío, siempre un espacio (NIF_VACIO); el del cliente va en facturación.
 export function direccionDeExportacion(pedido: PedidoConEntrega, lineas: { requiresShipping?: boolean | null }[]): DireccionShopify | null {
   const punto = puntoDeRecogida(pedido);
   if (punto) {
@@ -112,6 +112,9 @@ export function estadoDeEnvio(estadoShopify: string, lineas: { requiresShipping?
 }
 
 export const PORTES_MINIMOS = 0.01;
+
+// MHD exige NIF en envío y facturación (EV61599); sin él se prueba con un espacio (David, 14-11-2026)
+export const NIF_VACIO = " ";
 const centimos = (importe: number | string) => Math.round(Number(importe) * 100);
 const euros = (cents: number) => `${(cents / 100).toFixed(2).replace(".", ",")} €`;
 
