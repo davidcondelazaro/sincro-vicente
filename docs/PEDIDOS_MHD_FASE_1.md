@@ -361,11 +361,18 @@ se toca.
   teléfono, el de la tienda. El NIF, el del cliente si lo hay.
 - **Facturación:** la del cliente.
 - **Observaciones:** empiezan por «Pedido para recoger en tienda: <tienda>.».
-- **Portes:** 0 en todas las líneas. Si MHD rechaza el 0, se probará con 0,01.
+- **Portes:** 0,01 € en todas las líneas (ver «Portes mínimos»).
 - **Servicios** (subida, instalación, retirada): no se bloquean y se envían tal cual.
   El cliente los elige al final y aún no hay forma de evitarlos en la web.
 - **Pendiente:** avisar al cliente de que ya puede recoger cuando MHD lo entregue en
   la tienda, y registrar la recogida.
+
+### Portes mínimos (14-11-2026)
+
+MHD no acepta portes 0: con un código válido devuelve 400 «Error en la propiedad
+`portes`» (pedido de prueba EV61500). Toda línea con portes 0 (recogida, tarjetas
+regalo y productos sin envío, aparatos sin datos de portes) se manda con 0,01 €. La
+comprobación con lo cobrado en Shopify se hace antes, con los portes reales.
 
 ### NIF (14-11-2026)
 

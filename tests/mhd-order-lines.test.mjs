@@ -7,11 +7,11 @@ const destination = { country: "ES", province: "SA", postalCode: "37900" };
 const tarjeta = (sku, quantity = 1, unitPrice = "25.00") => ({ sku, quantity, unitPrice, payload: { requiresShipping: false, product: { metafield: null }, lineItemGroup: null } });
 const aparato = { sku: "32A4Q", quantity: 1, unitPrice: "199.00", payload: { requiresShipping: true, product: { metafield: { value: JSON.stringify({ gastos_envio_peninsula_particulares: 9.99 }) } }, lineItemGroup: null } };
 
-test("una tarjeta regalo sola se exporta como un SKU con su precio, sin portes ni aviso", () => {
+test("una tarjeta regalo sola se exporta como un SKU con su precio, con portes mínimos y sin aviso", () => {
   const result = buildMhdProductLines({ lines: [tarjeta("10153333")], destination, shippingAmount: "0.00" });
   assert.equal(result.ok, true);
   assert.equal(result.warning, null);
-  assert.deepEqual(result.productos.map(({ codigo, cantidad, precio, portes }) => ({ codigo, cantidad, precio, portes })), [{ codigo: "10153333", cantidad: 1, precio: 25, portes: 0 }]);
+  assert.deepEqual(result.productos.map(({ codigo, cantidad, precio, portes }) => ({ codigo, cantidad, precio, portes })), [{ codigo: "10153333", cantidad: 1, precio: 25, portes: 0.01 }]);
 });
 
 test("varias tarjetas de distinto importe van en líneas independientes", () => {
@@ -23,14 +23,14 @@ test("con otros artículos, los portes salen solo de los aparatos", () => {
   const result = buildMhdProductLines({ lines: [aparato, tarjeta("10153334", 1, "50.00")], destination, shippingAmount: "9.99" });
   assert.equal(result.ok, true);
   assert.equal(result.warning, null);
-  assert.deepEqual(result.productos.map(({ codigo, portes }) => [codigo, portes]), [["32A4Q", 9.99], ["10153334", 0]]);
+  assert.deepEqual(result.productos.map(({ codigo, portes }) => [codigo, portes]), [["32A4Q", 9.99], ["10153334", 0.01]]);
 });
 
 test("cualquier línea sin envío se trata igual, aunque su producto tenga portes", () => {
   const conPortes = { sku: "DIGITAL-1", quantity: 1, unitPrice: "10.00", payload: { requiresShipping: false, product: aparato.payload.product, lineItemGroup: null } };
   const result = buildMhdProductLines({ lines: [conPortes], destination, shippingAmount: 0 });
   assert.equal(result.ok, true);
-  assert.equal(result.productos[0].portes, 0);
+  assert.equal(result.productos[0].portes, 0.01);
 });
 
 test("solo es pedido sin envío si ninguna línea lo requiere", () => {
@@ -109,5 +109,5 @@ test("sin recogida se usa la dirección de envío", () => {
 test("en la recogida todos los portes van a 0 y cuadran con los 0 € cobrados", () => {
   const result = buildMhdProductLines({ lines: [aparato], destination: { country: "ES", province: "BU", postalCode: "09007" }, shippingAmount: "0.00", recogida: true });
   assert.equal(result.ok, true);
-  assert.equal(result.productos[0].portes, 0);
+  assert.equal(result.productos[0].portes, 0.01);
 });

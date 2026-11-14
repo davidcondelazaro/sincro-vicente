@@ -111,6 +111,7 @@ export function estadoDeEnvio(estadoShopify: string, lineas: { requiresShipping?
   return conEnvio.every((linea) => linea.unfulfilledQuantity === linea.quantity) ? "UNFULFILLED" : "PARTIALLY_FULFILLED";
 }
 
+export const PORTES_MINIMOS = 0.01;
 const centimos = (importe: number | string) => Math.round(Number(importe) * 100);
 const euros = (cents: number) => `${(cents / 100).toFixed(2).replace(".", ",")} €`;
 
@@ -171,6 +172,10 @@ export function buildMhdProductLines(input: {
   if (portesCalculados !== portesCobrados) {
     return { ok: false, reason: `Los portes por producto suman ${euros(portesCalculados)} y en Shopify se cobraron ${euros(portesCobrados)}` };
   }
+
+  // MHD rechaza portes 0 con «Error en la propiedad `portes`» (pedido EV61500, 14-11-2026): se manda el mínimo, 0,01 €.
+  // Va después de cuadrar con lo cobrado en Shopify, que sí es 0.
+  for (const producto of productos) if (producto.portes === 0) producto.portes = PORTES_MINIMOS;
 
   const warning = sinDatos.length
     ? `${sinDatos.length === 1 ? "1 producto" : `${sinDatos.length} productos`} sin datos de portes de MHD (${sinDatos.join(", ")}): se envían a 0 €`
