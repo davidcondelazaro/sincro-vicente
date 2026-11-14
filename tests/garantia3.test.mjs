@@ -4,7 +4,7 @@ import test from "node:test";
 import { createJiti } from "jiti";
 
 const jiti = createJiti(import.meta.url);
-const { canceladoEnMhd, csvContratos, datoQueFalta, fechaEnviado, fechaPrevista, fechaRecogida, filasDePedido, interpretarRespuesta, mesAnterior, motivoParaNoPedir, normalizarTelefono, pedidoDePrueba, PREFIJO_PRUEBA, respuestaSimulada } = await jiti.import("../src/lib/garantia3.ts");
+const { canceladoEnMhd, csvContratos, datoQueFalta, fechaEnviado, fechaPrevista, fechaRecogida, filasDePedido, interpretarRespuesta, mesAnterior, motivoAlCrear, motivoParaNoPedir, normalizarTelefono, pedidoDePrueba, PREFIJO_PRUEBA, respuestaSimulada } = await jiti.import("../src/lib/garantia3.ts");
 
 test("teléfono: prefijo único y 9 cifras, con los formatos que había en PrestaShop", () => {
   for (const entrada of ["600111222", "34600111222", "+34600111222", "34+34600111222", "34 600 11 12 22", "0034600111222", "(34) 600111222"]) assert.equal(normalizarTelefono(entrada, "ES"), "34600111222", entrada);
@@ -23,6 +23,23 @@ test("una fila por unidad y solo de las 9 garantías", () => {
   assert.deepEqual(filas.map((fila) => [fila.sku, fila.unidad, fila.ean13]), [["G3PDES500", 1, "8033509880394"], ["G3PDES500", 2, "8033509880394"]]);
   assert.equal(filas[0].telefono, "34600111222");
   assert.equal(datoQueFalta(filas[0]), null);
+});
+
+// Líneas guardadas desde el 2026-11-14: proveedor y código de barras de Shopify, SKU = código de MHD.
+const lineaMhd = (sku, barcode, vendor = "GARANTIA3") => ({ shopify_line_id: `gid/${sku}`, sku, quantity: 1, line_payload: { lineItemGroup: { variantSku: "APARATO" }, product: { vendor }, variant: { barcode } } });
+
+test("garantías por proveedor y EAN del código de barras, con el SKU de MHD", () => {
+  const filas = filasDePedido(pedido, [lineaMhd("10040585", "8033509880394"), lineaMhd("10040590", "8033509885191"), lineaMhd("10000449", "1234567890123", "ACER"), lineaMhd("10040599", null)]);
+  assert.deepEqual(filas.map((fila) => [fila.sku, fila.ean13]), [["10040585", "8033509880394"], ["10040590", "8033509885191"], ["10040599", ""]]);
+  assert.equal(motivoAlCrear(filas[0]), null); // +2 de 500: alta automática como siempre
+  assert.match(motivoAlCrear(filas[1]), /Cover, Combi o Display/); // Cover: bloqueada y aviso
+  assert.match(motivoAlCrear(filas[2]), /código de barras/);
+});
+
+test("las líneas antiguas sin proveedor ni código de barras siguen saliendo por la tabla", () => {
+  const [fila] = filasDePedido(pedido, [linea("G3PD3ES1000")]);
+  assert.equal(fila.ean13, "8033509887676");
+  assert.equal(motivoAlCrear(fila), null);
 });
 
 test("sin aparato o sin teléfono queda indicado", () => {

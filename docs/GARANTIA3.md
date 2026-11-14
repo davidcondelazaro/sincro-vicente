@@ -26,7 +26,8 @@ Con 14 días desde el envío, en PrestaShop acabaron reembolsados 7 de 353 contr
 
 - Pedido no cancelado y pagado, ni en Shopify ni en MHD (estado Cancelado, id 13).
 - Quedan unidades vivas de la garantía y de su aparato (`currentQuantity`). Se mira línea a línea: un reembolso parcial de otro artículo no bloquea la garantía, al contrario que en PrestaShop.
-- La línea tiene `lineItemGroup` y su SKU está en `GARANTIA3_EANS` (`src/lib/garantia3.ts`). El proxy no lleva lista de EAN: una ampliación nueva solo se añade ahí.
+- La línea es de Garantía3: su producto tiene el proveedor `GARANTIA3` en Shopify, o su SKU está en `GARANTIA3_EANS` (`src/lib/garantia3.ts`; respaldo para las líneas guardadas antes del 2026-11-14 y para el SKU antiguo de las 9 ampliaciones). El EAN es el código de barras de la variante (la consulta de pedidos lo guarda desde el 2026-11-14) o, si no lo hay, el de la tabla. El proxy no lleva lista de EAN.
+- Solo se piden solas las ampliaciones +2 y +3 (los EAN de la tabla). Cover, Combi y Display, o una garantía sin código de barras, crean su fila ya **bloqueada** y mandan el aviso al momento, para pedir el contrato a mano: falta confirmar con Garantía3 que nuestro token los admite, desde cuándo cuentan los 7 días de Cover y Combi y el `promocode` de Display (ver `docs/GARANTIAS_DESDE_MHD.md`).
 - Hay nombre, apellidos, email y teléfono.
 - Modo producción. En modo test no se llama a Garantía3 por los pedidos reales.
 

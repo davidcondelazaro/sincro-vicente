@@ -1,6 +1,8 @@
 // Reglas de las altas de Garantía3, sin acceso a red ni base de datos. Ver docs/GARANTIA3.md.
 
-// SKU de las ampliaciones en Shopify y su EAN. Una ampliación nueva solo hay que añadirla aquí: el proxy no lleva lista.
+// Desde el 2026-11-14 (docs/GARANTIAS_DESDE_MHD.md) una línea es de Garantía3 por su proveedor en Shopify (GARANTIA3) y su
+// EAN es el código de barras de la variante: el SKU pasa a ser el código de MHD. Esta tabla queda como respaldo para las
+// líneas guardadas antes y para las 9 ampliaciones con su SKU antiguo. El proxy no lleva lista.
 export const GARANTIA3_EANS: Record<string, string> = {
   G3PDES250: "8033509880271", G3PDES500: "8033509880394", G3PDES1000: "8033509880400", G3PDES2000: "8033509880417", G3PDES5000: "8033509880424",
   G3PD3ES250: "8033509887652", G3PD3ES500: "8033509887669", G3PD3ES1000: "8033509887676", G3PD3ES2000: "8033509887683",
@@ -8,7 +10,27 @@ export const GARANTIA3_EANS: Record<string, string> = {
 
 export type Direccion = { firstName?: string | null; lastName?: string | null; phone?: string | null; countryCodeV2?: string | null };
 export type PedidoGuardado = { id?: string; name?: string; createdAt?: string; email?: string | null; billingAddress?: Direccion | null; shippingAddress?: Direccion | null };
-export type LineaGuardada = { shopify_line_id: string; sku: string | null; quantity: number; line_payload: { lineItemGroup?: { variantSku?: string | null } | null } | null };
+export type LineaGuardada = { shopify_line_id: string; sku: string | null; quantity: number; line_payload: { lineItemGroup?: { variantSku?: string | null } | null; product?: { vendor?: string | null } | null; variant?: { barcode?: string | null } | null } | null };
+
+// Solo se piden solas las ampliaciones +2 y +3 (los EAN de la tabla), probadas en PrestaShop. Cover, Combi y Display se
+// bloquean y avisan al momento hasta confirmar con Garantía3 el token, el plazo (Cover y Combi: 7 días desde la compra) y el
+// promocode de Display. Ver «Pendiente de terceros» en docs/GARANTIAS_DESDE_MHD.md.
+const EANS_AUTOMATICOS = new Set(Object.values(GARANTIA3_EANS));
+export const PROVEEDOR_GARANTIA3 = "GARANTIA3";
+
+export const esGarantia3 = (linea: LineaGuardada) => linea.line_payload?.product?.vendor === PROVEEDOR_GARANTIA3 || Boolean(GARANTIA3_EANS[linea.sku ?? ""]);
+
+export function eanDeLinea(linea: LineaGuardada) {
+  const barcode = linea.line_payload?.variant?.barcode?.trim() ?? "";
+  return /^\d{13}$/.test(barcode) ? barcode : GARANTIA3_EANS[linea.sku ?? ""] ?? "";
+}
+
+// Por qué una fila no se puede pedir sola, decidido al crearla. null = sigue el camino de siempre (espera y alta).
+export function motivoAlCrear(fila: Pick<Fila, "ean13">) {
+  if (!fila.ean13) return "La garantía no tiene código de barras (EAN) en Shopify: pedir el contrato a mano";
+  if (!EANS_AUTOMATICOS.has(fila.ean13)) return "Cover, Combi o Display: todavía sin alta automática, pedir el contrato a mano (Cover y Combi caducan a los 7 días de la compra)";
+  return null;
+}
 export type Fila = { shopify_line_id: string; unidad: number; sku: string; ean13: string; sku_aparato: string | null; nombre: string | null; apellidos: string | null; email: string | null; telefono: string | null };
 
 const PREFIJOS: Record<string, string> = { ES: "34", PT: "351" };
@@ -27,10 +49,10 @@ export function filasDePedido(pedido: PedidoGuardado, lineas: LineaGuardada[]): 
   const direccion = pedido.billingAddress?.firstName || pedido.billingAddress?.lastName ? pedido.billingAddress : pedido.shippingAddress;
   const telefono = normalizarTelefono(pedido.billingAddress?.phone, pedido.billingAddress?.countryCodeV2) ?? normalizarTelefono(pedido.shippingAddress?.phone, pedido.shippingAddress?.countryCodeV2);
   return lineas.flatMap((linea) => {
-    const ean13 = GARANTIA3_EANS[linea.sku ?? ""];
-    if (!ean13) return [];
+    if (!esGarantia3(linea)) return [];
+    const ean13 = eanDeLinea(linea);
     return Array.from({ length: linea.quantity }, (_, indice) => ({
-      shopify_line_id: linea.shopify_line_id, unidad: indice + 1, sku: linea.sku!, ean13, sku_aparato: linea.line_payload?.lineItemGroup?.variantSku ?? null,
+      shopify_line_id: linea.shopify_line_id, unidad: indice + 1, sku: linea.sku ?? "", ean13, sku_aparato: linea.line_payload?.lineItemGroup?.variantSku ?? null,
       nombre: direccion?.firstName?.trim() || null, apellidos: direccion?.lastName?.trim() || null, email: pedido.email?.trim() || null, telefono,
     }));
   });

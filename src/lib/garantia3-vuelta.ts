@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { alertRecipients, EMAIL_PREFIX, escapeHtml, sendEmail } from "@/lib/email";
-import { canceladoEnMhd, csvContratos, datoQueFalta, fechaEnviado, fechaPrevista, fechaRecogida, filasDePedido, interpretarRespuesta, mesAnterior, motivoParaNoPedir, pedidoDePrueba, PREFIJO_PRUEBA, respuestaSimulada, type LineaGuardada, type PayloadMhd, type PedidoGuardado, type PedidoVivo, type Resultado } from "@/lib/garantia3";
+import { canceladoEnMhd, csvContratos, datoQueFalta, fechaEnviado, fechaPrevista, fechaRecogida, filasDePedido, interpretarRespuesta, mesAnterior, motivoAlCrear, motivoParaNoPedir, PROVEEDOR_GARANTIA3, pedidoDePrueba, PREFIJO_PRUEBA, respuestaSimulada, type LineaGuardada, type PayloadMhd, type PedidoGuardado, type PedidoVivo, type Resultado } from "@/lib/garantia3";
 import { refreshMhdStatuses, syncShopifyOrders } from "@/lib/mhd-order-sync";
 
 // Vuelta diaria de Garantía3: trae pedidos y estados con el módulo de Pedidos MHD, crea una fila por unidad, espera los
@@ -68,7 +68,8 @@ async function llamarProxy(env: Env, fila: Pick<Contrato, "ean13" | "nombre" | "
 }
 
 async function crearFilas(db: SupabaseClient, ajustes: Ajustes) {
-  const { data, error } = await db.from("shopify_mhd_order_lines").select("shopify_line_id,sku,quantity,line_payload,shopify_mhd_orders!inner(shopify_order_id,shopify_order_name,source_payload)").like("sku", "G3PD%");
+  // Por proveedor (líneas guardadas desde el 2026-11-14) o por el SKU antiguo de las ampliaciones (las de antes).
+  const { data, error } = await db.from("shopify_mhd_order_lines").select("shopify_line_id,sku,quantity,line_payload,shopify_mhd_orders!inner(shopify_order_id,shopify_order_name,source_payload)").or(`sku.like.G3PD%,line_payload->product->>vendor.eq.${PROVEEDOR_GARANTIA3}`);
   if (error) throw error;
   let creadas = 0;
   const vistas = new Set<string>();
@@ -76,10 +77,15 @@ async function crearFilas(db: SupabaseClient, ajustes: Ajustes) {
     const pedido = row.shopify_mhd_orders;
     if (vistas.has(row.shopify_line_id) || (pedido.source_payload.createdAt ?? "") < ajustes.desde) continue;
     vistas.add(row.shopify_line_id);
-    const filas = filasDePedido(pedido.source_payload, [row]).map((fila) => ({ ...fila, shopify_order_id: pedido.shopify_order_id, shopify_order_name: pedido.shopify_order_name, order_created_at: pedido.source_payload.createdAt ?? null, modo: ajustes.modo }));
-    const { data: nuevas, error: insertError } = await db.from("garantia3_contratos").upsert(filas, { onConflict: "shopify_line_id,unidad", ignoreDuplicates: true }).select("id");
+    const filas = filasDePedido(pedido.source_payload, [row]).map((fila) => {
+      const motivo = motivoAlCrear(fila);
+      return { ...fila, shopify_order_id: pedido.shopify_order_id, shopify_order_name: pedido.shopify_order_name, order_created_at: pedido.source_payload.createdAt ?? null, modo: ajustes.modo, ...(motivo ? { estado: "bloqueado", motivo } : {}) };
+    });
+    const { data: nuevas, error: insertError } = await db.from("garantia3_contratos").upsert(filas, { onConflict: "shopify_line_id,unidad", ignoreDuplicates: true }).select("*");
     if (insertError) throw insertError;
     creadas += nuevas?.length ?? 0;
+    // Aviso al momento: con Cover y Combi el cliente solo tiene 7 días desde la compra para activar.
+    for (const nueva of (nuevas ?? []) as Contrato[]) if (nueva.estado === "bloqueado" && nueva.motivo) await avisoDeFila(db, ajustes, nueva, nueva.motivo);
   }
   return creadas;
 }
