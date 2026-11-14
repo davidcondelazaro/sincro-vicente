@@ -399,7 +399,7 @@ entró como #62670 (W261114062670) con `nif_envio` y `nif_facturacion` = " ".
 Cuando MHD cancela un pedido (estado 13), la lectura de estados (`refreshMhdStatuses`)
 lo cancela también en Shopify (decisión de David). Esa lectura no va en la vuelta de
 cada 30 minutos (que es solo de catálogo): corre en la tarea diaria de Garantía3
-(pg_cron `sincro-vicente-garantia3-vuelta`, 9:00 UTC) y con «Actualizar estados» en
+(pg_cron `sincro-vicente-garantia3-vuelta`, 9:00 UTC) y con «Actualizar desde MHD» en
 Pedidos MHD. Encendido el 14-11-2026 con corte 2026-11-14T16:04:05Z.
 
 - **Sin reembolso:** `refundMethod: { originalPaymentMethodsRefund: false }`. El
