@@ -54,7 +54,8 @@ las cinco (163); +2 y Cover (5). Va por familia.
    que se manda a Garantía3. Utils sacará el EAN del producto de Shopify: fuera la tabla `GARANTIA3_EANS`.
 3. **Precios:** los de MHD (`pvp` del bloque). Excepción: la G3PD3ES1000 viene a 45,42 € (error de MHD: tarifa 65–69,9 €)
    → **69,90 €** hasta que MHD la corrija.
-4. **Se venden las que asigna MHD**, solo a los aparatos que él dice. El resto de productos se limpia.
+4. **Se venden las que asigna MHD**, solo a los aparatos que él dice. El resto de productos se limpia. En la ficha de
+   cada aparato solo se ofrecen esas; además, cada garantía se puede comprar suelta (David, 2026-11-15; ver «Pendiente»).
 5. **Tramo:** lo sigue calculando **el tema** con el precio de venta actual, ahora con los **tramos oficiales de
    Garantía3** de cada tipo (tabla de arriba), no con × 0,729. De MHD se toma qué aparatos y qué tipos; su tramo no
    (un 5,3 % de las parejas no cuadra con el PVP actual, casi todas en el borde: precio cambiado después).
@@ -124,9 +125,12 @@ no admite activación automática, y que la Cover exige comprarse en la misma fe
   dentro de 7 días desde la fecha de adquisición del producto». El reglamento no dice nada de anulaciones; utils ya tiene
   los estados `anulacion_pendiente` y `anulado` para un contrato creado cuya garantía se devuelve.
 
-## Lo que depende hoy de los SKU y títulos actuales
+## Lo que dependía de los SKU y títulos (2026-11-14)
 
-`garantia3_modo` está en **producción**. Cambiar el SKU de las 9 a su código de MHD rompe a la vez:
+**Al día (2026-11-15):** el tema busca por `custom.referencia` y utils por proveedor y código de barras, así que ya no
+dependen del SKU. Solo queda el chatbot. Lo de abajo es cómo estaba el 2026-11-14.
+
+`garantia3_modo` está en **producción**. Cambiar el SKU de las 9 a su código de MHD rompía a la vez:
 
 - **Tema:** `garantia-calculo.liquid` busca las variantes por SKU `G3PDES{tope}` / `G3PD3ES{tope}`: dejaría de ofrecerlas.
 - **Utils:** `GARANTIA3_EANS` va por SKU: dejaría de pedir contratos.
@@ -140,6 +144,9 @@ crearon en borrador y se activaron el mismo día (la tienda aún no está en pro
 mientras no se haga ese paso.
 
 ## Pendiente de terceros
+
+Los correos completos, listos para enviar, están en
+[GARANTIAS_PREGUNTAS_MHD_GARANTIA3.md](GARANTIAS_PREGUNTAS_MHD_GARANTIA3.md). Esto es el origen de cada duda.
 
 - **MHD:** bloque en el listado o fecha de modificación; precio de la G3PD3ES1000; título de la G3E121000 («Maximal 250»
   cuando es la de 1.000); que acepten las garantías en el pedido aunque no tengan existencias.
@@ -162,18 +169,56 @@ Lo hecho está en «Registro de cambios hechos».
 **Hecho:**
 - Las 22 garantías, con precios, textos, imágenes, reglamentos y orden en las colecciones.
 - Metacampo de tipos cargado.
-- Tema publicado y con commit (`b845100`), salvo lo del punto 1.
+- Tema publicado y con commit (`b845100` y `7836b8e`).
 - Utils desplegado (`0172dfe`).
 
-1. **Commits hechos el 2026-11-15:**
-   - Tema: `7836b8e`, con «Leer más» y reglamentos propios.
-   - sincro-vicente: `27e80f8`, con este documento, los reglamentos y los scripts. Falta subirlo a GitHub.
+**Garantías compradas sueltas (David, 2026-11-15): se siguen vendiendo también como producto independiente**, sin
+aparato, porque se pueden activar después para aparatos comprados en otra tienda. Se mantiene el botón de compra en sus
+fichas y en sus tarjetas. Según los reglamentos:
+- **+2 y +3:** se activan «dentro del primer año de vida del bien … desde su fecha de adquisición». Sirven para un aparato
+  de menos de 1 año, comprado aquí o fuera.
+- **Combi:** 7 días desde la compra del aparato.
+- **Cover:** su web dice que se compra en la misma fecha que el aparato (sin reglamento para confirmarlo).
+- **Display:** 12 meses desde que se activa en la app; no depende de la fecha de compra.
+
+Lo que falta para que funcione:
+- **Utils: arreglado el 2026-11-15, en local, sin desplegar** (ver el último punto de esta lista).
+- **Textos: hechos el 2026-11-15** (ver registro). Las +2/+3 y Combi dicen que se pueden comprar solas y que el plazo
+  cuenta desde la compra del aparato; la colección `garantias` lo dice en una frase.
+- **Pregunta a Garantía3** (G16 en el documento de preguntas): condiciones de una garantía comprada después y para un
+  aparato de otra tienda.
+- **Exportación a MHD: cambiada el 2026-11-15, en local, sin desplegar.** Antes se saltaba las garantías anidadas y
+  mandaba las sueltas como si fueran un aparato. Ahora `buildMhdProductLines` (`src/lib/mhd-order-lines.ts`) reconoce
+  las garantías por proveedor `GARANTIA3` (o SKU antiguo, traducido a su código de MHD) y las manda todas como un
+  producto más, sin portes, una vez por código con la suma de unidades, detrás del primer aparato que la lleva y las
+  sueltas al final. Pruebas: 6 casos nuevos en `tests/mhd-order-lines.test.mjs`; simulado con #1004 (dos +3 de 250 € en
+  aparatos distintos → una línea 10040613 ×2) y #1007. `docs/PEDIDOS_MHD_FASE_1.md` al día.
+- **Proceso de Garantía3 con una garantía suelta: arreglado el 2026-11-15, en local, sin desplegar.** Antes la fila
+  se quedaba en espera para siempre (sin «Enviado» de MHD ni recogida no había fecha de inicio) y, si empezaba, se
+  bloqueaba por «no está ligada a un aparato». Además, con un contrato ya creado, la vigilancia de reembolsos habría
+  pedido anularlo por «Aparato reembolsado». Ahora (`src/lib/garantia3.ts` y `garantia3-vuelta.ts`):
+  - sin aparato en el pedido, la espera cuenta desde el pago (primer cobro hecho en Shopify, `fechaPago`), también si
+    el pedido lleva otros aparatos;
+  - `datoQueFalta` ya no exige aparato y `motivoParaNoPedir` solo mira la garantía;
+  - Cover, Combi y Display siguen bloqueadas con aviso para pedirlas a mano.
+
+  Pruebas nuevas en `tests/garantia3.test.mjs` (108 en total, todas bien). Probado `fechaPago` con 10 pedidos reales:
+  en #1004, pagado por transferencia, cuenta desde el pago (4 días después del pedido). Hoy no hay ningún pedido con
+  una garantía suelta. `docs/GARANTIA3.md` al día.
+
+1. **Commits del 2026-11-15:**
+   - Tema: `b845100` y `7836b8e` en la rama `codex/actualizacion-enterprise-230`, **sin subir al remoto** (la rama va
+     5 commits por delante; los otros 3 son de otra sesión).
+   - sincro-vicente: `8830944` (este documento, reglamentos y scripts), subido a main y desplegado.
 2. **Pruebas tuyas en la tienda:**
    - el carrito con una ampliación y una protección juntas, y luego Combi;
    - el «Leer más» y el reglamento de las ventanas.
-3. **Utils:** comprobar en la primera vuelta diaria que el filtro nuevo trae las líneas. Cover, Combi y Display se piden a
-   mano: el correo de aviso hay que atenderlo enseguida, porque el cliente tiene 7 días.
-4. **Chatbot:**
+3. **Utils:** la vuelta del 2026-11-15 (10:00, ya con el código nuevo) terminó sin fallos y sin filas nuevas, así que el
+   filtro nuevo no da error; que encuentre las líneas falta verlo con el primer pedido real. Cover, Combi y Display se
+   piden a mano en el portal de Garantía3: el correo de aviso hay que atenderlo enseguida, porque el cliente tiene 7 días.
+   Hoy no hay ninguna fila.
+4. **Chatbot:** hoy sigue con `custom.admite_garantia`, así que ofrece garantía en los 13.118 productos que la web ya no
+   ofrece y no conoce Cover, Combi ni Display. Hay que:
    - leer los tipos en vez de `custom.admite_garantia`;
    - conocer Cover, Combi y Display;
    - cambiar los textos que dicen «Ampliaciones de garantía».
@@ -182,12 +227,17 @@ Lo hecho está en «Registro de cambios hechos».
    - quitar las familias y las reglas por título;
    - dejar de escribir `custom.admite_garantia`;
    - **excluir las 22 garantías**: si las vuelve a procesar, les borra el reglamento y la descripción, y además están
-     las bajas por ausencia y los precios (10040607).
-6. **Cambio de SKU de las 9** al código de MHD, con `textos-garantias.mjs --escribir --con-tramo`. Tema y utils ya no
-   dependen del SKU; falta el chatbot.
+     las bajas por ausencia y los precios. Hoy no corren riesgo (comprobado el 2026-11-15): ninguna está en
+     `store_shopify_ids`, que solo rellena el importador al escribir. La 10040607 (Combi 500) sigue en
+     `mhd_catalog_products` como presente con stock 1, aunque no se ve desde el 2026-08-19;
+   - excluir siempre los reacondicionados al escribir los tipos, como en la carga a mano.
+6. **Hecho el 2026-11-15: SKU de las 9 al código de MHD** (ver registro). Las 22 llevan ya el código de MHD, y las 9 la
+   línea «Para aparatos de hasta X €» desde el 2026-11-15.
 7. **Limpieza:** borrar la definición de `custom.admite_garantia` con sus valores, en una sola operación. Antes tienen
    que estar cambiados el chatbot y el importador.
-8. **Preguntas a terceros** (ver «Pendiente de terceros»):
+8. **Preguntas a terceros:** los dos correos listos para enviar están en
+   [GARANTIAS_PREGUNTAS_MHD_GARANTIA3.md](GARANTIAS_PREGUNTAS_MHD_GARANTIA3.md), con lo que cambia según cada respuesta.
+   Resumen:
    - **A Garantía3:**
      - anulación al cancelar o desistir, que es la principal;
      - que el token admita Cover, Combi y Display;
@@ -203,8 +253,12 @@ Lo hecho está en «Registro de cambios hechos».
      - bloque de garantías en el listado.
 9. **Pendiente tras las respuestas:**
    - alta automática de Cover, Combi y Display en utils;
-   - enviar las garantías a MHD como una línea más del pedido.
+   - (la exportación de las garantías a MHD ya está hecha en local: falta desplegarla con David).
 10. **Tu revisión:** tono de los textos y tarjetas de Combi y Display.
+11. **Helpdesk:** comprobar que entiende los tipos nuevos (Cover y Combi caducan a los 7 días, Display se activa en la
+    app) y los estados de anulación.
+12. **Documentación de otros proyectos:** `docs/PEDIDOS_MHD_FASE_1.md` (dice que las garantías no se envían a MHD) y
+    `garantia-3-calculo-y-asignacion.md` del tema (criterio antiguo × 0,729).
 
 ## Registro de cambios hechos
 
@@ -349,11 +403,35 @@ Lo que ya se ha tocado en la tienda, por fecha. Copias y scripts en `outputs/` (
     - **Precio de la G3PD3ES1000:** 69,90 €, el de la tarifa, porque MHD la tiene a 45,42 € por error.
     - **Precios del resto y EAN:** son los de MHD, no los de la tarifa.
 
-**Pendiente del cambio coordinado (no hecho):** SKU de las 9 al código de MHD.
+- **2026-11-15: SKU de las 9 al código de MHD** (David), con `garantias-scripts/sku9.mjs`: G3PDES250 → 10040604,
+  500 → 10040586, 1000 → 10040587, 2000 → 10040588, 5000 → 10040589; G3PD3ES250 → 10040613, 500 → 10040614,
+  1000 → 10040611, 2000 → 10040612. Antes se comprobó que cada una tenía su EAN y que ningún otro producto usaba esos
+  códigos. Nada dependía ya del SKU: el tema busca por `custom.referencia`, utils por proveedor y código de barras, y
+  el chatbot y helpdesk por el título. Copia de antes en `outputs/garantias-9-sku-antes-2026-11-15.json`. Comprobado
+  después: las 22 activas, a la venta y con código de MHD.
+- **2026-11-15, MHD (David):** aceptan las garantías en el pedido aunque estén sin existencias, y también un pedido
+  con solo una garantía (es un producto que se vende así).
+- **2026-11-15, facturación (David):** Garantía3 factura cada mes a MHD todas las garantías vendidas, y MHD nos
+  factura la línea de garantía del pedido. No hay doble cobro: las altas las seguimos haciendo nosotros por la API.
+- **2026-11-15, formato del pedido a MHD (David, lo acordado con MHD):** sin vínculos entre líneas. Van los aparatos y
+  sus extras en orden, y cada garantía distinta **una sola vez, con la suma de sus unidades**.
+- **2026-11-15, textos para la compra suelta** (David: breves y sin hablar de otras tiendas), con
+  `textos-garantias.mjs --escribir --con-tramo` y `colecciones.mjs`:
+  - +2/+3: «Añádela al carrito con el aparato o, si ya lo tienes, sola» y «Actívala … dentro del primer año desde la
+    compra del aparato»; las 9 llevan ya «Este tope es para aparatos de hasta X €».
+  - Combi: «Añádela con el aparato o sola en los 7 días siguientes a comprarlo» y plazo «en los 7 días siguientes a la
+    compra del aparato».
+  - Cover y Display, sin cambios.
+  - Colección `garantias`: «Si ya tienes el aparato, también puedes comprar la garantía sola: cada una indica para qué
+    precio de aparato es» y el plazo de las ampliaciones igual que en las fichas. Los enlaces a los reglamentos del
+    script pasan a nuestra copia en Shopify, como ya estaban publicados.
+  - Antes se comprobó que los scripts reproducían lo publicado. Copias: `outputs/garantias-textos-antes-sueltas-2026-11-15.json`
+    y `outputs/garantias-colecciones-antes-2026-11-15.json`.
 
 ## Qué tiene que saber cada proyecto
 
-Para cuando toque cada paso. Nada de esto está hecho todavía.
+Para cuando toque cada paso. Hecho ya (2026-11-15): todo lo del tema y, en utils, el reconocimiento por proveedor y
+código de barras. Lo demás sigue pendiente (ver «Pendiente»).
 
 - **Tema (`theme-enterprise-vicente`):** las garantías se buscarán por los **tipos** del metacampo nuevo, no por SKU
   `G3PDES…`/`G3PD3ES…` (los SKU pasan a ser códigos de MHD). Tramos oficiales por tipo, no × 0,729. Dos grupos

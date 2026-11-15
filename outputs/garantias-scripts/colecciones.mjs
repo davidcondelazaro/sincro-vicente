@@ -1,4 +1,4 @@
-// Textos de las colecciones garantias, garantia3 y servicios (2026-11-14). Copia de lo anterior en ../garantias-colecciones-antes-2026-11-14.json
+// Textos de las colecciones garantias, garantia3 y servicios (2026-11-14; 2026-11-15: garantías sueltas y reglamentos en Shopify). Guarda copia de lo anterior en ../garantias-colecciones-antes-2026-11-15.json
 import fs from "node:fs";
 import { gql } from "./sh.mjs";
 const a = (u, t) => `<a href="${u}" target="_blank" rel="noopener">${t}</a>`;
@@ -19,10 +19,11 @@ const GARANTIAS = `<p>Todos los aparatos nuevos tienen <strong>3 años de garant
 <h2>Cómo se activan</h2>
 <p>Cuando compras una garantía, te llega por correo el contrato de Garantía3 con los datos para activarla. Los plazos cambian según el tipo:</p>
 <ul>
-<li><strong>Ampliaciones de 2 y 3 años:</strong> en la web de Garantía3, dentro de los 12 meses siguientes a la compra.</li>
+<li><strong>Ampliaciones de 2 y 3 años:</strong> en la web de Garantía3, dentro del primer año desde la compra del aparato.</li>
 <li><strong>Cover y Combi:</strong> en la web de Garantía3, en los 7 días siguientes a la compra.</li>
 <li><strong>Display:</strong> con la app Garantía3 desde el propio aparato, con la pantalla intacta.</li>
 </ul>
+<p>Si ya tienes el aparato, también puedes comprar la garantía sola: cada una indica para qué precio de aparato es.</p>
 <p>Si no la activas a tiempo, no podrás usarla. En este vídeo te explicamos cómo activar una ampliación:</p>
 ${VIDEO}
 ${IMG}
@@ -38,10 +39,10 @@ ${IMG}
 <p>Garantía3 es una marca de BC Warranty Management S.A. En Electrónica Vicente te la vendemos y damos de alta tu contrato; las reparaciones las gestiona Garantía3.</p>
 <h2>Reglamentos</h2>
 <ul>
-<li>${a("https://www.garantia3.es/wp-content/uploads/2022/01/Reglamento-G3-2-anos_n.pdf", "Ampliación de 2 años más")}</li>
-<li>${a("https://www.garantia3.es/wp-content/uploads/2026/01/Reglamento-G3-3-anos_2026.pdf", "Ampliación de 3 años más")}</li>
-<li>${a("https://www.garantia3.es/wp-content/uploads/2021/09/Reglamento-G3-Combi.pdf", "Combi")}</li>
-<li>${a("https://www.garantia3.es/wp-content/uploads/2021/02/Reglamento-G3-Display.pdf", "Display")}</li>
+<li>${a("https://cdn.shopify.com/s/files/1/0994/3269/4092/files/garantia3-reglamento-2-anos-mas.pdf", "Ampliación de 2 años más")}</li>
+<li>${a("https://cdn.shopify.com/s/files/1/0994/3269/4092/files/garantia3-reglamento-3-anos-mas.pdf", "Ampliación de 3 años más")}</li>
+<li>${a("https://cdn.shopify.com/s/files/1/0994/3269/4092/files/garantia3-reglamento-combi.pdf", "Combi")}</li>
+<li>${a("https://cdn.shopify.com/s/files/1/0994/3269/4092/files/garantia3-reglamento-display.pdf", "Display")}</li>
 <li>${a("https://www.garantia3.es/extension-de-garantia-garantia3-cover/", "Cover (web de Garantía3)")}</li>
 </ul>`;
 const CAMBIOS = {
@@ -60,4 +61,4 @@ for (const [h, c] of Object.entries(CAMBIOS)) {
   const r = await gql(`mutation($i:CollectionInput!){ collectionUpdate(input:$i){ collection{ title } userErrors{ field message } } }`, { i: input });
   console.log(h, JSON.stringify(r.collectionUpdate.userErrors), r.collectionUpdate.collection?.title);
 }
-fs.writeFileSync("../garantias-colecciones-antes-2026-11-14.json", JSON.stringify(antes, null, 2));
+fs.writeFileSync("../garantias-colecciones-antes-2026-11-15.json", JSON.stringify(antes, null, 2));

@@ -2,7 +2,7 @@
 // Fuentes: web de Garantía3 y reglamentos oficiales (2 años, 3 años 2026-01, Combi, Display; el de Cover da 404).
 //   node textos-garantias.mjs                       → enseña un ejemplo de cada tipo, no toca Shopify
 //   node textos-garantias.mjs --escribir            → aplica a las 22 (las 9 ampliaciones sin la línea del tramo)
-//   node textos-garantias.mjs --escribir --con-tramo → igual, con «Para aparatos de hasta X €» también en las 9
+//   node textos-garantias.mjs --escribir --con-tramo → igual, con «Para aparatos de hasta X €» también en las 9 (lo publicado desde 2026-11-15)
 //                                                      (cuando el tema use los tramos oficiales)
 import { gql } from "./sh.mjs";
 const ESCRIBIR = process.argv.includes("--escribir");
@@ -66,9 +66,9 @@ function textos(tipo, anos, tope, hasta, conTramo) {
 <p>Si compras como profesional, la ampliación empieza al acabar la garantía del fabricante, que suele ser de 1 año.</p>
 <h3>Cómo se activa</h3>
 <ol>
-<li>Añade la ampliación al carrito junto con el aparato.</li>
+<li>Añádela al carrito con el aparato o, si ya lo tienes, sola.</li>
 <li>Te llegará por correo el contrato de Garantía3 con los datos para activarla.</li>
-<li>Actívala en la web de Garantía3 <strong>dentro de los 12 meses siguientes a la compra</strong>. Si no la activas a tiempo, no podrás usarla.</li>
+<li>Actívala en la web de Garantía3 <strong>dentro del primer año desde la compra del aparato</strong>. Si no la activas a tiempo, no podrás usarla.</li>
 </ol>
 ${RECLAMAR("Cuando el aparato falle, ya fuera de la garantía legal")}
 <h3>Con qué se combina</h3>
@@ -130,9 +130,9 @@ ${QUIEN}
 <p>Aparatos eléctricos y electrónicos: ${CATEGORIAS}. Este tope es para aparatos de <strong>hasta ${H}</strong>; en la ficha de cada aparato te ofrecemos el que le corresponde por su precio. También vale para compradores profesionales.</p>
 <h3>Cómo se activa</h3>
 <ol>
-<li>Añade Combi al carrito junto con el aparato.</li>
+<li>Añádela con el aparato o sola en los 7 días siguientes a comprarlo.</li>
 <li>Te llegará por correo el contrato de Garantía3 con los datos para activarla.</li>
-<li>Actívala en la web de Garantía3 <strong>en los 7 días siguientes a la compra</strong>. Pasado ese plazo ya no se puede activar.</li>
+<li>Actívala en la web de Garantía3 <strong>en los 7 días siguientes a la compra del aparato</strong>. Pasado ese plazo ya no se puede activar.</li>
 </ol>
 ${RECLAMAR("Si tu aparato sufre un accidente o se avería")}
 <h3>Con qué se combina</h3>
