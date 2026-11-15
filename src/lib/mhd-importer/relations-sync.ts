@@ -7,6 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { shopifyGraphql, type ShopifyConfig } from "./store-filters";
 import { sendAlert } from "./alerts";
 import { computeComplements, mergeComplements, type RecipeProduct } from "./complement-recipes";
+import { computeSimilars, type SimilarProduct } from "./similar-recipes";
 
 type Relation = { product_id: string; complementary: string[]; related: string[] };
 type Current = { id: string; c: { value: string } | null; r: { value: string } | null };
@@ -31,14 +32,19 @@ async function allRows<T>(page: (from: number, to: number) => PromiseLike<{ data
   }
 }
 
-// Las recetas se calculan sobre lo último enviado, para no cambiar lo que sigue siendo válido.
-export function withRecipes(icecat: Relation[], products: RecipeProduct[], sent: Relation[]) {
+// Las recetas se calculan sobre lo último enviado, para no cambiar lo que sigue siendo válido. Los similares por
+// familia (similar-recipes.ts) sustituyen a los relacionados de Icecat en las familias que tienen regla.
+export function withRecipes(icecat: Relation[], products: RecipeProduct[], sent: Relation[], similarRows: SimilarProduct[] = []) {
   const rows = new Map(icecat.map((row) => [row.product_id, row]));
   const recipes = computeComplements(products, new Map(sent.map((row) => [row.product_id, row.complementary])));
   for (const [product_id, slots] of recipes) {
     if (!slots.length) continue;
     const row = rows.get(product_id);
     rows.set(product_id, { product_id, complementary: mergeComplements(slots, row?.complementary ?? []), related: row?.related ?? [] });
+  }
+  for (const [product_id, related] of computeSimilars(similarRows)) {
+    const row = rows.get(product_id);
+    rows.set(product_id, { product_id, complementary: row?.complementary ?? [], related });
   }
   return [...rows.values()];
 }
@@ -58,7 +64,8 @@ export async function syncRelations(deps: { db: SupabaseClient; shopify: Shopify
   const icecat = await allRows<Relation>((from, to) => db.rpc("mhd_relations_calc").range(from, to));
   const products = await allRows<RecipeProduct>((from, to) => db.rpc("mhd_complements_source").range(from, to));
   const sentRows = await allRows<Relation>((from, to) => db.from("mhd_shopify_relations").select("product_id,complementary,related").order("product_id").range(from, to));
-  const calculated = withRecipes(icecat, products, sentRows);
+  const similarRows = await allRows<SimilarProduct>((from, to) => db.rpc("mhd_similar_source").range(from, to));
+  const calculated = withRecipes(icecat, products, sentRows, similarRows);
   if (calculated.length < sentRows.length * RELATIONS_SYNC.minShare) {
     const reason = `El cálculo da ${calculated.length} productos y hay ${sentRows.length} enviados.`;
     if (!options.dryRun) {
