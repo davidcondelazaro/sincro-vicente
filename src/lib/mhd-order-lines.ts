@@ -3,7 +3,11 @@
 // - Aparatos: líneas sin lineItemGroup. Van a MHD con su precio y sus portes por unidad.
 // - Servicios (SUBIDA-*, RETIRADA[-*], INSTALACION-*): líneas anidadas bajo su aparato. No van como productos, sino
 //   como subida/retirada/instalacion de la línea del aparato, con el precio unitario pagado.
-// - Otras líneas anidadas (garantías): no son de MHD y no se envían.
+// - Garantías de Garantía3 (proveedor GARANTIA3), anidadas a su aparato o compradas sueltas: van como un producto más,
+//   con su código de MHD, su precio y sin portes. Sin vínculo con el aparato (lo acordado con MHD, David, 2026-11-15):
+//   cada garantía distinta va una sola vez, con la suma de sus unidades, detrás del primer aparato que la lleva; las
+//   sueltas, al final. MHD las acepta sin existencias y en pedidos sin nada más.
+// - Otras líneas anidadas propias que no son servicios: no son de MHD y no se envían.
 // - Cada variante es un SKU propio y va en su propia línea, sea cual sea el producto.
 // - Líneas sin envío (requiresShipping false, como las tarjetas regalo): un SKU más, con su precio y sin portes.
 //   Pueden venir solas o con otros artículos, y no cuentan para el estado de envío del pedido.
@@ -46,7 +50,7 @@ export function zonaDeEnvio(destino: { country?: string | null; province?: strin
 export type ShopifyLinePayload = {
   requiresShipping?: boolean | null;
   lineItemGroup?: { variantSku?: string | null } | null;
-  product?: { metafield?: { value?: string | null } | null } | null;
+  product?: { vendor?: string | null; metafield?: { value?: string | null } | null } | null;
 };
 export type OrderLineInput = { sku: string | null; quantity: number; unitPrice: string | number; payload: ShopifyLinePayload | null };
 export type MhdProductLine = {
@@ -56,6 +60,21 @@ export type MhdProductLine = {
   retirada: boolean; precio_retirada: number | null;
 };
 type Servicio = "subida" | "instalacion" | "retirada";
+
+export const PROVEEDOR_GARANTIA3 = "GARANTIA3";
+
+// SKU que llevaban las 9 ampliaciones hasta el 2026-11-15, cuando pasaron al código de MHD. Los pedidos guardan el SKU
+// del momento de la compra, así que los anteriores se traducen aquí.
+export const SKU_ANTIGUO_GARANTIA: Record<string, string> = {
+  G3PDES250: "10040604", G3PDES500: "10040586", G3PDES1000: "10040587", G3PDES2000: "10040588", G3PDES5000: "10040589",
+  G3PD3ES250: "10040613", G3PD3ES500: "10040614", G3PD3ES1000: "10040611", G3PD3ES2000: "10040612",
+};
+
+export function esGarantia(line: Pick<OrderLineInput, "sku" | "payload">) {
+  return line.payload?.product?.vendor === PROVEEDOR_GARANTIA3 || Boolean(SKU_ANTIGUO_GARANTIA[line.sku ?? ""]);
+}
+
+const sinServicios = { subida: false, precio_subida: null, instalacion: false, precio_instalacion: null, retirada: false, precio_retirada: null };
 
 function servicioDeSku(sku: string): Servicio | null {
   if (/^SUBIDA-/.test(sku)) return "subida";
@@ -129,9 +148,10 @@ export function buildMhdProductLines(input: {
     return { ok: false, reason: "Faltan datos de portes y servicios: vuelve a actualizar los pedidos desde Shopify" };
   }
 
-  const aparatos = input.lines.filter((line) => !line.payload?.lineItemGroup);
-  const anidadas = input.lines.filter((line) => line.payload?.lineItemGroup);
-  if (!aparatos.length) return { ok: false, reason: "El pedido no tiene aparatos que enviar a MHD" };
+  const garantias = input.lines.filter(esGarantia);
+  const aparatos = input.lines.filter((line) => !line.payload?.lineItemGroup && !esGarantia(line));
+  const anidadas = input.lines.filter((line) => line.payload?.lineItemGroup && !esGarantia(line));
+  if (!aparatos.length && !garantias.length) return { ok: false, reason: "El pedido no tiene nada que enviar a MHD" };
 
   const zona = zonaDeEnvio(input.destination);
   if (!zona) return { ok: false, reason: "MHD no hace envíos a domicilio a este destino" };
@@ -148,15 +168,12 @@ export function buildMhdProductLines(input: {
       if (porte === null || porte === undefined || porte === "") return { ok: false, reason: `${aparato.sku} no tiene portes para la zona ${zona}` };
       portes = Number(porte);
     }
-    productos.push({
-      codigo: aparato.sku!, cantidad: aparato.quantity, precio: Number(aparato.unitPrice), portes,
-      subida: false, precio_subida: null, instalacion: false, precio_instalacion: null, retirada: false, precio_retirada: null,
-    });
+    productos.push({ codigo: aparato.sku!, cantidad: aparato.quantity, precio: Number(aparato.unitPrice), portes, ...sinServicios });
   }
 
   for (const linea of anidadas) {
     const servicio = servicioDeSku(linea.sku ?? "");
-    if (!servicio) continue; // Garantías y otras líneas propias: no van a MHD
+    if (!servicio) continue; // Otras líneas propias: no van a MHD
     const skuAparato = linea.payload?.lineItemGroup?.variantSku;
     const candidatos = productos.filter((producto) => producto.codigo === skuAparato);
     if (candidatos.length !== 1) return { ok: false, reason: `No se puede asociar ${linea.sku} a un único aparato (${skuAparato ?? "sin SKU"})` };
@@ -169,6 +186,34 @@ export function buildMhdProductLines(input: {
 
   const conSubidaEInstalacion = productos.find((producto) => producto.subida && producto.instalacion);
   if (conSubidaEInstalacion) return { ok: false, reason: `${conSubidaEInstalacion.codigo} lleva subida e instalación a la vez (la instalación ya incluye la subida)` };
+
+  // Garantías: una línea por código, con la suma de unidades, detrás del primer aparato que la lleva; las sueltas al final
+  const porCodigo = new Map<string, MhdProductLine>();
+  const detrasDe = new Map<string, MhdProductLine[]>();
+  const sueltas: MhdProductLine[] = [];
+  for (const garantia of garantias) {
+    const codigo = SKU_ANTIGUO_GARANTIA[garantia.sku ?? ""] ?? garantia.sku ?? "";
+    if (!/^\d+$/.test(codigo)) return { ok: false, reason: `La garantía ${garantia.sku ?? "sin SKU"} no lleva un código de MHD` };
+    const precio = Number(garantia.unitPrice);
+    const yaEsta = porCodigo.get(codigo);
+    if (yaEsta) {
+      if (centimos(yaEsta.precio) !== centimos(precio)) return { ok: false, reason: `La garantía ${codigo} va con precios distintos (${euros(centimos(yaEsta.precio))} y ${euros(centimos(precio))}): MHD solo admite uno por línea` };
+      yaEsta.cantidad += garantia.quantity;
+      continue;
+    }
+    const linea: MhdProductLine = { codigo, cantidad: garantia.quantity, precio, portes: 0, ...sinServicios };
+    porCodigo.set(codigo, linea);
+    const skuAparato = garantia.payload?.lineItemGroup?.variantSku;
+    if (skuAparato && productos.some((producto) => producto.codigo === skuAparato)) detrasDe.set(skuAparato, [...(detrasDe.get(skuAparato) ?? []), linea]);
+    else sueltas.push(linea);
+  }
+  const colocadas = new Set<string>();
+  const ordenados = productos.flatMap((producto) => {
+    if (colocadas.has(producto.codigo)) return [producto];
+    colocadas.add(producto.codigo);
+    return [producto, ...(detrasDe.get(producto.codigo) ?? [])];
+  });
+  productos.splice(0, productos.length, ...ordenados, ...sueltas);
 
   const portesCalculados = productos.reduce((total, producto) => total + centimos(producto.portes) * producto.cantidad, 0);
   const portesCobrados = centimos(input.shippingAmount);

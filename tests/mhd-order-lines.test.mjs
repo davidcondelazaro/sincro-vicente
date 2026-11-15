@@ -33,6 +33,50 @@ test("cualquier línea sin envío se trata igual, aunque su producto tenga porte
   assert.equal(result.productos[0].portes, 0.01);
 });
 
+const otroAparato = (sku, unitPrice = "450.00") => ({ sku, quantity: 1, unitPrice, payload: { requiresShipping: true, product: { metafield: { value: JSON.stringify({ gastos_envio_peninsula_particulares: 5 }) } }, lineItemGroup: null } });
+const garantia = (sku, deAparato, unitPrice = "42.09", quantity = 1) => ({ sku, quantity, unitPrice, payload: { requiresShipping: false, product: { vendor: "GARANTIA3", metafield: null }, lineItemGroup: deAparato ? { variantSku: deAparato } : null } });
+const resumen = (result) => result.productos.map(({ codigo, cantidad, precio, portes }) => [codigo, cantidad, precio, portes]);
+
+test("la garantía va detrás de su aparato, como un producto más y sin portes", () => {
+  const result = buildMhdProductLines({ lines: [aparato, garantia("10040604", "32A4Q", "35.44")], destination, shippingAmount: "9.99" });
+  assert.equal(result.ok, true);
+  assert.deepEqual(resumen(result), [["32A4Q", 1, 199, 9.99], ["10040604", 1, 35.44, 0.01]]);
+});
+
+test("una garantía repetida en varios aparatos va una sola vez con la suma de unidades", () => {
+  const lines = [aparato, garantia("10040586", "32A4Q"), otroAparato("10000449"), garantia("10040586", "10000449"), garantia("10040591", "10000449", "64.24")];
+  const result = buildMhdProductLines({ lines, destination, shippingAmount: "14.99" });
+  assert.equal(result.ok, true);
+  assert.deepEqual(resumen(result), [["32A4Q", 1, 199, 9.99], ["10040586", 2, 42.09, 0.01], ["10000449", 1, 450, 5], ["10040591", 1, 64.24, 0.01]]);
+});
+
+test("una garantía comprada sola se exporta sola", () => {
+  const result = buildMhdProductLines({ lines: [garantia("10040586", null)], destination, shippingAmount: 0 });
+  assert.equal(result.ok, true);
+  assert.deepEqual(resumen(result), [["10040586", 1, 42.09, 0.01]]);
+});
+
+test("las garantías sueltas van al final y se suman a la misma garantía de un aparato", () => {
+  const lines = [garantia("10040600", null, "24.37"), aparato, garantia("10040586", "32A4Q"), garantia("10040586", null)];
+  const result = buildMhdProductLines({ lines, destination, shippingAmount: "9.99" });
+  assert.deepEqual(resumen(result), [["32A4Q", 1, 199, 9.99], ["10040586", 2, 42.09, 0.01], ["10040600", 1, 24.37, 0.01]]);
+});
+
+test("los pedidos anteriores al cambio de SKU mandan el código de MHD de la garantía", () => {
+  const antigua = { sku: "G3PDES250", quantity: 1, unitPrice: "30.00", payload: { requiresShipping: false, product: { metafield: null }, lineItemGroup: { variantSku: "32A4Q" } } };
+  const result = buildMhdProductLines({ lines: [aparato, antigua], destination, shippingAmount: "9.99" });
+  assert.deepEqual(resumen(result), [["32A4Q", 1, 199, 9.99], ["10040604", 1, 30, 0.01]]);
+});
+
+test("una garantía sin código de MHD o con dos precios no se exporta", () => {
+  const sinCodigo = buildMhdProductLines({ lines: [aparato, garantia("G3XX", "32A4Q")], destination, shippingAmount: "9.99" });
+  assert.equal(sinCodigo.ok, false);
+  assert.match(sinCodigo.reason, /no lleva un código de MHD/);
+  const dosPrecios = buildMhdProductLines({ lines: [aparato, garantia("10040586", "32A4Q"), garantia("10040586", null, "40.00")], destination, shippingAmount: "9.99" });
+  assert.equal(dosPrecios.ok, false);
+  assert.match(dosPrecios.reason, /precios distintos/);
+});
+
 test("solo es pedido sin envío si ninguna línea lo requiere", () => {
   assert.equal(pedidoSinEnvio([{ requiresShipping: false }, { requiresShipping: false }]), true);
   assert.equal(pedidoSinEnvio([{ requiresShipping: false }, { requiresShipping: true }]), false);

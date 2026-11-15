@@ -14,7 +14,7 @@ Se apoya en el módulo de pedidos a MHD (`docs/PEDIDOS_MHD_FASE_1.md`), que ya t
 
 1. Tarea diaria: reutiliza «Actualizar desde MHD» sobre los pedidos exportados que lleven garantía.
 2. Toma las líneas de garantía de `shopify_mhd_orders` y `shopify_mhd_order_lines`, en pedidos creados desde `garantia3_desde`, y crea una fila por unidad.
-3. Cada fila espera `garantia3_dias` días desde la fecha del estado **Enviado** de MHD (id 10, en `mhd_order_exports.mhd_status_payload`; decidido por David).
+3. Cada fila espera `garantia3_dias` días desde la fecha del estado **Enviado** de MHD (id 10, en `mhd_order_exports.mhd_status_payload`; decidido por David). Una garantía **comprada suelta** (sin aparato en el pedido, `sku_aparato` vacío; se vende así desde el 2026-11-15) no espera ningún envío: cuenta desde el pago, el primer cobro hecho del pedido en Shopify (`fechaPago`, origen «Pago (garantía suelta)»).
 4. Antes de llamar, vuelve a leer ese pedido en Shopify: la sincronización solo trae pedidos pagados y sin enviar, así que la copia local no refleja reembolsos posteriores. Si ya no procede, la fila se bloquea con su motivo.
 5. Marca la fila como `enviando` y llama al proxy. Si el proceso se cae en ese punto, la fila queda dudosa y no se repite.
 6. Guarda la respuesta en utils. No se escribe nada en Shopify.
@@ -25,7 +25,7 @@ Con 14 días desde el envío, en PrestaShop acabaron reembolsados 7 de 353 contr
 ### Comprobaciones antes de llamar
 
 - Pedido no cancelado y pagado, ni en Shopify ni en MHD (estado Cancelado, id 13).
-- Quedan unidades vivas de la garantía y de su aparato (`currentQuantity`). Se mira línea a línea: un reembolso parcial de otro artículo no bloquea la garantía, al contrario que en PrestaShop.
+- Quedan unidades vivas de la garantía y de su aparato (`currentQuantity`); en una garantía comprada suelta, solo de la garantía. Se mira línea a línea: un reembolso parcial de otro artículo no bloquea la garantía, al contrario que en PrestaShop.
 - La línea es de Garantía3: su producto tiene el proveedor `GARANTIA3` en Shopify, o su SKU está en `GARANTIA3_EANS` (`src/lib/garantia3.ts`; respaldo para las líneas guardadas antes del 2026-11-14 y para el SKU antiguo de las 9 ampliaciones). El EAN es el código de barras de la variante (la consulta de pedidos lo guarda desde el 2026-11-14) o, si no lo hay, el de la tabla. El proxy no lleva lista de EAN.
 - Solo se piden solas las ampliaciones +2 y +3 (los EAN de la tabla). Cover, Combi y Display, o una garantía sin código de barras, crean su fila ya **bloqueada** y mandan el aviso al momento, para pedir el contrato a mano: falta confirmar con Garantía3 que nuestro token los admite, desde cuándo cuentan los 7 días de Cover y Combi y el `promocode` de Display (ver `docs/GARANTIAS_DESDE_MHD.md`).
 - Hay nombre, apellidos, email y teléfono.
@@ -103,7 +103,7 @@ Un aviso por incidencia, con `idempotencyKey`, para no repetirlo en cada vuelta:
 - Error de token o IP (401): urgente. Es lo que pasó en febrero de 2026.
 - Resultado dudoso.
 - EAN no autorizado o respuesta no reconocida.
-- Falta un dato del cliente o no se puede ligar la garantía a su aparato.
+- Falta un dato del cliente.
 - Devolución o cancelación de una garantía con contrato ya creado.
 - La tarea diaria no ha corrido: una comprobación aparte avisa si pasan 48 horas sin vuelta. Los scripts antiguos dejaron de llamar sin que nadie avisara.
 

@@ -58,8 +58,9 @@ export function filasDePedido(pedido: PedidoGuardado, lineas: LineaGuardada[]): 
   });
 }
 
-export function datoQueFalta(fila: Pick<Fila, "sku_aparato" | "nombre" | "apellidos" | "email" | "telefono">) {
-  if (!fila.sku_aparato) return "La garantía no está ligada a un aparato";
+// Una garantía sin aparato en el pedido (sku_aparato null) es una compra suelta: se vende así para quien ya tiene el
+// aparato (David, 2026-11-15). El alta por API no lleva datos del aparato, así que se pide igual que las demás.
+export function datoQueFalta(fila: Pick<Fila, "nombre" | "apellidos" | "email" | "telefono">) {
   if (!fila.nombre) return "Falta el nombre del cliente";
   if (!fila.apellidos) return "Faltan los apellidos del cliente";
   if (!fila.email) return "Falta el email del cliente";
@@ -87,6 +88,7 @@ export type PedidoVivo = {
   lineItems: { nodes: { id: string; sku: string | null; currentQuantity: number; lineItemGroup: { variantSku: string | null } | null }[] };
   fulfillmentOrders: { nodes: { deliveryMethod: { methodType: string } | null }[] };
   fulfillments: { status: string; createdAt: string; deliveredAt: string | null }[];
+  transactions?: { kind: string; status: string; processedAt: string | null }[];
 };
 
 // La recogida en tienda no pasa por MHD: la cuenta empieza cuando el pedido se da por entregado (decidido por David).
@@ -96,6 +98,12 @@ export function fechaRecogida(pedido: PedidoVivo) {
   return hecho ? hecho.deliveredAt ?? hecho.createdAt : null;
 }
 
+// Garantía comprada suelta: no hay envío que esperar, la cuenta empieza con el pago (el primer cobro hecho).
+export function fechaPago(pedido: PedidoVivo) {
+  const fechas = (pedido.transactions ?? []).filter((item) => ["SALE", "CAPTURE"].includes(item.kind) && item.status === "SUCCESS" && item.processedAt).map((item) => new Date(item.processedAt!).getTime()).filter(Number.isFinite);
+  return fechas.length ? new Date(Math.min(...fechas)).toISOString() : null;
+}
+
 // Por qué ya no procede pedir el contrato de esta unidad, mirando el pedido tal como está ahora en Shopify.
 export function motivoParaNoPedir(pedido: PedidoVivo | null, fila: { shopify_line_id: string; unidad: number; sku_aparato: string | null }) {
   if (!pedido) return "El pedido ya no existe en Shopify";
@@ -103,6 +111,7 @@ export function motivoParaNoPedir(pedido: PedidoVivo | null, fila: { shopify_lin
   if (!["PAID", "PARTIALLY_REFUNDED"].includes(pedido.displayFinancialStatus)) return `Pedido no pagado en Shopify (${pedido.displayFinancialStatus})`;
   const garantia = pedido.lineItems.nodes.find((linea) => linea.id === fila.shopify_line_id);
   if (!garantia || garantia.currentQuantity < fila.unidad) return "Garantía reembolsada o quitada del pedido";
+  if (!fila.sku_aparato) return null; // Comprada suelta: no hay aparato que mirar
   const aparato = pedido.lineItems.nodes.find((linea) => linea.sku === fila.sku_aparato && !linea.lineItemGroup);
   if (!aparato || aparato.currentQuantity < fila.unidad) return "Aparato reembolsado o quitado del pedido";
   return null;

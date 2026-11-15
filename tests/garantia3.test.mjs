@@ -4,7 +4,7 @@ import test from "node:test";
 import { createJiti } from "jiti";
 
 const jiti = createJiti(import.meta.url);
-const { canceladoEnMhd, csvContratos, datoQueFalta, fechaEnviado, fechaPrevista, fechaRecogida, filasDePedido, interpretarRespuesta, mesAnterior, motivoAlCrear, motivoParaNoPedir, normalizarTelefono, pedidoDePrueba, PREFIJO_PRUEBA, respuestaSimulada } = await jiti.import("../src/lib/garantia3.ts");
+const { canceladoEnMhd, csvContratos, datoQueFalta, fechaEnviado, fechaPago, fechaPrevista, fechaRecogida, filasDePedido, interpretarRespuesta, mesAnterior, motivoAlCrear, motivoParaNoPedir, normalizarTelefono, pedidoDePrueba, PREFIJO_PRUEBA, respuestaSimulada } = await jiti.import("../src/lib/garantia3.ts");
 
 test("teléfono: prefijo único y 9 cifras, con los formatos que había en PrestaShop", () => {
   for (const entrada of ["600111222", "34600111222", "+34600111222", "34+34600111222", "34 600 11 12 22", "0034600111222", "(34) 600111222"]) assert.equal(normalizarTelefono(entrada, "ES"), "34600111222", entrada);
@@ -42,9 +42,10 @@ test("las líneas antiguas sin proveedor ni código de barras siguen saliendo po
   assert.equal(motivoAlCrear(fila), null);
 });
 
-test("sin aparato o sin teléfono queda indicado", () => {
+test("comprada suelta se pide igual; sin teléfono queda indicado", () => {
   const [suelta] = filasDePedido(pedido, [linea("G3PDES250", 1, null)]);
-  assert.match(datoQueFalta(suelta), /aparato/);
+  assert.equal(suelta.sku_aparato, null);
+  assert.equal(datoQueFalta(suelta), null);
   const [sinTelefono] = filasDePedido({ ...pedido, billingAddress: { ...pedido.billingAddress, phone: null } }, [linea("G3PDES250")]);
   assert.match(datoQueFalta(sinTelefono), /teléfono/);
 });
@@ -75,6 +76,20 @@ test("antes de pedir el contrato se mira el pedido real", () => {
   assert.equal(motivoParaNoPedir(reembolsada, { ...fila, unidad: 1 }), null);
   const sinAparato = vivo(); sinAparato.lineItems.nodes[1].currentQuantity = 0;
   assert.match(motivoParaNoPedir(sinAparato, fila), /Aparato/);
+});
+
+test("garantía suelta: no se mira ningún aparato y la cuenta empieza con el pago", () => {
+  const suelta = vivo({ lineItems: { nodes: [{ id: "gar", sku: "10040604", currentQuantity: 1, lineItemGroup: null }] } });
+  const filaSuelta = { shopify_line_id: "gar", unidad: 1, sku_aparato: null };
+  assert.equal(motivoParaNoPedir(suelta, filaSuelta), null);
+  assert.match(motivoParaNoPedir({ ...suelta, displayFinancialStatus: "PENDING" }, filaSuelta), /no pagado/);
+  const quitada = vivo({ lineItems: { nodes: [{ id: "gar", sku: "10040604", currentQuantity: 0, lineItemGroup: null }] } });
+  assert.match(motivoParaNoPedir(quitada, filaSuelta), /Garantía/);
+  assert.equal(fechaPago(suelta), null);
+  assert.equal(fechaPago(vivo({ transactions: [
+    { kind: "AUTHORIZATION", status: "SUCCESS", processedAt: "2026-11-01T10:00:00Z" }, { kind: "SALE", status: "FAILURE", processedAt: "2026-11-02T10:00:00Z" },
+    { kind: "CAPTURE", status: "SUCCESS", processedAt: "2026-11-04T10:00:00Z" }, { kind: "SALE", status: "SUCCESS", processedAt: "2026-11-03T10:00:00Z" },
+  ] })), "2026-11-03T10:00:00.000Z");
 });
 
 test("recogida en tienda: cuenta desde que se da por entregado", () => {

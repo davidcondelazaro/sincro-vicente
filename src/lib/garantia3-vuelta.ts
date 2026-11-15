@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { alertRecipients, EMAIL_PREFIX, escapeHtml, sendEmail } from "@/lib/email";
-import { canceladoEnMhd, csvContratos, datoQueFalta, fechaEnviado, fechaPrevista, fechaRecogida, filasDePedido, interpretarRespuesta, mesAnterior, motivoAlCrear, motivoParaNoPedir, PROVEEDOR_GARANTIA3, pedidoDePrueba, PREFIJO_PRUEBA, respuestaSimulada, type LineaGuardada, type PayloadMhd, type PedidoGuardado, type PedidoVivo, type Resultado } from "@/lib/garantia3";
+import { canceladoEnMhd, csvContratos, datoQueFalta, fechaEnviado, fechaPago, fechaPrevista, fechaRecogida, filasDePedido, interpretarRespuesta, mesAnterior, motivoAlCrear, motivoParaNoPedir, PROVEEDOR_GARANTIA3, pedidoDePrueba, PREFIJO_PRUEBA, respuestaSimulada, type LineaGuardada, type PayloadMhd, type PedidoGuardado, type PedidoVivo, type Resultado } from "@/lib/garantia3";
 import { refreshMhdStatuses, syncShopifyOrders } from "@/lib/mhd-order-sync";
 
 // Vuelta diaria de Garantía3: trae pedidos y estados con el módulo de Pedidos MHD, crea una fila por unidad, espera los
@@ -49,7 +49,7 @@ async function shopifyGraphql<T>(env: Env, query: string, variables: Record<stri
 }
 
 async function pedidoVivo(env: Env, id: string) {
-  const data = await shopifyGraphql<{ order: PedidoVivo | null }>(env, `query Pedido($id: ID!) { order(id: $id) { cancelledAt displayFinancialStatus lineItems(first: 250) { nodes { id sku currentQuantity lineItemGroup { variantSku } } } fulfillmentOrders(first: 20) { nodes { deliveryMethod { methodType } } } fulfillments { status createdAt deliveredAt } } }`, { id });
+  const data = await shopifyGraphql<{ order: PedidoVivo | null }>(env, `query Pedido($id: ID!) { order(id: $id) { cancelledAt displayFinancialStatus lineItems(first: 250) { nodes { id sku currentQuantity lineItemGroup { variantSku } } } fulfillmentOrders(first: 20) { nodes { deliveryMethod { methodType } } } fulfillments { status createdAt deliveredAt } transactions(first: 50) { kind status processedAt } } }`, { id });
   return data.order;
 }
 
@@ -97,10 +97,17 @@ async function ponerFechas(db: SupabaseClient, env: Env, ajustes: Ajustes) {
     const prevista = fechaPrevista(fila.fecha_inicio as string, ajustes.dias);
     if (new Date(fila.fecha_prevista as string).getTime() !== new Date(prevista).getTime()) await db.from("garantia3_contratos").update({ fecha_prevista: prevista, updated_at: new Date().toISOString() }).eq("id", fila.id);
   }
-  const { data, error } = await db.from("garantia3_contratos").select("id,shopify_order_id").eq("estado", "espera").is("fecha_inicio", null);
+  const { data, error } = await db.from("garantia3_contratos").select("id,shopify_order_id,sku_aparato").eq("estado", "espera").is("fecha_inicio", null);
   if (error) throw error;
   if (!data?.length) return;
-  const pedidos = [...new Set(data.map((row) => row.shopify_order_id as string))];
+  // Compradas sueltas (sin aparato): desde el pago, aunque el pedido lleve además otros aparatos.
+  for (const id of [...new Set(data.filter((row) => !row.sku_aparato).map((row) => row.shopify_order_id as string))]) {
+    const vivo = await pedidoVivo(env, id);
+    const inicio = vivo ? fechaPago(vivo) : null;
+    if (inicio) await db.from("garantia3_contratos").update({ fecha_inicio: inicio, origen_fecha: "Pago (garantía suelta)", fecha_prevista: fechaPrevista(inicio, ajustes.dias), updated_at: new Date().toISOString() }).eq("shopify_order_id", id).eq("estado", "espera").is("fecha_inicio", null).is("sku_aparato", null);
+  }
+  const pedidos = [...new Set(data.filter((row) => row.sku_aparato).map((row) => row.shopify_order_id as string))];
+  if (!pedidos.length) return;
   const { data: guardados } = await db.from("shopify_mhd_orders").select("shopify_order_id,mhd_order_exports(mhd_status_payload)").in("shopify_order_id", pedidos);
   const payloads = new Map<string, PayloadMhd>();
   for (const pedido of (guardados ?? []) as unknown as { shopify_order_id: string; mhd_order_exports: { mhd_status_payload: PayloadMhd } | { mhd_status_payload: PayloadMhd }[] | null }[]) {
@@ -110,7 +117,7 @@ async function ponerFechas(db: SupabaseClient, env: Env, ajustes: Ajustes) {
   for (const id of pedidos) {
     let inicio = fechaEnviado(payloads.get(id)); let origen = "Enviado en MHD";
     if (!inicio) { const vivo = await pedidoVivo(env, id); inicio = vivo ? fechaRecogida(vivo) : null; origen = "Recogida en tienda"; }
-    if (inicio) await db.from("garantia3_contratos").update({ fecha_inicio: inicio, origen_fecha: origen, fecha_prevista: fechaPrevista(inicio, ajustes.dias), updated_at: new Date().toISOString() }).eq("shopify_order_id", id).eq("estado", "espera").is("fecha_inicio", null);
+    if (inicio) await db.from("garantia3_contratos").update({ fecha_inicio: inicio, origen_fecha: origen, fecha_prevista: fechaPrevista(inicio, ajustes.dias), updated_at: new Date().toISOString() }).eq("shopify_order_id", id).eq("estado", "espera").is("fecha_inicio", null).not("sku_aparato", "is", null);
   }
 }
 

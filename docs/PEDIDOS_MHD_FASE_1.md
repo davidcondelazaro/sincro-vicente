@@ -222,13 +222,21 @@ unitario pagado (MHD lo multiplica por la cantidad).
 - La tienda no permite separar servicios y unidades: un servicio lleva siempre
   las mismas unidades que su aparato. Si no coinciden, el pedido se bloquea.
 - La instalación incluye la subida: si llegan las dos a la vez, se bloquea.
-- Las garantías (y cualquier otra línea anidada que no sea un servicio) no son
-  de MHD y no se envían.
+- **Garantías de Garantía3** (desde el 2026-11-15; antes no se enviaban): van a MHD
+  como un producto más, con su código de MHD (el SKU), su precio y sin portes, estén
+  anidadas a un aparato o compradas sueltas. Se reconocen por el proveedor `GARANTIA3`
+  (o por el SKU antiguo de las 9 ampliaciones, que se traduce a su código de MHD). Lo
+  acordado con MHD (David): sin vínculo con el aparato, en orden, y cada garantía
+  distinta una sola vez con la suma de sus unidades. Va detrás del primer aparato que
+  la lleva; las sueltas, al final. MHD las acepta sin existencias y en un pedido que
+  solo lleve garantías. Se bloquea el pedido si una garantía no tiene código de MHD o
+  si la misma garantía va con dos precios. Ver `docs/GARANTIAS_DESDE_MHD.md`.
+- Cualquier otra línea anidada que no sea un servicio no es de MHD y no se envía.
 
 Implementado en `src/lib/mhd-order-lines.ts`, que usan la sincronización (para
 calcular la elegibilidad y mostrar el motivo de bloqueo), la exportación y el
 servicio de portes (zonas). La comprobación de la respuesta de MHD solo compara
-los aparatos enviados.
+los aparatos y garantías enviados, por código y unidades.
 
 ### Seguimiento y facturas en la actualización de estados (10-10-2026)
 

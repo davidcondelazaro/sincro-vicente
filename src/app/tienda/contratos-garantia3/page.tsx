@@ -103,7 +103,7 @@ export default function ContratosGarantia3Page() {
         <th className="px-4 py-3 font-medium">Pedido</th><th className="px-4 py-3 font-medium">Garantía</th><th className="px-4 py-3 font-medium">Cliente</th><th className="px-4 py-3 font-medium">Enviado</th><th className="px-4 py-3 font-medium">Se pide</th><th className="px-4 py-3 font-medium">Estado</th><th className="px-4 py-3 font-medium">Contrato y PIN</th><th className="px-4 py-3" />
       </tr></thead><tbody className="divide-y divide-zinc-100">{shown.map((fila) => <tr key={fila.id} className="align-top">
         <td className="whitespace-nowrap px-4 py-3 text-zinc-900">{fila.shopify_order_name}{fila.unidad > 1 && <span className="text-zinc-400"> · ud. {fila.unidad}</span>}</td>
-        <td className="whitespace-nowrap px-4 py-3 text-zinc-700">{fila.sku}<div className="text-xs text-zinc-400">{fila.sku_aparato ?? "Sin aparato"}</div></td>
+        <td className="whitespace-nowrap px-4 py-3 text-zinc-700">{fila.sku}<div className="text-xs text-zinc-400">{fila.sku_aparato ?? "Comprada suelta"}</div></td>
         <td className="px-4 py-3 text-zinc-700">{[fila.nombre, fila.apellidos].filter(Boolean).join(" ") || "—"}<div className="text-xs text-zinc-400">{fila.email} {fila.telefono}</div></td>
         <td className="whitespace-nowrap px-4 py-3 text-zinc-700">{fecha(fila.fecha_inicio)}{fila.origen_fecha === "Recogida en tienda" && <div className="text-xs text-zinc-400">Recogida</div>}</td>
         <td className="whitespace-nowrap px-4 py-3 text-zinc-700">{fecha(fila.fecha_prevista)}</td>
