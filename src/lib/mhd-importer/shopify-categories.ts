@@ -190,6 +190,7 @@ export const SHOPIFY_CATEGORY_BY_FAMILY: Record<string, string> = {
   "mandos-a-distancia": "gid://shopify/TaxonomyCategory/el-7-16", // Mandos a distancia
   "manos-libres": "gid://shopify/TaxonomyCategory/el-2-2-7", // Auriculares y auriculares con micrófono
   "mantas-electricas": "gid://shopify/TaxonomyCategory/hg-15-1-4-1", // Mantas eléctricas
+  "iluminacion": "gid://shopify/TaxonomyCategory/hg-13", // Iluminación (familia nueva, 2026-11-15)
   "maquinas-de-coser": "gid://shopify/TaxonomyCategory/ae-2-1-4-16-4", // Máquinas de coser
   "maquinas-de-perritos-calientes": "gid://shopify/TaxonomyCategory/bi-8-11", // Máquinas de perritos calientes
   "marcos-digitales": "gid://shopify/TaxonomyCategory/hg-3-52-1", // Portarretratos digitales
