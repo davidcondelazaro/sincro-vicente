@@ -156,3 +156,13 @@ test("similares: proyectores de oficina, de cine y portátiles aparte", () => {
   const rows = [pr("base", "Proyector Epson XGA 3600 lúmenes"), pr("cine", "Proyector Acer Full HD 3600 lúmenes"), pr("mini", "Proyector TCL Full HD 600 lúmenes"), pr("ofi", "Proyector Acer WXGA 4000 lúmenes")];
   assert.deepEqual(first(computeSimilars(rows).get("base"), ["ofi"]), ["ofi"]);
 });
+
+test("similares: procesadores y placas no salen de su zócalo ni al rellenar, y la memoria no mezcla DDR ni formato", () => {
+  const cpu = (pid, title, pvp = 300) => item(pid, "Procesadores", title, pvp, {}, 10);
+  const rows = [cpu("base", "Procesador AMD Ryzen 5 7500 AM5"), cpu("intel", "Procesador Intel Core Ultra 5 245KF LGA 1851"), cpu("am5", "Procesador AMD Ryzen 7 9700X", 320)];
+  assert.deepEqual(computeSimilars(rows).get("base"), ["am5"]);
+  const pb = (pid, title) => item(pid, "Placas base", title, 200);
+  assert.deepEqual(computeSimilars([pb("base", "Placa base MSI B850 Gaming Plus WiFi ATX"), pb("am4", "Placa base MSI B550 AM4 ATX"), pb("am5", "Placa base ASRock X870 AM5 ATX")]).get("base"), ["am5"]);
+  const ram = (pid, title) => item(pid, "Memoria RAM", title, 100);
+  assert.deepEqual(computeSimilars([ram("base", "Memoria RAM Kingston 16 GB DDR5 SO-DIMM"), ram("dimm", "Memoria RAM Kingston 16 GB DDR5"), ram("ddr4", "Memoria RAM Crucial 16 GB DDR4 SO-DIMM"), ram("ok", "Memoria RAM Crucial 16 GB DDR5 SO-DIMM")]).get("base"), ["ok"]);
+});

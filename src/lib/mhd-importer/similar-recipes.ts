@@ -179,6 +179,27 @@ const GRILL_WIDTH = [/hasta 29/i, /de 30 a 40/i, /de 41 a 50/i, /más de 50/i];
 // Penaliza que un filtro de valor único sea distinto (solo si los dos lo tienen).
 const same = (a: SimilarProduct, b: SimilarProduct, key: string, weight: number) => (text(a, key) && text(b, key) && text(a, key) !== text(b, key) ? weight : 0);
 const LUMENS = [/brillo hasta|brillo menos/i, /brillo de 2000/i, /brillo más de 3500/i];
+// Zócalo del procesador o de la placa, del título («AM5», «LGA 1700», «sTR5»).
+// Si el título no lo dice, se deduce del chipset de la placa (B850 → AM5, B760 → LGA 1700…).
+const CHIPSET_SOCKET: [RegExp, string][] = [
+  [/\b(x870e?|x670e?|b850m?|b650e?m?|b840|a620m?)\b/i, "AM5"],
+  [/\b(x570|b550m?|a520m?|b450m?|x470|a320m?)\b/i, "AM4"],
+  [/\b(z890|b860m?|h810m?)\b/i, "LGA 1851"],
+  [/\b(z790|b760m?|h770|z690|b660m?|h610m?)\b/i, "LGA 1700"],
+  // Y en procesadores, del modelo.
+  [/\bryzen [3579] [789]\d{3}/i, "AM5"],
+  [/\bryzen [3579] [345]\d{3}/i, "AM4"],
+  [/\bcore ultra [3579] 2\d{2}/i, "LGA 1851"],
+  [/\bi[3579]-1[234]\d{3}/i, "LGA 1700"],
+];
+const socket = (p: SimilarProduct) =>
+  p.title.match(/\b(AM4|AM5|sTR5|sTRX4|sWRX8|SP3|SP5|SP6|LGA ?\d{4})\b/i)?.[1].toUpperCase().replace(/^LGA ?/, "LGA ") ?? CHIPSET_SOCKET.find(([re]) => re.test(p.title))?.[1] ?? null;
+// Formato de placa base: E-ATX, ATX, micro ATX o mini ITX.
+const boardFormat = (p: SimilarProduct) => (/e-atx/i.test(p.title) ? "e-atx" : /mini[ -]?itx/i.test(p.title) ? "itx" : /micro[ -]?atx|m-atx|\bmatx/i.test(p.title) ? "micro" : "atx");
+// Chip de una gráfica («RTX 5060 Ti», «RX 9060 XT»), para que pese no cambiar de modelo.
+const gpuChip = (p: SimilarProduct) => p.title.match(/\b(rtx|gtx|gt|rx|arc [ab])\s?(\d{3,4})\s?(ti|xt|super)?\b/i)?.slice(1).filter(Boolean).join(" ").toLowerCase() ?? null;
+const wifiGen = (p: SimilarProduct) => `${text(p, "filtro.mas_especificaciones")} ${p.title}`.match(/wi-?fi ?(\d)/i)?.[1] ?? null;
+const PSU_CERT = [/white|standard/i, /bronze/i, /silver/i, /gold/i, /platinum/i, /titanium/i];
 const fanShape = byTitle([[/torre/i, "torre"], [/de pie/i, "pie"], [/sobremesa/i, "sobremesa"]], "suelo");
 const TAP_HEIGHT = [/hasta 19/i, /de 20 cm/i, /más de 30/i];
 const IRON_STEAM = [/vapor continuo hasta 99/i, /vapor continuo de 100/i, /vapor continuo 130/i];
@@ -1006,6 +1027,113 @@ const RULES: Record<string, Rule> = {
     group: byTitle([[/^c[aá]mara/i, "camara"], [/^kit/i, "kit"], [/grabador|nvr|dvr/i, "grabador"]], "accesorio"),
     ...byPrice,
     extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /exterior/i, 10) + same(a, b, "filtro.resolucion", 5) + mismatch(a, b, "filtro.conectividad", /wifi/i, 3),
+  },
+  // Componentes de PC: lo que decide la compatibilidad va en el grupo y sale del título, porque los filtros casi no
+  // traen datos: zócalo en procesadores y placas, DDR y formato en memoria, fabricante del chip en gráficas.
+  "Tarjetas gráficas": {
+    live: true,
+    group: (p) => (/rtx|gtx|geforce|\bgt \d/i.test(p.title) ? "nvidia" : /radeon|\brx ?\d/i.test(p.title) ? "amd" : /\barc\b/i.test(p.title) ? "intel" : "otra"),
+    ...byPrice,
+    extra: (a, b) => (gpuChip(a) && gpuChip(b) && gpuChip(a) !== gpuChip(b) ? 12 : 0) + log2diff(fromTitle(a, "GB"), fromTitle(b, "GB"), 8),
+  },
+  // Compatibilidad: ni al rellenar se sale del zócalo; y sin tope por marca (solo hay AMD e Intel).
+  Procesadores: {
+    live: true,
+    strict: true,
+    perBrand: () => SIMILAR.maxList,
+    group: (p) => socket(p) ?? "sin zócalo",
+    ...byPrice,
+    extra: (a, b) => log2diff(fromTitle(a, "núcleos"), fromTitle(b, "núcleos"), 8),
+  },
+  "Memoria RAM": {
+    live: true,
+    // DDR, SO-DIMM (portátil) o DIMM, y ECC (servidor): si no coinciden, no encaja.
+    strict: true,
+    group: (p) => `${p.title.match(/ddr\d/i)?.[0].toUpperCase() ?? "DDR?"}/${/so-?dimm/i.test(p.title) ? "sodimm" : "dimm"}/${/\becc\b|rdimm|registered/i.test(p.title) ? "ecc" : "normal"}`,
+    main: (p) => log2(gb(p, "filtro.memoria_ram") ?? fromTitle(p, "GB")),
+    mainWeight: 25,
+    steps: [[0, 0.3], [1, 0.45], [1, 0.7]],
+    extra: (a, b) => diff(fromTitle(a, "MT/s") ?? fromTitle(a, "MHz"), fromTitle(b, "MT/s") ?? fromTitle(b, "MHz"), 0.01) + mismatch(a, b, "filtro.caracteristicas", /rgb/i, 3),
+  },
+  "Placas base": {
+    live: true,
+    strict: true,
+    group: (p) => (/tpm/i.test(p.title) ? "accesorio" : socket(p) ?? "sin zócalo"),
+    ...byPrice,
+    extra: (a, b) =>
+      (boardFormat(a) === boardFormat(b) ? 0 : 15) +
+      (/ddr\d/i.test(a.title) && /ddr\d/i.test(b.title) && a.title.match(/ddr\d/i)![0].toLowerCase() !== b.title.match(/ddr\d/i)![0].toLowerCase() ? 15 : 0) +
+      (/wi-?fi/i.test(a.title) === /wi-?fi/i.test(b.title) ? 0 : 4),
+  },
+  "Fuentes de alimentación": {
+    live: true,
+    group: byTitle([[/\bsfx/i, "sfx"], [/adaptador/i, "adaptador"]], "atx"),
+    main: watts,
+    mainWeight: 0.05,
+    steps: [[0, 0.3], [100, 0.45], [200, 0.7]],
+    extra: (a, b) => diff(bucket(a, "filtro.mas_especificaciones", PSU_CERT), bucket(b, "filtro.mas_especificaciones", PSU_CERT), 4) + mismatch(a, b, "filtro.caracteristicas", /modular/i, 4),
+  },
+  "Cajas de ordenador": {
+    live: true,
+    group: (p) => {
+      if (/e-atx|torre completa|full tower/i.test(p.title)) return "grande";
+      if (/mini[ -]?itx/i.test(p.title) && !/\batx\b/i.test(p.title.replace(/mini[ -]?itx|micro atx/gi, ""))) return "itx";
+      if (/micro atx|minitorre|m-atx/i.test(p.title) && !/semitorre/i.test(p.title)) return "micro";
+      return "atx";
+    },
+    ...byPrice,
+    extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /cristal/i, 4) + mismatch(a, b, "filtro.caracteristicas", /rgb/i, 3) + (text(a, "filtro.color") === text(b, "filtro.color") ? 0 : 5),
+  },
+  // Red: el aparato sale del título (en estas familias conviven routers, puntos de acceso, mesh, accesorios…).
+  Routers: {
+    live: true,
+    group: byTitle([[/kit de montaje|soporte|antena/i, "accesorio"], [/punto de acceso/i, "punto-acceso"], [/mesh/i, "mesh"], [/\b[45]g\b/i, "movil"]], "router"),
+    ...byPrice,
+    extra: (a, b) => (wifiGen(a) && wifiGen(b) && wifiGen(a) !== wifiGen(b) ? 6 : 0) + mismatch(a, b, "filtro.caracteristicas", /poe/i, 4),
+  },
+  "Repetidores y sistemas wifi mesh": {
+    live: true,
+    group: byTitle([[/punto de acceso/i, "punto-acceso"], [/mesh/i, "mesh"], [/plc/i, "plc"], [/puente/i, "puente"], [/adaptador|usb/i, "adaptador"], [/antena/i, "antena"]], "repetidor"),
+    ...byPrice,
+    extra: (a, b) => (wifiGen(a) && wifiGen(b) && wifiGen(a) !== wifiGen(b) ? 6 : 0),
+  },
+  "Switches y hubs": {
+    live: true,
+    group: (p) => {
+      if (/kvm/i.test(p.title)) return "kvm";
+      if (/hub|concentrador/i.test(p.title)) return "hub";
+      if (/sfp|transceptor/i.test(p.title) && !/switch/i.test(p.title)) return "sfp";
+      if (/conversor|convertidor/i.test(p.title)) return "conversor";
+      if (/inyector/i.test(p.title)) return "inyector";
+      if (/hdmi|conmutador|displayport/i.test(p.title) && !/switch.*puertos/i.test(p.title)) return "video";
+      return "switch";
+    },
+    main: (p) => log2(fromTitle(p, "puertos")),
+    mainWeight: 20,
+    steps: [[0, 0.3], [0.6, 0.45], [1.1, 0.7]],
+    extra: (a, b) =>
+      mismatch(a, b, "filtro.caracteristicas", /poe/i, 10) + (/gestionable|administrable/i.test(a.title.replace(/no (gestionable|administrado)/i, "")) === /gestionable|administrable/i.test(b.title.replace(/no (gestionable|administrado)/i, "")) ? 0 : 8) + mismatch(a, b, "filtro.caracteristicas", /rack/i, 3),
+  },
+  "Servidores y NAS": {
+    live: true,
+    group: byTitle([[/\bnas\b/i, "nas"], [/servidor/i, "servidor"], [/expansi[oó]n/i, "expansion"]], "otro"),
+    main: (p) => log2(fromTitle(p, "bahías")),
+    mainWeight: 15,
+    steps: [[0, 0.3], [1, 0.45], [1.6, 0.7]],
+    extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /rack/i, 10),
+  },
+  "Tarjetas de red": {
+    live: true,
+    group: byTitle([[/wi-?fi|bluetooth/i, "wifi"], [/sfp|qsfp|fibra/i, "fibra"], [/serie|rs-?232/i, "serie"], [/^router|^repetidor/i, "otro"], [/usb/i, "usb"]], "ethernet"),
+    ...byPrice,
+    extra: (a, b) => diff(fromTitle(a, "puertos"), fromTitle(b, "puertos"), 4),
+  },
+  Escáneres: { live: true, group: byTitle([[/port[aá]til/i, "portatil"], [/plano/i, "plano"]], "documentos"), ...byPrice },
+  TPV: {
+    live: true,
+    group: byTitle([[/lector/i, "lector"], [/caj[oó]n/i, "cajon"], [/visor/i, "visor"], [/cinta|etiquetas/i, "consumible"], [/impresora/i, "impresora"], [/^kit/i, "kit"], [/tpv/i, "tpv"]], "otro"),
+    ...byPrice,
+    extra: (a, b) => diff(inches(a), inches(b), 3),
   },
 };
 
