@@ -52,3 +52,14 @@ test("recetas: una placa de inducción solo lleva menaje apto para inducción, y
   assert.deepEqual(res.get("p"), [{ slot: "Sartén", pid: "si" }, { slot: "Olla a presión", pid: "ok" }]);
   assert.equal(res.get("pa"), undefined);
 });
+
+test("recetas: una campana solo lleva la pieza que su fabricante liga a su serie", () => {
+  const hood = (pid, title, marca) => ({ ...product(pid, "Campanas extractoras", title, 300, 3), marca });
+  const part = (pid, title, stock = 10) => ({ ...product(pid, "Accesorios para campanas", title, 25, stock), marca: "Cata" });
+  const rows = [hood("omega", "Campana piramidal Cata OMEGA 600 X 60 cm", "Cata"), hood("otra", "Campana piramidal Teka OMEGA 600", "Teka"), hood("sin", "Campana Cata JUNO 900", "Cata"),
+    part("m3r", "Filtro de carbón activo Cata M3R 2 unidades"), part("bt3", "Filtro de carbón activo Cata BT3 (2 unidades)")];
+  const res = computeComplements(rows);
+  assert.deepEqual(res.get("omega"), [{ slot: "Filtro de carbón", pid: "m3r" }]);
+  assert.equal(res.get("otra"), undefined);
+  assert.equal(res.get("sin"), undefined);
+});

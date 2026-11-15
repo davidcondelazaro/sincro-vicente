@@ -13,7 +13,8 @@ export const RECIPES = { minStock: 5, keepStock: 1, maxList: 10 };
 // Placas y cocinas con su menaje (2026-11-15): en estas familias `a` trae los filtros del importador, no Icecat.
 export const COOKTOP_TYPES = ["Placas de inducción", "Placas vitrocerámicas", "Placas de gas", "Cocinas de gas y eléctricas", "Hornillos", "Módulos de integración"];
 export const COOKWARE_TYPES = ["Sartenes", "Ollas, cacerolas y cazos", "Baterías de cocina", "Paelleras"];
-export const RECIPE_TYPES = ["Televisores", "Portátiles", "Monitores", "Soportes de TV y monitor", "Barras de sonido", "Cables", "Regletas", "Fundas y maletines para portátiles", "Mochilas para portátiles", "Ratones", "Bases y replicadores de puertos", "Packs de teclado y ratón", "Limpieza para electrónica", ...COOKTOP_TYPES, ...COOKWARE_TYPES];
+export const HOOD_TYPES = ["Campanas extractoras", "Accesorios para campanas"];
+export const RECIPE_TYPES = ["Televisores", "Portátiles", "Monitores", "Soportes de TV y monitor", "Barras de sonido", "Cables", "Regletas", "Fundas y maletines para portátiles", "Mochilas para portátiles", "Ratones", "Bases y replicadores de puertos", "Packs de teclado y ratón", "Limpieza para electrónica", ...COOKTOP_TYPES, ...COOKWARE_TYPES, ...HOOD_TYPES];
 
 const TV_BRANDS = /samsung|\blg\b|sony|philips|hisense|tcl|panasonic|xiaomi/;
 const LAPTOP_BRANDS = /\b(hp|lenovo|dell|asus|acer|apple|samsung|lg|msi|microsoft|medion|gigabyte|huawei)\b/;
@@ -273,10 +274,40 @@ function cooktops(items: Item[], previous: Map<string, string[]>) {
   return result;
 }
 
+// Piezas de campana (2026-11-15): solo las que la descripción de MHD liga a una serie concreta, revisadas una a una
+// contra las campanas de la tienda. Una campana nueva de esas series entra sola; una pieza nueva hay que añadirla aquí.
+const HOOD_PARTS: { part: RegExp; slot: string; brand: string; hood: RegExp }[] = [
+  { part: /\bcata bt3\b/, slot: "Filtro de carbón", brand: "cata", hood: /\b(legend|sygma|sirin|corona|goya|gt-plus|beta 600)\b/ },
+  { part: /\bcata m3r\b/, slot: "Filtro de carbón", brand: "cata", hood: /\b(omega|armonia)\b/ },
+  { part: /\bcata f-20\/22\b/, slot: "Filtro de carbón", brand: "cata", hood: /\btf-?5260\b/ },
+  { part: /\bmepamsa 112\.0569\.559\b/, slot: "Filtro de carbón", brand: "mepamsa", hood: /\b(luna plus|silueta xla|cristalo|cuadro)\b/ },
+  { part: /\bteka cnl 1c\b/, slot: "Filtro de carbón", brand: "teka", hood: /\bcnl 6415\b/ },
+  { part: /\bteka d9c\b/, slot: "Filtro de carbón", brand: "teka", hood: /\b(dvn|integra|nr1 63020)\b/ },
+  { part: /\bteka set 1\/m\b/, slot: "Kit de recirculación", brand: "teka", hood: /\b(dbb|dbp|dvt|dmr?|du) ?(pro )?\d/ },
+  { part: /\bteka 81472103\b/, slot: "Extensión de chimenea", brand: "teka", hood: /\b(dvt|dvl|dve|dbb) ?(pro )?\d/ },
+];
+
+function hoods(items: Item[], previous: Map<string, string[]>) {
+  const parts = items.filter((x) => x.t === "Accesorios para campanas");
+  const result = new Map<string, Slot[]>();
+  for (const hood of items.filter((x) => x.t === "Campanas extractoras")) {
+    const brand = (hood.marca ?? "").toLowerCase();
+    const rules = HOOD_PARTS.filter((r) => r.brand === brand && r.hood.test(hood.lower));
+    if (!rules.length) continue;
+    const { slots, pick } = chooser(previous.get(hood.pid) ?? []);
+    for (const slot of [...new Set(rules.map((r) => r.slot))]) {
+      const fitting = parts.filter((x) => rules.some((r) => r.slot === slot && r.part.test(x.lower)));
+      pick(slot, fitting, (x) => [score(x, hood, 0.03, 0.2, true)]);
+    }
+    result.set(hood.pid, slots);
+  }
+  return result;
+}
+
 // `previous`: los complementos que tiene ahora cada aparato. La receta va delante y lo de Icecat detrás, hasta 10.
 export function computeComplements(rows: RecipeProduct[], previous: Map<string, string[]> = new Map()) {
   const items: Item[] = rows.filter((row) => row.pvp > 0).map((row) => ({ ...row, a: row.a ?? {}, txt: row.txt ?? "", lower: row.title.toLowerCase() }));
-  return new Map([...televisions(items, previous), ...laptops(items, previous), ...monitors(items, previous), ...cooktops(items, previous)]);
+  return new Map([...televisions(items, previous), ...laptops(items, previous), ...monitors(items, previous), ...cooktops(items, previous), ...hoods(items, previous)]);
 }
 
 export function mergeComplements(recipe: Slot[], icecat: string[]) {
