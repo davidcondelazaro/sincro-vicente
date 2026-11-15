@@ -109,3 +109,10 @@ test("similares: frigoríficos bajo encimera aparte y placas portátiles aparte"
   const pl = (pid, car = []) => item(pid, "Placas de inducción", `Placa de inducción ${pid} 60 cm`, 300, { "filtro.ancho": "60 cm", "filtro.zonas_fuegos": "3 zonas", "filtro.caracteristicas": car });
   assert.deepEqual(computeSimilars([pl("base"), pl("port", ["Portátil"]), pl("ok")]).get("base"), ["ok"]);
 });
+
+test("similares: impresoras de tinta y láser aparte, y relojes infantiles aparte", () => {
+  const pr = (pid, tech, pvp = 100) => item(pid, "Impresoras", `Impresora multifunción ${pid}`, pvp, { "filtro.tecnologia": tech, "filtro.caracteristicas": ["Multifunción", "Impresión en color"] });
+  assert.deepEqual(computeSimilars([pr("base", "Inyección de tinta"), pr("laser", "Láser"), pr("tinta", "Inyección de tinta", 110)]).get("base"), ["tinta"]);
+  const w = (pid, title) => item(pid, "Smartwatches", title, 100, { "filtro.tamano_pantalla": "44 mm" });
+  assert.deepEqual(computeSimilars([w("base", "Smartwatch Xiaomi 44 mm"), w("kid", "Smartwatch infantil SPC 44 mm"), w("ok", "Smartwatch Huawei 44 mm")]).get("base"), ["ok"]);
+});

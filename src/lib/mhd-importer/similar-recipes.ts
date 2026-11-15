@@ -115,6 +115,26 @@ const zones = (p: SimilarProduct) => number(text(p, "filtro.zonas_fuegos"));
 const hobGroup = (p: SimilarProduct) => (has(p, "filtro.caracteristicas", /portátil/i) || /portátil/i.test(p.title) ? "portatil" : "encastrable");
 const microExtra = (a: SimilarProduct, b: SimilarProduct) =>
   mismatch(a, b, "filtro.caracteristicas", /grill/i, 10) + diff(number(text(a, "filtro.potencia")), number(text(b, "filtro.potencia")), 0.03);
+// Impresoras: tecnología (del filtro o del título), multifunción o no, A3 aparte y plóteres aparte.
+const printerTech = (p: SimilarProduct) => {
+  const tech = text(p, "filtro.tecnologia");
+  if (tech) return tech;
+  if (/l[aá]ser/i.test(p.title)) return "Láser";
+  if (/t[eé]rmica|etiquetas|tickets/i.test(p.title)) return "Térmica";
+  return "Inyección de tinta";
+};
+const multifunction = (p: SimilarProduct) => has(p, "filtro.caracteristicas", /multifunción/i) || /multifunci[oó]n/i.test(p.title);
+const PPM = [/hasta 20 ppm/i, /de 21 ppm/i, /más de 30 ppm/i];
+// Auriculares: diadema o intrauditivos (del filtro o del título), con o sin cable, y los gaming aparte.
+const headphoneType = (p: SimilarProduct) => {
+  // Algunos «buds» vienen como diadema en el filtro: el true wireless siempre es intrauditivo.
+  if (has(p, "filtro.caracteristicas", /true wireless/i) || /\bbuds\b|true wireless|\btws\b/i.test(p.title)) return "in-ear";
+  const tipo = text(p, "filtro.tipo");
+  if (tipo) return tipo === "Diadema" ? "diadema" : "in-ear";
+  return /diadema|over.?ear|on.?ear/i.test(p.title) ? "diadema" : "in-ear";
+};
+const wireless = (p: SimilarProduct) => has(p, "filtro.conectividad", /bluetooth/i) || has(p, "filtro.caracteristicas", /true wireless/i) || /bluetooth|inal[aá]mbric|wireless|true wireless/i.test(p.title);
+const AUTONOMY = [/menos de 6/i, /de 6 a 10/i, /de 11 a 20/i, /de 21 a 40/i, /más de 40/i];
 const WIDTH_COMBI =[/menos de 55/i, /de 55/i, /de 61/i, /de 71/i, /de 91/i];
 const diff = (a: number | null, b: number | null, weight: number) => (a === null || b === null ? 0 : Math.abs(a - b) * weight);
 
@@ -282,6 +302,54 @@ const RULES: Record<string, Rule> = {
     mainWeight: 0.3,
     steps: [[50, 0.3], [100, 0.45], [150, 0.7]],
     extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /convertible/i, 10) + diff(energyClass(a), energyClass(b), 3),
+  },
+  // Impresoras: sin dato principal (todo es precio dentro del grupo); pesan color, depósito de tinta, doble cara, wifi y
+  // velocidad.
+  Impresoras: {
+    live: true,
+    group: (p) => {
+      const tech = printerTech(p);
+      if (tech === "Térmica") return "termica";
+      // Los plóteres (A0 a A2) aparte de las A3, y las A3 aparte de las A4.
+      if (/pl[oó]ter/i.test(p.title) || /formato máximo a[0-2]\b/i.test(text(p, "filtro.mas_especificaciones"))) return "ploter";
+      const a3 = /formato máximo a3\b/i.test(text(p, "filtro.mas_especificaciones")) || /\ba3\b/i.test(p.title);
+      return `${tech}/${multifunction(p) ? "multifuncion" : "impresora"}/${a3 ? "a3" : "a4"}`;
+    },
+    main: () => 0,
+    mainWeight: 0,
+    steps: [[0, 0.25], [0, 0.4], [0, 0.6]],
+    extra: (a, b) =>
+      mismatch(a, b, "filtro.caracteristicas", /color/i, 20) +
+      mismatch(a, b, "filtro.caracteristicas", /depósito de tinta/i, 15) +
+      mismatch(a, b, "filtro.caracteristicas", /doble cara/i, 8) +
+      mismatch(a, b, "filtro.conectividad", /wifi/i, 8) +
+      diff(bucket(a, "filtro.mas_especificaciones", PPM), bucket(b, "filtro.mas_especificaciones", PPM), 5),
+  },
+  // Auriculares: diadema o intrauditivos, con o sin cable, y los gaming aparte; todo precio dentro del grupo. Pesan
+  // cancelación de ruido, true wireless, deportivos y autonomía.
+  Auriculares: {
+    live: true,
+    group: (p) => `${headphoneType(p)}/${wireless(p) ? "inalambricos" : "cable"}${/gaming/i.test(p.title) ? "/gaming" : ""}`,
+    main: () => 0,
+    mainWeight: 0,
+    steps: [[0, 0.25], [0, 0.4], [0, 0.6]],
+    extra: (a, b) =>
+      mismatch(a, b, "filtro.caracteristicas", /cancelación de ruido/i, 20) +
+      mismatch(a, b, "filtro.caracteristicas", /true wireless/i, 15) +
+      mismatch(a, b, "filtro.caracteristicas", /deportivos/i, 8) +
+      diff(bucket(a, "filtro.autonomia", AUTONOMY), bucket(b, "filtro.autonomia", AUTONOMY), 4),
+  },
+  // Relojes: los Apple Watch (solo van con iPhone) aparte y sin tope por marca, y los infantiles aparte; tamaño de caja cercano. Pesan 4G/5G, GPS y
+  // NFC.
+  Smartwatches: {
+    live: true,
+    group: (p) => ((p.marca ?? "").toUpperCase() === "APPLE" || /apple watch/i.test(p.title) ? "apple" : /infantil|niñ[oa]s|kids/i.test(p.title) ? "infantil" : "otros"),
+    perBrand: (group) => (group === "apple" ? SIMILAR.maxList : SIMILAR.perBrand),
+    main: (p) => number(text(p, "filtro.tamano_pantalla")) ?? fromTitle(p, "mm") ?? 44,
+    mainWeight: 2,
+    steps: [[2, 0.3], [4, 0.45], [8, 0.7]],
+    extra: (a, b) =>
+      mismatch(a, b, "filtro.conectividad", /4g|5g/i, 15) + mismatch(a, b, "filtro.conectividad", /gps/i, 8) + mismatch(a, b, "filtro.conectividad", /nfc/i, 5),
   },
   // Portátiles: Mac, Chromebook o PC, y con gráfica dedicada aparte; pulgadas cercanas y precio más ajustado que en
   // electrodomésticos, porque hay muchos. Pesan memoria, disco, gama de procesador, peso y convertible.
