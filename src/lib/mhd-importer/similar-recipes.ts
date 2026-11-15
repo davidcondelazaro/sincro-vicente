@@ -206,7 +206,7 @@ const RULES: Record<string, Rule> = {
   // estación de trabajo) aparte; misma
   // gama de procesador primero. Pesan memoria, disco y, en los todo en uno, las pulgadas.
   "Ordenadores de sobremesa": {
-    live: false,
+    live: true,
     group: (p) => {
       const type = desktopType(p);
       const mac = /macos/i.test(text(p, "filtro.sistema_operativo")) || /apple/i.test(text(p, "filtro.mas_especificaciones")) || /\b(?:mac|imac)\b/i.test(p.title);
