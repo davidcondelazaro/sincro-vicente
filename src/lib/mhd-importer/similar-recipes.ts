@@ -33,7 +33,8 @@ const energyClass = (p: SimilarProduct) => {
 };
 // Cifra del título delante de una unidad («375 L», «186 cm», «14 servicios»).
 const fromTitle = (p: SimilarProduct, unit: string) => {
-  const match = p.title.match(new RegExp(`(\\d+(?:[.,]\\d+)?)\\s*${unit}\\b`, "i"));
+  // Detrás de la unidad no puede ir una letra ni una cifra («375 L» sí, «375 LED» no); vale para «"» y «m³/h».
+  const match = p.title.match(new RegExp(`(\\d+(?:[.,]\\d+)?)\\s*${unit.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}(?![\\p{L}\\d])`, "iu"));
   return match ? Number(match[1].replace(",", ".")) : null;
 };
 const integrable = (p: SimilarProduct) => text(p, "filtro.color") === "Integrable" || /integrable/i.test(p.title);
@@ -43,7 +44,12 @@ const bucket = (p: SimilarProduct, key: string, scale: RegExp[]) => {
   const index = scale.findIndex((re) => re.test(value));
   return index < 0 ? null : index;
 };
-const WIDTH_COMBI = [/menos de 55/i, /de 55/i, /de 61/i, /de 71/i, /de 91/i];
+// Escala de panel de televisores, de menos a más gama.
+const panel = (p: SimilarProduct) => {
+  const index = ["LED", "QLED", "Mini LED", "OLED"].indexOf(text(p, "filtro.tecnologia"));
+  return index < 0 ? null : index;
+};
+const WIDTH_COMBI =[/menos de 55/i, /de 55/i, /de 61/i, /de 71/i, /de 91/i];
 const diff = (a: number | null, b: number | null, weight: number) => (a === null || b === null ? 0 : Math.abs(a - b) * weight);
 
 const RULES: Record<string, Rule> = {
@@ -92,6 +98,33 @@ const RULES: Record<string, Rule> = {
     mainWeight: 1.5,
     steps: [[5, 0.3], [10, 0.45], [20, 0.7]],
     extra: (a, b) => diff(energyClass(a), energyClass(b), 4),
+  },
+  // Televisores: mismas pulgadas primero (luego ±8 y ±15); la tecnología de panel pesa en el orden.
+  Televisores: {
+    live: false,
+    group: () => "tv",
+    main: (p) => number(text(p, "filtro.tamano_pantalla")) ?? fromTitle(p, '"'),
+    mainWeight: 3,
+    steps: [[0, 0.3], [8, 0.45], [15, 0.7]],
+    extra: (a, b) => diff(panel(a), panel(b), 12),
+  },
+  // Secadoras: bomba de calor o no; kilos cercanos.
+  Secadoras: {
+    live: false,
+    group: (p) => (/bomba de calor/i.test(`${text(p, "filtro.caracteristicas")} ${p.title}`) ? "bomba" : "otra"),
+    main: (p) => fromTitle(p, "kg") ?? number(text(p, "filtro.capacidad")),
+    mainWeight: 12,
+    steps: [[1, 0.3], [2, 0.45], [3, 0.7]],
+    extra: (a, b) => diff(energyClass(a), energyClass(b), 4),
+  },
+  // Campanas: mismo tipo de montaje (las de isla aparte) y mismo ancho primero (luego ±10 y ±20 cm).
+  "Campanas extractoras": {
+    live: false,
+    group: (p) => (/\bisla\b/i.test(p.title) ? "isla" : text(p, "filtro.tipo") || "sin tipo"),
+    main: (p) => fromTitle(p, "cm") ?? number(text(p, "filtro.ancho")),
+    mainWeight: 2,
+    steps: [[0, 0.3], [10, 0.45], [20, 0.7]],
+    extra: (a, b) => diff(fromTitle(a, "m³/h"), fromTitle(b, "m³/h"), 0.04) + diff(energyClass(a), energyClass(b), 3),
   },
 };
 

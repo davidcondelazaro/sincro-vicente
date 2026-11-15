@@ -65,3 +65,16 @@ test("similares: sin duplicados por título ni el propio producto repetido", () 
   const rows = [item("a", "Hornos", "Horno X 71 L", 400), item("a2", "Hornos", "Horno X 71 L", 400), item("b", "Hornos", "Horno Y 70 L", 400), item("b2", "Hornos", "Horno Y 70 L", 400)];
   assert.deepEqual(computeSimilars(rows, { preview: true }).get("a"), ["b"]);
 });
+
+test("similares: televisores de las mismas pulgadas primero y campanas de isla aparte", () => {
+  const tv = (pid, inch, tech, pvp) => item(pid, "Televisores", `Televisor ${pid} ${inch}" ${tech} 4K`, pvp, { "filtro.tamano_pantalla": `${inch}"`, "filtro.tecnologia": tech });
+  const tvs = [tv("a", 55, "QLED", 600), tv("b", 55, "QLED", 650), tv("c", 50, "QLED", 600), tv("d", 65, "QLED", 600)];
+  assert.deepEqual(computeSimilars(tvs, { preview: true }).get("a"), ["b", "c", "d"]); // con pocos se amplía: la de 65" va la última
+  const camp = [item("p", "Campanas extractoras", "Campana piramidal P 60 cm 600 m³/h", 300, { "filtro.tipo": "Piramidal" }), item("i", "Campanas extractoras", "Campana de isla I 60 cm 600 m³/h", 300, { "filtro.tipo": "Piramidal" }), item("q", "Campanas extractoras", "Campana piramidal Q 60 cm 650 m³/h", 310, { "filtro.tipo": "Piramidal" })];
+  assert.deepEqual(computeSimilars(camp, { preview: true }).get("p"), ["q"]);
+});
+
+test("similares: las cifras del título no confunden «L» con «LED»", () => {
+  const rows = [item("a", "Hornos", "Horno A 71 L LED", 400), item("b", "Hornos", "Horno B 72 LED", 410), item("c", "Hornos", "Horno C 70 L", 405)];
+  assert.deepEqual(computeSimilars(rows, { preview: true }).get("a"), ["c"]);
+});
