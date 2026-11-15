@@ -166,3 +166,12 @@ test("similares: procesadores y placas no salen de su zócalo ni al rellenar, y 
   const ram = (pid, title) => item(pid, "Memoria RAM", title, 100);
   assert.deepEqual(computeSimilars([ram("base", "Memoria RAM Kingston 16 GB DDR5 SO-DIMM"), ram("dimm", "Memoria RAM Kingston 16 GB DDR5"), ram("ddr4", "Memoria RAM Crucial 16 GB DDR4 SO-DIMM"), ram("ok", "Memoria RAM Crucial 16 GB DDR5 SO-DIMM")]).get("base"), ["ok"]);
 });
+
+test("similares: teclados con otra distribución van detrás y las sartenes van por diámetro", () => {
+  const te = (pid, title) => item(pid, "Teclados", title, 30);
+  const rows = [te("base", "Teclado inalámbrico Logitech K270"), te("fr", "Teclado inalámbrico Logitech K270 (distribución francesa)"), te("es", "Teclado inalámbrico HP 230")];
+  assert.deepEqual(computeSimilars(rows).get("base")[0], "es");
+  const sa = (pid, title) => item(pid, "Sartenes", title, 30);
+  const sart = [sa("base", "Sartén Bra Efficient 24 cm"), sa("g", "Sartén Tefal 32 cm"), sa("ok", "Sartén Monix 24 cm")];
+  assert.deepEqual(computeSimilars(sart).get("base")[0], "ok");
+});

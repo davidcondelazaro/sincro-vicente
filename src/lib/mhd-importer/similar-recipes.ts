@@ -199,6 +199,10 @@ const boardFormat = (p: SimilarProduct) => (/e-atx/i.test(p.title) ? "e-atx" : /
 // Chip de una gráfica («RTX 5060 Ti», «RX 9060 XT»), para que pese no cambiar de modelo.
 const gpuChip = (p: SimilarProduct) => p.title.match(/\b(rtx|gtx|gt|rx|arc [ab])\s?(\d{3,4})\s?(ti|xt|super)?\b/i)?.slice(1).filter(Boolean).join(" ").toLowerCase() ?? null;
 const wifiGen = (p: SimilarProduct) => `${text(p, "filtro.mas_especificaciones")} ${p.title}`.match(/wi-?fi ?(\d)/i)?.[1] ?? null;
+// Distribución del teclado: la española salvo que el título diga otra. Un teclado francés no sustituye a uno español.
+const layout = (p: SimilarProduct) => p.title.match(/(franc[eé]s|francesa|portugu[eé]s|ingl[eé]s|suiz[ao]|alem[aá]n|italian[ao]|n[oó]rdic[ao]|belga|\bUK\b|EE\. ?UU\.)/i)?.[1].toLowerCase().slice(0, 4) ?? "es";
+const isWireless = (p: SimilarProduct) => /inal[aá]mbric|wireless|bluetooth/i.test(p.title) || has(p, "filtro.caracteristicas", /inalámbrico/i);
+const READ_SPEED = [/hasta 50/i, /de 51/i, /de 101/i, /de 201|más de 200/i];
 const PSU_CERT = [/white|standard/i, /bronze/i, /silver/i, /gold/i, /platinum/i, /titanium/i];
 const fanShape = byTitle([[/torre/i, "torre"], [/de pie/i, "pie"], [/sobremesa/i, "sobremesa"]], "suelo");
 const TAP_HEIGHT = [/hasta 19/i, /de 20 cm/i, /más de 30/i];
@@ -1135,6 +1139,95 @@ const RULES: Record<string, Rule> = {
     ...byPrice,
     extra: (a, b) => diff(inches(a), inches(b), 3),
   },
+  // Periféricos y gaming: gaming o no va en el grupo; pesan inalámbrico y lo que cambia el uso.
+  Ratones: {
+    live: true,
+    group: (p) => (/gaming/i.test(p.title) || has(p, "filtro.caracteristicas", /gaming/i) ? "gaming" : "normal"),
+    ...byPrice,
+    extra: (a, b) => (isWireless(a) === isWireless(b) ? 0 : 8) + mismatch(a, b, "filtro.caracteristicas", /silencioso/i, 3) + mismatch(a, b, "filtro.caracteristicas", /recargable/i, 3),
+  },
+  Teclados: {
+    live: true,
+    group: (p) => (/funda/i.test(p.title) ? "funda" : /^kit|rat[oó]n/i.test(p.title) ? "kit" : /gaming|mec[aá]nico/i.test(p.title) || has(p, "filtro.caracteristicas", /gaming/i) ? "gaming" : "normal"),
+    ...byPrice,
+    extra: (a, b) => (layout(a) === layout(b) ? 0 : 40) + (isWireless(a) === isWireless(b) ? 0 : 8) + mismatch(a, b, "filtro.caracteristicas", /numérico/i, 4) + mismatch(a, b, "filtro.caracteristicas", /retroiluminado/i, 3),
+  },
+  "Packs de teclado y ratón": {
+    live: true,
+    group: (p) => (!/^kit|pack|rat[oó]n/i.test(p.title) ? "teclado" : /gaming/i.test(p.title) || has(p, "filtro.caracteristicas", /gaming/i) ? "gaming" : "normal"),
+    ...byPrice,
+    extra: (a, b) => (layout(a) === layout(b) ? 0 : 40) + (isWireless(a) === isWireless(b) ? 0 : 8) + mismatch(a, b, "filtro.caracteristicas", /silencioso/i, 3),
+  },
+  "Sillas gaming": {
+    live: true,
+    group: byTitle([[/oficina/i, "oficina"]], "gaming"),
+    ...byPrice,
+    extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /malla/i, 4) + mismatch(a, b, "filtro.caracteristicas", /4D/i, 3),
+  },
+  "Mesas gaming": {
+    live: true,
+    group: (p) => (/elevable|de pie/i.test(p.title) || has(p, "filtro.caracteristicas", /altura regulable/i) ? "elevable" : "fija"),
+    ...byPrice,
+    extra: (a, b) => same(a, b, "filtro.ancho", 5),
+  },
+  "Volantes gaming": { live: true, group: byTitle([[/volante/i, "volante"], [/palanca/i, "palanca"]], "mando"), ...byPrice },
+  Joysticks: { live: true, group: () => "mando", ...byPrice, extra: (a, b) => (isWireless(a) === isWireless(b) ? 0 : 6) },
+  // Almacenamiento portátil: misma capacidad primero.
+  "Memorias USB": {
+    live: true,
+    group: () => "usb",
+    main: (p) => log2(gb(p, "filtro.capacidad") ?? fromTitle(p, "GB")),
+    mainWeight: 25,
+    steps: [[0, 0.3], [1, 0.45], [1, 0.7]],
+    extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /usb-c/i, 6) + diff(bucket(a, "filtro.mas_especificaciones", READ_SPEED), bucket(b, "filtro.mas_especificaciones", READ_SPEED), 3),
+  },
+  "Tarjetas de memoria": {
+    live: true,
+    group: byTitle([[/micro ?sd/i, "microsd"], [/\bsd\b/i, "sd"]], "otra"),
+    main: (p) => log2(gb(p, "filtro.capacidad") ?? fromTitle(p, "GB")),
+    mainWeight: 25,
+    steps: [[0, 0.3], [1, 0.45], [1, 0.7]],
+    extra: (a, b) => diff(bucket(a, "filtro.mas_especificaciones", READ_SPEED), bucket(b, "filtro.mas_especificaciones", READ_SPEED), 3),
+  },
+  "Pantallas táctiles": { live: true, group: () => "pantalla", main: inches, mainWeight: 1, steps: [[0, 0.3], [10, 0.45], [20, 0.7]] },
+  // Oficina y varios.
+  Calculadoras: { live: true, group: (p) => text(p, "filtro.tipo") || byTitle([[/cient[ií]fica/i, "Científica"], [/impresora/i, "Impresora"], [/bolsillo/i, "Bolsillo"]], "Sobremesa")(p), ...byPrice },
+  "Destructoras de papel": { live: true, group: () => "destructora", ...byPrice, extra: (a, b) => same(a, b, "filtro.tipo", 5) },
+  "Walkie-talkies": { live: true, group: () => "walkie", ...byPrice },
+  "Reproductores MP3 y MP4": { live: true, group: byTitle([[/^reproductor/i, "reproductor"]], "otro"), ...byPrice },
+  // Menaje y pequeño electro restante.
+  Sartenes: {
+    live: true,
+    group: (p) => (/wok/i.test(`${text(p, "filtro.tipo")} ${p.title}`) ? "wok" : /grill|parrilla/i.test(`${text(p, "filtro.tipo")} ${p.title}`) ? "grill" : "sarten"),
+    main: (p) => fromTitle(p, "cm") ?? number(text(p, "filtro.ancho")),
+    mainWeight: 3,
+    steps: [[0, 0.3], [2, 0.45], [4, 0.7]],
+    extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /inducción/i, 8) + same(a, b, "filtro.material", 5),
+  },
+  "Ollas, cacerolas y cazos": {
+    live: true,
+    group: byTitle([[/presi[oó]n|r[aá]pida/i, "presion"]], "olla"),
+    main: (p) => fromTitle(p, "L") ?? number(text(p, "filtro.capacidad")),
+    mainWeight: 6,
+    steps: [[0.5, 0.3], [1.5, 0.45], [3, 0.7]],
+    extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /inducción/i, 8) + same(a, b, "filtro.material", 4),
+  },
+  "Baterías de cocina": { live: true, group: () => "bateria", main: (p) => fromTitle(p, "piezas") ?? number(text(p, "filtro.capacidad")), mainWeight: 5, steps: [[1, 0.3], [2, 0.45], [4, 0.7]] },
+  Paelleras: {
+    live: true,
+    group: byTitle([[/el[eé]ctrica/i, "electrica"]], "recipiente"),
+    main: (p) => fromTitle(p, "cm") ?? number(text(p, "filtro.ancho")),
+    mainWeight: 1,
+    steps: [[4, 0.3], [10, 0.45], [20, 0.7]],
+  },
+  Termos: { live: true, group: () => "termo", main: (p) => number(text(p, "filtro.capacidad")) ?? fromTitle(p, "L"), mainWeight: 20, steps: [[0, 0.3], [0.5, 0.45], [1, 0.7]] },
+  "Carros de la compra": { live: true, group: (p) => (/ruedas 2/i.test(text(p, "filtro.mas_especificaciones")) ? "2" : "4"), ...byPrice },
+  "Envasadoras al vacío": { live: true, group: () => "envasadora", ...byPrice },
+  "Gofreras y creperas": { live: true, group: byTitle([[/crep/i, "crepera"]], "gofrera"), ...byPrice },
+  Cortafiambres: { live: true, group: () => "cortafiambres", ...byPrice },
+  Quitapelusas: { live: true, group: () => "quitapelusas", ...byPrice },
+  "Tablas de planchar": { live: true, group: byTitle([[/^tabla/i, "tabla"]], "otro"), ...byPrice },
+  "Jarras purificadoras de agua": { live: true, group: () => "jarra", ...byPrice },
 };
 
 export const SIMILAR_TYPES = Object.keys(RULES);
