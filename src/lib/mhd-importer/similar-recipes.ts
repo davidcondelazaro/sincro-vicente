@@ -176,6 +176,7 @@ const byTitle = (kinds: [RegExp, string][], otherwise: string) => (p: SimilarPro
 const byPrice = { main: () => 0, mainWeight: 0, steps: [[0, 0.25], [0, 0.4], [0, 0.6]] as [number, number][] };
 const MINUTES = [/menos de 20/i, /20-40/i, /45-60/i, /61-89/i, /90-100/i, /más de 100/i];
 const GRILL_WIDTH = [/hasta 29/i, /de 30 a 40/i, /de 41 a 50/i, /más de 50/i];
+const fanShape = byTitle([[/torre/i, "torre"], [/de pie/i, "pie"], [/sobremesa/i, "sobremesa"]], "suelo");
 const TAP_HEIGHT = [/hasta 19/i, /de 20 cm/i, /más de 30/i];
 const IRON_STEAM = [/vapor continuo hasta 99/i, /vapor continuo de 100/i, /vapor continuo 130/i];
 
@@ -799,6 +800,82 @@ const RULES: Record<string, Rule> = {
     ...byPrice,
     extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /análisis corporal/i, 10) + mismatch(a, b, "filtro.conectividad", /bluetooth|wifi/i, 5),
   },
+  // Climatización: el tipo de aparato sale del título; donde la potencia decide el uso (radiadores, emisores,
+  // termoventiladores), vatios cercanos.
+  "Radiadores de aceite": {
+    live: true,
+    group: byTitle([[/mica/i, "mica"], [/plano/i, "plano"], [/emisor/i, "emisor"]], "aceite"),
+    main: watts,
+    mainWeight: 0.02,
+    steps: [[500, 0.3], [1000, 0.45], [1500, 0.7]],
+    extra: (a, b) => mismatch(a, b, "filtro.conectividad", /wifi/i, 5) + mismatch(a, b, "filtro.caracteristicas", /display/i, 3),
+  },
+  Termoventiladores: {
+    live: true,
+    group: (p) => (has(p, "filtro.caracteristicas", /montaje en pared/i) || /pared|ba[ñn]o/i.test(p.title) ? "pared" : "suelo"),
+    main: watts,
+    mainWeight: 0.02,
+    steps: [[0, 0.3], [500, 0.45], [1000, 0.7]],
+    extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /cerámico/i, 5) + mismatch(a, b, "filtro.caracteristicas", /oscilación/i, 3),
+  },
+  Ventiladores: {
+    live: true,
+    // De techo, portátiles y de ordenador aparte; los de pie, torre, sobremesa y suelo juntos, con su forma pesando.
+    group: byTitle([[/techo/i, "techo"], [/port[aá]til|de mano|cuello/i, "portatil"], [/cpu|\bpc\b|disipador/i, "pc"]], "habitacion"),
+    ...byPrice,
+    extra: (a, b) =>
+      (fanShape(a) === fanShape(b) ? 0 : 10) + mismatch(a, b, "filtro.caracteristicas", /mando/i, 3) + mismatch(a, b, "filtro.caracteristicas", /con luz/i, 4),
+  },
+  "Calefactores eléctricos": {
+    live: true,
+    group: byTitle([[/mica|radiador/i, "radiador"], [/termoventilador|cer[aá]mico/i, "ventilado"], [/infrarrojos|cuarzo|hal[oó]gen/i, "radiante"]], "calefactor"),
+    ...byPrice,
+    extra: (a, b) => diff(watts(a), watts(b), 0.005),
+  },
+  // Estufas: de gas, de exterior y eléctricas (cuarzo, halógenas, infrarrojos) aparte.
+  Estufas: {
+    live: true,
+    group: (p) => (/exterior|terraza/i.test(p.title) || has(p, "filtro.caracteristicas", /exterior/i) ? "exterior" : /\bgas\b|butano/i.test(p.title) ? "gas" : "electrica"),
+    ...byPrice,
+    extra: (a, b) => diff(watts(a), watts(b), 0.003),
+  },
+  "Emisores térmicos": {
+    live: true,
+    group: () => "emisor",
+    main: watts,
+    mainWeight: 0.02,
+    steps: [[0, 0.3], [300, 0.45], [600, 0.7]],
+    extra: (a, b) => mismatch(a, b, "filtro.conectividad", /wifi/i, 6) + mismatch(a, b, "filtro.caracteristicas", /programable/i, 3),
+  },
+  Deshumidificadores: {
+    live: true,
+    group: () => "deshumidificador",
+    main: (p) => fromTitle(p, "L/día") ?? fromTitle(p, "L"),
+    mainWeight: 3,
+    steps: [[2, 0.3], [5, 0.45], [10, 0.7]],
+    extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /drenaje continuo/i, 4),
+  },
+  Convectores: { live: true, group: () => "convector", ...byPrice, extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /turbo/i, 3) },
+  "Paneles radiantes": { live: true, group: () => "panel", ...byPrice },
+  "Aire acondicionado": { live: true, group: () => "split", ...byPrice, extra: (a, b) => (text(a, "filtro.potencia") === text(b, "filtro.potencia") ? 0 : 15) },
+  Humidificadores: { live: true, group: () => "humidificador", ...byPrice },
+  "Purificadores de aire": { live: true, group: () => "purificador", ...byPrice, extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /hepa/i, 6) },
+  // Robots aspiradores: los limpiacristales y los que no son robots aparte; pesa el autovaciado.
+  "Robots aspiradores": {
+    live: true,
+    group: byTitle([[/limpiacristales/i, "cristales"], [/^robot/i, "robot"]], "otro"),
+    ...byPrice,
+    extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /autovaciado/i, 8),
+  },
+  Vaporetas: { live: true, group: (p) => (/de mano/i.test(p.title) || (number(text(p, "filtro.capacidad")) ?? 1) < 0.5 ? "mano" : "suelo"), ...byPrice },
+  "Almohadillas eléctricas": {
+    live: true,
+    group: byTitle([[/bolsa de agua/i, "bolsa"]], "almohadilla"),
+    ...byPrice,
+    extra: (a, b) => diff(bucket(a, "filtro.ancho", GRILL_WIDTH), bucket(b, "filtro.ancho", GRILL_WIDTH), 4),
+  },
+  "Mantas eléctricas": { live: true, group: (p) => (/2 personas/i.test(text(p, "filtro.mas_especificaciones")) ? "2" : "1"), ...byPrice },
+  Calientacamas: { live: true, group: (p) => (/2 personas/i.test(text(p, "filtro.mas_especificaciones")) || /doble/i.test(p.title) ? "2" : "1"), ...byPrice },
 };
 
 export const SIMILAR_TYPES = Object.keys(RULES);

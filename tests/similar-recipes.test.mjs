@@ -141,3 +141,12 @@ test("similares: lavasecadoras integrables no se mezclan ni al rellenar, y frega
   const rows = [fr("base", "Fregadero bajo encimera Teka BE 1 cubeta"), fr("sobre", "Fregadero Teka 1 cubeta"), fr("bajo", "Fregadero bajo encimera Cata 1 cubeta")];
   assert.deepEqual(first(computeSimilars(rows).get("base"), ["bajo"]), ["bajo"]);
 });
+
+test("similares: estufas de gas, de exterior y eléctricas aparte, y tostadoras por ranuras del título", () => {
+  const es = (pid, title) => item(pid, "Estufas", title, 100);
+  const rows = [es("base", "Estufa de gas Orbegozo 4200 W"), es("ext", "Estufa de gas de exterior Sogo 4200 W"), es("cuarzo", "Estufa de cuarzo FM 1200 W"), es("gas", "Estufa de gas Svan 4200 W")];
+  assert.deepEqual(first(computeSimilars(rows).get("base"), ["gas"]), ["gas"]);
+  const to = (pid, title) => item(pid, "Tostadoras", title, 30, { "filtro.zonas_fuegos": "2 ranuras" });
+  const tost = [to("base", "Tostadora Moulinex 1 ranura extra-larga"), to("dos", "Tostadora Jata 2 ranuras"), to("una", "Tostadora Princess 1 ranura")];
+  assert.deepEqual(first(computeSimilars(tost).get("base"), ["una"]), ["una"]);
+});
