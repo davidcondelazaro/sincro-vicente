@@ -36,3 +36,33 @@ test("similares: «Más de 10 kg» lee los kilos del título", () => {
   const rows = [lav("g", "Más de 10 kg", 600, { title: "Lavadora LG 13 kg" }), lav("h", "Más de 10 kg", 620, { title: "Lavadora AEG 12 kg" }), lav("p", 6, 600)];
   assert.deepEqual(computeSimilars(rows).get("g"), ["h"]);
 });
+
+const item = (pid, t, title, pvp, f = {}, stock = 10) => ({ pid, t, title, pvp, stock, marca: pid, f });
+
+test("similares: las familias sin publicar solo salen en la muestra", () => {
+  const rows = [item("a", "Hornos", "Horno A 71 L", 400), item("b", "Hornos", "Horno B 72 L", 410)];
+  assert.equal(computeSimilars(rows).get("a"), undefined);
+  assert.deepEqual(computeSimilars(rows, { preview: true }).get("a"), ["b"]);
+});
+
+test("similares: hornos pirolíticos aparte y lavavajillas de 45 cm aparte", () => {
+  const hornos = [item("h", "Hornos", "Horno 71 L pirolítico", 500), item("p", "Hornos", "Horno 70 L pirolítico", 520), item("n", "Hornos", "Horno 71 L hidrolítico", 500)];
+  assert.deepEqual(computeSimilars(hornos, { preview: true }).get("h"), ["p"]);
+  const lav = [item("l", "Lavavajillas", "Lavavajillas 60 cm 14 servicios", 400), item("m", "Lavavajillas", "Lavavajillas 45 cm 10 servicios", 400), item("o", "Lavavajillas", "Lavavajillas 60 cm 13 servicios", 420)];
+  assert.deepEqual(computeSimilars(lav, { preview: true }).get("l"), ["o"]);
+});
+
+test("similares: combis integrables con integrables y el más cercano en altura primero", () => {
+  const rows = [
+    item("c", "Frigoríficos combi", "Combi 330 L No Frost 186 cm", 600, { "filtro.tecnologia": "No-Frost" }),
+    item("alto", "Frigoríficos combi", "Combi 335 L No Frost 203 cm", 600, { "filtro.tecnologia": "No-Frost" }),
+    item("igual", "Frigoríficos combi", "Combi 335 L No Frost 186 cm", 600, { "filtro.tecnologia": "No-Frost" }),
+    item("int", "Frigoríficos combi", "Combi integrable 330 L No Frost", 600, { "filtro.tecnologia": "No-Frost", "filtro.color": "Integrable" }),
+  ];
+  assert.deepEqual(computeSimilars(rows, { preview: true }).get("c"), ["igual", "alto"]);
+});
+
+test("similares: sin duplicados por título ni el propio producto repetido", () => {
+  const rows = [item("a", "Hornos", "Horno X 71 L", 400), item("a2", "Hornos", "Horno X 71 L", 400), item("b", "Hornos", "Horno Y 70 L", 400), item("b2", "Hornos", "Horno Y 70 L", 400)];
+  assert.deepEqual(computeSimilars(rows, { preview: true }).get("a"), ["b"]);
+});
