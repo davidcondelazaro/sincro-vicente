@@ -14,6 +14,8 @@ type Rule = {
   mainWeight: number; // puntos por unidad de diferencia del dato principal
   steps: [mainTol: number, priceTol: number][];
   extra?: (a: SimilarProduct, b: SimilarProduct) => number;
+  // Tope por marca según el grupo, cuando un grupo es de una sola marca (Mac). Por defecto SIMILAR.perBrand.
+  perBrand?: (group: string) => number;
 };
 
 export const SIMILAR = { maxList: 10, minList: 6, perBrand: 2, priceWeight: 80 };
@@ -49,6 +51,34 @@ const panel = (p: SimilarProduct) => {
   const index = ["LED", "QLED", "Mini LED", "OLED"].indexOf(text(p, "filtro.tecnologia"));
   return index < 0 ? null : index;
 };
+// Gama de procesador de portátiles (de «Procesador …» en `filtro.mas_especificaciones`): 0 básico, 1 gama 3, 2 gama 5
+// (también Snapdragon y Apple M), 3 gama 7 y 4 gama 9.
+const cpuTier = (p: SimilarProduct) => {
+  const cpu = text(p, "filtro.mas_especificaciones").match(/Procesador ([^|]+)/)?.[1]?.trim() ?? "";
+  if (!cpu) return null;
+  if (/celeron|intel n$|mediatek|pentium|athlon/i.test(cpu)) return 0;
+  if (/snapdragon|apple/i.test(cpu)) return 2;
+  const digit = cpu.match(/(\d)$/)?.[1];
+  return digit ? ({ "3": 1, "5": 2, "7": 3, "9": 4 } as Record<string, number>)[digit] ?? null : null;
+};
+const has = (p: SimilarProduct, key: string, value: RegExp) => value.test(text(p, key));
+const mismatch = (a: SimilarProduct, b: SimilarProduct, key: string, value: RegExp, weight: number) => (has(a, key, value) === has(b, key, value) ? 0 : weight);
+// Diferencia en «duplicaciones» (8 frente a 16 GB = 1), para memorias, discos y hercios.
+const log2diff = (a: number | null, b: number | null, weight: number) => (a === null || b === null || a <= 0 || b <= 0 ? 0 : Math.abs(Math.log2(a / b)) * weight);
+const gb = (p: SimilarProduct, key: string) => {
+  const value = text(p, key);
+  if (/más de 1 tb/i.test(value)) return 2048;
+  const n = number(value);
+  return n === null ? null : /tb/i.test(value) ? n * 1024 : n;
+};
+const hz = (p: SimilarProduct) => number(text(p, "filtro.caracteristicas").match(/Pantalla (\d+) Hz/i)?.[1] ?? "") ?? 60;
+const RESOLUTION = ["HD", "Full HD", "QHD", "4K"];
+const resolution = (p: SimilarProduct) => {
+  const index = RESOLUTION.indexOf(text(p, "filtro.resolucion"));
+  return index < 0 ? null : index;
+};
+const WEIGHT_LAPTOP = [/hasta 1,3/i, /de 1,3/i, /más de 1,8/i];
+const inches = (p: SimilarProduct) => number(text(p, "filtro.tamano_pantalla")) ?? fromTitle(p, '"');
 const WIDTH_COMBI =[/menos de 55/i, /de 55/i, /de 61/i, /de 71/i, /de 91/i];
 const diff = (a: number | null, b: number | null, weight: number) => (a === null || b === null ? 0 : Math.abs(a - b) * weight);
 
@@ -126,6 +156,50 @@ const RULES: Record<string, Rule> = {
     steps: [[0, 0.3], [10, 0.45], [20, 0.7]],
     extra: (a, b) => diff(fromTitle(a, "m³/h"), fromTitle(b, "m³/h"), 0.04) + diff(energyClass(a), energyClass(b), 3),
   },
+  // Portátiles: Mac, Chromebook o PC, y con gráfica dedicada aparte; pulgadas cercanas y precio más ajustado que en
+  // electrodomésticos, porque hay muchos. Pesan memoria, disco, gama de procesador, peso y convertible.
+  Portátiles: {
+    live: false,
+    group: (p) => {
+      if (/macos/i.test(text(p, "filtro.sistema_operativo")) || /apple/i.test(text(p, "filtro.mas_especificaciones")) || /macbook/i.test(p.title)) return "mac";
+      if (/chrome/i.test(text(p, "filtro.sistema_operativo")) || /chromebook/i.test(p.title)) return "chrome";
+      return has(p, "filtro.caracteristicas", /gráfica dedicada/i) ? "pc/grafica" : "pc";
+    },
+    // Los Mac son todos de Apple: sin tope por marca. Los monitores grandes (40" o más) son casi todos Sony.
+    perBrand: (group) => (group === "mac" ? SIMILAR.maxList : SIMILAR.perBrand),
+    main: inches,
+    mainWeight: 8,
+    steps: [[0.5, 0.2], [1.5, 0.3], [2.5, 0.45]],
+    extra: (a, b) =>
+      log2diff(gb(a, "filtro.memoria_ram"), gb(b, "filtro.memoria_ram"), 12) +
+      log2diff(gb(a, "filtro.capacidad"), gb(b, "filtro.capacidad"), 8) +
+      diff(cpuTier(a), cpuTier(b), 10) +
+      diff(bucket(a, "filtro.mas_especificaciones", WEIGHT_LAPTOP), bucket(b, "filtro.mas_especificaciones", WEIGHT_LAPTOP), 6) +
+      mismatch(a, b, "filtro.caracteristicas", /convertible/i, 20) +
+      mismatch(a, b, "filtro.caracteristicas", /oled/i, 6),
+  },
+  // Monitores: los portátiles (menos de 18") y los ultrapanorámicos aparte; pulgadas cercanas. Pesan resolución, hercios,
+  // curva, panel, altura regulable y USB-C con carga.
+  Monitores: {
+    live: false,
+    group: (p) => {
+      const size = inches(p) ?? 0;
+      if (size < 18) return "portatil";
+      if (has(p, "filtro.caracteristicas", /ultrapanor/i)) return "ultra";
+      return size >= 40 ? "grande" : "normal";
+    },
+    perBrand: (group) => (group === "grande" ? SIMILAR.maxList : SIMILAR.perBrand),
+    main: inches,
+    mainWeight: 4,
+    steps: [[0.5, 0.3], [3.5, 0.45], [5, 0.7]],
+    extra: (a, b) =>
+      diff(resolution(a), resolution(b), 15) +
+      log2diff(hz(a), hz(b), 15) +
+      mismatch(a, b, "filtro.caracteristicas", /curva/i, 10) +
+      (text(a, "filtro.tecnologia") && text(b, "filtro.tecnologia") && text(a, "filtro.tecnologia") !== text(b, "filtro.tecnologia") ? 5 : 0) +
+      mismatch(a, b, "filtro.caracteristicas", /altura regulable/i, 5) +
+      mismatch(a, b, "filtro.caracteristicas", /usb-c/i, 8),
+  },
 };
 
 export const SIMILAR_TYPES = Object.keys(RULES);
@@ -143,6 +217,7 @@ export function computeSimilars(rows: SimilarProduct[], options: { preview?: boo
       if (me.main === null || !(p.pvp > 0)) continue;
       const candidates = products.filter((q) => q.pid !== p.pid && q.stock > 0 && q.pvp > 0 && info.get(q.pid)!.group === me.group && info.get(q.pid)!.main !== null);
       const score = (q: SimilarProduct) => Math.abs(info.get(q.pid)!.main! - me.main!) * rule.mainWeight + (Math.abs(q.pvp - p.pvp) / p.pvp) * SIMILAR.priceWeight + (rule.extra?.(p, q) ?? 0);
+      const perBrand = rule.perBrand?.(me.group) ?? SIMILAR.perBrand;
       let list: string[] = [];
       for (const [mainTol, priceTol] of rule.steps) {
         const pool = candidates
@@ -157,7 +232,7 @@ export function computeSimilars(rows: SimilarProduct[], options: { preview?: boo
           if (titles.has(q.title.toLowerCase())) continue;
           titles.add(q.title.toLowerCase());
           const brand = (q.marca ?? "").toUpperCase();
-          if ((brands.get(brand) ?? 0) >= SIMILAR.perBrand) continue;
+          if ((brands.get(brand) ?? 0) >= perBrand) continue;
           brands.set(brand, (brands.get(brand) ?? 0) + 1);
           list.push(q.pid);
           if (list.length === SIMILAR.maxList) break;

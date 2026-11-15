@@ -78,3 +78,13 @@ test("similares: las cifras del título no confunden «L» con «LED»", () => {
   const rows = [item("a", "Hornos", "Horno A 71 L LED", 400), item("b", "Hornos", "Horno B 72 LED", 410), item("c", "Hornos", "Horno C 70 L", 405)];
   assert.deepEqual(computeSimilars(rows, { preview: true }).get("a"), ["c"]);
 });
+
+test("similares: portátiles Mac, gráfica dedicada y monitores ultrapanorámicos aparte", () => {
+  const pc = (pid, ram, f = {}) => item(pid, "Portátiles", `Portátil ${pid}`, 800, { "filtro.tamano_pantalla": '15,6"', "filtro.memoria_ram": ram, "filtro.mas_especificaciones": ["Procesador Intel Core Ultra 5"], "filtro.sistema_operativo": "Windows 11", ...f });
+  const rows = [pc("base", "16 GB"), pc("mac", "16 GB", { "filtro.mas_especificaciones": ["Procesador Apple M"] }), pc("gaming", "16 GB", { "filtro.caracteristicas": ["Gráfica dedicada"] }), pc("ram8", "8 GB"), pc("ram16", "16 GB")];
+  assert.deepEqual(computeSimilars(rows, { preview: true }).get("base"), ["ram16", "ram8"]);
+  const mon = (pid, inches, car = []) => item(pid, "Monitores", `Monitor ${pid}`, 200, { "filtro.tamano_pantalla": `${inches}"`, "filtro.caracteristicas": car, "filtro.resolucion": "QHD" });
+  const monitors = [mon("m27", 27), mon("ultra", 27, ["Ultrapanorámico"]), mon("port", 15.6), mon("m27b", 27), mon("m24", 23.8)];
+  assert.deepEqual(computeSimilars(monitors, { preview: true }).get("m27"), ["m27b", "m24"]);
+  assert.equal(computeSimilars(rows).get("base"), undefined);
+});
