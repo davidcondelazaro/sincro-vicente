@@ -16,6 +16,8 @@ type Rule = {
   extra?: (a: SimilarProduct, b: SimilarProduct) => number;
   // Tope por marca según el grupo, cuando un grupo es de una sola marca (Mac). Por defecto SIMILAR.perBrand.
   perBrand?: (group: string) => number;
+  // true: el relleno de listas cortas no sale del grupo (cápsulas de un sistema no valen en otro).
+  strict?: boolean;
 };
 
 // minFallback, otherGroup y fallbackPrice: el relleno de las listas cortas (ver computeSimilars).
@@ -136,6 +138,25 @@ const headphoneType = (p: SimilarProduct) => {
 };
 const wireless = (p: SimilarProduct) => has(p, "filtro.conectividad", /bluetooth/i) || has(p, "filtro.caracteristicas", /true wireless/i) || /bluetooth|inal[aá]mbric|wireless|true wireless/i.test(p.title);
 const AUTONOMY = [/menos de 6/i, /de 6 a 10/i, /de 11 a 20/i, /de 21 a 40/i, /más de 40/i];
+// Cafeteras: el sistema decide (las cápsulas de una marca no valen en otra).
+const coffeeKind = (p: SimilarProduct) => {
+  const all = `${text(p, "filtro.tipo")} ${text(p, "filtro.caracteristicas")} ${p.title}`;
+  if (/dolce gusto/i.test(all)) return "dolce-gusto";
+  if (/nespresso/i.test(all)) return "nespresso";
+  if (/tassimo/i.test(all)) return "tassimo";
+  if (/senseo|monodosis/i.test(all)) return "monodosis";
+  if (/c[aá]psula/i.test(all)) return "capsulas";
+  if (/superautom/i.test(all)) return "superautomatica";
+  if (/italiana|moka/i.test(all) || /inducción|gas/i.test(text(p, "filtro.tipo"))) return "italiana";
+  if (/espresso|expreso|\bbar\b/i.test(all) || /presión/i.test(text(p, "filtro.mas_especificaciones"))) return "espresso";
+  if (/goteo|filtro|americana/i.test(all)) return "goteo";
+  return "otra";
+};
+// Capacidades en GB (discos) y vatios o VA del título: se comparan en «duplicaciones».
+const log2 = (n: number | null) => (n === null || n <= 0 ? null : Math.log2(n));
+const diskGb = (p: SimilarProduct) => gb(p, "filtro.capacidad") ?? (fromTitle(p, "TB") !== null ? fromTitle(p, "TB")! * 1024 : fromTitle(p, "GB"));
+const watts = (p: SimilarProduct) => number(text(p, "filtro.potencia")) ?? fromTitle(p, "W");
+const vapour = [/hasta 29/i, /de 30 a 44/i, /45 g\/min o más/i];
 const WIDTH_COMBI =[/menos de 55/i, /de 55/i, /de 61/i, /de 71/i, /de 91/i];
 const diff = (a: number | null, b: number | null, weight: number) => (a === null || b === null ? 0 : Math.abs(a - b) * weight);
 
@@ -352,6 +373,112 @@ const RULES: Record<string, Rule> = {
     extra: (a, b) =>
       mismatch(a, b, "filtro.conectividad", /4g|5g/i, 15) + mismatch(a, b, "filtro.conectividad", /gps/i, 8) + mismatch(a, b, "filtro.conectividad", /nfc/i, 5),
   },
+  // Cafeteras: por sistema (cada marca de cápsulas aparte, superautomáticas, espresso, italianas, de goteo); manda el
+  // precio. Pesan las tazas, el espumador y el molinillo.
+  Cafeteras: {
+    live: true,
+    strict: true,
+    group: coffeeKind,
+    main: () => 0,
+    mainWeight: 0,
+    steps: [[0, 0.25], [0, 0.4], [0, 0.6]],
+    extra: (a, b) =>
+      diff(fromTitle(a, "tazas"), fromTitle(b, "tazas"), 3) +
+      mismatch(a, b, "filtro.caracteristicas", /espumador/i, 10) +
+      mismatch(a, b, "filtro.caracteristicas", /molinillo/i, 15),
+  },
+  // Aspiradores: escoba, de mano, trineo o de sólidos y líquidos; manda el precio. Pesan sin cable, sin bolsa y HEPA.
+  Aspiradores: {
+    live: true,
+    group: (p) => {
+      // Manda el título: muchos de mano y escobas dicen «aspira líquidos» en el filtro.
+      if (/l[ií]quidos|industrial|cenizas/i.test(p.title)) return "liquidos";
+      if (/de mano|mano\b/i.test(p.title)) return "mano";
+      if (/escoba/i.test(p.title)) return "escoba";
+      return has(p, "filtro.caracteristicas", /aspira líquidos/i) ? "liquidos" : "trineo";
+    },
+    main: () => 0,
+    mainWeight: 0,
+    steps: [[0, 0.25], [0, 0.4], [0, 0.6]],
+    extra: (a, b) =>
+      mismatch(a, b, "filtro.caracteristicas", /sin cable/i, 15) + mismatch(a, b, "filtro.caracteristicas", /sin bolsa/i, 10) + mismatch(a, b, "filtro.caracteristicas", /hepa/i, 5),
+  },
+  // Freidoras: de aire o de aceite; litros cercanos. Pesan doble cesta y pantalla.
+  Freidoras: {
+    live: true,
+    group: (p) => (/de aire|sin aceite|air ?fryer|horno/i.test(p.title) ? "aire" : "aceite"),
+    main: litres,
+    mainWeight: 6,
+    steps: [[1, 0.3], [2, 0.45], [4, 0.7]],
+    extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /doble cesta/i, 15) + mismatch(a, b, "filtro.caracteristicas", /display/i, 4),
+  },
+  // Planchas: de vapor normales, verticales y de viaje aparte; manda el precio. Pesan vapor continuo y potencia.
+  "Planchas de ropa": {
+    live: true,
+    group: (p) => (/vertical/i.test(`${text(p, "filtro.tipo")} ${p.title}`) ? "vertical" : /viaje/i.test(p.title) ? "viaje" : "normal"),
+    main: () => 0,
+    mainWeight: 0,
+    steps: [[0, 0.25], [0, 0.4], [0, 0.6]],
+    extra: (a, b) => diff(bucket(a, "filtro.mas_especificaciones", vapour), bucket(b, "filtro.mas_especificaciones", vapour), 6) + diff(watts(a), watts(b), 0.01),
+  },
+  // Termos eléctricos: los que se pueden poner en horizontal aparte; litros cercanos.
+  "Termos eléctricos": {
+    live: true,
+    group: (p) => (/horizontal/i.test(`${text(p, "filtro.tipo")} ${p.title}`) ? "horizontal" : "vertical"),
+    main: litres,
+    mainWeight: 0.5,
+    steps: [[0, 0.3], [20, 0.45], [50, 0.7]],
+    extra: (a, b) => diff(energyClass(a), energyClass(b), 4) + mismatch(a, b, "filtro.conectividad", /wifi/i, 5),
+  },
+  // Altavoces: inteligentes, de fiesta (100 W o más, karaoke) y para ordenador aparte de los portátiles; potencia cercana
+  // en «duplicaciones». Pesan resistencia al agua, radio y autonomía.
+  Altavoces: {
+    live: true,
+    group: (p) => {
+      if (has(p, "filtro.caracteristicas", /inteligente/i) || /alexa|google home|inteligente/i.test(p.title)) return "inteligente";
+      if (/\bpc\b|ordenador|2\.1|usb/i.test(p.title) && !/bluetooth/i.test(p.title)) return "ordenador";
+      if (/fiesta|karaoke|party/i.test(p.title) || (watts(p) ?? 0) >= 100) return "fiesta";
+      return "portatil";
+    },
+    main: (p) => log2(watts(p)) ?? 0,
+    mainWeight: 10,
+    steps: [[0.5, 0.3], [1, 0.45], [2, 0.7]],
+    extra: (a, b) =>
+      mismatch(a, b, "filtro.caracteristicas", /resistente al agua/i, 8) +
+      mismatch(a, b, "filtro.caracteristicas", /radio/i, 5) +
+      diff(bucket(a, "filtro.autonomia", AUTONOMY), bucket(b, "filtro.autonomia", AUTONOMY), 3),
+  },
+  // SAI: misma tecnología (offline, línea interactiva u online) y los de rack aparte; potencia en VA cercana.
+  SAI: {
+    live: true,
+    group: (p) => `${text(p, "filtro.tecnologia") || (/online/i.test(p.title) ? "Online" : "Línea interactiva")}/${has(p, "filtro.caracteristicas", /rack/i) || /\brack\b/i.test(p.title) ? "rack" : "torre"}`,
+    main: (p) => log2(fromTitle(p, "VA")) ?? log2(number(text(p, "filtro.potencia"))),
+    mainWeight: 20,
+    steps: [[0.3, 0.3], [0.6, 0.45], [1, 0.7]],
+    extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /senoidal/i, 10) + mismatch(a, b, "filtro.caracteristicas", /schuko/i, 5),
+  },
+  // Discos externos: SSD o disco duro; misma capacidad primero.
+  "Discos duros externos": {
+    live: true,
+    group: (p) => (/\bssd\b/i.test(p.title) ? "ssd" : "hdd"),
+    main: (p) => log2(diskGb(p)),
+    mainWeight: 25,
+    steps: [[0, 0.3], [1, 0.45], [1, 0.7]],
+    extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /golpes/i, 6) + mismatch(a, b, "filtro.caracteristicas", /cifrado/i, 6),
+  },
+  // Discos internos: NVMe (M.2), SSD SATA, discos de 2,5" y de 3,5" y SAS de servidor aparte; misma capacidad primero.
+  "Discos duros internos y SSD": {
+    live: true,
+    group: (p) => {
+      if (/nvme|m\.2|pcie/i.test(p.title)) return "nvme";
+      if (/\bsas\b/i.test(p.title)) return "sas";
+      if (/\bssd\b/i.test(p.title)) return "ssd-sata";
+      return /2,5"|2\.5"/i.test(p.title) ? "hdd-2,5" : "hdd-3,5";
+    },
+    main: (p) => log2(diskGb(p)),
+    mainWeight: 25,
+    steps: [[0, 0.3], [1, 0.45], [1, 0.7]],
+  },
   // Portátiles: Mac, Chromebook o PC, y con gráfica dedicada aparte; pulgadas cercanas y precio más ajustado que en
   // electrodomésticos, porque hay muchos. Pesan memoria, disco, gama de procesador, peso y convertible.
   Portátiles: {
@@ -477,7 +604,7 @@ export function computeSimilars(rows: SimilarProduct[], options: { preview?: boo
         const fallback = (q: SimilarProduct) =>
           (info.get(q.pid)!.group === me.group ? 0 : SIMILAR.otherGroup) + (mainGap(q) ?? 0) * rule.mainWeight + priceGap(q) * SIMILAR.priceWeight + (rule.extra?.(p, q) ?? 0);
         const pool = available
-          .filter((q) => priceGap(q) <= SIMILAR.fallbackPrice)
+          .filter((q) => priceGap(q) <= SIMILAR.fallbackPrice && (!rule.strict || info.get(q.pid)!.group === me.group))
           .map((q) => ({ q, s: fallback(q) }))
           .sort((a, b) => a.s - b.s || a.q.pid.localeCompare(b.q.pid))
           .map(({ q }) => q);

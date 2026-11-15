@@ -125,3 +125,11 @@ test("similares: las listas de menos de 3 se completan con otros grupos de la fa
   assert.equal(list[0], "ok");
   assert.deepEqual([...list].sort(), ["int1", "int2", "ok"]);
 });
+
+test("similares: cafeteras de cápsulas no se mezclan ni al rellenar, y aspiradores de mano por el título", () => {
+  const caf = (pid, title) => item(pid, "Cafeteras", title, 100);
+  assert.deepEqual(computeSimilars([caf("base", "Cafetera de cápsulas Nespresso Inissia"), caf("dg", "Cafetera de cápsulas Dolce Gusto Mini Me"), caf("ne", "Cafetera Nespresso Vertuo")]).get("base"), ["ne"]);
+  const asp = (pid, title, car = []) => item(pid, "Aspiradores", title, 80, { "filtro.caracteristicas": car });
+  const rows = [asp("base", "Aspirador de mano Sogo", ["Aspira líquidos"]), asp("mano", "Aspirador de mano Ufesa"), asp("liq", "Aspirador de sólidos y líquidos Kärcher"), asp("mano2", "Aspirador de mano Taurus"), asp("mano3", "Aspirador de mano Tristar")];
+  assert.deepEqual(first(computeSimilars(rows).get("base"), ["mano", "mano2", "mano3"]).sort(), ["mano", "mano2", "mano3"]);
+});
