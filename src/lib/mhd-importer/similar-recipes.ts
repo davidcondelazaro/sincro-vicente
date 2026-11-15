@@ -159,7 +159,7 @@ const RULES: Record<string, Rule> = {
   // Portátiles: Mac, Chromebook o PC, y con gráfica dedicada aparte; pulgadas cercanas y precio más ajustado que en
   // electrodomésticos, porque hay muchos. Pesan memoria, disco, gama de procesador, peso y convertible.
   Portátiles: {
-    live: false,
+    live: true,
     group: (p) => {
       if (/macos/i.test(text(p, "filtro.sistema_operativo")) || /apple/i.test(text(p, "filtro.mas_especificaciones")) || /macbook/i.test(p.title)) return "mac";
       if (/chrome/i.test(text(p, "filtro.sistema_operativo")) || /chromebook/i.test(p.title)) return "chrome";
@@ -181,7 +181,7 @@ const RULES: Record<string, Rule> = {
   // Monitores: los portátiles (menos de 18") y los ultrapanorámicos aparte; pulgadas cercanas. Pesan resolución, hercios,
   // curva, panel, altura regulable y USB-C con carga.
   Monitores: {
-    live: false,
+    live: true,
     group: (p) => {
       const size = inches(p) ?? 0;
       if (size < 18) return "portatil";

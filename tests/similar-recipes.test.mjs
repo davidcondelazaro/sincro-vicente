@@ -86,5 +86,5 @@ test("similares: portátiles Mac, gráfica dedicada y monitores ultrapanorámico
   const mon = (pid, inches, car = []) => item(pid, "Monitores", `Monitor ${pid}`, 200, { "filtro.tamano_pantalla": `${inches}"`, "filtro.caracteristicas": car, "filtro.resolucion": "QHD" });
   const monitors = [mon("m27", 27), mon("ultra", 27, ["Ultrapanorámico"]), mon("port", 15.6), mon("m27b", 27), mon("m24", 23.8)];
   assert.deepEqual(computeSimilars(monitors, { preview: true }).get("m27"), ["m27b", "m24"]);
-  assert.equal(computeSimilars(rows).get("base"), undefined);
+  assert.deepEqual(computeSimilars(rows).get("base"), ["ram16", "ram8"]);
 });
