@@ -13,6 +13,7 @@ import { noTrace, type Trace } from "./trace";
 import { shopifyGraphql, type ShopifyConfig } from "./store-filters";
 import { ID_PRODUCT_FIELDS, rememberShopifyIds, rememberShopifyStatus, storeProductsByEan } from "./shopify-ids";
 import { warrantyEligible } from "./warranty";
+import { keepRefurbishedInDraft } from "./refurbished";
 import { productLock } from "./locks";
 
 // Regla de David (2026-10-26): los productos con revisión pendiente se suben igual, como borrador, y se revisan antes de
@@ -392,7 +393,10 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   // Estado (David, 2026-10-27): los productos nuevos de la subida van activos, y también los archivados que MHD vuelve a
   // traer (se reactivan y se les quita la redirección, abajo). En borrador solo lo que tiene algo pendiente: la cola de
   // revisión o «Avisar a MHD» (hasta que se decida qué hacer con ellos). Un producto que ya estaba activo sigue activo.
-  const status = existing?.status === "ACTIVE" ? "ACTIVE" : reviewPending || decision?.status === "avisar_mhd" ? "DRAFT" : "ACTIVE";
+  // Excepción: los reacondicionados, siempre en borrador, también si ya estaban activos (refurbished.ts).
+  const refurbished = keepRefurbishedInDraft(placement.familia, placement.familyTitle, product.family.subfamilyName);
+  if (refurbished) t.event("aviso", "Estado", "Reacondicionado: se queda en borrador hasta que se decida su grado y su garantía.");
+  const status = refurbished ? "DRAFT" : existing?.status === "ACTIVE" ? "ACTIVE" : reviewPending || decision?.status === "avisar_mhd" ? "DRAFT" : "ACTIVE";
   // También se filtran las de la prueba guardada: las procesadas antes del 27-10 traen las de categoría del árbol viejo
   // («Televisores», «TV OLED») y «Energética».
   const tags = [...new Set([...shop.tags, ...(existing?.tags ?? [])].filter((tag) => KEEP_TAGS.has(tag)).concat(reviewPending ? [REVIEW_TAG] : []))];
