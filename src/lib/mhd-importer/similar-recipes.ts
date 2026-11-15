@@ -18,7 +18,8 @@ type Rule = {
   perBrand?: (group: string) => number;
 };
 
-export const SIMILAR = { maxList: 10, minList: 6, perBrand: 2, priceWeight: 80 };
+// minFallback, otherGroup y fallbackPrice: el relleno de las listas cortas (ver computeSimilars).
+export const SIMILAR = { maxList: 10, minList: 6, perBrand: 2, priceWeight: 80, minFallback: 3, otherGroup: 60, fallbackPrice: 1 };
 
 const text = (p: SimilarProduct, key: string) => {
   const value = p.f?.[key];
@@ -429,30 +430,58 @@ export function computeSimilars(rows: SimilarProduct[], options: { preview?: boo
     const info = new Map(products.map((p) => [p.pid, { group: rule.group(p), main: rule.main(p) }]));
     for (const p of products) {
       const me = info.get(p.pid)!;
-      if (me.main === null || !(p.pvp > 0)) continue;
-      const candidates = products.filter((q) => q.pid !== p.pid && q.stock > 0 && q.pvp > 0 && info.get(q.pid)!.group === me.group && info.get(q.pid)!.main !== null);
-      const score = (q: SimilarProduct) => Math.abs(info.get(q.pid)!.main! - me.main!) * rule.mainWeight + (Math.abs(q.pvp - p.pvp) / p.pvp) * SIMILAR.priceWeight + (rule.extra?.(p, q) ?? 0);
+      if (!(p.pvp > 0)) continue;
+      const priceGap = (q: SimilarProduct) => Math.abs(q.pvp - p.pvp) / p.pvp;
+      const mainGap = (q: SimilarProduct) => {
+        const other = info.get(q.pid)!.main;
+        return me.main === null || other === null ? null : Math.abs(other - me.main);
+      };
       const perBrand = rule.perBrand?.(me.group) ?? SIMILAR.perBrand;
-      let list: string[] = [];
-      for (const [mainTol, priceTol] of rule.steps) {
-        const pool = candidates
-          .filter((q) => Math.abs(info.get(q.pid)!.main! - me.main!) <= mainTol && Math.abs(q.pvp - p.pvp) / p.pvp <= priceTol)
-          .map((q) => ({ q, s: score(q) }))
-          .sort((a, b) => a.s - b.s || a.q.pid.localeCompare(b.q.pid));
+      // Rellena la lista en el orden dado: sin el propio ni títulos repetidos (hay duplicados en la tienda) y con tope por marca.
+      const fill = (list: string[], pool: SimilarProduct[]) => {
+        const titles = new Set([p.title, ...list.map((pid) => products.find((q) => q.pid === pid)!.title)].map((t) => t.toLowerCase()));
         const brands = new Map<string, number>();
-        // Hay productos duplicados en la tienda (mismo título, dos fichas): ni el propio ni repetidos.
-        const titles = new Set([p.title.toLowerCase()]);
-        list = [];
-        for (const { q } of pool) {
-          if (titles.has(q.title.toLowerCase())) continue;
+        for (const pid of list) {
+          const brand = (products.find((q) => q.pid === pid)!.marca ?? "").toUpperCase();
+          brands.set(brand, (brands.get(brand) ?? 0) + 1);
+        }
+        for (const q of pool) {
+          if (list.length === SIMILAR.maxList) break;
+          if (list.includes(q.pid) || titles.has(q.title.toLowerCase())) continue;
           titles.add(q.title.toLowerCase());
           const brand = (q.marca ?? "").toUpperCase();
           if ((brands.get(brand) ?? 0) >= perBrand) continue;
           brands.set(brand, (brands.get(brand) ?? 0) + 1);
           list.push(q.pid);
-          if (list.length === SIMILAR.maxList) break;
         }
-        if (list.length >= SIMILAR.minList) break;
+        return list;
+      };
+      const available = products.filter((q) => q.pid !== p.pid && q.stock > 0 && q.pvp > 0);
+      let list: string[] = [];
+      if (me.main !== null) {
+        const candidates = available.filter((q) => info.get(q.pid)!.group === me.group && info.get(q.pid)!.main !== null);
+        const score = (q: SimilarProduct) => mainGap(q)! * rule.mainWeight + priceGap(q) * SIMILAR.priceWeight + (rule.extra?.(p, q) ?? 0);
+        for (const [mainTol, priceTol] of rule.steps) {
+          const pool = candidates
+            .filter((q) => mainGap(q)! <= mainTol && priceGap(q) <= priceTol)
+            .map((q) => ({ q, s: score(q) }))
+            .sort((a, b) => a.s - b.s || a.q.pid.localeCompare(b.q.pid))
+            .map(({ q }) => q);
+          list = fill([], pool);
+          if (list.length >= SIMILAR.minList) break;
+        }
+      }
+      // Si se queda en menos de 3 (o no tiene el dato principal), se completa con lo más parecido de la misma familia,
+      // primero de su grupo, aunque se salga de los márgenes: si no, Shopify rellena con productos de cualquier cosa.
+      if (list.length < SIMILAR.minFallback) {
+        const fallback = (q: SimilarProduct) =>
+          (info.get(q.pid)!.group === me.group ? 0 : SIMILAR.otherGroup) + (mainGap(q) ?? 0) * rule.mainWeight + priceGap(q) * SIMILAR.priceWeight + (rule.extra?.(p, q) ?? 0);
+        const pool = available
+          .filter((q) => priceGap(q) <= SIMILAR.fallbackPrice)
+          .map((q) => ({ q, s: fallback(q) }))
+          .sort((a, b) => a.s - b.s || a.q.pid.localeCompare(b.q.pid))
+          .map(({ q }) => q);
+        list = fill(list, pool);
       }
       if (list.length) result.set(p.pid, list);
     }
