@@ -155,38 +155,56 @@ mientras no se haga ese paso.
   la ficha dice «para aparatos de hasta X €» y el título conserva «Máximo X €», como la tarjeta. En **Cover**, el importe
   de gastos si el daño no está cubierto (sin reglamento no se pone cifra).
 
-## Pendiente (estado al 2026-11-14, al cerrar la sesión)
+## Pendiente (estado al 2026-11-15)
 
-Por orden. Lo hecho está en «Registro de cambios hechos».
+Lo hecho está en «Registro de cambios hechos».
 
-1. **Tema** (paso 3): **hecho en local, sin subir ni commitear** (rama `codex/actualizacion-enterprise-230`; ver
-   «Registro»). Falta: probar el carrito con una ampliación y una protección juntas y con Combi (en `theme dev` Shopify
-   pide una verificación anti-robots en `/cart`), revisión de David y subirlo. Se puede subir antes del cambio de SKU,
-   porque busca cada garantía por `custom.referencia`.
-2. **Chatbot:** leer los tipos, conocer Cover, Combi y Display, y textos que dicen «Ampliaciones de garantía».
-3. **Utils** (paso 4): **reconocimiento hecho en local, sin desplegar ni commitear** (ver «Registro»). Falta:
-   - desplegarlo, y comprobar en la primera vuelta que el filtro nuevo de `crearFilas` trae las líneas (en local no se
-     pudo leer la tabla por la seguridad de filas);
-   - alta automática de Cover, Combi y Display cuando Garantía3 responda (token, plazo de 7 días y `promocode`);
-   - exportar las garantías a MHD como una línea más, tras probar que MHD las acepta.
+**Hecho:**
+- Las 22 garantías, con precios, textos, imágenes, reglamentos y orden en las colecciones.
+- Metacampo de tipos cargado.
+- Tema publicado y con commit (`b845100`), salvo lo del punto 1.
+- Utils desplegado (`0172dfe`).
 
-   Con David delante: toca procesos en modo real.
-4. **Cambio coordinado:** SKU de las 9 al código de MHD y `textos-garantias.mjs --escribir --con-tramo`, a la vez que se
-   publican tema, utils y chatbot.
-5. **Conector** (paso 5): el importador escribe `custom.garantias_tipos` desde la ficha; relectura semanal; fuera
-   familias y reglas por título; excluir las garantías de bajas por ausencia y de precios (10040607).
-6. **Limpieza** (paso 6): borrar la definición de `custom.admite_garantia` junto con sus valores, que es una sola
-   operación en Shopify y la quita de todos los productos que la tienen (13.118 de ellos sin garantía de MHD). Basta con eso:
-   el tema nuevo y `custom.garantias_tipos` ya no la usan. **Antes, en este orden:**
-   1. Publicar el tema nuevo: el actual la lee.
-   2. Cambiar el chatbot: la lee en `src/agent/tools.ts`.
-   3. Cambiar el importador: la escribe en cada alta (`shopify-draft.ts`) y desde `/tienda/garantias` (`warranty.ts`). Si
-      no, la volvería a poner.
-7. **Preguntas a terceros** (ver «Pendiente de terceros»): a Garantía3, anulación al cancelar o desistir (la principal),
-   token para los EAN nuevos, tarifa actual, reglamento de Cover, tarjetas de Combi y Display, qué es el importe de
-   Display; a MHD, bloque en el listado, precio de la G3PD3ES1000, título de la G3E121000 y aceptar las garantías en
-   pedidos sin stock.
-8. **Revisión de David:** tono de los textos de las 22 y de la colección, y las tarjetas montadas de Combi y Display.
+1. **Commits hechos el 2026-11-15:**
+   - Tema: `7836b8e`, con «Leer más» y reglamentos propios.
+   - sincro-vicente: `27e80f8`, con este documento, los reglamentos y los scripts. Falta subirlo a GitHub.
+2. **Pruebas tuyas en la tienda:**
+   - el carrito con una ampliación y una protección juntas, y luego Combi;
+   - el «Leer más» y el reglamento de las ventanas.
+3. **Utils:** comprobar en la primera vuelta diaria que el filtro nuevo trae las líneas. Cover, Combi y Display se piden a
+   mano: el correo de aviso hay que atenderlo enseguida, porque el cliente tiene 7 días.
+4. **Chatbot:**
+   - leer los tipos en vez de `custom.admite_garantia`;
+   - conocer Cover, Combi y Display;
+   - cambiar los textos que dicen «Ampliaciones de garantía».
+5. **Conector, el importador de MHD:**
+   - escribir `custom.garantias_tipos` desde la ficha, con relectura semanal;
+   - quitar las familias y las reglas por título;
+   - dejar de escribir `custom.admite_garantia`;
+   - **excluir las 22 garantías**: si las vuelve a procesar, les borra el reglamento y la descripción, y además están
+     las bajas por ausencia y los precios (10040607).
+6. **Cambio de SKU de las 9** al código de MHD, con `textos-garantias.mjs --escribir --con-tramo`. Tema y utils ya no
+   dependen del SKU; falta el chatbot.
+7. **Limpieza:** borrar la definición de `custom.admite_garantia` con sus valores, en una sola operación. Antes tienen
+   que estar cambiados el chatbot y el importador.
+8. **Preguntas a terceros** (ver «Pendiente de terceros»):
+   - **A Garantía3:**
+     - anulación al cancelar o desistir, que es la principal;
+     - que el token admita Cover, Combi y Display;
+     - plazo y `promocode` de Display;
+     - reglamento de Cover;
+     - tramos y significado del importe de Display;
+     - tarjetas de Combi y Display;
+     - confirmar la +3 de 1.000 € a 69,90 €.
+   - **A MHD:**
+     - precio de la G3PD3ES1000;
+     - título de la G3E121000;
+     - aceptar las garantías sin existencias;
+     - bloque de garantías en el listado.
+9. **Pendiente tras las respuestas:**
+   - alta automática de Cover, Combi y Display en utils;
+   - enviar las garantías a MHD como una línea más del pedido.
+10. **Tu revisión:** tono de los textos y tarjetas de Combi y Display.
 
 ## Registro de cambios hechos
 
@@ -215,8 +233,10 @@ Lo que ya se ha tocado en la tienda, por fecha. Copias y scripts en `outputs/` (
 - **Las 13 activadas** (David: la tienda aún no está en producción). Siguen sin ofrecerse en las fichas de los aparatos:
   el tema busca por SKU `G3PDES…`/`G3PD3ES…` y el chatbot no las reconoce por el título. Si alguien comprara una suelta,
   utils no pediría contrato (no está en `GARANTIA3_EANS`) y avisaría.
-- **Orden manual** en las colecciones `garantia3`, `garantias` y `servicios`: ampliación de 2 años, de 3 años, Combi,
-  Cover y Display, cada grupo de menor a mayor tope; en `servicios`, los tres servicios propios archivados al final.
+- **Orden manual** en las colecciones `garantia3`, `garantias` y `servicios`: ampliación de 2 años, de 3 años, Cover,
+  Display y Combi al final, cada grupo de menor a mayor tope; en `servicios`, los tres servicios propios archivados al
+  final. Combi pasó al final el mismo día (David: primero las piezas sueltas y luego el paquete que las junta); el tema
+  sigue el mismo orden en la ficha, la ventana y el carrito.
   Ojo: las colecciones son automáticas con orden manual; una garantía nueva entra al final y hay que recolocarla.
 - **Inventario:** las 22 van sin seguimiento de stock y sin envío, así que siempre se pueden vender (`available`). Las 9
   antiguas conservan una cantidad residual (~999.000) de antes de quitar el seguimiento; no se usa.
@@ -278,6 +298,56 @@ Lo que ya se ha tocado en la tienda, por fecha. Copias y scripts en `outputs/` (
     - `tests/garantia3.test.mjs`, con 3 casos nuevos: 11 de 11 bien. `tsc` sin errores.
     - Contra Shopify, solo lectura: la consulta ampliada devuelve proveedor y EAN en los pedidos de prueba #1004 y #1007.
     - En la base de datos, el filtro nuevo coge las mismas 4 líneas que el antiguo.
+
+- **2026-11-15: tema publicado.**
+  - **Copia de seguridad:** «Copia producción 2026-11-15 antes de garantías MHD» (tema 210696438092).
+  - **Comprobado antes:** los 10 archivos que ya existían estaban publicados igual que en git, así que solo se suben mis
+    cambios.
+  - **Subidos con `--only`** al tema publicado 203606098252, 12 archivos:
+    - snippets: `garantia-calculo`, `garantia-etiqueta` (nuevo), `garantia-tipos-info` (nuevo), `garantia-data`,
+      `product-garantia`, `cart-garantia` y `cart-items`;
+    - la sección `garantia-info`;
+    - `product-form.js` y `cart-items.js`;
+    - `settings_schema.json` y `templates/index.json`.
+  - **Comprobado después:** se vuelven a descargar y coinciden con los locales.
+  - **Commit `b845100`** en la rama `codex/actualizacion-enterprise-230` del tema, sin subir al remoto. Lleva
+    esos 12 archivos y `docs/garantias.md`.
+  - Desde aquí la tienda ya no usa `custom.admite_garantia`.
+
+- **2026-11-15: reglamentos propios y «Leer más»** (David).
+  - **Reglamentos:** los 4 PDF oficiales que existen (+2, +3, Combi y Display) están guardados en
+    `docs/garantia3-reglamentos/`, subidos a Shopify › Archivos con el mismo nombre y puestos en `custom.documentos` de sus
+    18 garantías. Salen en la ficha, en «Documentos».
+  - **Enlaces:** las 18 descripciones y la de la colección `garantias` enlazan nuestra copia en lugar de la web de
+    Garantía3. Copia de antes en `outputs/garantias-descripciones-antes-reglamentos-2026-11-15.json`; también
+    `textos-garantias.mjs` usa ya nuestra copia.
+  - **Cover:** sin reglamento, porque su PDF da 404 en la web de Garantía3.
+  - **Tema:** en las ventanas de cada tipo, «Leer más sobre esta garantía» abre en ventana nueva la ficha de la garantía de
+    ese aparato, y «Reglamento (PDF)» va a nuestra copia. Publicado tras comprobar que lo publicado era igual que el commit
+    `b845100`; vuelto a descargar y coincide. **Sin commit en el tema.**
+  - **Ojo, conector:** gestiona `custom.documentos` de lo que importa de MHD. Si llega a tocar las garantías, que tienen
+    código de MHD, podría quitarles el reglamento. Excluirlas, junto con las bajas por ausencia y los precios (paso 5).
+
+- **2026-11-15: comprobado que los tramos se interpretan bien** (pregunta de David).
+  - **Las fuentes coinciden:**
+    - La tarifa WEBSHOP pone Combi «Maximal 500 … Hasta 500 €», Cover «tope 500 … Hasta 700 €» y +2 «tope 500 …
+      Hasta 650 €».
+    - MHD describe la Combi como «MAXIMAL 500 … PARA PVP HASTA 500 €».
+    - El reglamento de Combi dice que el tope es el coste máximo de cada reparación y que, si no se puede reparar, la
+      sustituye por una igual con el tope como límite.
+  - **Por qué Combi pide un tramo más alto:** tiene que cubrir el valor entero del aparato. +2 y Cover aceptan un aparato
+    algo más caro que su tope, pero si no se puede reparar devuelven el precio con depreciación: Cover un 30 % y +2 un
+    10 % por año.
+  - **Corrección:** el 2026-11-15 se dijo que Combi salía más cara que +2 y Cover «con la misma cobertura», y no es así.
+    Ejemplo, lavadora de 518 €: Combi de 1.000 € cuesta 132,95 €; +2 de 500 € y Cover de 500 € cuestan 106,33 €. Combi
+    cubre reparaciones de hasta 1.000 € y, si no se puede reparar, da un aparato igual. Las otras dos cubren hasta 500 € y
+    devuelven el precio depreciado. Por eso no se oculta Combi.
+  - **Qué depende de verdad de la tarifa de 2023-10:**
+    - **Tramos de +2, +3, Cover y Combi:** salen de la tarifa, pero los confirma la descripción actual de MHD
+      (2026-11-14), que pone «PARA PVP HASTA …» en cada una con los mismos importes.
+    - **Tramos de Display:** solo los da la tarifa. MHD no indica «hasta», solo el tope.
+    - **Precio de la G3PD3ES1000:** 69,90 €, el de la tarifa, porque MHD la tiene a 45,42 € por error.
+    - **Precios del resto y EAN:** son los de MHD, no los de la tarifa.
 
 **Pendiente del cambio coordinado (no hecho):** SKU de las 9 al código de MHD.
 
