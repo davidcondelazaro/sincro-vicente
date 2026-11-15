@@ -36,3 +36,19 @@ test("recetas: la receta va delante, sin repetir y hasta 10", () => {
   assert.equal(merged.length, 10);
   assert.deepEqual(merged.slice(0, 3), ["a", "b", "i0"]);
 });
+
+test("recetas: una placa de inducción solo lleva menaje apto para inducción, y los paelleros nada", () => {
+  const ind = { "filtro.caracteristicas": "Apto inducción, Antiadherente" };
+  const rows = [
+    product("p", "Placas de inducción", "Placa de inducción Test 60 cm 3 zonas", 300, 3),
+    product("no", "Sartenes", "Sartén Test 24 cm aluminio", 20, 20, { "filtro.caracteristicas": "Antiadherente" }),
+    product("si", "Sartenes", "Sartén Otra 24 cm aluminio", 20, 10, ind),
+    product("el", "Ollas, cacerolas y cazos", "Olla a presión eléctrica Test 6 L", 60, 20, ind),
+    product("gr", "Ollas, cacerolas y cazos", "Olla a presión Test 14 L", 60, 20, ind),
+    product("ok", "Ollas, cacerolas y cazos", "Olla a presión Buena 6 L", 60, 20, ind),
+    product("pa", "Hornillos", "Paellero de gas Test 2 fuegos", 80, 3),
+  ];
+  const res = computeComplements(rows);
+  assert.deepEqual(res.get("p"), [{ slot: "Sartén", pid: "si" }, { slot: "Olla a presión", pid: "ok" }]);
+  assert.equal(res.get("pa"), undefined);
+});

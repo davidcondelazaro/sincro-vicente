@@ -10,7 +10,10 @@ type Pair = [number, number];
 type Mount = Item & { ma: Pair; mi: Pair; list: Set<string> | null; minMax: boolean; cap: number; ti: number; ta: number; lockedBrand: string | null };
 
 export const RECIPES = { minStock: 5, keepStock: 1, maxList: 10 };
-export const RECIPE_TYPES = ["Televisores", "Portátiles", "Monitores", "Soportes de TV y monitor", "Barras de sonido", "Cables", "Regletas", "Fundas y maletines para portátiles", "Mochilas para portátiles", "Ratones", "Bases y replicadores de puertos", "Packs de teclado y ratón", "Limpieza para electrónica"];
+// Placas y cocinas con su menaje (2026-11-15): en estas familias `a` trae los filtros del importador, no Icecat.
+export const COOKTOP_TYPES = ["Placas de inducción", "Placas vitrocerámicas", "Placas de gas", "Cocinas de gas y eléctricas", "Hornillos", "Módulos de integración"];
+export const COOKWARE_TYPES = ["Sartenes", "Ollas, cacerolas y cazos", "Baterías de cocina", "Paelleras"];
+export const RECIPE_TYPES = ["Televisores", "Portátiles", "Monitores", "Soportes de TV y monitor", "Barras de sonido", "Cables", "Regletas", "Fundas y maletines para portátiles", "Mochilas para portátiles", "Ratones", "Bases y replicadores de puertos", "Packs de teclado y ratón", "Limpieza para electrónica", ...COOKTOP_TYPES, ...COOKWARE_TYPES];
 
 const TV_BRANDS = /samsung|\blg\b|sony|philips|hisense|tcl|panasonic|xiaomi/;
 const LAPTOP_BRANDS = /\b(hp|lenovo|dell|asus|acer|apple|samsung|lg|msi|microsoft|medion|gigabyte|huawei)\b/;
@@ -223,10 +226,57 @@ function monitors(items: Item[], previous: Map<string, string[]>) {
   return result;
 }
 
+// Fuego de una placa, cocina, hornillo o módulo: inducción, vitro/eléctrica o gas. Sin dato no hay sugerencia.
+function heat(item: Item) {
+  if (item.t === "Placas de inducción") return "induccion";
+  if (item.t === "Placas vitrocerámicas") return "vitro";
+  if (item.t === "Placas de gas") return "gas";
+  if (/inducci[oó]n/.test(item.lower)) return "induccion";
+  if (/\bgas\b|fuegos?\b|butano|propano/.test(item.lower)) return "gas";
+  if (/vitro|el[eé]ctric|radiante|halógen/.test(item.lower)) return "vitro";
+  return null;
+}
+// Apto para inducción: lo dice el filtro del importador o el título (o la descripción de MHD, si no lo niega).
+function forInduction(item: Item) {
+  if (/inducci[oó]n/i.test(String(item.a["filtro.caracteristicas"] ?? "")) || /inducci[oó]n/.test(item.lower)) return true;
+  const txt = item.txt.toLowerCase();
+  return /inducci[oó]n|todo tipo de (cocinas|fuegos)|todas las cocinas/.test(txt) && !/no (es )?apt[ao]s? (para )?(la )?inducci|excepto inducci|salvo inducci/.test(txt);
+}
+
+function cooktops(items: Item[], previous: Map<string, string[]>) {
+  // Menaje para fuego, nunca eléctrico (paelleras, ollas programables) ni accesorios sueltos.
+  const ware = items.filter((x) => COOKWARE_TYPES.includes(x.t) && !/el[eé]ctric|programable|tapa |^tapa|asa |mango|recambio|junta|v[aá]lvula|accesorio/.test(x.lower))
+    .map((x) => ({ ...x, induction: forInduction(x), cm: number(/(\d{2}) ?cm/.exec(x.title)?.[1]), litres: number(/(\d+(?:[.,]\d+)?) ?L\b/.exec(x.title)?.[1]) }));
+  // Tamaños de uso diario: ni una olla de 14 L ni un cazo de 1 L hacen de complemento de una placa.
+  const everyday = (x: (typeof ware)[number], lo: number, hi: number) => x.litres !== null && x.litres >= lo && x.litres <= hi;
+  const pans = ware.filter((x) => x.t === "Sartenes" && /^sart[eé]n /.test(x.lower) && !/grill|parrilla|wok|crep|asador/.test(`${x.lower} ${String(x.a["filtro.tipo"] ?? "").toLowerCase()}`) && x.cm !== null && x.cm >= 22 && x.cm <= 28);
+  const pressure = ware.filter((x) => /^olla a presi[oó]n|^olla r[aá]pida/.test(x.lower) && everyday(x, 4, 8));
+  const pots = ware.filter((x) => /^(cacerola|olla)\b/.test(x.lower) && !/presi[oó]n|r[aá]pida|paellera|escurridera|sopera|baja/.test(x.lower) && everyday(x, 2.5, 8) && (x.cm === null || (x.cm >= 18 && x.cm <= 28)));
+  const sets = ware.filter((x) => x.t === "Baterías de cocina" && /^bater[ií]a de cocina/.test(x.lower));
+  const paellas = ware.filter((x) => x.t === "Paelleras" && /^paellera /.test(x.lower));
+  const result = new Map<string, Slot[]>();
+  for (const hob of items.filter((x) => COOKTOP_TYPES.includes(x.t))) {
+    const kind = heat(hob);
+    if (!kind) continue;
+    const fits = (x: (typeof ware)[number]) => kind !== "induccion" || x.induction;
+    const rank = (lo: number, hi: number) => (x: Item) => [score(x, hob, lo, hi, false)];
+    const { slots, pick } = chooser(previous.get(hob.pid) ?? []);
+    // Los paelleros piden paelleras de 50 cm o más, que no hay: sin sugerencia. La paellera va con gas de más de un fuego.
+    if (/paeller/.test(hob.lower)) continue;
+    pick("Sartén", pans.filter(fits), rank(0.04, 0.2));
+    pick("Batería de cocina", sets.filter(fits), rank(0.1, 0.5));
+    pick("Olla a presión", pressure.filter(fits), rank(0.1, 0.4));
+    pick("Cacerola u olla", pots.filter(fits), rank(0.06, 0.3));
+    if (kind === "gas" && !/\b1 fuego/.test(hob.lower)) pick("Paellera", paellas.filter(fits), rank(0.06, 0.3));
+    result.set(hob.pid, slots);
+  }
+  return result;
+}
+
 // `previous`: los complementos que tiene ahora cada aparato. La receta va delante y lo de Icecat detrás, hasta 10.
 export function computeComplements(rows: RecipeProduct[], previous: Map<string, string[]> = new Map()) {
   const items: Item[] = rows.filter((row) => row.pvp > 0).map((row) => ({ ...row, a: row.a ?? {}, txt: row.txt ?? "", lower: row.title.toLowerCase() }));
-  return new Map([...televisions(items, previous), ...laptops(items, previous), ...monitors(items, previous)]);
+  return new Map([...televisions(items, previous), ...laptops(items, previous), ...monitors(items, previous), ...cooktops(items, previous)]);
 }
 
 export function mergeComplements(recipe: Slot[], icecat: string[]) {
