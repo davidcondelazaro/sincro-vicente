@@ -101,3 +101,11 @@ test("similares: sobremesa por tipo (el título manda) y misma gama de procesado
   ];
   assert.deepEqual(computeSimilars(rows, { preview: true }).get("base"), ["i5", "i7"]);
 });
+
+test("similares: frigoríficos bajo encimera aparte y placas portátiles aparte", () => {
+  const fr = (pid, l, alto, f = {}) => item(pid, "Frigoríficos de 1 puerta", `Frigorífico 1 puerta ${pid} ${l} L`, 300, { "filtro.alto": alto, "filtro.tecnologia": "Cíclico", ...f });
+  const rows = [fr("base", 120, "Menos de 85 cm"), fr("alto", 120, "De 185 cm a 199 cm"), fr("bajo", 110, "Menos de 85 cm"), fr("nf", 120, "Menos de 85 cm", { "filtro.tecnologia": "No-Frost" })];
+  assert.deepEqual(computeSimilars(rows).get("base"), ["bajo", "nf"]);
+  const pl = (pid, car = []) => item(pid, "Placas de inducción", `Placa de inducción ${pid} 60 cm`, 300, { "filtro.ancho": "60 cm", "filtro.zonas_fuegos": "3 zonas", "filtro.caracteristicas": car });
+  assert.deepEqual(computeSimilars([pl("base"), pl("port", ["Portátil"]), pl("ok")]).get("base"), ["ok"]);
+});

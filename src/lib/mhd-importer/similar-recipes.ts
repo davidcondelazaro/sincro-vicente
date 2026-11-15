@@ -103,6 +103,18 @@ const desktopCpu = (p: SimilarProduct) => {
   const digit = p.title.match(/(?:\bcore i|\bi|\bultra |\bcore |\bryzen (?:ai )?|\bu|\br)(\d)(?=[- ]|\d{3}|$)/i)?.[1];
   return digit ? ({ "3": 1, "5": 2, "7": 3, "9": 4 } as Record<string, number>)[digit] ?? null : null;
 };
+// Frío: No Frost o cíclico, alto por tramos del filtro (bajo encimera, menos de 85 cm, aparte) y litros del título.
+const noFrost = (p: SimilarProduct) => /no.?frost/i.test(`${text(p, "filtro.tecnologia")} ${p.title}`);
+const HEIGHT = [/menos de 85/i, /de 85/i, /de 140/i, /de 150/i, /de 170/i, /de 185/i, /más de 199|de 200/i];
+const low = (p: SimilarProduct) => /menos de 85/i.test(text(p, "filtro.alto"));
+const litres = (p: SimilarProduct) => fromTitle(p, "L") ?? number(text(p, "filtro.capacidad"));
+const coldExtra = (a: SimilarProduct, b: SimilarProduct) =>
+  (noFrost(a) === noFrost(b) ? 0 : 15) + diff(bucket(a, "filtro.alto", HEIGHT), bucket(b, "filtro.alto", HEIGHT), 8) + diff(energyClass(a), energyClass(b), 3);
+// Placas: ancho del filtro («60 cm») y número de zonas o fuegos.
+const zones = (p: SimilarProduct) => number(text(p, "filtro.zonas_fuegos"));
+const hobGroup = (p: SimilarProduct) => (has(p, "filtro.caracteristicas", /portátil/i) || /portátil/i.test(p.title) ? "portatil" : "encastrable");
+const microExtra = (a: SimilarProduct, b: SimilarProduct) =>
+  mismatch(a, b, "filtro.caracteristicas", /grill/i, 10) + diff(number(text(a, "filtro.potencia")), number(text(b, "filtro.potencia")), 0.03);
 const WIDTH_COMBI =[/menos de 55/i, /de 55/i, /de 61/i, /de 71/i, /de 91/i];
 const diff = (a: number | null, b: number | null, weight: number) => (a === null || b === null ? 0 : Math.abs(a - b) * weight);
 
@@ -179,6 +191,97 @@ const RULES: Record<string, Rule> = {
     mainWeight: 2,
     steps: [[0, 0.3], [10, 0.45], [20, 0.7]],
     extra: (a, b) => diff(fromTitle(a, "m³/h"), fromTitle(b, "m³/h"), 0.04) + diff(energyClass(a), energyClass(b), 3),
+  },
+  // Placas de inducción: encastrable o portátil y las de extractor aparte; mismo ancho primero; pesan zonas y zona flexible.
+  "Placas de inducción": {
+    live: true,
+    group: (p) => `${hobGroup(p)}/${/extractor/i.test(`${text(p, "filtro.tipo")} ${p.title}`) ? "extractor" : "normal"}`,
+    main: (p) => number(text(p, "filtro.ancho")) ?? fromTitle(p, "cm"),
+    mainWeight: 2,
+    steps: [[0, 0.3], [10, 0.45], [20, 0.7]],
+    extra: (a, b) => diff(zones(a), zones(b), 8) + mismatch(a, b, "filtro.caracteristicas", /zona flexible/i, 6),
+  },
+  // Placas de gas: encastrable o portátil; mismo ancho; pesan los fuegos y el tipo de gas (butano o natural).
+  "Placas de gas": {
+    live: true,
+    group: hobGroup,
+    main: (p) => number(text(p, "filtro.ancho")) ?? fromTitle(p, "cm"),
+    mainWeight: 2,
+    steps: [[0, 0.3], [15, 0.45], [30, 0.7]],
+    extra: (a, b) =>
+      diff(zones(a), zones(b), 8) +
+      (/butano y natural/i.test(text(a, "filtro.mas_especificaciones")) || /butano y natural/i.test(text(b, "filtro.mas_especificaciones")) ? 0 : mismatch(a, b, "filtro.mas_especificaciones", /gas butano/i, 30)),
+  },
+  "Placas vitrocerámicas": {
+    live: true,
+    group: hobGroup,
+    main: (p) => number(text(p, "filtro.ancho")) ?? fromTitle(p, "cm"),
+    mainWeight: 2,
+    steps: [[0, 0.3], [10, 0.45], [30, 0.7]],
+    extra: (a, b) => diff(zones(a), zones(b), 8),
+  },
+  // Microondas de libre instalación: los de convección (hacen de horno) aparte; litros cercanos; pesan grill y potencia.
+  Microondas: {
+    live: true,
+    group: (p) => (has(p, "filtro.caracteristicas", /convección/i) ? "conveccion" : "normal"),
+    main: litres,
+    mainWeight: 2,
+    steps: [[2, 0.3], [4, 0.45], [8, 0.7]],
+    extra: microExtra,
+  },
+  // Microondas integrables: por el hueco, los de 38 a 40 cm de alto aparte de los demás altos.
+  "Microondas integrables": {
+    live: true,
+    group: (p) => (/de 38/i.test(text(p, "filtro.alto")) ? "38-40" : text(p, "filtro.alto") || "sin alto"),
+    main: litres,
+    mainWeight: 2,
+    steps: [[2, 0.3], [4, 0.45], [8, 0.7]],
+    extra: (a, b) => microExtra(a, b) + mismatch(a, b, "filtro.caracteristicas", /convección/i, 15),
+  },
+  // Frigoríficos de 1 puerta y congeladores verticales: libre o integrable y bajo encimera aparte; litros cercanos.
+  "Frigoríficos de 1 puerta": {
+    live: true,
+    group: (p) => `${integrable(p) ? "integrable" : "libre"}/${low(p) ? "bajo" : "alto"}`,
+    main: litres,
+    mainWeight: 0.4,
+    steps: [[30, 0.3], [60, 0.45], [100, 0.7]],
+    extra: coldExtra,
+  },
+  "Congeladores verticales": {
+    live: true,
+    group: (p) => `${integrable(p) ? "integrable" : "libre"}/${low(p) ? "bajo" : "alto"}`,
+    main: litres,
+    mainWeight: 0.4,
+    steps: [[30, 0.3], [60, 0.45], [100, 0.7]],
+    extra: coldExtra,
+  },
+  "Frigoríficos de 2 puertas": {
+    live: true,
+    group: (p) => (integrable(p) ? "integrable" : "libre"),
+    main: litres,
+    mainWeight: 0.4,
+    steps: [[30, 0.3], [60, 0.45], [100, 0.7]],
+    extra: coldExtra,
+  },
+  // Americanos: un solo grupo (pocos y el tipo falta en muchos); pesan el tipo de puertas y el dispensador.
+  "Frigoríficos americanos y side by side": {
+    live: true,
+    group: () => "americano",
+    main: litres,
+    mainWeight: 0.2,
+    steps: [[60, 0.3], [120, 0.45], [200, 0.7]],
+    extra: (a, b) =>
+      (text(a, "filtro.tipo") && text(b, "filtro.tipo") && text(a, "filtro.tipo") !== text(b, "filtro.tipo") ? 15 : 0) +
+      mismatch(a, b, "filtro.caracteristicas", /dispensador/i, 10) +
+      diff(energyClass(a), energyClass(b), 3),
+  },
+  "Arcones congeladores": {
+    live: true,
+    group: () => "arcon",
+    main: litres,
+    mainWeight: 0.3,
+    steps: [[50, 0.3], [100, 0.45], [150, 0.7]],
+    extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /convertible/i, 10) + diff(energyClass(a), energyClass(b), 3),
   },
   // Portátiles: Mac, Chromebook o PC, y con gráfica dedicada aparte; pulgadas cercanas y precio más ajustado que en
   // electrodomésticos, porque hay muchos. Pesan memoria, disco, gama de procesador, peso y convertible.
