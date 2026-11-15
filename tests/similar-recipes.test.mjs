@@ -39,10 +39,9 @@ test("similares: «Más de 10 kg» lee los kilos del título", () => {
 
 const item = (pid, t, title, pvp, f = {}, stock = 10) => ({ pid, t, title, pvp, stock, marca: pid, f });
 
-test("similares: las familias sin publicar solo salen en la muestra", () => {
-  const rows = [item("a", "Hornos", "Horno A 71 L", 400), item("b", "Hornos", "Horno B 72 L", 410)];
-  assert.equal(computeSimilars(rows).get("a"), undefined);
-  assert.deepEqual(computeSimilars(rows, { preview: true }).get("a"), ["b"]);
+test("similares: los tipos sin regla no reciben similares", () => {
+  const rows = [item("a", "Batidoras", "Batidora A", 40), item("b", "Batidoras", "Batidora B", 41)];
+  assert.equal(computeSimilars(rows, { preview: true }).get("a"), undefined);
 });
 
 test("similares: hornos pirolíticos aparte y lavavajillas de 45 cm aparte", () => {

@@ -68,7 +68,7 @@ const RULES: Record<string, Rule> = {
   // Combis: libre o integrable y No Frost o cíclico; litros cercanos. La altura (del título) y el ancho (rango del
   // filtro) pesan porque deciden si cabe en el hueco.
   "Frigoríficos combi": {
-    live: false,
+    live: true,
     group: (p) => `${integrable(p) ? "integrable" : "libre"}/${/c[ií]clico/i.test(text(p, "filtro.tecnologia")) && !/no ?frost/i.test(p.title) ? "ciclico" : "nofrost"}`,
     main: (p) => fromTitle(p, "L") ?? number(text(p, "filtro.capacidad")),
     mainWeight: 0.4,
@@ -77,7 +77,7 @@ const RULES: Record<string, Rule> = {
   },
   // Lavavajillas: 45 o 60 cm y libre o integrable; servicios cercanos.
   Lavavajillas: {
-    live: false,
+    live: true,
     group: (p) => `${/45\s*cm/i.test(`${text(p, "filtro.ancho")} ${p.title}`) ? "45" : "60"}/${integrable(p) ? "integrable" : "libre"}`,
     main: (p) => fromTitle(p, "servicios") ?? number(text(p, "filtro.capacidad")),
     mainWeight: 10,
@@ -86,7 +86,7 @@ const RULES: Record<string, Rule> = {
   },
   // Hornos: compacto (45 cm) o normal y pirolítico o no; litros cercanos.
   Hornos: {
-    live: false,
+    live: true,
     group: (p) => `${/45\s*cm/i.test(text(p, "filtro.alto")) ? "compacto" : "normal"}/${/pir[oó]l[ií]/i.test(`${text(p, "filtro.limpieza")} ${p.title}`) ? "pirolitico" : "otro"}`,
     main: (p) => fromTitle(p, "L") ?? number(text(p, "filtro.capacidad")),
     mainWeight: 1.5,
