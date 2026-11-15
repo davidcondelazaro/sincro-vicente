@@ -139,9 +139,9 @@ Regla de David (2026-10-28): una colección sin ningún producto activo no se bo
 - **Freno:** más de `empty_collections_max` (25) despublicaciones de golpe no se aplican y llega un aviso. Las publicaciones sí siguen.
 - **Si falla:** avisa una vez por hora, no tumba la vuelta y se reintenta en la siguiente.
 
-## Relaciones de Icecat (preparada y apagada, 2026-10-30)
+## Relaciones de Icecat (en marcha desde el 2026-11-15)
 
-**No está en marcha.** Se hizo una carga puntual el 2026-10-30; David definirá las reglas del proceso antes de activarlo. La tarea `sincro-vicente-relaciones` está apagada y la ruta sin desplegar.
+**En marcha desde el 2026-11-15** (David: «sí, enciéndela»). La tarea `sincro-vicente-relaciones` (pg_cron, job 99) se ejecuta cada día a las 4:45 UTC. La ruta estaba desplegada desde el 31-10, pero redirigía a `/login` porque faltaba en `publicPaths` de `src/proxy.ts` (arreglado en 4a85b00; sigue exigiendo `x-mhd-import-token`).
 
 Diseño actual, fuera de la vuelta de 30 minutos: pg_cron llamaría cada día a las 4:45 UTC a `/api/sincronizaciones/relaciones` (`src/lib/mhd-importer/relations-sync.ts`). `mhd_relations_calc` calcula los metacampos de Search & Discovery con las fichas de Icecat guardadas y `mhd_shopify_relations` guarda lo último enviado. Se manda solo lo que cambia, en una operación masiva.
 
@@ -151,6 +151,8 @@ Diseño actual, fuera de la vuelta de 30 minutos: pg_cron llamaría cada día a 
 - **Lo puesto a mano no se pisa:** un metacampo que no está vacío ni coincide con lo último enviado se respeta.
 - **Recetas por familia (2026-10-31):** en televisores, portátiles y monitores los complementarios salen primero de `complement-recipes.ts` y detrás va lo de Icecat, hasta 10. Un complemento por hueco, sin IA: filtro duro de compatibilidad, sin dato no hay sugerencia, stock mínimo de 5 para entrar, y nota de precio proporcionado (50), stock (30) y misma marca (20). Lee el stock de `mhd_shopify_price_stock` por `mhd_complements_source`, nunca de `mhd_catalog_products`. Lo ya sugerido se mantiene mientras siga compatible y tenga stock, para que las fichas no cambien cada día; si se agota o deja de encajar, entra el siguiente.
 - **Estado (2026-10-31):** migración `mhd_complements_source` aplicada y punto de partida guardado en `mhd_shopify_relations` (843 fichas). El TCL 55C6K PRO no se guarda: sus 8 puestos son manuales. Simulación con el código real: 41 fichas por escribir, todas por la cola de Icecat, y 1 respetada a mano. Falta desplegar y encender `sincro-vicente-relaciones`.
+- **Primera pasada (2026-11-15, 13:35 UTC):** simulación desde producción y luego real: 2.805 calculadas, 699 con cambios, 679 enviadas en una operación masiva sin errores y 20 respetadas por estar puestas a mano. Copia previa de los metacampos de los 2.657 productos con relaciones en `theme-enterprise-vicente/reference/relaciones/relaciones-antes-2026-11-15.jsonl`. Quedan sin complementos 23 de 149 TV, 2 de 657 portátiles y 19 de 186 monitores (antes 32, 108 y 34), por falta de datos en la ficha. Comprobado en la web con la TCL 65C6K PRO.
+- **Sobremesa:** su receta no está en utils. Sus complementos de la carga del 31-10 se conservan porque difieren de lo guardado en `mhd_shopify_relations` y se tratan como puestos a mano; los ordenadores nuevos solo reciben lo de Icecat.
 - **Límites:** los archivados entran mientras sigan en `store_shopify_ids`; los antiguos que nunca estuvieron (137 con EAN) no. Un producto que se queda sin relaciones conserva las suyas. Los televisores no tienen enlaces en Icecat.
 
 ## La fecha de modificación de MHD no es fiable (medido el 2026-11-02)
