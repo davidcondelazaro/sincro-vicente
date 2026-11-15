@@ -79,6 +79,30 @@ const resolution = (p: SimilarProduct) => {
 };
 const WEIGHT_LAPTOP = [/hasta 1,3/i, /de 1,3/i, /más de 1,8/i];
 const inches = (p: SimilarProduct) => number(text(p, "filtro.tamano_pantalla")) ?? fromTitle(p, '"');
+// Sobremesa: el tipo del filtro falta en uno de cada cinco y algún Mac mini dice «Portátil»: manda el título.
+const desktopType = (p: SimilarProduct) => {
+  const title = p.title;
+  if (/tableta|raspberry/i.test(title)) return "otro";
+  // Los barebone (sin procesador, memoria o disco, según el modelo) solo con barebone; los que traen pantalla, aparte.
+  if (/barebone/i.test(title)) return inches(p) !== null || /todo en uno|aio/i.test(title) ? "barebone/aio" : "barebone";
+  if (/mac mini|mini ?pc|barebone|\bnuc\b/i.test(title)) return "mini";
+  if (/todo en uno|\bimac\b/i.test(title)) return "aio";
+  const tipo = text(p, "filtro.tipo");
+  if (tipo === "Todo en uno") return "aio";
+  if (tipo === "Mini PC") return "mini";
+  return "torre";
+};
+// Gama del procesador; si el filtro no lo trae, del título («Core i5-14400», «Ultra 7 265», «Ryzen 7 9700X»).
+const desktopCpu = (p: SimilarProduct) => {
+  const fromFilter = cpuTier(p);
+  if (fromFilter !== null) return fromFilter;
+  if (/celeron|broadcom|intel n\d/i.test(p.title)) return 0;
+  if (/xeon/i.test(p.title)) return 4;
+  if (/apple m\d|\bm\d\b/i.test(p.title)) return 2;
+  // También «i5-12400», «U5-225» y «R7-7445HS».
+  const digit = p.title.match(/(?:\bcore i|\bi|\bultra |\bcore |\bryzen (?:ai )?|\bu|\br)(\d)(?=[- ]|\d{3}|$)/i)?.[1];
+  return digit ? ({ "3": 1, "5": 2, "7": 3, "9": 4 } as Record<string, number>)[digit] ?? null : null;
+};
 const WIDTH_COMBI =[/menos de 55/i, /de 55/i, /de 61/i, /de 71/i, /de 91/i];
 const diff = (a: number | null, b: number | null, weight: number) => (a === null || b === null ? 0 : Math.abs(a - b) * weight);
 
@@ -177,6 +201,26 @@ const RULES: Record<string, Rule> = {
       diff(bucket(a, "filtro.mas_especificaciones", WEIGHT_LAPTOP), bucket(b, "filtro.mas_especificaciones", WEIGHT_LAPTOP), 6) +
       mismatch(a, b, "filtro.caracteristicas", /convertible/i, 20) +
       mismatch(a, b, "filtro.caracteristicas", /oled/i, 6),
+  },
+  // Ordenadores de sobremesa: torre, mini PC, todo en uno o barebone, Mac aparte y torres con gráfica dedicada (gaming o
+  // estación de trabajo) aparte; misma
+  // gama de procesador primero. Pesan memoria, disco y, en los todo en uno, las pulgadas.
+  "Ordenadores de sobremesa": {
+    live: false,
+    group: (p) => {
+      const type = desktopType(p);
+      const mac = /macos/i.test(text(p, "filtro.sistema_operativo")) || /apple/i.test(text(p, "filtro.mas_especificaciones")) || /\b(?:mac|imac)\b/i.test(p.title);
+      if (mac) return `mac/${type}`;
+      return type === "torre" && (has(p, "filtro.caracteristicas", /gráfica dedicada/i) || /gaming/i.test(p.title)) ? "torre/gaming" : type;
+    },
+    perBrand: (group) => (group.startsWith("mac/") ? SIMILAR.maxList : SIMILAR.perBrand),
+    main: (p) => (desktopType(p).startsWith("barebone") ? 0 : desktopCpu(p)),
+    mainWeight: 15,
+    steps: [[0, 0.25], [1, 0.35], [1, 0.5]],
+    extra: (a, b) =>
+      log2diff(gb(a, "filtro.memoria_ram"), gb(b, "filtro.memoria_ram"), 12) +
+      log2diff(gb(a, "filtro.capacidad"), gb(b, "filtro.capacidad"), 8) +
+      diff(inches(a), inches(b), 6),
   },
   // Monitores: los portátiles (menos de 18") y los ultrapanorámicos aparte; pulgadas cercanas. Pesan resolución, hercios,
   // curva, panel, altura regulable y USB-C con carga.

@@ -88,3 +88,16 @@ test("similares: portátiles Mac, gráfica dedicada y monitores ultrapanorámico
   assert.deepEqual(computeSimilars(monitors, { preview: true }).get("m27"), ["m27b", "m24"]);
   assert.deepEqual(computeSimilars(rows).get("base"), ["ram16", "ram8"]);
 });
+
+test("similares: sobremesa por tipo (el título manda) y misma gama de procesador primero", () => {
+  const pc = (pid, title, f = {}) => item(pid, "Ordenadores de sobremesa", title, 700, { "filtro.memoria_ram": "16 GB", ...f });
+  const rows = [
+    pc("base", "Ordenador de sobremesa Dell Intel Core i5-14400 16 GB 512 GB"),
+    pc("i5", "Ordenador HP Pro Intel Core i5-12500 16 GB 512 GB", { "filtro.tipo": "Torre" }),
+    pc("i7", "Ordenador Lenovo Intel Core i7-14700 16 GB 512 GB"),
+    pc("mini", "Mini PC Acer Intel Core i5 16 GB", { "filtro.tipo": "Torre" }),
+    pc("mac", "Ordenador de sobremesa Apple Mac mini M5 16 GB", { "filtro.tipo": "Portátil" }),
+    pc("gaming", "Ordenador gaming MSI Intel Core i5-14400F 16 GB"),
+  ];
+  assert.deepEqual(computeSimilars(rows, { preview: true }).get("base"), ["i5", "i7"]);
+});
