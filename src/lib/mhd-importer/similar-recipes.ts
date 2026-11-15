@@ -101,7 +101,7 @@ const RULES: Record<string, Rule> = {
   },
   // Televisores: mismas pulgadas primero (luego ±8 y ±15); la tecnología de panel pesa en el orden.
   Televisores: {
-    live: false,
+    live: true,
     group: () => "tv",
     main: (p) => number(text(p, "filtro.tamano_pantalla")) ?? fromTitle(p, '"'),
     mainWeight: 3,
@@ -110,7 +110,7 @@ const RULES: Record<string, Rule> = {
   },
   // Secadoras: bomba de calor o no; kilos cercanos.
   Secadoras: {
-    live: false,
+    live: true,
     group: (p) => (/bomba de calor/i.test(`${text(p, "filtro.caracteristicas")} ${p.title}`) ? "bomba" : "otra"),
     main: (p) => fromTitle(p, "kg") ?? number(text(p, "filtro.capacidad")),
     mainWeight: 12,
@@ -119,7 +119,7 @@ const RULES: Record<string, Rule> = {
   },
   // Campanas: mismo tipo de montaje (las de isla aparte) y mismo ancho primero (luego ±10 y ±20 cm).
   "Campanas extractoras": {
-    live: false,
+    live: true,
     group: (p) => (/\bisla\b/i.test(p.title) ? "isla" : text(p, "filtro.tipo") || "sin tipo"),
     main: (p) => fromTitle(p, "cm") ?? number(text(p, "filtro.ancho")),
     mainWeight: 2,
