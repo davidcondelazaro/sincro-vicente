@@ -42,7 +42,7 @@ const item = (pid, t, title, pvp, f = {}, stock = 10) => ({ pid, t, title, pvp, 
 const first = (got, expected) => (got ?? []).slice(0, expected.length);
 
 test("similares: los tipos sin regla no reciben similares", () => {
-  const rows = [item("a", "Cables", "Cable A", 40), item("b", "Cables", "Cable B", 41)];
+  const rows = [item("a", "Fundas para móvil", "Funda A", 40), item("b", "Fundas para móvil", "Funda B", 41)];
   assert.equal(computeSimilars(rows, { preview: true }).get("a"), undefined);
 });
 
@@ -174,4 +174,23 @@ test("similares: teclados con otra distribución van detrás y las sartenes van 
   const sa = (pid, title) => item(pid, "Sartenes", title, 30);
   const sart = [sa("base", "Sartén Bra Efficient 24 cm"), sa("g", "Sartén Tefal 32 cm"), sa("ok", "Sartén Monix 24 cm")];
   assert.deepEqual(computeSimilars(sart).get("base")[0], "ok");
+});
+
+test("similares: cartuchos de su serie, cables con los mismos extremos y soportes por sitio", () => {
+  const ink = (pid, title, compat, pvp = 20) => item(pid, "Cartuchos de tinta", title, pvp, compat ? { "icecat.compatibilidad": compat } : {});
+  const tintas = [
+    ink("base", "Cartucho de tinta Brother LC421C cian", "DCP-J1050DW, MFC-J1010DW"),
+    ink("xl", "Cartucho de tinta Brother LC421XLM magenta XL", "DCP-J1050DW, MFC-J1010DW", 30),
+    ink("otra", "Cartucho de tinta Brother LC3219XLC cian XL", "MFC-J5330DW, MFC-J6530DW"),
+    ink("comp", "Cartucho de tinta compatible Dayma M-LC421M magenta para Brother", null, 3),
+  ];
+  assert.deepEqual(computeSimilars(tintas).get("base"), ["xl"]);
+  const hp = [item("a", "Tóner", "Tóner HP CF217A negro", 100, { "icecat.compatibilidad": "Los cartuchos de Tóner HP 17 funcionan con:" }), item("b", "Tóner", "Tóner HP CF210A negro", 100, { "icecat.compatibilidad": "Los cartuchos de Tóner HP 131 funcionan con:" })];
+  assert.equal(computeSimilars(hp).get("a"), undefined);
+  const cab = (pid, title) => item(pid, "Cables", title, 5);
+  const cables = [cab("base", "Cable USB-C a USB-A Lanberg X 1 m"), cab("cc", "Cable USB-C Equip Y 1 m"), cab("ca", "Cable USB-A a USB-C Engel Z 2 m"), cab("hdmi", "Cable HDMI Aisens W 1 m")];
+  assert.deepEqual(computeSimilars(cables).get("base"), ["ca"]);
+  const sop = (pid, title) => item(pid, "Soportes de TV y monitor", title, 30);
+  const soportes = [sop("base", 'Soporte de pared inclinable para TV A 32"-55" 30 kg'), sop("techo", 'Soporte de techo para TV B 32"-55" 30 kg'), sop("ok", 'Soporte de pared inclinable para TV C 32"-65" 35 kg')];
+  assert.deepEqual(computeSimilars(soportes).get("base"), ["ok"]);
 });

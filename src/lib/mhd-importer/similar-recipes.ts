@@ -18,6 +18,8 @@ type Rule = {
   perBrand?: (group: string) => number;
   // true: el relleno de listas cortas no sale del grupo (cápsulas de un sistema no valen en otro).
   strict?: boolean;
+  // Condición obligatoria entre el producto y cada candidato (un cartucho solo con los de su misma serie).
+  match?: (a: SimilarProduct, b: SimilarProduct) => boolean;
 };
 
 // minFallback, otherGroup y fallbackPrice: el relleno de las listas cortas (ver computeSimilars).
@@ -207,6 +209,131 @@ const PSU_CERT = [/white|standard/i, /bronze/i, /silver/i, /gold/i, /platinum/i,
 const fanShape = byTitle([[/torre/i, "torre"], [/de pie/i, "pie"], [/sobremesa/i, "sobremesa"]], "suelo");
 const TAP_HEIGHT = [/hasta 19/i, /de 20 cm/i, /más de 30/i];
 const IRON_STEAM = [/vapor continuo hasta 99/i, /vapor continuo de 100/i, /vapor continuo 130/i];
+
+// Consumibles de impresión: el mismo cartucho en otros colores, en XL o en pack, y nada más (uno que no sirve para la
+// impresora del cliente no es un similar). Originales y compatibles, cada uno con los suyos.
+const CONSUMABLE_KIND: [RegExp, string][] = [
+  [/tambor|fotoconductor|\bDR-?\d/i, "tambor"],
+  [/colector|mantenimiento|residual/i, "mantenimiento"],
+  [/cabezal/i, "cabezal"],
+  [/\bcinta\b/i, "cinta"],
+  [/fusor|fijador/i, "fusor"],
+  [/t[oó]ner/i, "toner"],
+  [/tinta|botella/i, "tinta"],
+];
+// Algún kit viene titulado como tóner: Icecat lo delata («Los kits de consumibles HP… funcionan con»).
+const consumableKind = (p: SimilarProduct) =>
+  `${/^los kits/i.test(text(p, "icecat.compatibilidad")) ? "kit" : CONSUMABLE_KIND.find(([re]) => re.test(p.title))?.[1] ?? "otro"}/${/compatible/i.test(p.title) ? "compatible" : "original"}`;
+// Impresoras compatibles según Icecat («HL-L3270CDW, MFC-L3750CDW», «Stylus Pro 7800/7880»): modelos de 3 a 5 cifras,
+// y en HP también el número del cartucho («Los cartuchos de Tóner HP 17 funcionan con:», a veces sin impresoras).
+const printerCache = new WeakMap<SimilarProduct, Set<string>>();
+const printers = (p: SimilarProduct) => {
+  let set = printerCache.get(p);
+  if (!set) {
+    const compat = text(p, "icecat.compatibilidad").toLowerCase();
+    const head = compat.match(/^(.*?)funcionan con/)?.[1] ?? "";
+    const models = compat.slice(head.length).match(/[a-z]*[- ]?\d{3,5}[a-z]*/g) ?? [];
+    const series = head.match(/\bhp (\d{2,4}[a-z]?)\b/)?.[1];
+    set = new Set([...models.map((t) => t.replace(/[- ]/g, "")), ...(series ? [`hp${series}`] : [])]);
+    printerCache.set(p, set);
+  }
+  return set;
+};
+// Serie por el código del título cuando no hay impresoras: sin el color ni el XL (LC421XLY → LC421, TN-243BK → TN243),
+// los de Epson sin la cifra del color (T7892 → T789) y los de color de HP sin la suya (CF413X → CF41; el negro de HP
+// se queda con su código, porque en los monocromo esa cifra es otro cartucho: CF217A no es de la serie de CF210A).
+const consumableSeries = (p: SimilarProduct) => {
+  const code = p.title.split(/\s+/).find((w) => /\d/.test(w) && w.replace(/\W/g, "").length >= 4 && !/^\d+(?:[.,]\d+)?$/.test(w));
+  if (!code) return null;
+  const clean = code.toUpperCase().replace(/#.*$/, "").replace(/^M-/, "").replace(/[^A-Z0-9]/g, "");
+  const series = clean.replace(/(?:XXL|XL|BKTWIN|TWIN|PGBK|PBK|MBK|BK|BP|CMY|LC|LM|C|M|Y|K)+$/, "");
+  if (/^T\d{4}$/.test(series)) return series.slice(0, 4);
+  const hp = /negro/i.test(p.title) ? null : series.match(/^([A-Z]{1,3}\d{2,3})[0-3][AX]$/);
+  return hp ? hp[1] : series;
+};
+// Misma serie: si los dos traen impresoras, que compartan al menos la mitad de las del que menos trae; si no, el código.
+const sameSeries = (a: SimilarProduct, b: SimilarProduct) => {
+  const pa = printers(a);
+  const pb = printers(b);
+  if (pa.size && pb.size) {
+    let shared = 0;
+    for (const x of pa) if (pb.has(x)) shared++;
+    return shared > 0 && shared >= Math.min(pa.size, pb.size) / 2;
+  }
+  const sa = consumableSeries(a);
+  return sa !== null && sa === consumableSeries(b) && /para (\S+)/i.exec(a.title)?.[1] === /para (\S+)/i.exec(b.title)?.[1];
+};
+const highYield = (p: SimilarProduct) => (/\bXXL\b|\bXL\b|alta capacidad|alto rendimiento/i.test(p.title) ? 1 : 0);
+const consumable: Rule = {
+  live: true,
+  group: consumableKind,
+  // Primero los otros colores de la misma capacidad; después el XL (o el normal) y los packs.
+  main: highYield,
+  mainWeight: 8,
+  steps: [[1, 4]],
+  extra: (a, b) => (/\bpack\b|multipack/i.test(a.title) === /\bpack\b|multipack/i.test(b.title) ? 0 : 10),
+  perBrand: () => SIMILAR.maxList,
+  strict: true,
+  match: sameSeries,
+};
+
+// Cables: los dos extremos (USB-C a USB-A no sustituye a USB-C a USB-C) y, de red, las bobinas aparte; después, la
+// longitud en «duplicaciones» (1 m frente a 2 m = 1), y la categoría de red y la resolución de vídeo.
+const CONNECTORS: [RegExp, string][] = [
+  [/fibra/i, "fibra"],
+  [/cable de red|\brj-?45\b|\bcat ?[5-8]/i, "rj45"],
+  [/mini ?displayport|mini ?dp\b/i, "minidp"],
+  [/displayport|\bdp\b/i, "dp"],
+  [/hdmi/i, "hdmi"],
+  [/\bvga\b/i, "vga"],
+  [/\bdvi/i, "dvi"],
+  [/lightning/i, "lightning"],
+  [/micro[- ]?usb/i, "microusb"],
+  [/mini[- ]?usb/i, "miniusb"],
+  [/usb[- ]?c\b|tipo c\b|type-?c/i, "usbc"],
+  [/usb[- ]?b\b/i, "usbb"],
+  [/\busb\b/i, "usba"],
+  [/jack|3,5 ?mm/i, "jack"],
+  [/\brca\b/i, "rca"],
+  [/toslink|óptico/i, "optico"],
+  [/\bsata\b/i, "sata"],
+  [/molex/i, "molex"],
+  [/\bpcie\b/i, "pcie"],
+  [/coaxial|\biec\b|antena/i, "antena"],
+  [/\bc1[34]\b|\bc[57]\b|cee ?7|schuko|alimentación/i, "corriente"],
+];
+const cableEnds = (p: SimilarProduct) => {
+  const found = CONNECTORS.filter(([re]) => re.test(p.title)).map(([, name]) => name);
+  // «USB» suelto acompaña a los demás USB («USB-A a USB-C»): solo cuenta si no hay otro.
+  const ends = found.filter((name) => name !== "usba" || /usb[- ]?a\b/i.test(p.title) || !found.some((n) => ["usbc", "usbb", "microusb", "miniusb", "lightning"].includes(n)));
+  return ends.length ? ends.sort().join("+") : "otro";
+};
+const cableLength = (p: SimilarProduct) => fromTitle(p, "m");
+const cableGroup = (p: SimilarProduct) => {
+  const kind = /^(cable|latiguillo)/i.test(p.title) ? "cable" : p.title.split(" ")[0].toLowerCase();
+  const reel = /rj45/.test(cableEnds(p)) && (cableLength(p) ?? 0) >= 50 ? "/bobina" : "";
+  return `${kind}/${cableEnds(p)}${reel}`;
+};
+const CAT = ["5e", "6", "6a", "7", "8"];
+const netCategory = (p: SimilarProduct) => {
+  const index = CAT.indexOf(p.title.match(/\bcat ?(5e|6a|6|7|8)/i)?.[1].toLowerCase() ?? "");
+  return index < 0 ? null : index;
+};
+// Soportes: dónde va (pared, mesa, suelo, techo), para qué (TV, monitor, otra cosa) y si es de varias pantallas; después,
+// el tamaño de pantalla más grande que admite, el más pequeño y si es fijo, inclinable o articulado.
+const mountPlace = byTitle([[/techo/i, "techo"], [/suelo|\bpie\b|ruedas|carro/i, "suelo"], [/pared/i, "pared"], [/mesa|brazo|escritorio|abrazadera/i, "mesa"]], "otro");
+const mountGroup = (p: SimilarProduct) => {
+  const target = /monitor/i.test(p.title) ? "monitor" : /\btv\b|televisor|pantalla/i.test(p.title) ? "tv" : p.title.match(/para (?:la |el )?(\S+)/i)?.[1].toLowerCase() ?? "otro";
+  const multi = /doble|triple|cuádruple|dos pantallas|varias|[2-6] (pantallas|monitores)/i.test(p.title) || has(p, "filtro.caracteristicas", /varias pantallas/i) ? "/varias" : "";
+  return `${mountPlace(p)}/${target}${multi}`;
+};
+const screenRange = (p: SimilarProduct) => {
+  const range = p.title.match(/(\d{2,3})(?:"|'')?\s*-\s*(\d{2,3})"/);
+  if (range) return [Number(range[1]), Number(range[2])];
+  const upTo = p.title.match(/hasta (\d{2,3})"/i) ?? p.title.match(/(\d{2,3})"/);
+  return upTo ? [null, Number(upTo[1])] : [null, null];
+};
+const mountMotion = (p: SimilarProduct) => (/articulad|brazo|giratori|rotable/i.test(p.title) || text(p, "filtro.tipo") === "Rotable" ? 2 : /inclinable/i.test(p.title) || text(p, "filtro.tipo") === "Inclinable" ? 1 : 0);
 
 const RULES: Record<string, Rule> = {
   Lavadoras: {
@@ -1228,6 +1355,28 @@ const RULES: Record<string, Rule> = {
   Quitapelusas: { live: true, group: () => "quitapelusas", ...byPrice },
   "Tablas de planchar": { live: true, group: byTitle([[/^tabla/i, "tabla"]], "otro"), ...byPrice },
   "Jarras purificadoras de agua": { live: true, group: () => "jarra", ...byPrice },
+  // Accesorios.
+  "Cartuchos de tinta": consumable,
+  "Tóner": consumable,
+  Cables: {
+    live: true,
+    group: cableGroup,
+    main: (p) => log2(cableLength(p)),
+    mainWeight: 15,
+    steps: [[0.6, 0.5], [1.1, 0.8], [2, 1.5]],
+    extra: (a, b) => diff(netCategory(a), netCategory(b), 6) + same(a, b, "filtro.resolucion", 8) + same(a, b, "filtro.color", 2),
+    // Un cable con otros conectores no sirve: las listas cortas no se rellenan con otros grupos.
+    strict: true,
+  },
+  "Soportes de TV y monitor": {
+    live: true,
+    group: mountGroup,
+    main: (p) => screenRange(p)[1],
+    mainWeight: 1.5,
+    steps: [[5, 0.4], [10, 0.7], [20, 1.2]],
+    extra: (a, b) => diff(screenRange(a)[0], screenRange(b)[0], 0.5) + diff(mountMotion(a), mountMotion(b), 10) + diff(fromTitle(a, "kg"), fromTitle(b, "kg"), 0.2),
+    strict: true,
+  },
 };
 
 export const SIMILAR_TYPES = Object.keys(RULES);
@@ -1271,7 +1420,7 @@ export function computeSimilars(rows: SimilarProduct[], options: { preview?: boo
       const available = products.filter((q) => q.pid !== p.pid && q.stock > 0 && q.pvp > 0);
       let list: string[] = [];
       if (me.main !== null) {
-        const candidates = available.filter((q) => info.get(q.pid)!.group === me.group && info.get(q.pid)!.main !== null);
+        const candidates = available.filter((q) => info.get(q.pid)!.group === me.group && info.get(q.pid)!.main !== null && (!rule.match || rule.match(p, q)));
         const score = (q: SimilarProduct) => mainGap(q)! * rule.mainWeight + priceGap(q) * SIMILAR.priceWeight + (rule.extra?.(p, q) ?? 0);
         for (const [mainTol, priceTol] of rule.steps) {
           const pool = candidates
@@ -1289,7 +1438,7 @@ export function computeSimilars(rows: SimilarProduct[], options: { preview?: boo
         const fallback = (q: SimilarProduct) =>
           (info.get(q.pid)!.group === me.group ? 0 : SIMILAR.otherGroup) + (mainGap(q) ?? 0) * rule.mainWeight + priceGap(q) * SIMILAR.priceWeight + (rule.extra?.(p, q) ?? 0);
         const pool = available
-          .filter((q) => priceGap(q) <= SIMILAR.fallbackPrice && (!rule.strict || info.get(q.pid)!.group === me.group))
+          .filter((q) => priceGap(q) <= SIMILAR.fallbackPrice && (!rule.strict || info.get(q.pid)!.group === me.group) && (!rule.match || rule.match(p, q)))
           .map((q) => ({ q, s: fallback(q) }))
           .sort((a, b) => a.s - b.s || a.q.pid.localeCompare(b.q.pid))
           .map(({ q }) => q);
