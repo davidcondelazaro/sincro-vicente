@@ -217,11 +217,12 @@ Lo que falta para que funcione:
    filtro nuevo no da error; que encuentre las líneas falta verlo con el primer pedido real. Cover, Combi y Display se
    piden a mano en el portal de Garantía3: el correo de aviso hay que atenderlo enseguida, porque el cliente tiene 7 días.
    Hoy no hay ninguna fila.
-4. **Chatbot:** hoy sigue con `custom.admite_garantia`, así que ofrece garantía en los 13.118 productos que la web ya no
-   ofrece y no conoce Cover, Combi ni Display. Hay que:
-   - leer los tipos en vez de `custom.admite_garantia`;
-   - conocer Cover, Combi y Display;
-   - cambiar los textos que dicen «Ampliaciones de garantía».
+4. **Chatbot: cambiado y desplegado el 2026-11-15 (`d1fad53`)** (`chatbot-vicente/src/agent/garantias.ts`, ver su
+   `docs/garantias.md`). Lee `custom.garantias_tipos` en vez de `custom.admite_garantia`, usa los tramos oficiales del
+   tema (fuera la regla × 0,729), conoce las 22 garantías por `custom.referencia`, las quita todas de las búsquedas
+   (antes Cover, Combi y Display salían como productos normales), aplica las combinaciones (una ampliación y una
+   protección; Combi sola) y las vende sueltas. Probadas las herramientas con datos reales; las pruebas con el modelo
+   no se pudieron pasar porque la cuenta de OpenAI del chatbot se ha quedado sin crédito, **también en producción**.
 5. **Conector, el importador de MHD:**
    - escribir `custom.garantias_tipos` desde la ficha, con relectura semanal;
    - quitar las familias y las reglas por título;
