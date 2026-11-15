@@ -133,3 +133,11 @@ test("similares: cafeteras de cápsulas no se mezclan ni al rellenar, y aspirado
   const rows = [asp("base", "Aspirador de mano Sogo", ["Aspira líquidos"]), asp("mano", "Aspirador de mano Ufesa"), asp("liq", "Aspirador de sólidos y líquidos Kärcher"), asp("mano2", "Aspirador de mano Taurus"), asp("mano3", "Aspirador de mano Tristar")];
   assert.deepEqual(first(computeSimilars(rows).get("base"), ["mano", "mano2", "mano3"]).sort(), ["mano", "mano2", "mano3"]);
 });
+
+test("similares: lavasecadoras integrables no se mezclan ni al rellenar, y fregaderos bajo encimera aparte", () => {
+  const ls = (pid, title) => item(pid, "Lavadoras secadoras", title, 600, { "filtro.color": /integrable/i.test(title) ? "Integrable" : "Blanco" });
+  assert.deepEqual(computeSimilars([ls("base", "Lavasecadora LG 9 kg / 6 kg"), ls("int", "Lavasecadora integrable AEG 9 kg / 6 kg"), ls("ok", "Lavasecadora Bosch 9 kg / 5 kg")]).get("base"), ["ok"]);
+  const fr = (pid, title) => item(pid, "Fregaderos", title, 100, { "filtro.tipo": "1 Cubeta", "filtro.material": "Acero inoxidable" });
+  const rows = [fr("base", "Fregadero bajo encimera Teka BE 1 cubeta"), fr("sobre", "Fregadero Teka 1 cubeta"), fr("bajo", "Fregadero bajo encimera Cata 1 cubeta")];
+  assert.deepEqual(first(computeSimilars(rows).get("base"), ["bajo"]), ["bajo"]);
+});

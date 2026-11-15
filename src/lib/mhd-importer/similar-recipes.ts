@@ -159,6 +159,19 @@ const watts = (p: SimilarProduct) => number(text(p, "filtro.potencia")) ?? fromT
 const vapour = [/hasta 29/i, /de 30 a 44/i, /45 g\/min o más/i];
 const WIDTH_COMBI =[/menos de 55/i, /de 55/i, /de 61/i, /de 71/i, /de 91/i];
 const diff = (a: number | null, b: number | null, weight: number) => (a === null || b === null ? 0 : Math.abs(a - b) * weight);
+// Kilos de secado de las lavasecadoras: el segundo del título («9 kg / 6 kg»).
+const dryKg = (p: SimilarProduct) => {
+  const match = p.title.match(/\/\s*(\d+(?:[.,]\d+)?)\s*kg/i);
+  return match ? Number(match[1].replace(",", ".")) : number(text(p, "filtro.capacidad_secado"));
+};
+const pyrolytic = (p: SimilarProduct) => /pir[oó]l[ií]/i.test(`${text(p, "filtro.limpieza")} ${p.title}`);
+// Gas de una cocina: butano o natural (del título o del filtro); null si no consta.
+const gasKind = (p: SimilarProduct) => {
+  const value = `${p.title} ${text(p, "filtro.tipo")}`;
+  return /gas natural/i.test(value) ? "natural" : /butano/i.test(value) ? "butano" : null;
+};
+const TAP_HEIGHT = [/hasta 19/i, /de 20 cm/i, /más de 30/i];
+const IRON_STEAM = [/vapor continuo hasta 99/i, /vapor continuo de 100/i, /vapor continuo 130/i];
 
 const RULES: Record<string, Rule> = {
   Lavadoras: {
@@ -542,6 +555,108 @@ const RULES: Record<string, Rule> = {
       (text(a, "filtro.tecnologia") && text(b, "filtro.tecnologia") && text(a, "filtro.tecnologia") !== text(b, "filtro.tecnologia") ? 5 : 0) +
       mismatch(a, b, "filtro.caracteristicas", /altura regulable/i, 5) +
       mismatch(a, b, "filtro.caracteristicas", /usb-c/i, 8),
+  },
+  // Lavasecadoras: libre o integrable; kilos de lavado cercanos (el primero del título, «9 kg / 6 kg»). Pesan los kilos
+  // de secado, el centrifugado y la clase energética.
+  "Lavadoras secadoras": {
+    live: true,
+    group: (p) => (integrable(p) ? "integrable" : "libre"),
+    // Una integrable no sustituye a una de libre instalación (ni al revés), ni siquiera para rellenar.
+    strict: true,
+    main: (p) => fromTitle(p, "kg") ?? number(text(p, "filtro.capacidad")),
+    mainWeight: 12,
+    steps: [[1, 0.3], [2, 0.45], [3, 0.7]],
+    extra: (a, b) =>
+      diff(dryKg(a), dryKg(b), 8) + diff(number(text(a, "filtro.centrifugado")), number(text(b, "filtro.centrifugado")), 0.03) + diff(energyClass(a), energyClass(b), 4),
+  },
+  // Hornos compactos (45 cm): litros cercanos; pesan pirólisis, vapor y clase energética.
+  "Hornos compactos": {
+    live: true,
+    group: () => "compacto",
+    main: litres,
+    mainWeight: 1.5,
+    steps: [[3, 0.3], [6, 0.45], [10, 0.7]],
+    extra: (a, b) =>
+      (pyrolytic(a) === pyrolytic(b) ? 0 : 15) + (/vapor/i.test(a.title) === /vapor/i.test(b.title) ? 0 : 10) + diff(energyClass(a), energyClass(b), 4),
+  },
+  // Hornos de sobremesa: litros cercanos; pesa la convección.
+  "Hornos de sobremesa": {
+    live: true,
+    group: () => "sobremesa",
+    main: litres,
+    mainWeight: 1,
+    steps: [[5, 0.3], [10, 0.45], [20, 0.7]],
+    extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /convección/i, 6),
+  },
+  // Cocinas: de gas o vitrocerámica/eléctrica (manda el título); mismo ancho primero. Pesan fuegos, butano o natural y horno.
+  "Cocinas de gas y eléctricas": {
+    live: true,
+    group: (p) => (/vitrocer|el[eé]ctrica/i.test(p.title.replace(/horno el[eé]ctrico/i, "")) ? "electrica" : "gas"),
+    main: (p) => fromTitle(p, "cm") ?? number(text(p, "filtro.ancho")),
+    mainWeight: 2,
+    steps: [[0, 0.3], [10, 0.45], [30, 0.7]],
+    extra: (a, b) => diff(zones(a) ?? fromTitle(a, "fuegos"), zones(b) ?? fromTitle(b, "fuegos"), 8) + (gasKind(a) && gasKind(b) && gasKind(a) !== gasKind(b) ? 30 : 0),
+  },
+  // Fregaderos: bajo encimera o sobre encimera y número de cubetas (1, 1½ o 2); manda el precio. Pesan el material
+  // (acero o sintético), el escurridor, el ancho de mueble y el color.
+  Fregaderos: {
+    live: true,
+    group: (p) => {
+      const tipo = text(p, "filtro.tipo") || p.title;
+      const cubetas = /1 1\/2|1,5|1½/i.test(tipo) ? "1,5" : /2 cubetas/i.test(tipo) ? "2" : "1";
+      return `${/bajo encimera/i.test(p.title) ? "bajo" : "sobre"}/${cubetas}`;
+    },
+    main: () => 0,
+    mainWeight: 0,
+    steps: [[0, 0.3], [0, 0.45], [0, 0.7]],
+    extra: (a, b) =>
+      (text(a, "filtro.material") === text(b, "filtro.material") ? 0 : 20) +
+      (/escurridor/i.test(`${text(a, "filtro.tipo")} ${a.title}`) === /escurridor/i.test(`${text(b, "filtro.tipo")} ${b.title}`) ? 0 : 15) +
+      diff(number(text(a, "filtro.ancho")), number(text(b, "filtro.ancho")), 0.8) +
+      (text(a, "filtro.color") === text(b, "filtro.color") ? 0 : 8),
+  },
+  // Grifos de cocina: manda el precio. Pesan el color (cromo, negro…), el caño extraíble y la altura.
+  "Grifos de cocina": {
+    live: true,
+    group: () => "grifo",
+    main: () => 0,
+    mainWeight: 0,
+    steps: [[0, 0.3], [0, 0.45], [0, 0.7]],
+    extra: (a, b) =>
+      (text(a, "filtro.color") === text(b, "filtro.color") ? 0 : 15) +
+      (/extra[ií]ble/i.test(`${text(a, "filtro.caracteristicas")} ${a.title}`) === /extra[ií]ble/i.test(`${text(b, "filtro.caracteristicas")} ${b.title}`) ? 0 : 10) +
+      diff(bucket(a, "filtro.mas_especificaciones", TAP_HEIGHT), bucket(b, "filtro.mas_especificaciones", TAP_HEIGHT), 4),
+  },
+  // Vinotecas: libre o integrable; botellas cercanas en «duplicaciones». Pesa la doble zona.
+  Vinotecas: {
+    live: true,
+    group: (p) => (integrable(p) ? "integrable" : "libre"),
+    main: (p) => log2(fromTitle(p, "botellas")),
+    mainWeight: 20,
+    steps: [[0.5, 0.3], [1, 0.45], [2, 0.7]],
+    extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /doble zona/i, 8),
+  },
+  // Hornillos: de gas, eléctricos, de inducción y paelleros aparte; mismos fuegos primero.
+  Hornillos: {
+    live: true,
+    group: (p) => {
+      if (/paeller/i.test(p.title)) return "paellero";
+      if (/inducci[oó]n/i.test(`${text(p, "filtro.tipo")} ${p.title}`)) return "induccion";
+      return /\bgas\b|butano|propano|fuegos?\b/i.test(`${text(p, "filtro.tipo")} ${p.title}`) ? "gas" : "electrico";
+    },
+    main: (p) => zones(p) ?? fromTitle(p, "fuegos") ?? fromTitle(p, "fuego") ?? fromTitle(p, "placas") ?? fromTitle(p, "placa"),
+    mainWeight: 15,
+    steps: [[0, 0.3], [1, 0.45], [2, 0.7]],
+    extra: (a, b) => diff(watts(a), watts(b), 0.004),
+  },
+  // Centros de planchado y planchas verticales (aparte); bares de presión cercanos. Pesan el vapor continuo y la potencia.
+  "Centros de planchado y planchas verticales": {
+    live: true,
+    group: (p) => (/vertical/i.test(p.title) ? "vertical" : "centro"),
+    main: (p) => (/vertical/i.test(p.title) ? 0 : fromTitle(p, "bar") ?? (/bar/i.test(text(p, "filtro.potencia")) ? number(text(p, "filtro.potencia")) : null)),
+    mainWeight: 8,
+    steps: [[0.5, 0.3], [1, 0.45], [2, 0.7]],
+    extra: (a, b) => diff(bucket(a, "filtro.mas_especificaciones", IRON_STEAM), bucket(b, "filtro.mas_especificaciones", IRON_STEAM), 5) + diff(fromTitle(a, "W"), fromTitle(b, "W"), 0.01),
   },
 };
 
