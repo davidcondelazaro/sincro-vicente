@@ -176,6 +176,9 @@ const byTitle = (kinds: [RegExp, string][], otherwise: string) => (p: SimilarPro
 const byPrice = { main: () => 0, mainWeight: 0, steps: [[0, 0.25], [0, 0.4], [0, 0.6]] as [number, number][] };
 const MINUTES = [/menos de 20/i, /20-40/i, /45-60/i, /61-89/i, /90-100/i, /más de 100/i];
 const GRILL_WIDTH = [/hasta 29/i, /de 30 a 40/i, /de 41 a 50/i, /más de 50/i];
+// Penaliza que un filtro de valor único sea distinto (solo si los dos lo tienen).
+const same = (a: SimilarProduct, b: SimilarProduct, key: string, weight: number) => (text(a, key) && text(b, key) && text(a, key) !== text(b, key) ? weight : 0);
+const LUMENS = [/brillo hasta|brillo menos/i, /brillo de 2000/i, /brillo más de 3500/i];
 const fanShape = byTitle([[/torre/i, "torre"], [/de pie/i, "pie"], [/sobremesa/i, "sobremesa"]], "suelo");
 const TAP_HEIGHT = [/hasta 19/i, /de 20 cm/i, /más de 30/i];
 const IRON_STEAM = [/vapor continuo hasta 99/i, /vapor continuo de 100/i, /vapor continuo 130/i];
@@ -876,6 +879,134 @@ const RULES: Record<string, Rule> = {
   },
   "Mantas eléctricas": { live: true, group: (p) => (/2 personas/i.test(text(p, "filtro.mas_especificaciones")) ? "2" : "1"), ...byPrice },
   Calientacamas: { live: true, group: (p) => (/2 personas/i.test(text(p, "filtro.mas_especificaciones")) || /doble/i.test(p.title) ? "2" : "1"), ...byPrice },
+  // Imagen, sonido y telefonía: manda el precio y el tipo sale del título; pesan resolución y las funciones que deciden la compra.
+  Proyectores: {
+    live: true,
+    // Tiro corto, portátiles (menos de 1000 lúmenes), de oficina (SVGA, XGA, WXGA…) y de cine en casa aparte.
+    group: (p) => {
+      if (has(p, "filtro.caracteristicas", /tiro corto/i) || /tiro (ultra)?corto/i.test(p.title)) return "tiro-corto";
+      if (/port[aá]til|mini/i.test(p.title) || (fromTitle(p, "lúmenes") ?? 9999) < 1000) return "portatil";
+      return /\b(svga|xga|wxga|wuxga)\b/i.test(p.title) ? "oficina" : "cine";
+    },
+    ...byPrice,
+    extra: (a, b) => same(a, b, "filtro.resolucion", 10) + mismatch(a, b, "filtro.caracteristicas", /láser/i, 8) + diff(bucket(a, "filtro.mas_especificaciones", LUMENS), bucket(b, "filtro.mas_especificaciones", LUMENS), 4),
+  },
+  "Barras de sonido": {
+    live: true,
+    group: () => "barra",
+    ...byPrice,
+    extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /atmos/i, 8) + mismatch(a, b, "filtro.caracteristicas", /subwoofer/i, 6) + mismatch(a, b, "filtro.conectividad", /wifi/i, 3),
+  },
+  Webcams: {
+    live: true,
+    group: byTitle([[/videoconferencia/i, "videoconferencia"]], "webcam"),
+    ...byPrice,
+    extra: (a, b) => same(a, b, "filtro.resolucion", 8) + mismatch(a, b, "filtro.caracteristicas", /autoenfoque/i, 3),
+  },
+  "Cámaras de fotos": {
+    live: true,
+    group: byTitle([[/instant[aá]nea/i, "instantanea"], [/sin espejo|r[eé]flex/i, "objetivos"], [/anal[oó]gica/i, "analogica"], [/puente|bridge/i, "puente"]], "compacta"),
+    ...byPrice,
+  },
+  "Cámaras deportivas": {
+    live: true,
+    group: byTitle([[/dron/i, "dron"], [/gimbal/i, "gimbal"], [/360/i, "360"]], "deportiva"),
+    ...byPrice,
+    extra: (a, b) => same(a, b, "filtro.resolucion", 6),
+  },
+  Videocámaras: {
+    live: true,
+    group: byTitle([[/nvr|grabador/i, "grabador"], [/videoconferencia/i, "videoconferencia"]], "videocamara"),
+    ...byPrice,
+  },
+  Smartphones: {
+    live: true,
+    group: byTitle([[/mayores|senior/i, "mayores"], [/ranger|rugged|resistente/i, "rugerizado"]], "smartphone"),
+    ...byPrice,
+    extra: (a, b) => log2diff(gb(a, "filtro.capacidad"), gb(b, "filtro.capacidad"), 8),
+  },
+  "Smartphones reacondicionados": {
+    live: true,
+    group: () => "reacondicionado",
+    // Todos son iPhone: sin tope por marca.
+    perBrand: () => SIMILAR.maxList,
+    ...byPrice,
+    extra: (a, b) => log2diff(gb(a, "filtro.capacidad"), gb(b, "filtro.capacidad"), 10),
+  },
+  Consolas: {
+    live: true,
+    group: byTitle([[/retro/i, "retro"], [/^mando/i, "mando"], [/port[aá]til|switch/i, "portatil"]], "sobremesa"),
+    perBrand: () => SIMILAR.maxList,
+    ...byPrice,
+  },
+  Tocadiscos: { live: true, group: (p) => (has(p, "filtro.caracteristicas", /altavoces incluidos/i) || /con altavoces/i.test(p.title) ? "altavoces" : "hifi"), ...byPrice },
+  Radios: {
+    live: true,
+    group: byTitle([[/bolsillo|personal/i, "bolsillo"]], "portatil"),
+    ...byPrice,
+    extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /dab/i, 5) + mismatch(a, b, "filtro.conectividad", /bluetooth/i, 3),
+  },
+  "Radios CD y radiocasetes": { live: true, group: () => "radio-cd", ...byPrice, extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /cassette/i, 6) },
+  Radiodespertadores: {
+    live: true,
+    group: (p) => (/inteligente|echo|alexa/i.test(p.title) || has(p, "filtro.caracteristicas", /inteligente/i) ? "inteligente" : /^radio/i.test(p.title) ? "radio" : "despertador"),
+    ...byPrice,
+  },
+  "Equipos de música": { live: true, group: () => "equipo", ...byPrice },
+  "Teléfonos inalámbricos": {
+    live: true,
+    group: byTitle([[/\bip\b/i, "ip"], [/sobremesa/i, "sobremesa"]], "inalambrico"),
+    ...byPrice,
+    extra: (a, b) =>
+      mismatch(a, b, "filtro.caracteristicas", /teclas grandes/i, 6) +
+      mismatch(a, b, "filtro.caracteristicas", /contestador/i, 4) +
+      (/\b(duo|d[uú]o|trio)\b/i.test(a.title) === /\b(duo|d[uú]o|trio)\b/i.test(b.title) ? 0 : 6),
+  },
+  "Teléfonos fijos": {
+    live: true,
+    group: byTitle([[/inal[aá]mbrico/i, "inalambrico"]], "sobremesa"),
+    ...byPrice,
+    extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /teclas grandes/i, 6) + mismatch(a, b, "filtro.caracteristicas", /pared/i, 3),
+  },
+  "Pulseras de actividad": {
+    live: true,
+    group: byTitle([[/apple watch/i, "apple"], [/infantil/i, "infantil"], [/smartwatch/i, "smartwatch"], [/pectoral/i, "pectoral"], [/sueño/i, "sueño"]], "pulsera"),
+    perBrand: (group) => (group === "apple" ? SIMILAR.maxList : SIMILAR.perBrand),
+    ...byPrice,
+  },
+  eBooks: {
+    live: true,
+    group: () => "ebook",
+    ...byPrice,
+    extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /pantalla a color/i, 8) + diff(inches(a), inches(b), 3),
+  },
+  "TV Box y sticks de TV": { live: true, group: () => "tvbox", ...byPrice, extra: (a, b) => same(a, b, "filtro.resolucion", 5) },
+  "Navegadores GPS": {
+    live: true,
+    group: byTitle([[/cami[oó]n|autocaravana/i, "camion"], [/moto/i, "moto"], [/de mano|senderismo|outdoor/i, "mano"]], "coche"),
+    ...byPrice,
+    extra: (a, b) => diff(inches(a), inches(b), 3),
+  },
+  Micrófonos: {
+    live: true,
+    group: (p) => {
+      const kind = `${text(p, "filtro.tipo")} ${p.title}`;
+      if (/karaoke/i.test(kind)) return "karaoke";
+      if (/solapa|lavalier/i.test(kind)) return "solapa";
+      if (/conferencia/i.test(kind)) return "conferencias";
+      return /inal[aá]mbrico|sistema de/i.test(p.title) ? "inalambrico" : "escritorio";
+    },
+    ...byPrice,
+    extra: (a, b) => mismatch(a, b, "filtro.conectividad", /usb/i, 4),
+  },
+  // Videovigilancia: cámaras aparte de grabadores, kits y accesorios (soportes, paneles solares, cables); en las cámaras
+  // pesan exterior/interior, resolución y wifi.
+  Videovigilancia: {
+    live: true,
+    group: byTitle([[/^c[aá]mara/i, "camara"], [/^kit/i, "kit"], [/grabador|nvr|dvr/i, "grabador"]], "accesorio"),
+    ...byPrice,
+    extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /exterior/i, 10) + same(a, b, "filtro.resolucion", 5) + mismatch(a, b, "filtro.conectividad", /wifi/i, 3),
+  },
 };
 
 export const SIMILAR_TYPES = Object.keys(RULES);

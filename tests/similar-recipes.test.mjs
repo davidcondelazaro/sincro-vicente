@@ -150,3 +150,9 @@ test("similares: estufas de gas, de exterior y eléctricas aparte, y tostadoras 
   const tost = [to("base", "Tostadora Moulinex 1 ranura extra-larga"), to("dos", "Tostadora Jata 2 ranuras"), to("una", "Tostadora Princess 1 ranura")];
   assert.deepEqual(first(computeSimilars(tost).get("base"), ["una"]), ["una"]);
 });
+
+test("similares: proyectores de oficina, de cine y portátiles aparte", () => {
+  const pr = (pid, title) => item(pid, "Proyectores", title, 500);
+  const rows = [pr("base", "Proyector Epson XGA 3600 lúmenes"), pr("cine", "Proyector Acer Full HD 3600 lúmenes"), pr("mini", "Proyector TCL Full HD 600 lúmenes"), pr("ofi", "Proyector Acer WXGA 4000 lúmenes")];
+  assert.deepEqual(first(computeSimilars(rows).get("base"), ["ofi"]), ["ofi"]);
+});
