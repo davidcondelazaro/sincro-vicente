@@ -42,7 +42,7 @@ const item = (pid, t, title, pvp, f = {}, stock = 10) => ({ pid, t, title, pvp, 
 const first = (got, expected) => (got ?? []).slice(0, expected.length);
 
 test("similares: los tipos sin regla no reciben similares", () => {
-  const rows = [item("a", "Batidoras", "Batidora A", 40), item("b", "Batidoras", "Batidora B", 41)];
+  const rows = [item("a", "Cables", "Cable A", 40), item("b", "Cables", "Cable B", 41)];
   assert.equal(computeSimilars(rows, { preview: true }).get("a"), undefined);
 });
 

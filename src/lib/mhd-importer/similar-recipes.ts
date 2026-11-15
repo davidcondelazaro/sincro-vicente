@@ -170,6 +170,12 @@ const gasKind = (p: SimilarProduct) => {
   const value = `${p.title} ${text(p, "filtro.tipo")}`;
   return /gas natural/i.test(value) ? "natural" : /butano/i.test(value) ? "butano" : null;
 };
+// Grupo por la primera expresión del título que encaje; si ninguna, `otherwise`.
+const byTitle = (kinds: [RegExp, string][], otherwise: string) => (p: SimilarProduct) => kinds.find(([re]) => re.test(p.title))?.[1] ?? otherwise;
+// Familias sin dato principal: manda el precio (±25 %, luego ±40 % y ±60 %).
+const byPrice = { main: () => 0, mainWeight: 0, steps: [[0, 0.25], [0, 0.4], [0, 0.6]] as [number, number][] };
+const MINUTES = [/menos de 20/i, /20-40/i, /45-60/i, /61-89/i, /90-100/i, /más de 100/i];
+const GRILL_WIDTH = [/hasta 29/i, /de 30 a 40/i, /de 41 a 50/i, /más de 50/i];
 const TAP_HEIGHT = [/hasta 19/i, /de 20 cm/i, /más de 30/i];
 const IRON_STEAM = [/vapor continuo hasta 99/i, /vapor continuo de 100/i, /vapor continuo 130/i];
 
@@ -657,6 +663,141 @@ const RULES: Record<string, Rule> = {
     mainWeight: 8,
     steps: [[0.5, 0.3], [1, 0.45], [2, 0.7]],
     extra: (a, b) => diff(bucket(a, "filtro.mas_especificaciones", IRON_STEAM), bucket(b, "filtro.mas_especificaciones", IRON_STEAM), 5) + diff(fromTitle(a, "W"), fromTitle(b, "W"), 0.01),
+  },
+  // Pequeño electro de cocina. En casi todas manda el precio; el «grupo» sale del título, porque en estas familias hay
+  // productos de otra clase (una licuadora entre las batidoras, una tostadora entre las planchas).
+  Batidoras: {
+    live: true,
+    group: byTitle([[/de vaso|licuadora|nutribullet/i, "vaso"], [/varillas/i, "varillas"], [/amasadora/i, "amasadora"]], "mano"),
+    main: (p) => log2(watts(p)),
+    mainWeight: 10,
+    steps: [[0.5, 0.3], [1, 0.45], [2, 0.7]],
+    extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /pica hielo/i, 4) + mismatch(a, b, "filtro.caracteristicas", /accesorios/i, 3),
+  },
+  Tostadoras: {
+    live: true,
+    // Ranuras: 1 (larga), 2 o 4.
+    group: (p) => (/tostadora/i.test(p.title) ? `${fromTitle(p, "ranura") ?? fromTitle(p, "ranuras") ?? zones(p) ?? 2}` : "otro"),
+    ...byPrice,
+    extra: (a, b) => mismatch(a, b, "filtro.mas_especificaciones", /7 o más/i, 3) + (text(a, "filtro.color") === text(b, "filtro.color") ? 0 : 3),
+  },
+  "Hervidores de agua": {
+    live: true,
+    group: () => "hervidor",
+    main: (p) => number(text(p, "filtro.capacidad")) ?? fromTitle(p, "L"),
+    mainWeight: 10,
+    steps: [[0.2, 0.3], [0.5, 0.45], [1, 0.7]],
+    extra: (a, b) => (/regulable|temperatura/i.test(`${text(a, "filtro.caracteristicas")} ${a.title}`) === /regulable|temperatura/i.test(`${text(b, "filtro.caracteristicas")} ${b.title}`) ? 0 : 8),
+  },
+  Exprimidores: {
+    live: true,
+    group: byTitle([[/palanca|brazo/i, "palanca"], [/licuadora/i, "licuadora"]], "exprimidor"),
+    ...byPrice,
+    extra: (a, b) => diff(log2(watts(a)), log2(watts(b)), 4),
+  },
+  Sandwicheras: {
+    live: true,
+    group: byTitle([[/gofre|crep/i, "gofrera"]], "sandwichera"),
+    main: (p) => number(text(p, "filtro.capacidad")),
+    mainWeight: 15,
+    steps: [[0, 0.3], [1, 0.45], [2, 0.7]],
+  },
+  "Planchas de asar y grills eléctricos": {
+    live: true,
+    group: byTitle([[/tostadora/i, "tostadora"], [/raclette|fondue/i, "raclette"]], "plancha"),
+    ...byPrice,
+    extra: (a, b) => diff(bucket(a, "filtro.ancho", GRILL_WIDTH), bucket(b, "filtro.ancho", GRILL_WIDTH), 6),
+  },
+  Picadoras: {
+    live: true,
+    group: () => "picadora",
+    main: (p) => number(text(p, "filtro.capacidad")) ?? fromTitle(p, "L"),
+    mainWeight: 10,
+    steps: [[0.2, 0.3], [0.5, 0.45], [1, 0.7]],
+  },
+  "Robots de cocina": {
+    live: true,
+    group: byTitle([[/robot de cocina/i, "robot"]], "otro"),
+    ...byPrice,
+  },
+  Licuadoras: {
+    live: true,
+    group: byTitle([[/exprimidor/i, "exprimidor"], [/batidora/i, "batidora"]], "licuadora"),
+    ...byPrice,
+  },
+  Arroceras: {
+    live: true,
+    group: () => "arrocera",
+    main: (p) => number(text(p, "filtro.capacidad")) ?? fromTitle(p, "L"),
+    mainWeight: 6,
+    steps: [[0.3, 0.3], [0.8, 0.45], [1.5, 0.7]],
+  },
+  "Molinillos de café": {
+    live: true,
+    group: byTitle([[/pimienta|\bsal\b/i, "especias"]], "cafe"),
+    ...byPrice,
+  },
+  // Cuidado personal: manda el precio; el tipo sale del título por la misma razón.
+  Cortapelos: {
+    live: true,
+    group: byTitle([[/afeitadora|oneblade/i, "afeitadora"], [/nariz|oreja/i, "nariz"], [/multifunci[oó]n/i, "multifuncion"], [/barbero|barba/i, "barbero"]], "cortapelos"),
+    ...byPrice,
+    extra: (a, b) => diff(bucket(a, "filtro.autonomia", MINUTES), bucket(b, "filtro.autonomia", MINUTES), 3) + mismatch(a, b, "filtro.caracteristicas", /mojado/i, 4),
+  },
+  "Secadores de pelo": {
+    live: true,
+    group: byTitle([[/viaje/i, "viaje"]], "secador"),
+    ...byPrice,
+    extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /sin escobillas/i, 10) + mismatch(a, b, "filtro.caracteristicas", /iónica/i, 3) + diff(watts(a), watts(b), 0.01),
+  },
+  Afeitadoras: {
+    live: true,
+    group: (p) => {
+      if (/depiladora/i.test(p.title)) return "depiladora";
+      if (/cortapelos|barbero/i.test(p.title)) return "cortapelos";
+      if (/corporal/i.test(p.title)) return "corporal";
+      if (/oneblade/i.test(p.title)) return "oneblade";
+      return /l[aá]minas/i.test(`${text(p, "filtro.tipo")} ${p.title}`) ? "laminas" : "rotativa";
+    },
+    ...byPrice,
+    extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /estación de limpieza/i, 8) + diff(bucket(a, "filtro.autonomia", MINUTES), bucket(b, "filtro.autonomia", MINUTES), 3),
+  },
+  Depiladoras: {
+    live: true,
+    group: byTitle([[/de luz|ipl|luz pulsada/i, "luz"], [/facial/i, "facial"], [/cera/i, "cera"], [/afeitadora|rizador/i, "otro"]], "electrica"),
+    ...byPrice,
+    extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /mojado/i, 4),
+  },
+  "Moldeadores y rizadores de pelo": {
+    live: true,
+    group: byTitle([[/cepillo/i, "cepillo"], [/plancha/i, "plancha"], [/rizador/i, "rizador"]], "moldeador"),
+    ...byPrice,
+    extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /iónica/i, 3),
+  },
+  "Planchas de pelo": {
+    live: true,
+    group: byTitle([[/cepillo/i, "cepillo"]], "plancha"),
+    ...byPrice,
+    extra: (a, b) => mismatch(a, b, "filtro.mas_especificaciones", /más de 229/i, 4) + mismatch(a, b, "filtro.caracteristicas", /iónica/i, 3),
+  },
+  "Cepillos de dientes eléctricos": {
+    live: true,
+    group: (p) => (/irrigador/i.test(p.title) ? "irrigador" : /infantil|kids|niñ/i.test(`${text(p, "filtro.tipo")} ${p.title}`) ? "infantil" : "adulto"),
+    ...byPrice,
+    extra: (a, b) =>
+      (text(a, "filtro.tecnologia") && text(b, "filtro.tecnologia") && text(a, "filtro.tecnologia") !== text(b, "filtro.tecnologia") ? 8 : 0) + mismatch(a, b, "filtro.caracteristicas", /app/i, 4),
+  },
+  "Recortadoras de barba": {
+    live: true,
+    group: byTitle([[/multifunci[oó]n/i, "multifuncion"]], "barbero"),
+    ...byPrice,
+    extra: (a, b) => diff(bucket(a, "filtro.autonomia", MINUTES), bucket(b, "filtro.autonomia", MINUTES), 3),
+  },
+  Básculas: {
+    live: true,
+    group: byTitle([[/cocina/i, "cocina"], [/precisi[oó]n/i, "precision"], [/equipaje|maleta/i, "equipaje"]], "baño"),
+    ...byPrice,
+    extra: (a, b) => mismatch(a, b, "filtro.caracteristicas", /análisis corporal/i, 10) + mismatch(a, b, "filtro.conectividad", /bluetooth|wifi/i, 5),
   },
 };
 
