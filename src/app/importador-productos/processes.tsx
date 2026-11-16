@@ -8,7 +8,7 @@ import { WARNING_KINDS } from "@/lib/mhd-importer/warning-kinds";
 // cada paso y el registro de decisiones, avisos, errores y motivos de revisión.
 
 type JobStatus = "en_cola" | "en_curso" | "pausado" | "terminado" | "cancelado";
-type Job = { id: string; title: string; status: JobStatus; paused_reason?: string | null; options: { concurrency?: number; workers?: number; upload?: boolean | "nuevos" | "solo" | "videos" }; created_by: string | null; created_at: string; started_at: string | null; finished_at: string | null; total: number; pendientes: number; en_curso: number; ok: number; descartados: number; errores: number; duracion_media_ms: number | null; coste_usd: number; ultima_actividad: string | null };
+type Job = { id: string; title: string; status: JobStatus; paused_reason?: string | null; options: { concurrency?: number; workers?: number; upload?: boolean | "nuevos" | "solo" | "videos"; resume_at?: string }; created_by: string | null; created_at: string; started_at: string | null; finished_at: string | null; total: number; pendientes: number; en_curso: number; ok: number; descartados: number; errores: number; duracion_media_ms: number | null; coste_usd: number; ultima_actividad: string | null };
 type Item = { id: number; codigo: string; family_code: string | null; status: "pendiente" | "en_curso" | "ok" | "descartado" | "error"; step: string | null; attempts: number; started_at: string | null; finished_at: string | null; duration_ms: number | null; cost_usd: number | null; run_id: string | null; error: string | null };
 type Step = { step: string; veces: number; media_ms: number; max_ms: number; errores: number };
 type LogEvent = { id: number; item_id: number | null; codigo: string | null; level: "info" | "decision" | "aviso" | "error" | "revision"; step: string; message: string; duration_ms: number | null; created_at: string };
@@ -50,6 +50,15 @@ function pace(job: Job, now: number) {
   if (!started || !done) return { perMinute: null, eta: null };
   const elapsedMin = ((job.finished_at ? new Date(job.finished_at).getTime() : now) - started) / 60_000;
   const perMinute = done / Math.max(elapsedMin, 0.1); const left = job.pendientes + job.en_curso;
+  // Tanda «solo vídeos» (2026-11-16): manda el tope de Shopify de 200 vídeos por hora, no el ritmo. Se estima cuántos de
+  // los que quedan subirán vídeo (la misma proporción que los ya hechos; los demás ya los tenían) y se suma la espera
+  // hasta que se reanude sola. Se ve también en pausa.
+  if (job.options.upload === "videos" && left) {
+    const share = job.ok / Math.max(done, 1);
+    const wait = job.status === "pausado" && job.options.resume_at ? Math.max(0, (new Date(job.options.resume_at).getTime() - now) / 60_000) : 0;
+    const running = job.status === "en_curso" || (job.status === "pausado" && Boolean(job.options.resume_at));
+    return { perMinute, eta: running ? wait + (left * share) / (200 / 60) : null };
+  }
   return { perMinute, eta: left && job.status === "en_curso" ? left / perMinute : null };
 }
 
@@ -105,7 +114,7 @@ function JobCard({ job, now, selected, onSelect, onAction }: { job: Job; now: nu
     </header>
     <div className="mt-3 flex h-2.5 overflow-hidden rounded-full bg-zinc-100">{bar(job.ok, "bg-emerald-500")}{bar(job.descartados, "bg-amber-400")}{bar(job.errores, "bg-red-500")}{bar(job.en_curso, "bg-sky-400 animate-pulse")}</div>
     <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-5 lg:grid-cols-9">
-      {([["Hechos", `${integer.format(done)} de ${integer.format(job.total)}`], ["Bien", integer.format(job.ok)], ["Descartados", integer.format(job.descartados)], ["Errores", integer.format(job.errores)], ["En curso", integer.format(job.en_curso)], ["Duración", duration(job, now)], ["Media por producto", seconds(job.duracion_media_ms)], ["Ritmo", perMinute ? `${perMinute.toFixed(1).replace(".", ",")}/min` : "—"], [job.status === "en_curso" ? "Quedan" : "Coste", job.status === "en_curso" ? (eta ? `~${eta < 60 ? `${Math.ceil(eta)} min` : `${(eta / 60).toFixed(1).replace(".", ",")} h`}` : "—") : `${Number(job.coste_usd).toFixed(2).replace(".", ",")} $`]] as const).map(([label, value]) => <div key={label}><dt className="text-xs text-zinc-500">{label}</dt><dd className="font-medium tabular-nums text-zinc-900">{value}</dd></div>)}
+      {([["Hechos", `${integer.format(done)} de ${integer.format(job.total)}`], ["Bien", integer.format(job.ok)], ["Descartados", integer.format(job.descartados)], ["Errores", integer.format(job.errores)], ["En curso", integer.format(job.en_curso)], ["Duración", duration(job, now)], ["Media por producto", seconds(job.duracion_media_ms)], ["Ritmo", perMinute ? `${perMinute.toFixed(1).replace(".", ",")}/min` : "—"], [job.status === "en_curso" || eta ? "Quedan" : "Coste", job.status === "en_curso" || eta ? (eta ? `~${eta < 60 ? `${Math.ceil(eta)} min` : `${(eta / 60).toFixed(1).replace(".", ",")} h`}` : "—") : `${Number(job.coste_usd).toFixed(2).replace(".", ",")} $`]] as const).map(([label, value]) => <div key={label}><dt className="text-xs text-zinc-500">{label}</dt><dd className="font-medium tabular-nums text-zinc-900">{value}</dd></div>)}
     </dl>
     <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
       <span className="text-xs text-zinc-500">Última actividad: {ago(job.ultima_actividad, now)} · coste {Number(job.coste_usd).toFixed(2).replace(".", ",")} $ · {job.options.workers ?? 1} × {job.options.concurrency ?? 4} a la vez{job.options.upload === "videos" ? " · solo vídeos (no toca nada más)" : job.options.upload === "solo" ? " · solo subir (sin procesar)" : job.options.upload === "nuevos" ? " · sube a Shopify solo los nuevos" : job.options.upload ? " · sube a Shopify" : ""}</span>
