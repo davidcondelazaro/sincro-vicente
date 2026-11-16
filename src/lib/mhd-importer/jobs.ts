@@ -7,7 +7,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { anthropicKey, ELVI_MODELS, PROCESSOR_MODEL } from "./ai";
 import type { SourcesConfig } from "./gather";
 import { pruneOlderRunMedia, saveRunMedia } from "./media-store";
-import { ALREADY_UPLOADED, createShopifyDraft } from "./shopify-draft";
+import { ALREADY_UPLOADED, createShopifyDraft, uploadShopifyVideos } from "./shopify-draft";
 import { processProduct } from "./processor";
 import { createTrace, type TraceEvent } from "./trace";
 import { warningKind } from "./warning-kinds";
@@ -65,13 +65,24 @@ function familyData(db: SupabaseClient, family: string) {
   return familyCache.get(family)!;
 }
 
-export async function processJobItem(deps: { db: SupabaseClient; config: SourcesConfig; ai: Anthropic; upload?: boolean | "nuevos" | "solo"; elviModel?: string; noThinking?: boolean }, item: JobItem) {
+export async function processJobItem(deps: { db: SupabaseClient; config: SourcesConfig; ai: Anthropic; upload?: boolean | "nuevos" | "solo" | "videos"; elviModel?: string; noThinking?: boolean }, item: JobItem) {
   const started = Date.now(); const log = itemLog(deps.db, item);
   try {
     // Bloqueado a mano (ficha arreglada en Shopify): ni se procesa ni se sube.
     const locked = await productLock(deps.db, item.codigo);
     if (locked) {
       await deps.db.from("mhd_importer_job_items").update({ status: "descartado", finished_at: new Date().toISOString(), duration_ms: Date.now() - started, cost_usd: 0, error: locked, lease_until: null, step: null }).eq("id", item.id);
+      return;
+    }
+    // Tanda «solo vídeos» (David, 2026-11-16): sube a un producto que ya está en la tienda los vídeos de su última prueba
+    // correcta, sin volver a procesarlo ni tocar nada más (uploadShopifyVideos).
+    if (deps.upload === "videos") {
+      const done = await log.trace.step("Subir vídeos a Shopify", () => uploadShopifyVideos({ db: deps.db, shopify: deps.config.shopify, trace: log.trace }, item.codigo), (result) => result.skipped ?? `del producto: ${result.productVideo} · de marca añadidos: ${result.brandAdded}`);
+      const duration = Date.now() - started;
+      const skipped = done.skipped ?? null;
+      const nothing = !skipped && done.productVideo !== "subido" && !done.brandAdded;
+      await deps.db.from("mhd_importer_job_items").update({ status: skipped || nothing ? "descartado" : "ok", finished_at: new Date().toISOString(), duration_ms: duration, cost_usd: 0, run_id: done.runId ?? null, error: skipped ?? (nothing ? "Ya tenía sus vídeos." : null), lease_until: null, step: null }).eq("id", item.id);
+      log.add({ level: "info", step: "Producto", message: `${skipped ?? (nothing ? "Ya tenía sus vídeos" : "Vídeos subidos")} · ${Math.round(duration / 1000)} s`, durationMs: duration });
       return;
     }
     // Ya subido: solo una tanda «Reescribir» (upload: true) lo vuelve a tocar. Se corta aquí para no gastar IA en una
@@ -200,9 +211,9 @@ export async function runWorkerTurn(env: Env, config: SourcesConfig, spawn: () =
     // Arranca otro trabajador si la tanda usa más de uno (ese, a su vez, arranca el siguiente).
     if (jobs?.length && workers > 1) spawn();
     // Opciones de cada tanda (p. ej. «Subir a Shopify»), leídas una vez por turno.
-    const optionsByJob = new Map<string, Promise<{ upload?: boolean | "nuevos" | "solo"; elviModel?: string; noThinking?: boolean }>>();
+    const optionsByJob = new Map<string, Promise<{ upload?: boolean | "nuevos" | "solo" | "videos"; elviModel?: string; noThinking?: boolean }>>();
     const jobOptions = (jobId: string) => {
-      if (!optionsByJob.has(jobId)) optionsByJob.set(jobId, Promise.resolve(db.from("mhd_importer_jobs").select("options").eq("id", jobId).single().then(({ data }) => (data?.options ?? {}) as { upload?: boolean | "nuevos" | "solo"; elviModel?: string; noThinking?: boolean })));
+      if (!optionsByJob.has(jobId)) optionsByJob.set(jobId, Promise.resolve(db.from("mhd_importer_jobs").select("options").eq("id", jobId).single().then(({ data }) => (data?.options ?? {}) as { upload?: boolean | "nuevos" | "solo" | "videos"; elviModel?: string; noThinking?: boolean })));
       return optionsByJob.get(jobId)!;
     };
     const running = new Set<Promise<void>>(); let empty = false;
@@ -213,7 +224,7 @@ export async function runWorkerTurn(env: Env, config: SourcesConfig, spawn: () =
         if (claimError) throw claimError;
         if (!items?.length) empty = true;
         for (const item of (items ?? []) as JobItem[]) {
-          const task: Promise<void> = jobOptions(item.job_id).then((options) => processJobItem({ db, config, ai, upload: options.upload === "nuevos" || options.upload === "solo" ? options.upload : Boolean(options.upload), elviModel: options.elviModel === "sonnet" ? ELVI_MODELS.sonnet : undefined, noThinking: Boolean(options.noThinking) }, item)).finally(() => { running.delete(task); processed += 1; });
+          const task: Promise<void> = jobOptions(item.job_id).then((options) => processJobItem({ db, config, ai, upload: options.upload === "nuevos" || options.upload === "solo" || options.upload === "videos" ? options.upload : Boolean(options.upload), elviModel: options.elviModel === "sonnet" ? ELVI_MODELS.sonnet : undefined, noThinking: Boolean(options.noThinking) }, item)).finally(() => { running.delete(task); processed += 1; });
           running.add(task);
         }
       }

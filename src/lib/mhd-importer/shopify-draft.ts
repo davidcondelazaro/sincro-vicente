@@ -213,8 +213,9 @@ async function releaseProductRedirects(deps: { db: SupabaseClient; shopify: Shop
 // Novedades. Las demás (las de categoría del árbol viejo, SuperOferta, Descatalogado…) se quitan. «Promociones» se quitó
 // el 2026-10-28: las promociones son colecciones de Shopify dadas de alta a mano (docs/promociones.md del tema).
 const KEEP_TAGS = new Set(["Oferta", "Novedad"]);
-// Subida de vídeos mp4 a Shopify (ver la parte de vídeos de createShopifyDraft).
-const UPLOAD_VIDEOS = false;
+// Subida de vídeos mp4 a Shopify (ver la parte de vídeos de createShopifyDraft). Vuelta a true el 2026-11-16 con el
+// plan Advanced; los productos subidos sin vídeos los recibe la tanda «solo vídeos» (uploadShopifyVideos).
+const UPLOAD_VIDEOS = true;
 
 // Lo ya subido no se reescribe sin pedirlo (David, 2026-10-30): la subida pisa casi toda la ficha, también lo arreglado a
 // mano en Shopify. `overwrite` solo llega de una tanda «Reescribir» o del aviso del botón de una prueba. Los archivados sí
@@ -295,9 +296,8 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   // sola vez: si su huella ya está en mhd_importer_shopify_files, se reutiliza.
   const photos = (media ?? []).filter((item) => item.role === "image").sort((a, b) => a.position - b.position);
   const label = (media ?? []).find((item) => item.role === "energy_label");
-  // Vídeos mp4 parados (David, 2026-10-27): el plan de desarrollo de Shopify admite 250 vídeos alojados y ya están
-  // llenos. Con el plan Advanced (5.000) se vuelve a poner a true y se suben en una pasada aparte para los productos
-  // que los tienen. Los de YouTube no cuentan: van enlazados en `custom.icecat`.
+  // Vídeos mp4 parados del 2026-10-27 al 2026-11-16 (tope de 250 del plan de desarrollo); con el plan Advanced (5.000)
+  // vuelven. Los de YouTube no cuentan: van enlazados en `custom.icecat`.
   const videos = UPLOAD_VIDEOS ? (media ?? []).filter((item) => item.role === "video").sort((a, b) => a.position - b.position) : [];
   const meta = (item: { meta: unknown }) => item.meta as Record<string, string>;
   const productVideos = videos.filter((item) => meta(item).kind === "producto").slice(0, 1);
@@ -445,6 +445,86 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   if (saveError) throw saveError;
   const host = deps.shopify.storeUrl.replace(/^https?:\/\//, "").replace(/\.myshopify\.com\/?$/, "");
   return { id: created.id, handle: created.handle, status: created.status, updated: Boolean(existing), refreshed: refresh, adminUrl: `https://admin.shopify.com/store/${host}/products/${created.id.split("/").pop()}`, files: { photos: photos.length, label: Boolean(labelId), documents: documentIds.length, productVideos: productVideos.length, brandVideos: videoIds.length } };
+}
+
+// Solo vídeos (David, 2026-11-16): la pasada aparte de los mp4 que se pararon el 2026-10-27 por el tope de 250 del plan
+// de desarrollo. Con el plan Advanced (5.000) se suben los vídeos de la última prueba correcta a los productos que ya
+// están en la tienda, sin tocar nada más (actualizaciones por partes): el del producto entra en la galería detrás de
+// las fotos del producto, y los de marca se añaden a `custom.videos` sin quitar los que ya tenga. Lo que ya está no se
+// vuelve a subir: si la galería ya tiene un vídeo, no se añade otro; los de marca se reutilizan por su huella.
+export async function uploadShopifyVideos(deps: { db: SupabaseClient; shopify: ShopifyConfig; trace?: Trace }, codigo: string) {
+  const t = deps.trace ?? noTrace;
+  const locked = await productLock(deps.db, codigo); if (locked) return { skipped: locked };
+  const { data: inStore, error: storeError } = await deps.db.from("store_shopify_ids").select("product_id").eq("codigo", codigo).neq("status", "ARCHIVED").maybeSingle();
+  if (storeError) throw storeError;
+  if (!inStore?.product_id) return { skipped: "No está en la tienda (o está archivado)." };
+  const { data: run, error: runError } = await deps.db.from("mhd_importer_product_runs").select("id").eq("codigo", codigo).eq("status", "ok").order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (runError) throw runError;
+  if (!run) return { skipped: "No tiene ninguna prueba correcta." };
+  const { data: media, error: mediaError } = await deps.db.from("mhd_importer_media").select("role,position,filename,content_type,bytes,storage_path,meta").eq("run_id", run.id).in("role", ["video", "image"]).order("position");
+  if (mediaError) throw mediaError;
+  const meta = (item: { meta: unknown }) => (item.meta ?? {}) as Record<string, string>;
+  const videos = (media ?? []).filter((item) => item.role === "video").sort((a, b) => a.position - b.position);
+  if (!videos.length) return { skipped: "La prueba no tiene vídeos." };
+  const productVideos = videos.filter((item) => meta(item).kind === "producto").slice(0, 1);
+  const brandVideos = videos.filter((item) => !productVideos.includes(item));
+  const productId = inStore.product_id as string;
+  type Current = { product: { title: string; media: { nodes: { id: string; mediaContentType: string }[] }; videos: { value: string } | null } | null };
+  const current = (await shopifyGraphql<Current>(deps.shopify, `query($id: ID!) { product(id: $id) { title media(first: 100) { nodes { id mediaContentType } } videos: metafield(namespace: "custom", key: "videos") { value } } }`, { id: productId })).product;
+  if (!current) return { skipped: `Shopify ya no tiene el producto ${productId}.` };
+
+  // Vídeo del producto, en la galería: detrás de las vistas del producto, como en la subida completa.
+  let productVideo: "subido" | "ya estaba" | "no hay" = "no hay";
+  if (productVideos.length && current.media.nodes.some((node) => node.mediaContentType === "VIDEO" || node.mediaContentType === "EXTERNAL_VIDEO")) productVideo = "ya estaba";
+  else if (productVideos.length) {
+    const item = productVideos[0];
+    await t.step("Shopify: vídeo del producto", async () => {
+      const [url] = await stagedUpload(deps.shopify, [{ filename: item.filename, mimeType: "video/mp4", bytes: await mediaBytes(deps.db, item), resource: "VIDEO" }]);
+      const added = await shopifyGraphql<{ productUpdate: { product: { media: { nodes: { id: string }[] } } | null; userErrors: UserError[] } }>(deps.shopify,
+        `mutation($p: ProductUpdateInput!, $m: [CreateMediaInput!]) { productUpdate(product: $p, media: $m) { product { media(last: 1) { nodes { id } } } userErrors { field message } } }`,
+        { p: { id: productId }, m: [{ originalSource: url, mediaContentType: "VIDEO", alt: `${current.title}, vídeo` }] });
+      check(added.productUpdate.userErrors, "Shopify no añadió el vídeo a la galería");
+      const mediaId = added.productUpdate.product?.media.nodes[0]?.id;
+      const PRODUCT_VIEWS = new Set(["frontal", "tres_cuartos", "abierto", "lateral", "trasera"]);
+      const photos = (media ?? []).filter((row) => row.role === "image").sort((a, b) => a.position - b.position);
+      const views = photos.findIndex((row) => !PRODUCT_VIEWS.has(meta(row).kind));
+      const position = Math.min(views < 0 ? photos.length : views, current.media.nodes.length);
+      if (mediaId && position < current.media.nodes.length) {
+        const moved = await shopifyGraphql<{ productReorderMedia: { mediaUserErrors: UserError[] } }>(deps.shopify, `mutation($id: ID!, $moves: [MoveInput!]!) { productReorderMedia(id: $id, moves: $moves) { mediaUserErrors { field message } } }`, { id: productId, moves: [{ id: mediaId, newPosition: String(position) }] });
+        check(moved.productReorderMedia.mediaUserErrors, "Shopify no colocó el vídeo en la galería");
+      }
+      return position;
+    }, (position) => `en la posición ${position + 1} de la galería`);
+    productVideo = "subido";
+  }
+
+  // Vídeos de marca, en `custom.videos`: se suman a los que ya tenga. Un archivo apuntado en la base que ya no existe en
+  // Shopify (borrado a mano) se vuelve a subir.
+  let brandAdded = 0;
+  if (brandVideos.length) {
+    const existing: string[] = current.videos?.value ? JSON.parse(current.videos.value) : [];
+    const ids = await t.step("Shopify: vídeos de marca", async () => {
+      const result: string[] = [];
+      for (const item of brandVideos) {
+        const bytes = await mediaBytes(deps.db, item);
+        const hash = createHash("sha1").update(bytes).digest("hex");
+        const { data: known } = await deps.db.from("mhd_importer_shopify_files").select("shopify_file_id").eq("hash", hash).maybeSingle();
+        if (known) {
+          const alive = (await shopifyGraphql<{ node: { id: string } | null }>(deps.shopify, `query($id: ID!) { node(id: $id) { id } }`, { id: known.shopify_file_id })).node;
+          if (!alive) await deps.db.from("mhd_importer_shopify_files").delete().eq("hash", hash);
+        }
+        result.push(await uploadOnce(deps, { filename: item.filename, mimeType: "video/mp4", bytes, resource: "VIDEO", kind: "video_marca", alt: meta(item).description || item.filename, sourceUrl: meta(item).sourceUrl ?? null }));
+      }
+      return result;
+    }, (result) => `${result.length} de marca`);
+    const merged = [...new Set([...existing, ...ids])];
+    brandAdded = merged.length - existing.length;
+    if (brandAdded) {
+      const set = await shopifyGraphql<{ metafieldsSet: { userErrors: UserError[] } }>(deps.shopify, `mutation($m: [MetafieldsSetInput!]!) { metafieldsSet(metafields: $m) { userErrors { field message } } }`, { m: [{ ownerId: productId, namespace: "custom", key: "videos", type: "list.file_reference", value: JSON.stringify(merged) }] });
+      check(set.metafieldsSet.userErrors, "Shopify no guardó los vídeos de marca");
+    }
+  }
+  return { productId, productVideo, brandAdded, runId: run.id as string };
 }
 
 // Solo textos (decidido 2026-10-23): rehacer la redacción de un producto que ya está en Shopify sin tocar fotos,
