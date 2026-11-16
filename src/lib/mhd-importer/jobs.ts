@@ -170,6 +170,17 @@ export async function processJobItem(deps: { db: SupabaseClient; config: Sources
       await deps.db.from("mhd_importer_job_items").update({ status: "pendiente", attempts: Math.max(0, item.attempts - 1), lease_until: null, step: null }).eq("id", item.id);
       return;
     }
+    // Tope de Shopify de 200 vídeos subidos por hora (comprobado 2026-11-16 en la tanda «solo vídeos»): no es un fallo del
+    // producto. La tanda se pausa una hora con `resume_at` (la reanuda runWorkerTurn) y el producto vuelve a la cola sin
+    // gastar intento ni contar para el freno.
+    if (/more than \d+ videos in an hour/i.test(message)) {
+      const resumeAt = new Date(Date.now() + 61 * 60_000).toISOString();
+      const { data: job } = await deps.db.from("mhd_importer_jobs").select("options,status").eq("id", item.job_id).single();
+      if (job && (job.status === "en_curso" || job.status === "en_cola")) await deps.db.from("mhd_importer_jobs").update({ status: "pausado", paused_reason: `Shopify: tope de 200 vídeos por hora. Sigue sola a las ${resumeAt.slice(11, 16)} (UTC).`, options: { ...(job.options ?? {}), resume_at: resumeAt } }).eq("id", item.job_id);
+      log.add({ level: "aviso", step: "Producto", message: "Tope de Shopify de 200 vídeos por hora: la tanda espera una hora y sigue sola.", durationMs: Date.now() - started });
+      await deps.db.from("mhd_importer_job_items").update({ status: "pendiente", attempts: Math.max(0, item.attempts - 1), error: null, lease_until: null, step: null }).eq("id", item.id);
+      return;
+    }
     const retry = item.attempts < WORKER.maxAttempts;
     log.add({ level: "error", step: "Producto", message: `${message}${retry ? " · se reintenta" : ""}`, durationMs: Date.now() - started });
     await deps.db.from("mhd_importer_job_items").update(retry ? { status: "pendiente", error: message, lease_until: null, step: null } : { status: "error", error: message, finished_at: new Date().toISOString(), duration_ms: Date.now() - started, lease_until: null, step: null }).eq("id", item.id);
@@ -192,6 +203,15 @@ export async function processJobItem(deps: { db: SupabaseClient; config: Sources
 // vuelva a llamar.
 export async function runWorkerTurn(env: Env, config: SourcesConfig, spawn: () => void = () => undefined) {
   const db = workerClient(env);
+  // Tandas en pausa con hora de vuelta (tope de vídeos por hora de Shopify): se reanudan solas al llegar la hora. El
+  // vigilante de pg_cron llama cada minuto aunque no haya tandas activas.
+  const { data: waiting } = await db.from("mhd_importer_jobs").select("id,options").eq("status", "pausado").not("options->>resume_at", "is", null);
+  for (const job of waiting ?? []) {
+    const options = (job.options ?? {}) as Record<string, unknown>;
+    if (String(options.resume_at) > new Date().toISOString()) continue;
+    const { resume_at: _done, ...rest } = options; void _done;
+    await db.from("mhd_importer_jobs").update({ status: "en_curso", finished_at: null, paused_reason: null, options: { ...rest, resumed_at: new Date().toISOString() } }).eq("id", job.id).eq("status", "pausado");
+  }
   const { data: jobs } = await db.from("mhd_importer_jobs").select("options").in("status", ["en_cola", "en_curso"]).order("created_at").limit(1);
   const options = (jobs?.[0]?.options ?? {}) as { workers?: number; concurrency?: number };
   // Tope de Configuración (2026-10-29): con la base pequeña, 45 productos a la vez la dejaron sin conexiones. Ninguna
