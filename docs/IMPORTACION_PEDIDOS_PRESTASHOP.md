@@ -301,3 +301,26 @@ con «Reintentar errores». La ejecución sigue en pausa.
 Paralelizar con varios trabajadores, cada uno con su tramo, no sirve
 mientras la tienda esté en plan Development, porque el límite es de toda la
 tienda. Se hará si se pasa a un plan de pago.
+
+**Final y reintento (16-11-2026).** La importación «Todos» terminó a las
+11:33: 74.406 creados, 9 ya existentes y 23.471 errores (casi todos los
+«Too many attempts» de la primera noche, que nunca llegaron a crearse porque
+la ejecución siguió adelante). La tienda pasó a **Advanced** hacia las 11:06.
+Con el cambio de plan, Shopify devolvió `errors` como texto durante unos
+segundos y 41 pedidos fallaron; ahora ese caso se trata como transitorio. El
+trabajador dejó de esperar entre pedidos al detectar el plan nuevo: unos 2 s
+por pedido.
+Códigos de descuento de más de 255 caracteres: se recortan y el pedido lleva
+un aviso con el texto original (14 pedidos de una promoción de sartenes Kuhn
+Rikon del 8-11-2021).
+
+**Pedidos con el cliente borrado en PrestaShop: se quedan fuera** (decisión de
+David). Son 73 en toda la tienda y unos 36 entraban en la importación. Salían
+como «el pedido no existe en PrestaShop» porque la lectura necesita al
+cliente; ahora quedan registrados como `skipped` («Fuera de la importación:
+el cliente está borrado en PrestaShop»), no cuentan como error y
+`IMPORTABLE_ORDERS_SQL` ya no los incluye.
+
+Reintento de errores `6f5f0cc4-…` lanzado el 16-11 con 23.771 pedidos y un
+solo trabajador. Paralelizar por tramos queda como opción si hace falta más
+velocidad; con Advanced hay margen de sobra en la API, pero está sin probar.

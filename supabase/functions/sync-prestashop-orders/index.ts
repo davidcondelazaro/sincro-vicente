@@ -72,12 +72,17 @@ async function findCustomer(email: string) {
   return body.data.customerByIdentifier?.id ?? null;
 }
 
-type Outcome = { outcome: "created" | "existing" | "error"; reference: string | null; shopifyId: string | null; message: string; warned: boolean };
+type Outcome = { outcome: "created" | "existing" | "error" | "skipped"; reference: string | null; shopifyId: string | null; message: string; warned: boolean };
 type Pacer = { beforeCreate: () => Promise<boolean> };
 async function importOrder(connection: mysql.Connection, id: number, pacer: Pacer): Promise<Outcome | null> {
   const q = async (sql: string, values: unknown[] = []) => (await connection.query(sql, values))[0] as Record<string, any>[];
   const data = await loadOrder(q, { id });
-  if (!data) return { outcome: "error", reference: null, shopifyId: null, message: "El pedido no existe en PrestaShop.", warned: false };
+  if (!data) {
+    // Sin cliente en PrestaShop (borrado, probablemente a petición suya) el pedido se deja fuera, no es un error.
+    const [orphan] = await q(`SELECT reference FROM ev_orders WHERE id_order = ?`, [id]);
+    if (orphan) return { outcome: "skipped", reference: orphan.reference, shopifyId: null, message: "Fuera de la importación: el cliente está borrado en PrestaShop.", warned: false };
+    return { outcome: "error", reference: null, shopifyId: null, message: "El pedido no existe en PrestaShop.", warned: false };
+  }
   const reference = data.order.reference as string;
   const recorded = await alreadyCreated(id);
   if (recorded) return { outcome: "existing", reference, shopifyId: recorded, message: "El pedido ya se había creado en una ejecución anterior.", warned: false };
@@ -149,7 +154,7 @@ async function processMessage(message: any) {
         if (!result) return release(messageId);
         const counts = { processed_count: current.processed_count + 1, cursor_order_id: id, created_count: current.created_count + (result.outcome === "created" ? 1 : 0), existing_count: current.existing_count + (result.outcome === "existing" ? 1 : 0), error_count: current.error_count + (result.outcome === "error" ? 1 : 0), warning_count: current.warning_count + (result.warned ? 1 : 0), consecutive_failures: 0, updated_at: new Date().toISOString() };
         const { error: countsError } = await db.from("order_import_runs").update(counts).eq("id", runId); if (countsError) throw countsError;
-        await event(runId, { level: result.outcome === "error" ? "error" : result.warned || result.outcome === "existing" ? "warning" : "success", outcome: result.outcome, prestashop_order_id: id, order_reference: result.reference, shopify_order_id: result.shopifyId, message: result.message }); current = { ...current, ...counts };
+        await event(runId, { level: result.outcome === "error" ? "error" : result.outcome === "skipped" ? "info" : result.warned || result.outcome === "existing" ? "warning" : "success", outcome: result.outcome, prestashop_order_id: id, order_reference: result.reference, shopify_order_id: result.shopifyId, message: result.message }); current = { ...current, ...counts };
       }
     }
     await db.from("order_import_runs").update({ status: "completed", finished_at: new Date().toISOString() }).eq("id", runId); await event(runId, { level: "info", outcome: "status", message: "Importación completada." }); await archive(messageId);

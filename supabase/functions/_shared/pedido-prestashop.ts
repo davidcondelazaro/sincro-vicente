@@ -14,7 +14,8 @@ const PREFIX: Record<string, string> = { PT: "+351", ES: "+34", FR: "+33", IT: "
 export const ORDER_OPTIONS = { sendReceipt: false, sendFulfillmentReceipt: false, inventoryBehaviour: "BYPASS" };
 
 // Pedidos que se importan: cobrados alguna vez y no cancelados.
-export const IMPORTABLE_ORDERS_SQL = `SELECT o.id_order FROM ev_orders o
+// Los pedidos cuyo cliente se borró en PrestaShop se quedan fuera (decisión de David, 16-11-2026): probablemente lo pidió el cliente.
+export const IMPORTABLE_ORDERS_SQL = `SELECT o.id_order FROM ev_orders o JOIN ev_customer c USING(id_customer)
   WHERE o.current_state NOT IN (${CANCELLED_STATES}) AND EXISTS (SELECT 1 FROM ev_order_history h WHERE h.id_order = o.id_order AND h.id_order_state IN (${PAID_STATES}))`;
 
 // PrestaShop guarda la hora de Madrid sin zona: se convierte a UTC con el desfase real de ese día.
