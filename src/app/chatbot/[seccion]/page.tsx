@@ -298,8 +298,8 @@ function duration(start: unknown, end: unknown) {
 function startingPage(thread: Thread) {
   if (thread.conversation?.page_url) return String(thread.conversation.page_url);
   const page = thread.voice.find((session) => session.page?.productHandle || session.page?.collectionHandle)?.page;
-  if (page?.productHandle) return `https://electronica-vicente.myshopify.com/products/${page.productHandle}`;
-  if (page?.collectionHandle) return `https://electronica-vicente.myshopify.com/collections/${page.collectionHandle}`;
+  if (page?.productHandle) return `https://www.electronicavicente.com/products/${page.productHandle}`;
+  if (page?.collectionHandle) return `https://www.electronicavicente.com/collections/${page.collectionHandle}`;
   return null;
 }
 
