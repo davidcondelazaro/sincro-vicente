@@ -332,16 +332,24 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
       return { labelId, documentIds, skipped: uploaded.length - documentIds.length };
     }, (result) => `${result.labelId ? "etiqueta y " : ""}${result.documentIds.length} documentos${result.skipped ? ` (${result.skipped} sin subir)` : ""}`),
     t.step("Shopify: vídeos", async () => {
-      const productVideoUrls = await stagedUpload(deps.shopify, await Promise.all(productVideos.map(async (item) => ({ filename: item.filename, mimeType: "video/mp4", bytes: await mediaBytes(deps.db, item), resource: "VIDEO" as const }))));
-      const videoIds: string[] = [];
-      for (const item of brandVideos) videoIds.push(await uploadOnce(deps, { filename: item.filename, mimeType: "video/mp4", bytes: await mediaBytes(deps.db, item), resource: "VIDEO", kind: "video_marca", alt: meta(item).description || item.filename, sourceUrl: meta(item).sourceUrl ?? null }));
-      return { productVideoUrls, videoIds };
+      // Tope de Shopify de 200 vídeos subidos por hora (2026-11-16): el producto se sube sin vídeos en vez de quedarse
+      // fuera; se los pone después una tanda «solo vídeos» (uploadShopifyVideos).
+      try {
+        const productVideoUrls = await stagedUpload(deps.shopify, await Promise.all(productVideos.map(async (item) => ({ filename: item.filename, mimeType: "video/mp4", bytes: await mediaBytes(deps.db, item), resource: "VIDEO" as const }))));
+        const videoIds: string[] = [];
+        for (const item of brandVideos) videoIds.push(await uploadOnce(deps, { filename: item.filename, mimeType: "video/mp4", bytes: await mediaBytes(deps.db, item), resource: "VIDEO", kind: "video_marca", alt: meta(item).description || item.filename, sourceUrl: meta(item).sourceUrl ?? null }));
+        return { productVideoUrls, videoIds };
+      } catch (caught) {
+        if (!/more than \d+ videos in an hour/i.test(caught instanceof Error ? caught.message : String(caught))) throw caught;
+        t.event("aviso", "Shopify: vídeos", "Tope de Shopify de 200 vídeos por hora: se sube sin vídeos; los pondrá una tanda «solo vídeos».");
+        return { productVideoUrls: [] as string[], videoIds: [] as string[] };
+      }
     }, (result) => `${result.productVideoUrls.length} del producto · ${result.videoIds.length} de marca`),
   ]);
   const PRODUCT_VIEWS = new Set(["frontal", "tres_cuartos", "abierto", "lateral", "trasera"]);
   const photoFiles = photos.map((item, index) => ({ originalSource: photoUrls[index], alt: String(meta(item).alt ?? shop.title), filename: item.filename, contentType: "IMAGE" }));
   const productViews = photos.findIndex((item) => !PRODUCT_VIEWS.has(meta(item).kind));
-  const videoFiles = productVideos.map((item, index) => ({ originalSource: productVideoUrls[index], alt: `${shop.title}, vídeo`, filename: item.filename, contentType: "VIDEO" }));
+  const videoFiles = productVideos.flatMap((item, index) => (productVideoUrls[index] ? [{ originalSource: productVideoUrls[index], alt: `${shop.title}, vídeo`, filename: item.filename, contentType: "VIDEO" }] : []));
   const galleryFiles = [...photoFiles.slice(0, productViews < 0 ? photoFiles.length : productViews), ...videoFiles, ...photoFiles.slice(productViews < 0 ? photoFiles.length : productViews)];
 
   // 4) Producto entero de una vez: en borrador si es nuevo; si ya existía, se actualiza (las fotos se sustituyen).
@@ -444,7 +452,7 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   const { error: saveError } = await deps.db.from("mhd_importer_product_runs").update({ shopify_product_id: created.id }).eq("id", runId);
   if (saveError) throw saveError;
   const host = deps.shopify.storeUrl.replace(/^https?:\/\//, "").replace(/\.myshopify\.com\/?$/, "");
-  return { id: created.id, handle: created.handle, status: created.status, updated: Boolean(existing), refreshed: refresh, adminUrl: `https://admin.shopify.com/store/${host}/products/${created.id.split("/").pop()}`, files: { photos: photos.length, label: Boolean(labelId), documents: documentIds.length, productVideos: productVideos.length, brandVideos: videoIds.length } };
+  return { id: created.id, handle: created.handle, status: created.status, updated: Boolean(existing), refreshed: refresh, adminUrl: `https://admin.shopify.com/store/${host}/products/${created.id.split("/").pop()}`, files: { photos: photos.length, label: Boolean(labelId), documents: documentIds.length, productVideos: videoFiles.length, brandVideos: videoIds.length } };
 }
 
 // Solo vídeos (David, 2026-11-16): la pasada aparte de los mp4 que se pararon el 2026-10-27 por el tope de 250 del plan
