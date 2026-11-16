@@ -333,15 +333,16 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
     }, (result) => `${result.labelId ? "etiqueta y " : ""}${result.documentIds.length} documentos${result.skipped ? ` (${result.skipped} sin subir)` : ""}`),
     t.step("Shopify: vídeos", async () => {
       // Tope de Shopify de 200 vídeos subidos por hora (2026-11-16): el producto se sube sin vídeos en vez de quedarse
-      // fuera; se los pone después una tanda «solo vídeos» (uploadShopifyVideos).
+      // fuera; se los pone después una tanda «solo vídeos» (uploadShopifyVideos). Igual con el tope de 1.000 por semana.
       try {
         const productVideoUrls = await stagedUpload(deps.shopify, await Promise.all(productVideos.map(async (item) => ({ filename: item.filename, mimeType: "video/mp4", bytes: await mediaBytes(deps.db, item), resource: "VIDEO" as const }))));
         const videoIds: string[] = [];
         for (const item of brandVideos) videoIds.push(await uploadOnce(deps, { filename: item.filename, mimeType: "video/mp4", bytes: await mediaBytes(deps.db, item), resource: "VIDEO", kind: "video_marca", alt: meta(item).description || item.filename, sourceUrl: meta(item).sourceUrl ?? null }));
         return { productVideoUrls, videoIds };
       } catch (caught) {
-        if (!/more than \d+ videos in an hour/i.test(caught instanceof Error ? caught.message : String(caught))) throw caught;
-        t.event("aviso", "Shopify: vídeos", "Tope de Shopify de 200 vídeos por hora: se sube sin vídeos; los pondrá una tanda «solo vídeos».");
+        const message = caught instanceof Error ? caught.message : String(caught);
+        if (!/more than [\d.,]+ videos in an? (hour|week)/i.test(message)) throw caught;
+        t.event("aviso", "Shopify: vídeos", `Tope de Shopify de ${/week/i.test(message) ? "1.000 vídeos por semana" : "200 vídeos por hora"}: se sube sin vídeos; los pondrá una tanda «solo vídeos».`);
         return { productVideoUrls: [] as string[], videoIds: [] as string[] };
       }
     }, (result) => `${result.productVideoUrls.length} del producto · ${result.videoIds.length} de marca`),
