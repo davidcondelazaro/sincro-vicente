@@ -6,6 +6,7 @@ _Copiado de `theme-enterprise-vicente/docs/arbol-colecciones-mhd.md` (secciones 
 
 Revisadas una a una las casillas de este documento contra el código, el tema y la base: casi todas estaban hechas desde hacía semanas y se han marcado con su prueba. Queda esto:
 
+0. **Vídeos (desde el 2026-11-23):** el 16-11 la tanda «solo vídeos» agotó el tope de Shopify de 1.000 vídeos por semana. Quedan sin vídeo 14 productos (10021323, 10028781, 10074733, 10083228, 10116322, 10116323, 10116324, 10116328, 10116335, 10117751, 10119297, 10119412, 10140142 y 10143944), además de las altas de esa semana, que se suben sin vídeo. Lanzar una tanda «solo vídeos» sobre todos los productos con vídeo: los que ya lo tienen se descartan sin gastar cupo.
 1. **Bajas:** archivar en Shopify los que llevan 30 días agotados y proponer su redirección (`absences.ts` ya los marca).
 2. **Redirecciones:** destinos de los 2.549 archivados el 2026-10-27, las de las bajas y la auditoría antes de abrir.
 3. **Cambios de ficha de MHD:** qué datos son clave y qué se rehace en cada caso; y las actualizaciones por partes que faltan (fotos, filtros y metacampos).
