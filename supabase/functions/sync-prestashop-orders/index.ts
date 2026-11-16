@@ -31,6 +31,8 @@ async function shopify<T>(query: string, variables: Record<string, unknown>, ret
       if (response.status === 429 || response.status >= 500) { failure = `Shopify ${response.status}`; continue; }
       body = await response.json();
     } catch (error) { failure = error instanceof Error ? error.message : String(error); continue; }
+    // A veces Shopify devuelve `errors` como texto (p. ej. durante el cambio de plan): es transitorio, se reintenta.
+    if (body.errors && !Array.isArray(body.errors)) { failure = `Shopify: ${typeof body.errors === "string" ? body.errors : JSON.stringify(body.errors)}`; continue; }
     if (body.errors?.some((item) => item.extensions?.code === "THROTTLED")) { failure = "Shopify THROTTLED"; continue; }
     if (body.errors?.some((item) => /too many attempts/i.test(item.message))) throw new RateLimitedError(body.errors[0].message);
     if (!response.ok || body.errors?.length) throw new Error(body.errors?.[0]?.message ?? `Shopify ${response.status}`);

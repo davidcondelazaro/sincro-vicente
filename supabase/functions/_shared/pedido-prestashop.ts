@@ -204,6 +204,9 @@ export function buildOrder(data: OrderData, customerId: string | null) {
   // así que se da por enviado y se etiqueta para poder revisarlo.
   const unclosed = !shipped && financialStatus === "PAID";
   if (unclosed) warnings.push("Cobrado y sin enviar en PrestaShop: se da por enviado con la etiqueta PrestaShop-estado-sin-cerrar.");
+  // Shopify admite códigos de hasta 255 caracteres; algunas promociones juntaban muchas reglas.
+  let discountCode = discountName || "Descuento PrestaShop";
+  if (discountCode.length > 255) { warnings.push(`Código de descuento recortado (${discountCode.length} caracteres): ${discountCode.slice(0, 120)}…`); discountCode = `${discountCode.slice(0, 254)}…`; }
   const input = {
     name: `PS-${reference}`,
     sourceIdentifier: String(order.id_order),
@@ -217,7 +220,7 @@ export function buildOrder(data: OrderData, customerId: string | null) {
     taxesIncluded: true,
     lineItems,
     shippingLines: [{ title: SHIPPING_TITLE, priceSet: money(shipping), taxLines: shippingTax > 0 ? [{ title: "IVA", rate: (Number(order.carrier_tax_rate) / 100).toFixed(2), priceSet: money(shippingTax) }] : [] }],
-    discountCode: discountTotal > 0 ? { itemFixedDiscountCode: { code: discountName || "Descuento PrestaShop", amountSet: money(discountTotal) } } : undefined,
+    discountCode: discountTotal > 0 ? { itemFixedDiscountCode: { code: discountCode, amountSet: money(discountTotal) } } : undefined,
     financialStatus,
     transactions,
     fulfillment: shipped || unclosed ? { locationId: LOCATION_ID, notifyCustomer: false, trackingCompany: trackings[0]?.company || undefined, trackingNumbers: trackings.length ? [...new Set(trackings.map((item) => item.number))] : undefined } : undefined,
