@@ -480,11 +480,11 @@ export async function uploadShopifyVideos(deps: { db: SupabaseClient; shopify: S
     const item = productVideos[0];
     await t.step("Shopify: vídeo del producto", async () => {
       const [url] = await stagedUpload(deps.shopify, [{ filename: item.filename, mimeType: "video/mp4", bytes: await mediaBytes(deps.db, item), resource: "VIDEO" }]);
-      const added = await shopifyGraphql<{ productUpdate: { product: { media: { nodes: { id: string }[] } } | null; userErrors: UserError[] } }>(deps.shopify,
-        `mutation($p: ProductUpdateInput!, $m: [CreateMediaInput!]) { productUpdate(product: $p, media: $m) { product { media(last: 1) { nodes { id } } } userErrors { field message } } }`,
+      const added = await shopifyGraphql<{ productUpdate: { product: { media: { nodes: { id: string; mediaContentType: string }[] } } | null; userErrors: UserError[] } }>(deps.shopify,
+        `mutation($p: ProductUpdateInput!, $m: [CreateMediaInput!]) { productUpdate(product: $p, media: $m) { product { media(first: 250) { nodes { id mediaContentType } } } userErrors { field message } } }`,
         { p: { id: productId }, m: [{ originalSource: url, mediaContentType: "VIDEO", alt: `${current.title}, vídeo` }] });
       check(added.productUpdate.userErrors, "Shopify no añadió el vídeo a la galería");
-      const mediaId = added.productUpdate.product?.media.nodes[0]?.id;
+      const mediaId = added.productUpdate.product?.media.nodes.find((node) => node.mediaContentType === "VIDEO")?.id;
       const PRODUCT_VIEWS = new Set(["frontal", "tres_cuartos", "abierto", "lateral", "trasera"]);
       const photos = (media ?? []).filter((row) => row.role === "image").sort((a, b) => a.position - b.position);
       const views = photos.findIndex((row) => !PRODUCT_VIEWS.has(meta(row).kind));
