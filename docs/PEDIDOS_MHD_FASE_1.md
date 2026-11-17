@@ -433,6 +433,41 @@ Pedidos MHD. Encendido el 14-11-2026 con corte 2026-11-14T16:04:05Z.
 
 La cancelación en Shopify no se puede deshacer.
 
+### Descuentos de pedido y total (17-11-2026)
+
+EV99344 se exportó a 104 € con el cupón 5VICENTE (5 % del pedido, 98,80 € cobrados): se
+usaba `discountedUnitPriceSet`, que solo descuenta los descuentos de línea. MHD lo canceló.
+
+- **Precio neto:** cada línea va con su precio original menos lo que Shopify le ha
+  repartido de cada descuento (`discountAllocations`), también los cupones de todo el
+  pedido. Así productos, servicios y garantías llevan su parte, como en Shopify
+  (`precioNetoUnitario`). MHD solo admite precio por unidad: con varias unidades y un
+  reparto que no divide exacto se redondea al céntimo.
+- **El total tiene que cuadrar** (decisión de David): lo que recibe MHD (productos,
+  servicios, garantías y portes, antes del mínimo de 0,01 €) tiene que sumar
+  exactamente `currentTotalPriceSet`. Si no, el pedido no se exporta («El pedido para
+  MHD suma X y en Shopify se cobraron Y: revisar antes de exportar») y entra en el
+  aviso de pagados sin exportar. Los descuentos de envío siguen bloqueando por el
+  cuadre de portes.
+
+### Reexportar un pedido que MHD canceló (17-11-2026)
+
+MHD no deja repetir la `referencia_web` aunque el pedido anterior esté cancelado («Ya
+existe un pedido con esa referencia web»). Si todo lo que hay en MHD con la referencia
+está cancelado, se usa la siguiente libre: `EV99344-2`, `-3`… y queda en
+`mhd_order_exports.mhd_reference_web` (`referenciaParaExportar`).
+
+Pasos (EV99344 → #62863, `EV99344-2`, 98,80 €):
+
+1. Antes de la siguiente lectura de estados, marcar
+   `mhd_status_payload.cancelacion_shopify` con `ok: false` y un `omitido`, para que
+   no se cancele en Shopify.
+2. Corregir lo que falló y traer de nuevo el pedido (tarea `?tipo=pedidos`).
+3. Poner la fila de `mhd_order_exports` en `ready`.
+4. Exportar con el botón o con la tarea `?tipo=exportar&pedido=EV…` (cabecera
+   `x-mhd-import-token`).
+5. Quitar la marca `cancelacion_shopify`: ya es otro pedido de MHD.
+
 ### Automatización de pedidos (17-11-2026, implementada)
 
 Decisiones de David del 17-11 sobre las del 31-10 (más abajo). Código en
