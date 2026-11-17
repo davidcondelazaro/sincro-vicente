@@ -63,6 +63,14 @@ export default function SettingsPage() {
           <NumberSetting label="Freno: si en una vuelta desaparece más de este porcentaje de la tienda, no se toca nada y llega un aviso" suffix="%" value={Number(settings.absence_brake_pct?.value ?? 2)} step={0.5} onSave={(value) => save("absence_brake_pct", value, "freno de agotados")} />
           {stamp("absence_brake_pct")}
         </Section>
+        <Section title="Portes y servicios de MHD" text="Cada vuelta lleva a Shopify los portes y servicios de cada producto. Los cambios se aplican siempre; esto solo decide si llega un correo cuando MHD quita un dato o sube un importe más de un 50 %.">
+          <label className="flex items-center gap-3 text-sm font-medium text-zinc-800"><input type="checkbox" className="h-5 w-5 accent-emerald-700" checked={settings.delivery_changes_alert?.value !== false} onChange={(event) => void save("delivery_changes_alert", event.target.checked, event.target.checked ? "aviso de portes activo" : "aviso de portes apagado")} />{settings.delivery_changes_alert?.value !== false ? "Avisar de cambios fuertes de portes" : "Sin aviso de cambios de portes"}</label>
+          {stamp("delivery_changes_alert")}
+        </Section>
+        <Section title="Proveedor de MHD" text="Cada vuelta lleva a Shopify el proveedor de cada producto (metacampos de los que cuelgan reglas). Si muchos cambian de proveedor a la vez puede ser un dato roto de MHD; si el cambio es real, sube este freno.">
+          <NumberSetting label="Freno: si en una vuelta cambian de proveedor más productos que estos, no se envía nada y llega un aviso" suffix="productos" value={Number(settings.supplier_switch_max?.value ?? 300)} step={1} onSave={(value) => save("supplier_switch_max", value, "freno de proveedor")} />
+          {stamp("supplier_switch_max")}
+        </Section>
         <Section title="Resumen por correo" text="Lo hecho y lo que hay que mirar: vueltas, precio y stock, importador, cola de revisión y avisos.">
           <div className="flex flex-wrap gap-2">{([["hora", "Cada hora (mientras se estabiliza)"], ["diario", "Diario, a las 9:00"]] as const).map(([value, label]) => <button key={value} type="button" onClick={() => void save("report_frequency", value, `resumen ${value === "hora" ? "cada hora" : "diario"}`)} className={`h-10 rounded-lg px-4 text-sm font-medium ${settings.report_frequency?.value === value ? "bg-emerald-700 text-white" : "border border-zinc-300 bg-white text-zinc-700"}`}>{label}</button>)}</div>
           {stamp("report_frequency")}

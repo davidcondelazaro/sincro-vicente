@@ -69,7 +69,7 @@ export async function syncSuppliers(deps: { db: SupabaseClient; shopify: Shopify
     const reason = `${switches.length} productos cambian de proveedor en una vuelta (máximo ${max}).`;
     if (!options.dryRun) {
       await event(db, "freno", { reason, run: read.run, sample: switches.slice(0, 5).map((item) => item.codigo) });
-      await sendAlert(db, { key: "proveedor:freno", quietMinutes: 24 * 60, subject: "Proveedor parado", lines: ["No se ha enviado nada a Shopify:", reason, "Si el cambio es real, sube supplier_switch_max en store_settings."] });
+      await sendAlert(db, { key: "proveedor:freno", quietMinutes: 24 * 60, subject: "Proveedor parado", lines: ["No se ha enviado nada a Shopify:", reason, "Si el cambio es real, sube el freno en Configuración › Proveedor de MHD."] });
     }
     return { skipped: true, reason };
   }

@@ -53,6 +53,11 @@ async function event(db: SupabaseClient, kind: string, detail: Record<string, un
   await db.from("mhd_sync_events").insert({ sync: "opciones-entrega", kind, codigo, detail });
 }
 
+async function changesAlertOn(db: SupabaseClient) {
+  const { data } = await db.from("store_settings").select("value").eq("key", "delivery_changes_alert").maybeSingle();
+  return data?.value !== false;
+}
+
 async function maxChanges(db: SupabaseClient) {
   const { data } = await db.from("store_settings").select("value").eq("key", "delivery_options_max").maybeSingle();
   return Number(data?.value ?? DELIVERY_OPTIONS_SYNC.defaultMax);
@@ -127,7 +132,8 @@ export async function syncDeliveryOptions(deps: { db: SupabaseClient; shopify: S
   summary.pending = changes.length - summary.checked;
   if (options.dryRun) return { dryRun: true, ...summary };
   await event(db, summary.errors.length ? "error" : "vuelta", { ...summary, errors: summary.errors.slice(0, 20), notable: summary.notable.slice(0, 50) });
-  if (summary.notable.length) await sendAlert(db, { key: "opciones-entrega:cambios", quietMinutes: 24 * 60, subject: `Portes o servicios: ${summary.notable.length} cambios a revisar`, lines: ["Ya están en la web. MHD ha quitado un dato o subido un importe más de un 50 %:", ...summary.notable.slice(0, 20)] });
+  // Aviso informativo (ya está en la web): se puede apagar en Configuración (delivery_changes_alert, David 2026-11-17).
+  if (summary.notable.length && await changesAlertOn(db)) await sendAlert(db, { key: "opciones-entrega:cambios", quietMinutes: 24 * 60, subject: `Portes o servicios: ${summary.notable.length} cambios a revisar`, lines: ["Ya están en la web. MHD ha quitado un dato o subido un importe más de un 50 %:", ...summary.notable.slice(0, 20)] });
   if (summary.errors.length) await sendAlert(db, { key: "opciones-entrega:error", quietMinutes: 24 * 60, subject: `Opciones de entrega: ${summary.errors.length} errores al enviar a Shopify`, lines: summary.errors.slice(0, 10) });
   return { ...summary, errors: summary.errors.slice(0, 20), notable: summary.notable.slice(0, 50) };
 }

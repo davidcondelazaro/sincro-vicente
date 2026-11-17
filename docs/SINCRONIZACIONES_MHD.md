@@ -257,7 +257,7 @@ producto activo o en borrador, incluidos los ya publicados. Sin IA ni revisión.
   cambio es real, subir `delivery_options_max` en `store_settings`. Las subidas y
   bajadas de importe pasan siempre, aunque sean miles: MHD ajusta tarifas a menudo y
   es normal (David, 2026-11-08; el 5-11 frenó 1.750 productos por un ajuste de portes
-  a península). Las subidas de más del 50 % llegan en el aviso de cambios a revisar.
+  a península). Las subidas de más del 50 % llegan en el aviso de cambios a revisar, que desde el 17-11-2026 está apagado (Configuración › Portes y servicios, `delivery_changes_alert`).
 - Un valor puesto a mano en el metacampo se sobrescribe: manda MHD.
 - **Pedidos ya pagados:** si cambian los portes antes de exportar, el pedido deja de
   cuadrar con lo cobrado y se bloquea con el motivo a la vista, hasta revisarlo.
@@ -282,7 +282,8 @@ Quién los escribe:
   siguiente. Lo que MHD ya no trae (agotados fuera del listado) no se borra: cuando
   vuelva, se rellena.
 - **Aviso** si un producto cambia de código de proveedor. **Freno:** si más de 300
-  cambian en una vuelta, no se envía nada y se avisa; si es real, subir
-  `supplier_switch_max` en `store_settings`.
+  cambian en una vuelta (`supplier_switch_max` en `store_settings`), no se envía nada y
+  se avisa; si es real, subirlo en Configuración › Proveedor de MHD. El 17-11-2026 se
+  subió a 2.000 para dejar pasar 715 cambios reales.
 - **Relleno inicial** (13-11-2026): `scripts/rellenar-proveedor-shopify.mjs`, puntual.
   Lee el listado entero de MHD y todos los productos de Shopify por SKU.
