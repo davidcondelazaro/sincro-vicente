@@ -134,7 +134,8 @@ async function publishCollection(deps: { db: SupabaseClient; shopify: ShopifyCon
   const { publishablePublish: done } = await shopifyGraphql<{ publishablePublish: { userErrors: UserError[] } }>(shopify, `mutation($id: ID!, $p: [PublicationInput!]!) { publishablePublish(id: $id, input: $p) { userErrors { message } } }`, { id: collection.id, p: input });
   if (done.userErrors.length) { errors.push(`${collection.handle}: ${done.userErrors[0].message}`); return; }
   const { urlRedirectDelete: gone } = await shopifyGraphql<{ urlRedirectDelete: { userErrors: UserError[] } }>(shopify, `mutation($id: ID!) { urlRedirectDelete(id: $id) { userErrors { message } } }`, { id: redirect.id });
-  if (gone.userErrors.length) errors.push(`Redirección de ${collection.handle}: ${gone.userErrors[0].message}`);
+  // Shopify borra la redirección por su cuenta al volver a publicar la colección (2026-11-17): «no existe» es lo esperado.
+  if (gone.userErrors.length && !/does not exist/i.test(gone.userErrors[0].message)) errors.push(`Redirección de ${collection.handle}: ${gone.userErrors[0].message}`);
   if (collection.seoHidden) {
     const { metafieldsDelete: hidden } = await shopifyGraphql<{ metafieldsDelete: { userErrors: UserError[] } }>(shopify, `mutation($m: [MetafieldIdentifierInput!]!) { metafieldsDelete(metafields: $m) { userErrors { message } } }`, { m: [{ ownerId: collection.id, namespace: "seo", key: "hidden" }] });
     if (hidden.userErrors.length) errors.push(`seo.hidden de ${collection.handle}: ${hidden.userErrors[0].message}`);
