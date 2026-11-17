@@ -170,13 +170,14 @@ function exportedFields(pedido: MhdFoundOrder) {
   return { status: "exported", mhd_order_id: pedido.id ?? null, mhd_transaction_id: pedido.id_transaccion ?? null, mhd_status: pedido.estado_cliente ?? null, mhd_status_updated_at: now, last_checked_at: now };
 }
 
-// Se reclama la fila con una condición de estado: de dos clics seguidos, solo uno llega a enviar
+// Se reclama la fila con una condición de estado: de dos clics seguidos, solo uno llega a enviar. Al reexportar se borra
+// lo leído del pedido anterior de MHD (estados, facturas), que ya no es el de este pedido.
 async function claim(db: SupabaseClient, order: Order, prior: PriorExport | null, reference: string) {
   if (!prior) {
     const { data } = await db.from("mhd_order_exports").insert({ order_id: order.id, status: "exporting", mhd_reference_web: reference }).select("id").single();
     return data?.id as string | undefined;
   }
-  const { data } = await db.from("mhd_order_exports").update({ status: "exporting", mhd_reference_web: reference, mhd_order_id: null, mhd_transaction_id: null, mhd_status: null, updated_at: new Date().toISOString() }).eq("id", prior.id).in("status", ["ready", "failed"]).select("id").maybeSingle();
+  const { data } = await db.from("mhd_order_exports").update({ status: "exporting", mhd_reference_web: reference, mhd_status_payload: null, mhd_order_id: null, mhd_transaction_id: null, mhd_status: null, updated_at: new Date().toISOString() }).eq("id", prior.id).in("status", ["ready", "failed"]).select("id").maybeSingle();
   return data?.id as string | undefined;
 }
 
