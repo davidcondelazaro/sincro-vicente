@@ -17,6 +17,7 @@ const VALIDATE: Record<string, (value: unknown) => string | null> = {
   auto_altas: (value) => (typeof value === "boolean" ? null : "Valor no válido."),
   auto_altas_max: (value) => (Number.isInteger(value) && Number(value) >= 1 && Number(value) <= 5000 ? null : "Pon un número entre 1 y 5.000."),
   delivery_changes_alert: (value) => (typeof value === "boolean" ? null : "Valor no válido."),
+  supplier_changes_alert: (value) => (typeof value === "boolean" ? null : "Valor no válido."),
   empty_collections_republish: (value) => (typeof value === "boolean" ? null : "Valor no válido."),
   supplier_switch_max: (value) => (Number.isInteger(value) && Number(value) >= 1 && Number(value) <= 100000 ? null : "Pon un número entre 1 y 100.000."),
   absence_brake_pct: (value) => (typeof value === "number" && value >= 0.5 && value <= 50 ? null : "Pon un porcentaje entre 0,5 y 50."),

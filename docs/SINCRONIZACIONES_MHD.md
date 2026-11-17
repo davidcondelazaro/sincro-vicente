@@ -292,7 +292,9 @@ Quién los escribe:
   con lo que hay en Shopify. Como mucho 30 s por vuelta; lo que no quepa sigue en la
   siguiente. Lo que MHD ya no trae (agotados fuera del listado) no se borra: cuando
   vuelva, se rellena.
-- **Aviso** si un producto cambia de código de proveedor. **Freno:** si más de 300
+- **Aviso** si un producto cambia de código de proveedor: apagado desde el 17-11-2026
+  (`supplier_changes_alert` = `false`; rotan cientos al día y ya salen en el resumen diario).
+  **Freno:** si más de 300
   cambian en una vuelta (`supplier_switch_max` en `store_settings`), no se envía nada y
   se avisa; si es real, subirlo en Configuración › Proveedor de MHD. El 17-11-2026 se
   subió a 2.000 para dejar pasar 715 cambios reales.

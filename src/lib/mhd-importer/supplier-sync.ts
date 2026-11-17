@@ -104,7 +104,8 @@ export async function syncSuppliers(deps: { db: SupabaseClient; shopify: Shopify
   summary.pending = changes.length - summary.checked;
   if (options.dryRun) return { dryRun: true, ...summary };
   await event(db, summary.errors.length ? "error" : "vuelta", { ...summary, errors: summary.errors.slice(0, 20), switched: summary.switched.slice(0, 50) });
-  if (summary.switched.length) await sendAlert(db, { key: "proveedor:cambios", quietMinutes: 24 * 60, subject: `Proveedor: ${summary.switched.length} productos cambian de proveedor`, lines: ["Ya está en la web. Revisa si les afecta alguna regla:", ...summary.switched.slice(0, 20)] });
+  // Aviso de cambios apagable (David, 2026-11-17: rotan cientos al día y ya salen en el resumen): `supplier_changes_alert`.
+  if (summary.switched.length && (await db.from("store_settings").select("value").eq("key", "supplier_changes_alert").maybeSingle()).data?.value !== false) await sendAlert(db, { key: "proveedor:cambios", quietMinutes: 24 * 60, subject: `Proveedor: ${summary.switched.length} productos cambian de proveedor`, lines: ["Ya está en la web. Revisa si les afecta alguna regla:", ...summary.switched.slice(0, 20)] });
   if (summary.errors.length) await sendAlert(db, { key: "proveedor:error", quietMinutes: 24 * 60, subject: `Proveedor: ${summary.errors.length} errores al enviar a Shopify`, lines: summary.errors.slice(0, 10) });
   return { ...summary, errors: summary.errors.slice(0, 20), switched: summary.switched.slice(0, 50) };
 }
