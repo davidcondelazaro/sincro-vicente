@@ -148,6 +148,32 @@ export const NIF_VACIO = " ";
 const centimos = (importe: number | string) => Math.round(Number(importe) * 100);
 const euros = (cents: number) => `${(cents / 100).toFixed(2).replace(".", ",")} €`;
 
+// Reparte lo cobrado de portes (menos de lo que dicen las fichas) entre los productos, en proporción a su porte por unidad.
+// Todo en céntimos enteros: MHD recibe el porte por unidad y la suma de porte × unidades tiene que dar exactamente lo
+// cobrado. Primero se redondea hacia abajo y los céntimos que faltan se añaden de uno en uno a las líneas donde caben
+// (las de menos unidades primero). Si no se puede llegar exacto, null: el pedido se revisa a mano.
+export function rebajarPortes(lineas: { unidad: number; cantidad: number }[], cobradoCentimos: number): number[] | null {
+  const total = lineas.reduce((suma, linea) => suma + linea.unidad * linea.cantidad, 0);
+  if (cobradoCentimos < 0 || cobradoCentimos > total) return null;
+  if (total === 0) return cobradoCentimos === 0 ? lineas.map(() => 0) : null;
+  const nuevos = lineas.map((linea) => Math.floor((linea.unidad * cobradoCentimos) / total));
+  let resto = cobradoCentimos - lineas.reduce((suma, linea, index) => suma + nuevos[index] * linea.cantidad, 0);
+  const orden = lineas.map((_, index) => index).filter((index) => lineas[index].unidad > 0).sort((a, b) => lineas[a].cantidad - lineas[b].cantidad);
+  let avanza = true;
+  while (resto > 0 && avanza) {
+    avanza = false;
+    for (const index of orden) {
+      if (resto >= lineas[index].cantidad && nuevos[index] < lineas[index].unidad) {
+        nuevos[index] += 1;
+        resto -= lineas[index].cantidad;
+        avanza = true;
+        if (resto === 0) break;
+      }
+    }
+  }
+  return resto === 0 ? nuevos : null;
+}
+
 export function buildMhdProductLines(input: {
   lines: OrderLineInput[];
   destination: { country?: string | null; province?: string | null; postalCode?: string | null };
@@ -229,8 +255,13 @@ export function buildMhdProductLines(input: {
 
   const portesCalculados = productos.reduce((total, producto) => total + centimos(producto.portes) * producto.cantidad, 0);
   const portesCobrados = centimos(input.shippingAmount);
+  let portesRebajados: string | null = null;
   if (portesCalculados !== portesCobrados) {
-    return { ok: false, reason: `Los portes por producto suman ${euros(portesCalculados)} y en Shopify se cobraron ${euros(portesCobrados)}` };
+    // Cupón de envío (gratis o rebajado): se reparte la rebaja entre los productos con portes (decisión de David, 17-11-2026)
+    const rebajados = portesCobrados < portesCalculados ? rebajarPortes(productos.map((producto) => ({ unidad: centimos(producto.portes), cantidad: producto.cantidad })), portesCobrados) : null;
+    if (!rebajados) return { ok: false, reason: `Los portes por producto suman ${euros(portesCalculados)} y en Shopify se cobraron ${euros(portesCobrados)}` };
+    productos.forEach((producto, index) => { producto.portes = rebajados[index] / 100; });
+    portesRebajados = `Portes rebajados por descuento de envío: ${euros(portesCalculados)} → ${euros(portesCobrados)}`;
   }
 
   // El total que recibe MHD (productos, servicios, garantías y portes) tiene que ser exactamente lo cobrado en Shopify.
@@ -245,8 +276,8 @@ export function buildMhdProductLines(input: {
   // Va después de cuadrar con lo cobrado en Shopify, que sí es 0.
   for (const producto of productos) if (producto.portes === 0) producto.portes = PORTES_MINIMOS;
 
-  const warning = sinDatos.length
+  const warning = [portesRebajados, sinDatos.length
     ? `${sinDatos.length === 1 ? "1 producto" : `${sinDatos.length} productos`} sin datos de portes de MHD (${sinDatos.join(", ")}): se envían a 0 €`
-    : null;
+    : null].filter(Boolean).join(" · ") || null;
   return { ok: true, productos, warning };
 }

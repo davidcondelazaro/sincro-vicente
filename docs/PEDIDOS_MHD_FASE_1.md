@@ -447,8 +447,14 @@ usaba `discountedUnitPriceSet`, que solo descuenta los descuentos de línea. MHD
   servicios, garantías y portes, antes del mínimo de 0,01 €) tiene que sumar
   exactamente `currentTotalPriceSet`. Si no, el pedido no se exporta («El pedido para
   MHD suma X y en Shopify se cobraron Y: revisar antes de exportar») y entra en el
-  aviso de pagados sin exportar. Los descuentos de envío siguen bloqueando por el
-  cuadre de portes.
+  aviso de pagados sin exportar.
+- **Cupón de envío** (gratis o rebajado; `currentShippingPriceSet` ya viene con el
+  descuento): los portes de cada producto se rebajan en proporción hasta sumar lo
+  cobrado (`rebajarPortes`), con aviso «Portes rebajados por descuento de envío».
+  Todo en céntimos enteros: los céntimos sueltos van a las líneas de menos unidades;
+  si no se puede llegar exacto (p. ej. 15,01 € entre 3 unidades iguales) o se cobró
+  más de lo que dicen las fichas, se bloquea. Los portes a 0 pasan luego al mínimo de
+  0,01 €.
 
 ### Reexportar un pedido que MHD canceló (17-11-2026)
 

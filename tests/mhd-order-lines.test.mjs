@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildMhdProductLines as buildExacto, direccionDeExportacion, precioNetoUnitario, estadoDeEnvio, pedidoSinEnvio, puntoDeRecogida } from "../src/lib/mhd-order-lines.ts";
+import { buildMhdProductLines as buildExacto, direccionDeExportacion, precioNetoUnitario, rebajarPortes, estadoDeEnvio, pedidoSinEnvio, puntoDeRecogida } from "../src/lib/mhd-order-lines.ts";
 import { debeCancelarEnShopify, erroresDeMhd, otrosVigentes, reconciliar, referenciaParaExportar, resultadoDeEnvio } from "../src/lib/mhd-order-reconcile.ts";
 
 // Por defecto lo cobrado es lo que suman las líneas y los portes; las pruebas del total lo pasan a propósito
@@ -220,4 +220,36 @@ test("cupón de pedido con portes y varios cupones en productos distintos: cuadr
   const result = buildExacto({ lines: [uno, dos], destination, shippingAmount: "19.98", totalCobrado: "484.03" });
   assert.equal(result.ok, true, result.reason);
   assert.deepEqual(result.productos.map((p) => p.precio), [189.05, 275]);
+});
+
+test("portes rebajados: cupón de envío gratis, portes a 0 (luego el mínimo de 0,01) y el total cuadra", () => {
+  const result = buildExacto({ lines: [aparato], destination, shippingAmount: "0.00", totalCobrado: "199.00" });
+  assert.equal(result.ok, true, result.reason);
+  assert.equal(result.productos[0].portes, 0.01);
+  assert.match(result.warning, /Portes rebajados por descuento de envío: 9,99 € → 0,00 €/);
+});
+
+test("portes rebajados: a mitad entre dos productos, en céntimos exactos", () => {
+  const otro = { ...aparato, sku: "40B5K", payload: { ...aparato.payload, product: { metafield: { value: JSON.stringify({ gastos_envio_peninsula_particulares: 14.99 }) } } } };
+  const result = buildExacto({ lines: [aparato, otro], destination, shippingAmount: "12.49", totalCobrado: "410.49" });
+  assert.equal(result.ok, true, result.reason);
+  const portes = result.productos.reduce((suma, p) => suma + Math.round(p.portes * 100) * p.cantidad, 0);
+  assert.equal(portes, 1249);
+});
+
+test("rebajarPortes: decimales y unidades", () => {
+  assert.deepEqual(rebajarPortes([{ unidad: 999, cantidad: 1 }], 500), [500]);
+  assert.deepEqual(rebajarPortes([{ unidad: 999, cantidad: 1 }, { unidad: 1499, cantidad: 1 }], 1249), [500, 749]);
+  assert.deepEqual(rebajarPortes([{ unidad: 1000, cantidad: 3 }], 1500), [500]);
+  assert.equal(rebajarPortes([{ unidad: 1000, cantidad: 3 }], 1501), null); // 15,01 € no se divide entre 3 unidades
+  const mezcla = rebajarPortes([{ unidad: 1000, cantidad: 3 }, { unidad: 500, cantidad: 1 }], 1501); // la línea de 1 unidad absorbe los céntimos
+  assert.deepEqual(mezcla, [428, 217]);
+  assert.equal(mezcla[0] * 3 + mezcla[1], 1501);
+  assert.equal(rebajarPortes([{ unidad: 999, cantidad: 1 }], 1200), null); // cobrado más que las fichas
+});
+
+test("portes: si se cobró más de lo que dicen las fichas, se bloquea", () => {
+  const result = buildExacto({ lines: [aparato], destination, shippingAmount: "12.00", totalCobrado: "211.00" });
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /Los portes por producto suman 9,99 € y en Shopify se cobraron 12,00 €/);
 });
