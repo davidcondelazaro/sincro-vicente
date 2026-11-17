@@ -76,7 +76,10 @@ export async function syncRelations(deps: { db: SupabaseClient; shopify: Shopify
   }
   const sent = new Map(sentRows.map((row) => [row.product_id, row]));
   const changes = calculated.filter((row) => !same(row.complementary, sent.get(row.product_id)?.complementary ?? []) || !same(row.related, sent.get(row.product_id)?.related ?? []));
-  const summary = { calculated: calculated.length, changes: changes.length, sent: 0, manual: 0, errors: [] as string[] };
+  // Por tipo (informe diario, 2026-11-17): complementarios (accesorios, consumibles…) y similares.
+  const complementarios = changes.filter((row) => !same(row.complementary, sent.get(row.product_id)?.complementary ?? [])).length;
+  const similares = changes.filter((row) => !same(row.related, sent.get(row.product_id)?.related ?? [])).length;
+  const summary = { calculated: calculated.length, changes: changes.length, complementarios, similares, sent: 0, manual: 0, errors: [] as string[] };
   if (!changes.length) {
     if (!options.dryRun) await event(db, "vuelta", summary);
     return { ok: true, dryRun: options.dryRun ?? false, ...summary };

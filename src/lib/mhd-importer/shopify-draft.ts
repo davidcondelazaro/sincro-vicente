@@ -302,6 +302,7 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   const meta = (item: { meta: unknown }) => item.meta as Record<string, string>;
   const productVideos = videos.filter((item) => meta(item).kind === "producto").slice(0, 1);
   const brandVideos = videos.filter((item) => !productVideos.includes(item));
+  let videosDeferred = 0; // vídeos que no entraron por el tope de Shopify (los pone luego una tanda «solo vídeos»)
   const [photoUrls, { labelId, documentIds }, { productVideoUrls, videoIds }] = await Promise.all([
     t.step("Shopify: subir fotos", async () => stagedUpload(deps.shopify, await Promise.all(photos.map(async (item) => {
       const bytes = await mediaBytes(deps.db, item);
@@ -342,6 +343,7 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
       } catch (caught) {
         const message = caught instanceof Error ? caught.message : String(caught);
         if (!/more than [\d.,]+ videos in an? (hour|week)/i.test(message)) throw caught;
+        videosDeferred = productVideos.length + brandVideos.length;
         t.event("aviso", "Shopify: vídeos", `Tope de Shopify de ${/week/i.test(message) ? "1.000 vídeos por semana" : "200 vídeos por hora"}: se sube sin vídeos; los pondrá una tanda «solo vídeos».`);
         return { productVideoUrls: [] as string[], videoIds: [] as string[] };
       }
@@ -452,8 +454,15 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   }
   const { error: saveError } = await deps.db.from("mhd_importer_product_runs").update({ shopify_product_id: created.id }).eq("id", runId);
   if (saveError) throw saveError;
+  await recordUpload(deps.db, product.codigo, existing ? "actualizado" : "creado", { status: created.status, product_id: created.id, title: shop.title, fotos: photos.length, videos: videoFiles.length + videoIds.length, videosAplazados: videosDeferred, revision: reviewPending });
   const host = deps.shopify.storeUrl.replace(/^https?:\/\//, "").replace(/\.myshopify\.com\/?$/, "");
   return { id: created.id, handle: created.handle, status: created.status, updated: Boolean(existing), refreshed: refresh, adminUrl: `https://admin.shopify.com/store/${host}/products/${created.id.split("/").pop()}`, files: { photos: photos.length, label: Boolean(labelId), documents: documentIds.length, productVideos: videoFiles.length, brandVideos: videoIds.length } };
+}
+
+// Registro de lo que el importador deja en Shopify (informe diario, 2026-11-17): alta o actualización, activo o borrador,
+// vídeos y textos. Si falla el registro, la subida sigue.
+async function recordUpload(db: SupabaseClient, codigo: string, kind: "creado" | "actualizado" | "videos" | "textos", detail: Record<string, unknown>) {
+  await db.from("mhd_sync_events").insert({ sync: "importador", kind, codigo, detail }).then(() => undefined, () => undefined);
 }
 
 // Solo vídeos (David, 2026-11-16): la pasada aparte de los mp4 que se pararon el 2026-10-27 por el tope de 250 del plan
@@ -533,6 +542,7 @@ export async function uploadShopifyVideos(deps: { db: SupabaseClient; shopify: S
       check(set.metafieldsSet.userErrors, "Shopify no guardó los vídeos de marca");
     }
   }
+  if (productVideo === "subido" || brandAdded) await recordUpload(deps.db, codigo, "videos", { product_id: productId, title: current.title, producto: productVideo === "subido" ? 1 : 0, marca: brandAdded });
   return { productId, productVideo, brandAdded, runId: run.id as string };
 }
 
@@ -559,5 +569,6 @@ export async function updateShopifyTexts(deps: { db: SupabaseClient; shopify: Sh
   if (set.length) check((await shopifyGraphql<{ metafieldsSet: { userErrors: UserError[] } }>(deps.shopify, `mutation($m: [MetafieldsSetInput!]!) { metafieldsSet(metafields: $m) { userErrors { field message } } }`, { m: set })).metafieldsSet.userErrors, "Shopify no guardó la descripción corta o la frase de Elvi");
   const missing = textFields.filter((key) => !set.some((item) => item.key === key)).map((key) => ({ ownerId: productId, namespace: "custom", key }));
   if (missing.length) check((await shopifyGraphql<{ metafieldsDelete: { userErrors: UserError[] } }>(deps.shopify, `mutation($m: [MetafieldIdentifierInput!]!) { metafieldsDelete(metafields: $m) { userErrors { field message } } }`, { m: missing })).metafieldsDelete.userErrors, "Shopify no borró la frase de Elvi anterior");
+  await recordUpload(deps.db, run.codigo, "textos", { product_id: productId, title: shop.title, status: updated.productUpdate.product!.status });
   return { id: productId, handle: updated.productUpdate.product!.handle, status: updated.productUpdate.product!.status, textsOnly: true };
 }

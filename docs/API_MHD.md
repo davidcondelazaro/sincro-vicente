@@ -169,6 +169,13 @@ Revisado → Procesado → Enviado.
 ## Pendiente
 
 - Unificación de las propiedades de seguimiento (lo avisará MHD).
+- **Número de seguimiento de TDN sin el cero delante (17-11-2026, avisado a MHD):** en
+  #62671 (EV61690) `tracking_number` = 30500000099, pero TDN lo registra como
+  030500000099: con el primero su web dice «Envío no registrado». El `carrier_url` sí
+  lleva el bueno (`http://tracking.tdnonline.com/consulta_expediciones/tracking?REFERENCIA=030500000099`).
+  La web de TDN solo funciona en http y la primera carga tarda casi un minuto en blanco.
+  David prefiere esperar a que MHD lo corrija antes de tocar nada en nuestro lado
+  (alternativa: tomar el número de `REFERENCIA` del enlace).
 - Con Fran: qué precio usar en Shopify (`pvp` oficial o uno propio a partir de
   `triple_neto`) y si `pvp_antes` tiene alguna utilidad.
 - Cancelar o modificar un pedido ya creado no es posible por API.
