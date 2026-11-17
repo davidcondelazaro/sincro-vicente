@@ -27,12 +27,13 @@ export default function GoogleMerchantPage() {
   const [email, setEmail] = useState<string | null>(null);
   const [estado, setEstado] = useState<Estado | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [cargadoEn, setCargadoEn] = useState(0);
 
   const cargar = useCallback(async () => {
     try {
       const respuesta = await fetch("/api/merchant/estado", { cache: "no-store" });
       const cuerpo = await respuesta.json(); if (!respuesta.ok) throw new Error(cuerpo.error ?? "No se pudo leer el estado.");
-      setEstado(cuerpo); setError(null);
+      setEstado(cuerpo); setCargadoEn(Date.now()); setError(null);
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Error inesperado."); }
   }, []);
   useEffect(() => {
@@ -40,9 +41,25 @@ export default function GoogleMerchantPage() {
     createClient().auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
     return () => window.clearTimeout(primero);
   }, [cargar]);
+  // Con cola pendiente, la pantalla se refresca sola cada 20 segundos.
+  const conCola = (estado?.cola.total ?? 0) > 0;
+  useEffect(() => {
+    if (!conCola) return;
+    const reloj = window.setInterval(() => void cargar(), 20_000);
+    return () => window.clearInterval(reloj);
+  }, [conCola, cargar]);
 
   const avisos = ((estado?.avisos?.detail.avisos ?? []) as Aviso[]);
   const importantes = avisos.filter((item) => item.importante);
+  // Progreso: ofertas con portes mandados sobre las que hay en Merchant Center (España, que es igual que Portugal), y
+  // ritmo de la última hora para estimar cuándo se vacía la cola.
+  const es = estado?.porPais.find((item) => item.pais === "ES");
+  const total = es?.enMerchant ?? 0;
+  const hechas = Math.min(es?.conPortes ?? 0, total);
+  const porcentaje = total ? Math.floor((100 * hechas) / total) : 0;
+  const haceUnaHora = new Date(cargadoEn - 3_600_000).toISOString();
+  const ritmo = (estado?.vueltas ?? []).filter((item) => item.kind === "vuelta" && item.created_at >= haceUnaHora).reduce((suma, item) => suma + Number((item.detail as Record<string, number>).productos ?? 0), 0);
+  const fin = conCola && ritmo ? new Date(cargadoEn + (estado!.cola.total / ritmo) * 3_600_000).toLocaleTimeString("es-ES", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit" }) : null;
   return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[17.5rem_minmax(0,1fr)]"><AppSidebar active="googleMerchant" userEmail={email} />
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-24 pt-28 sm:px-10 lg:mx-0 lg:py-16">
       <header className="flex flex-wrap items-end justify-between gap-4">
@@ -55,6 +72,11 @@ export default function GoogleMerchantPage() {
         <p className={`rounded-lg border p-4 text-sm ${estado.ajustes.activo ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
           {estado.ajustes.activo ? estado.ajustes.soloCodigos.length ? `Encendido en prueba: solo ${estado.ajustes.soloCodigos.length} productos (${estado.ajustes.soloCodigos.join(", ")}).` : "Encendido para todo el catálogo." : "Apagado: no se manda nada a Merchant Center."}
         </p>
+        {estado.ajustes.activo && total > 0 && <section aria-label="Progreso" className="rounded-xl border border-zinc-200 bg-white p-4">
+          <div className="mb-2 flex justify-between text-sm font-medium"><span>{n(hechas)} de {n(total)} productos con portes en Merchant Center</span><span>{porcentaje}%</span></div>
+          <div className="h-3 overflow-hidden rounded-full bg-zinc-100"><div className="h-full bg-emerald-600 transition-all" style={{ width: `${porcentaje}%` }} /></div>
+          <p className="mt-3 text-sm text-zinc-600">{conCola ? `Quedan ${n(estado.cola.total)} en la cola${ritmo ? ` · ${n(ritmo)} por hora · termina hacia las ${fin}` : " · calculando el ritmo…"}. Se actualiza solo.` : "Cola vacía: todo al día."}</p>
+        </section>}
         <section aria-label="Por país" className="grid gap-3 sm:grid-cols-2">
           {estado.porPais.map((item) => <div key={item.pais} className="rounded-xl border border-zinc-200 bg-white p-4">
             <h2 className="font-semibold text-zinc-950">{NOMBRE[item.pais] ?? item.pais}</h2>
