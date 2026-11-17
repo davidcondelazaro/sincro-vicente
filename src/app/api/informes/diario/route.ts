@@ -4,7 +4,7 @@ import { workerClient } from "@/lib/mhd-importer/jobs";
 
 // Resumen por correo (src/lib/mhd-importer/daily-report.ts). Lo llama pg_cron sin sesión pero con la cabecera
 // `x-mhd-import-token`, igual que la sincronización de precio y stock: a las 9:00 el diario y, mientras se estabiliza
-// todo (David, 2026-10-29), cada hora con `?horas=1`. `?simulacion=1` devuelve el resumen sin enviarlo. Cada resumen
+// todo (David, 2026-10-29), cada hora con `?horas=1`. `?simulacion=1` devuelve el resumen sin enviarlo y `?prueba=1` lo envía marcado como prueba. Cada resumen
 // sale una sola vez aunque se repita la llamada (clave de idempotencia de Resend por día u hora). Lo enviado se guarda
 // en mhd_daily_reports (página /resumen).
 
@@ -25,6 +25,12 @@ export async function POST(request: Request) {
   if (params.get("simulacion") === "1") {
     if (params.get("guardar") === "1") await save();
     return Response.json({ ok: true, dryRun: true, ...report });
+  }
+  // Envío de prueba (`?prueba=1`, 2026-11-17): a los mismos destinatarios, con «[Prueba]» en el asunto, sin guardarlo y
+  // con su propia clave de envío, para que no choque con el del día.
+  if (params.get("prueba") === "1") {
+    const result = await sendEmail({ to: await settingRecipients(db, "report_emails"), subject: report.subject.replace("] ", "] [Prueba] "), html: report.html, text: report.text, idempotencyKey: `informe-prueba-${Date.now()}` });
+    return Response.json({ ...result, subject: report.subject }, { status: result.ok ? 200 : 502 });
   }
   const day = new Date().toLocaleString("sv-SE", { timeZone: "Europe/Madrid" }).slice(0, hours === 24 ? 10 : 13);
   const result = await sendEmail({ to: await settingRecipients(db, "report_emails"), subject: report.subject, html: report.html, text: report.text, idempotencyKey: `informe-${hours}h-${day}` });
