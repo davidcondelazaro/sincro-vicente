@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildMhdProductLines as buildExacto, direccionDeExportacion, precioNetoUnitario, estadoDeEnvio, pedidoSinEnvio, puntoDeRecogida } from "../src/lib/mhd-order-lines.ts";
-import { debeCancelarEnShopify, erroresDeMhd, otrosVigentes, reconciliar, resultadoDeEnvio } from "../src/lib/mhd-order-reconcile.ts";
+import { debeCancelarEnShopify, erroresDeMhd, otrosVigentes, reconciliar, referenciaParaExportar, resultadoDeEnvio } from "../src/lib/mhd-order-reconcile.ts";
 
 // Por defecto lo cobrado es lo que suman las líneas y los portes; las pruebas del total lo pasan a propósito
 const buildMhdProductLines = (input) => buildExacto({ totalCobrado: (input.lines.reduce((total, line) => total + Math.round(Number(line.unitPrice) * 100) * line.quantity, 0) + Math.round(Number(input.shippingAmount) * 100)) / 100, ...input });
@@ -200,4 +200,15 @@ test("total: los servicios y las garantías también cuentan", () => {
   const subida = { sku: "SUBIDA-1", quantity: 1, unitPrice: "19.00", payload: { requiresShipping: false, product: { metafield: null }, lineItemGroup: { variantSku: "32A4Q" } } };
   const conServicio = buildExacto({ lines: [aparato, subida], destination, shippingAmount: "9.99", totalCobrado: "227.99" });
   assert.equal(conServicio.ok, true, conServicio.reason);
+});
+
+test("referencia: si todo lo de MHD con esa referencia está cancelado se usa la siguiente (EV99344-2)", async () => {
+  const mhd = { EV99344: [{ id: 62862, id_estado_cliente: 13 }] };
+  const buscar = async (referencia) => mhd[referencia] ?? [];
+  assert.deepEqual(await referenciaParaExportar("EV99344", buscar), { referencia: "EV99344-2", encontrados: [], cancelados: 1 });
+  assert.deepEqual(await referenciaParaExportar("EV1", buscar), { referencia: "EV1", encontrados: [], cancelados: 0 });
+  const vigente = { EV2: [{ id: 1, id_estado_cliente: 13 }], "EV2-2": [{ id: 2, id_estado_cliente: 10 }] };
+  const conVigente = await referenciaParaExportar("EV2", async (referencia) => vigente[referencia] ?? []);
+  assert.equal(conVigente.referencia, "EV2-2");
+  assert.equal(conVigente.encontrados[0].id, 2);
 });

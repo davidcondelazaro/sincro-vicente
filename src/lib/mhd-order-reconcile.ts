@@ -10,9 +10,21 @@ type RequestedLine = { codigo: string; cantidad: number };
 
 const ESTADO_CANCELADO = 13;
 
-// Un pedido cancelado en MHD no impide volver a exportar: la referencia queda libre
+// Un pedido cancelado en MHD no impide volver a exportar, pero su referencia web no queda libre (ver referenciaParaExportar)
 export function esCanceladoEnMhd(order: MhdFoundOrder) {
   return order.id_estado_cliente === ESTADO_CANCELADO || /cancel/i.test(order.estado_cliente ?? "");
+}
+
+// MHD no admite dos pedidos con la misma referencia web aunque el primero esté cancelado («Ya existe un pedido con esa
+// referencia web», EV99344, 17-11-2026). Si todo lo que hay con una referencia está cancelado se prueba la siguiente:
+// EV99344, EV99344-2, EV99344-3… Se devuelve la primera libre o la que tiene algo vigente, con lo que MHD tiene en ella.
+export async function referenciaParaExportar(nombre: string, buscar: (referencia: string) => Promise<MhdFoundOrder[]>) {
+  for (let intento = 1; intento <= 9; intento++) {
+    const referencia = intento === 1 ? nombre : `${nombre}-${intento}`;
+    const encontrados = await buscar(referencia);
+    if (!encontrados.length || encontrados.some((order) => !esCanceladoEnMhd(order))) return { referencia, encontrados, cancelados: intento - 1 };
+  }
+  throw new Error(`${nombre} tiene demasiados pedidos cancelados en MHD: revísalo a mano.`);
 }
 
 // Compara por SKU y unidades. Los servicios van dentro de la línea del aparato, así que no cuentan.

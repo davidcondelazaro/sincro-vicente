@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildMhdProductLines, direccionDeExportacion, NIF_VACIO, puntoDeRecogida, type MhdProductLine, type PedidoConEntrega, type ShopifyLinePayload } from "@/lib/mhd-order-lines";
 import { buildMhdOrderObservations } from "@/lib/mhd-order-notes";
 import { mhdOrdersFetch } from "@/lib/mhd-order-sync";
-import { erroresDeMhd, reconciliar, resultadoDeEnvio, type MhdFoundOrder, type MhdPostResponse } from "@/lib/mhd-order-reconcile";
+import { erroresDeMhd, reconciliar, referenciaParaExportar, resultadoDeEnvio, type MhdFoundOrder, type MhdPostResponse } from "@/lib/mhd-order-reconcile";
 
 // Exportación de un pedido a MHD. No depende de la sesión: recibe el cliente de base de datos y el propietario, para
 // que la use el botón de Pedidos MHD y, cuando se encienda, el proceso automático. Ver docs/PEDIDOS_MHD_FASE_1.md.
@@ -153,14 +153,15 @@ export async function previewMhdExport(db: SupabaseClient, orderId: string) {
   if (!prepared.ok) return prepared;
   const stale = await checkShopify(prepared.order);
   if (stale) return stale;
-  const inMhd = reconciliar(prepared.payload.productos, await findInMhd(prepared.order.shopify_order_name));
+  const enMhd = await referenciaParaExportar(prepared.order.shopify_order_name, findInMhd);
+  const inMhd = reconciliar(prepared.payload.productos, enMhd.encontrados);
   if (inMhd.accion === "revisar") return { ok: false, status: 409, error: inMhd.motivo, trace: "Revísalo en MHD: no se enviará nada." } satisfies Refusal;
   const titles = new Map(prepared.lines.map((line) => [line.sku, line.title]));
   return {
-    ok: true as const, ...prepared.payload, warning: prepared.warning,
+    ok: true as const, ...prepared.payload, referencia_web: enMhd.referencia, warning: prepared.warning,
     titulos: Object.fromEntries(prepared.payload.productos.map((line: MhdProductLine) => [line.codigo, titles.get(line.codigo) ?? ""])),
     yaEnMhd: inMhd.accion === "recuperar" ? inMhd.pedido.id ?? null : null,
-    canceladosEnMhd: inMhd.accion === "enviar" ? inMhd.cancelados : 0,
+    canceladosEnMhd: enMhd.cancelados + (inMhd.accion === "enviar" ? inMhd.cancelados : 0),
   };
 }
 
@@ -170,12 +171,12 @@ function exportedFields(pedido: MhdFoundOrder) {
 }
 
 // Se reclama la fila con una condición de estado: de dos clics seguidos, solo uno llega a enviar
-async function claim(db: SupabaseClient, order: Order, prior: PriorExport | null) {
+async function claim(db: SupabaseClient, order: Order, prior: PriorExport | null, reference: string) {
   if (!prior) {
-    const { data } = await db.from("mhd_order_exports").insert({ order_id: order.id, status: "exporting", mhd_reference_web: order.shopify_order_name }).select("id").single();
+    const { data } = await db.from("mhd_order_exports").insert({ order_id: order.id, status: "exporting", mhd_reference_web: reference }).select("id").single();
     return data?.id as string | undefined;
   }
-  const { data } = await db.from("mhd_order_exports").update({ status: "exporting", mhd_order_id: null, mhd_transaction_id: null, mhd_status: null, updated_at: new Date().toISOString() }).eq("id", prior.id).in("status", ["ready", "failed"]).select("id").maybeSingle();
+  const { data } = await db.from("mhd_order_exports").update({ status: "exporting", mhd_reference_web: reference, mhd_order_id: null, mhd_transaction_id: null, mhd_status: null, updated_at: new Date().toISOString() }).eq("id", prior.id).in("status", ["ready", "failed"]).select("id").maybeSingle();
   return data?.id as string | undefined;
 }
 
@@ -189,10 +190,12 @@ export async function exportMhdOrder(db: SupabaseClient, ownerId: string, orderI
   const { order, prior, payload } = prepared;
   const stale = await checkShopify(order);
   if (stale) return stale;
-  const inMhd = reconciliar(payload.productos, await findInMhd(order.shopify_order_name));
+  const enMhd = await referenciaParaExportar(order.shopify_order_name, findInMhd);
+  payload.referencia_web = enMhd.referencia;
+  const inMhd = reconciliar(payload.productos, enMhd.encontrados);
   if (inMhd.accion === "revisar") return { ok: false, status: 409, error: inMhd.motivo, trace: "Revísalo en MHD: no se ha enviado nada." };
 
-  const exportId = await claim(db, order, prior);
+  const exportId = await claim(db, order, prior, enMhd.referencia);
   if (!exportId) return { ok: false, status: 409, error: "Otro intento acaba de empezar con este pedido." };
 
   if (inMhd.accion === "recuperar") {
@@ -230,7 +233,7 @@ export async function exportMhdOrder(db: SupabaseClient, ownerId: string, orderI
     return { ok: false, status: 502, error: errorMessage, trace: "MHD no ha creado el pedido.", mhdErrors };
   }
   await db.from("mhd_order_exports").update({ status: "unknown", mhd_order_id: responsePayload?.data?.id ?? null, mhd_transaction_id: responsePayload?.data?.id_transaccion ?? null, last_checked_at: new Date().toISOString() }).eq("id", exportId);
-  const checked = await settleUnknown(db, ownerId, exportId, payload.productos, order.shopify_order_name).catch(() => null);
+  const checked = await settleUnknown(db, ownerId, exportId, payload.productos, payload.referencia_web).catch(() => null);
   if (checked?.ok) return { ...checked, recovered: true };
   return { ok: false, status: 502, error: errorMessage, trace: checked?.error ?? "El intento se ha marcado como resultado desconocido y no se reintentará: usa «Comprobar en MHD».", mhdErrors };
 }
@@ -271,8 +274,9 @@ export async function checkMhdExport(db: SupabaseClient, ownerId: string, orderI
   if (typedPrior.status !== "unknown" && typedPrior.status !== "exporting") return { ok: false, status: 409, error: "Este pedido no tiene un resultado desconocido." };
   if (typedPrior.status === "exporting" && Date.now() - new Date(typedPrior.updated_at).getTime() < EXPORTING_STALE_MS) return { ok: false, status: 409, error: "La exportación puede seguir en curso. Espera dos minutos y vuelve a comprobar." };
   const { data: attempts } = await db.from("mhd_order_export_attempts").select("request_payload").eq("export_id", typedPrior.id).not("request_payload", "is", null).order("created_at", { ascending: false }).limit(1);
-  const lines = (attempts?.[0]?.request_payload as { productos?: MhdProductLine[] } | undefined)?.productos;
+  const sent = attempts?.[0]?.request_payload as { productos?: MhdProductLine[]; referencia_web?: string } | undefined;
+  const lines = sent?.productos;
   if (!lines) return { ok: false, status: 409, error: "No consta qué se envió a MHD: revísalo a mano." };
-  const checked = await settleUnknown(db, ownerId, typedPrior.id, lines, order.shopify_order_name);
+  const checked = await settleUnknown(db, ownerId, typedPrior.id, lines, sent?.referencia_web ?? order.shopify_order_name);
   return checked.ok ? { ...checked, recovered: true } : { ok: false, status: 409, error: checked.error };
 }
