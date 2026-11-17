@@ -35,6 +35,7 @@ const shopifyLink = (item: Product): Cell => {
   const id = item.product_id?.split("/").pop();
   return id ? { text, href: `https://admin.shopify.com/store/electronica-vicente/products/${id}` } : text;
 };
+const VIDEO_CAP = /more than [\d.,]+ videos in an? (hour|week)/i;
 const STATUS: Record<string, string> = { terminada: "terminada", fallida: "FALLIDA", parada: "parada", atascada: "ATASCADA", iniciando: "empezando", leyendo: "leyendo MHD", procesando: "procesando" };
 
 export async function buildDailyReport(db: SupabaseClient, now = new Date(), hours = 24) {
@@ -123,11 +124,14 @@ export async function buildDailyReport(db: SupabaseClient, now = new Date(), hou
 
     const byStatus = report.importer.by_status; const processed = Object.values(byStatus).reduce((total, value) => total + value, 0);
     const altasQueued = (altasResult.data ?? []).length;
+    // El tope de vídeos de Shopify no es un fallo del producto (desde el 17-11 la tanda se pausa sola): fuera de los errores.
+    const capped = report.importer.reasons.filter((item) => item.status === "error" && VIDEO_CAP.test(item.reason)).reduce((total, item) => total + item.n, 0);
+    const realErrors = Math.max(0, (byStatus.error ?? 0) - capped);
     sections.push({
-      id: "importador", title: "Importador de productos", warn: (byStatus.error ?? 0) > 0 || report.importer.open_jobs.some((job) => job.paused_reason),
+      id: "importador", title: "Importador de productos", warn: realErrors > 0 || report.importer.open_jobs.some((job) => job.paused_reason),
       kpis: [
         { id: "altas-mhd", label: "Altas nuevas de MHD", value: altasQueued, sub: `${integer.format(processed)} procesados · ${integer.format(byStatus.descartado ?? 0)} descartados`, tone: "neutral" },
-        { id: "errores-importador", label: "Errores del importador", value: byStatus.error ?? 0, sub: report.importer.open_jobs.some((job) => job.paused_reason) ? "Hay tandas en pausa" : report.importer.reasons.find((item) => item.status === "error")?.reason.slice(0, 70) ?? "Sin errores", tone: byStatus.error ? "warn" : "ok" },
+        { id: "errores-importador", label: "Errores del importador", value: realErrors, sub: [realErrors ? report.importer.reasons.find((item) => item.status === "error" && !VIDEO_CAP.test(item.reason))?.reason.slice(0, 70) : "Sin errores", capped ? `${integer.format(capped)} aplazados por el tope de vídeos` : "", report.importer.open_jobs.some((job) => job.paused_reason) ? "hay tandas en pausa" : ""].filter(Boolean).join(" · "), tone: realErrors ? "warn" : "ok" },
         { id: "gasto-ia", label: "Gasto de IA", value: Math.round(report.ai_cost.period * 100) / 100, text: dollars.format(report.ai_cost.period), sub: `${dollars.format(report.ai_cost.month)} este mes`, tone: "neutral" },
       ],
       lines: [

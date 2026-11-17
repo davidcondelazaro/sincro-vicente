@@ -170,14 +170,18 @@ export async function processJobItem(deps: { db: SupabaseClient; config: Sources
       await deps.db.from("mhd_importer_job_items").update({ status: "pendiente", attempts: Math.max(0, item.attempts - 1), lease_until: null, step: null }).eq("id", item.id);
       return;
     }
-    // Tope de Shopify de 200 vídeos subidos por hora (comprobado 2026-11-16 en la tanda «solo vídeos»): no es un fallo del
-    // producto. La tanda se pausa una hora con `resume_at` (la reanuda runWorkerTurn) y el producto vuelve a la cola sin
-    // gastar intento ni contar para el freno.
-    if (/more than \d+ videos in an hour/i.test(message)) {
-      const resumeAt = new Date(Date.now() + 61 * 60_000).toISOString();
+    // Topes de Shopify de vídeos subidos: 200 por hora (comprobado 2026-11-16 en la tanda «solo vídeos») y 1.000 por
+    // semana (agotado el 16-11; el 17-11 dejó 14 productos en error y paraba el freno). No es un fallo del producto: la
+    // tanda se pausa con `resume_at` (una hora, o un día con el semanal: Shopify cuenta los últimos 7 días y se vuelve a
+    // probar a diario; la reanuda runWorkerTurn) y el producto vuelve a la cola sin gastar intento ni contar para el freno.
+    const videoCap = /more than [\d.,]+ videos in an? (hour|week)/i.exec(message)?.[1]?.toLowerCase();
+    if (videoCap) {
+      const weekly = videoCap === "week";
+      const resumeAt = new Date(Date.now() + (weekly ? 24 * 60 : 61) * 60_000).toISOString();
+      const cap = weekly ? "1.000 vídeos por semana" : "200 vídeos por hora";
       const { data: job } = await deps.db.from("mhd_importer_jobs").select("options,status").eq("id", item.job_id).single();
-      if (job && (job.status === "en_curso" || job.status === "en_cola")) await deps.db.from("mhd_importer_jobs").update({ status: "pausado", paused_reason: `Shopify: tope de 200 vídeos por hora. Sigue sola a las ${resumeAt.slice(11, 16)} (UTC).`, options: { ...(job.options ?? {}), resume_at: resumeAt } }).eq("id", item.job_id);
-      log.add({ level: "aviso", step: "Producto", message: "Tope de Shopify de 200 vídeos por hora: la tanda espera una hora y sigue sola.", durationMs: Date.now() - started });
+      if (job && (job.status === "en_curso" || job.status === "en_cola")) await deps.db.from("mhd_importer_jobs").update({ status: "pausado", paused_reason: `Shopify: tope de ${cap}. Vuelve a probar sola el ${resumeAt.slice(8, 10)}/${resumeAt.slice(5, 7)} a las ${resumeAt.slice(11, 16)} (UTC).`, options: { ...(job.options ?? {}), resume_at: resumeAt } }).eq("id", item.job_id);
+      log.add({ level: "aviso", step: "Producto", message: `Tope de Shopify de ${cap}: la tanda espera ${weekly ? "un día" : "una hora"} y sigue sola.`, durationMs: Date.now() - started });
       await deps.db.from("mhd_importer_job_items").update({ status: "pendiente", attempts: Math.max(0, item.attempts - 1), error: null, lease_until: null, step: null }).eq("id", item.id);
       return;
     }

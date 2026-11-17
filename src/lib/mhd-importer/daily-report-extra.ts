@@ -192,7 +192,10 @@ export async function extraSections(db: SupabaseClient, now: Date, since: string
     const blockedProducts = sum(news.bloqueadas, (item) => item.productos);
     const newCount = news.marcas.length + news.familias.length + news.subfamilias.length;
     sections.push({
-      id: "marcas", kpis: [{ id: "marcas-familias", label: "Marcas y familias nuevas", value: newCount, sub: news.bloqueadas.length ? `${integer.format(blockedProducts)} productos no pueden entrar` : "Todo puede entrar en la tienda", tone: news.bloqueadas.length || news.familias.some((item) => !item.con_reglas) ? "warn" : newCount ? "warn" : "ok" }],
+      id: "marcas", kpis: [
+        { id: "marcas-familias", label: "Marcas y familias nuevas", value: newCount, sub: newCount ? `${news.marcas.length} marcas · ${news.familias.length} familias · ${news.subfamilias.length} subfamilias` : "Ninguna en el periodo", tone: newCount ? "warn" : "neutral" },
+        { id: "no-pueden-entrar", label: "No pueden entrar en la tienda", value: blockedProducts, sub: news.bloqueadas.length ? `${news.bloqueadas.length} subfamilias sin reglas o sin sitio` : "Todo tiene reglas y sitio", tone: blockedProducts ? "warn" : "ok" },
+      ],
       title: "Marcas y familias", warn: news.marcas.length + news.familias.length + news.subfamilias.length + news.bloqueadas.length > 0,
       lines: [
         news.marcas.length ? `Marcas nuevas en MHD: ${news.marcas.map((item) => `${item.name} (${item.productos} productos, ${item.en_tienda} en la tienda)`).join(" · ")}.` : `Ninguna marca nueva en MHD en ${period}.`,
