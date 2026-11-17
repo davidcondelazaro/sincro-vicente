@@ -449,6 +449,10 @@ Decisiones de David del 17-11 sobre las del 31-10 (más abajo). Código en
 
 La tarea diaria de Garantía3 sigue leyendo pedidos y estados a las 9:00 UTC (lo necesita).
 
+**Encendidos el 17-11-2026 (David):** marcar envíos y correo de factura a las 9:05 UTC
+(EV61690 se marcó solo con TDN 30500000099 y aviso a la clienta) y la exportación
+automática con corte 2026-11-17T09:05:50Z.
+
 **Interruptores** (utils › Configuración › Pedidos MHD, `store_settings`):
 - `pedidos_exportar_auto_activo` (apagado) y `pedidos_exportar_auto_desde` (corte, se pone
   al encender): solo pedidos «listos», creados después del corte, con
