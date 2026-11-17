@@ -12,6 +12,8 @@ import { queueNewProducts } from "./new-products";
 import { syncPriceStock } from "./price-stock-sync";
 import { checkServiceTariffs } from "./service-tariffs";
 import { mhdApiUrl, mhdFetch } from "./sources";
+import { merchantConfig } from "@/lib/merchant/api";
+import { trabajarCola } from "@/lib/merchant/trabajador";
 import { shopifyGraphql } from "./store-filters";
 
 // Vuelta de sincronización con MHD (David, 2026-10-29; diseño en docs/SINCRONIZACIONES_MHD.md). La abre pg_cron cada 30
@@ -163,6 +165,13 @@ export async function continueCycle(deps: Deps, cycleId: string) {
     await step(deps.db, cycle, "altas", async () => queueNewProducts({ db: deps.db }, { runId: cycle.read_run_id!, cycleId: cycle.id }) as unknown as Promise<Record<string, unknown>>);
     // Portes y servicios al metacampo de cada ficha. La ruta tiene 300 s: no se come el tiempo de lo que queda detrás.
     await step(deps.db, cycle, "opciones-entrega", async () => syncDeliveryOptions({ db: deps.db, shopify: deps.sources.shopify }, { runId: cycle.read_run_id!, budgetMs: Math.min(60_000, 250_000 - (Date.now() - processingFrom)) }));
+    // Google Merchant (src/lib/merchant), justo detrás de los portes: lo que acaba de cambiar en el metacampo (lo que
+    // cobra el pago) sale ya hacia Google, sin esperar al cron de la cola. Los portes van los primeros de la cola; lo que
+    // no quepa en 30 s sigue en el cron de cada 10 minutos. Si falla, la vuelta sigue.
+    await step(deps.db, cycle, "google-merchant", async () => {
+      try { return await trabajarCola({ db: deps.db, shopify: deps.sources.shopify, merchant: merchantConfig() }, { presupuestoMs: Math.max(5_000, Math.min(30_000, 250_000 - (Date.now() - processingFrom))) }) as Record<string, unknown>; }
+      catch (caught) { return { error: caught instanceof Error ? caught.message : String(caught) }; }
+    });
     // Proveedor de MHD a sus dos metacampos (supplier-sync.ts). Normalmente no hay nada que hacer: 30 s como mucho.
     await step(deps.db, cycle, "proveedor", async () => syncSuppliers({ db: deps.db, shopify: deps.sources.shopify }, { runId: cycle.read_run_id!, budgetMs: Math.max(5_000, Math.min(30_000, 250_000 - (Date.now() - processingFrom))) }));
     // Importes de servicios de MHD sin variante en Shopify: la web dejaría de ofrecerlos sin avisar.
