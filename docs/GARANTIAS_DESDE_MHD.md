@@ -52,8 +52,8 @@ las cinco (163); +2 y Cover (5). Va por familia.
    del pedido; MHD no da de alta contratos.
 2. **SKU = código de MHD** (10040586…), porque va en el pedido a MHD. **Código de barras = EAN de Garantía3**, que es lo
    que se manda a Garantía3. Utils sacará el EAN del producto de Shopify: fuera la tabla `GARANTIA3_EANS`.
-3. **Precios:** los de MHD (`pvp` del bloque). Excepción: la G3PD3ES1000 viene a 45,42 € (error de MHD: tarifa 65–69,9 €)
-   → **69,90 €** hasta que MHD la corrija.
+3. **Precios:** los de la **tarifa que manda MHD** (`Tarifas_16112026_091240.csv`, 2026-11-16), no el `pvp` del bloque
+   `garantia3` de las fichas, que no cuadra con ella. Aplicados el 2026-11-16 (ver registro).
 4. **Se venden las que asigna MHD**, solo a los aparatos que él dice. El resto de productos se limpia. En la ficha de
    cada aparato solo se ofrecen esas; además, cada garantía se puede comprar suelta (David, 2026-11-15; ver «Pendiente»).
 5. **Tramo:** lo sigue calculando **el tema** con el precio de venta actual, ahora con los **tramos oficiales de
@@ -148,8 +148,8 @@ mientras no se haga ese paso.
 Los correos completos, listos para enviar, están en
 [GARANTIAS_PREGUNTAS_MHD_GARANTIA3.md](GARANTIAS_PREGUNTAS_MHD_GARANTIA3.md). Esto es el origen de cada duda.
 
-- **MHD:** bloque en el listado o fecha de modificación; precio de la G3PD3ES1000; título de la G3E121000 («Maximal 250»
-  cuando es la de 1.000); que acepten las garantías en el pedido aunque no tengan existencias.
+- **MHD:** bloque en el listado o fecha de modificación; títulos de las Combi en el bloque `garantia3` (las cuatro dicen «Maximal 250»;
+  el ERP está bien, solo informativo); que acepten las garantías en el pedido aunque no tengan existencias.
 - **Garantía3, la principal:** si un contrato dado de alta **se anula y se abona siempre** cuando el pedido se cancela o
   el cliente desiste (hoy se pide por correo a `info@bcwm.es`; la API no tiene anulación). Si es que sí: **alta inmediata
   en todas** (un solo flujo, fuera la espera de 14 días). Si no: alta inmediata en Cover y Combi y espera en +2 y +3.
@@ -228,7 +228,7 @@ Lo que falta para que funcione:
    - quitar las familias y las reglas por título;
    - dejar de escribir `custom.admite_garantia`;
    - **excluir las 22 garantías**: si las vuelve a procesar, les borra el reglamento y la descripción, y además están
-     las bajas por ausencia y los precios. Hoy no corren riesgo (comprobado el 2026-11-15): ninguna está en
+     las bajas por ausencia y los precios (les pondría el `pvp` del bloque en lugar del de la tarifa). Hoy no corren riesgo (comprobado el 2026-11-15): ninguna está en
      `store_shopify_ids`, que solo rellena el importador al escribir. La 10040607 (Combi 500) sigue en
      `mhd_catalog_products` como presente con stock 1, aunque no se ve desde el 2026-08-19;
    - excluir siempre los reacondicionados al escribir los tipos, como en la carga a mano.
@@ -246,10 +246,8 @@ Lo que falta para que funcione:
      - reglamento de Cover;
      - tramos y significado del importe de Display;
      - tarjetas de Combi y Display;
-     - confirmar la +3 de 1.000 € a 69,90 €.
    - **A MHD:**
-     - precio de la G3PD3ES1000;
-     - título de la G3E121000;
+     - títulos de las Combi en el bloque `garantia3` (solo informativo);
      - aceptar las garantías sin existencias;
      - bloque de garantías en el listado.
 9. **Pendiente tras las respuestas:**
@@ -428,6 +426,13 @@ Lo que ya se ha tocado en la tienda, por fecha. Copias y scripts en `outputs/` (
     script pasan a nuestra copia en Shopify, como ya estaban publicados.
   - Antes se comprobó que los scripts reproducían lo publicado. Copias: `outputs/garantias-textos-antes-sueltas-2026-11-15.json`
     y `outputs/garantias-colecciones-antes-2026-11-15.json`.
+- **2026-11-16: precios de la tarifa de MHD** (David: «aplica los precios», sin copia). MHD manda la tarifa con los
+  precios a publicar (`Tarifas_16112026_091240.csv`). 21 de las 22 cambian; la G3PD3ES1000 ya estaba a 69,90 €.
+  Ahora: +2 34,90 / 41,90 / 54,90 / 73,90 / 113,90; +3 42,90 / 52,90 / 69,90 / 95,90; Cover 37,90 / 62,90 / 87,90 /
+  112,90; Display 24,90 / 35,90 / 46,90 / 57,90 / 79,90; Combi 69,90 / 97,90 / 131,90 / 169,90. Comprobado: las 22
+  cuadran y ninguna descripción lleva precios. La tarifa trae también Casa Nueva para 3 y 4 electrodomésticos
+  (10040624 y 10040625): por ahora no se crean (David). La tarifa confirma la G3PD3ES1000 a 69,90 € y los títulos de
+  las Combi: lo raro solo está en el bloque `garantia3` de las fichas. Se quita esa pregunta del correo a MHD.
 
 ## Qué tiene que saber cada proyecto
 

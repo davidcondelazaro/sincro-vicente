@@ -29,15 +29,14 @@ solo la garantía. Nos quedan estas dudas:
 2. **Aparatos sin ficha.** De los 4.271 aparatos de vuestro Excel `productos_con_garantia.xls`, 93 no tienen ficha en la
    API porque hoy no tienen existencias. ¿Nos podéis mandar el Excel con una columna más con los códigos de garantía de
    cada aparato? Así cubriríamos también esos 93.
-3. **Precio de la G3PD3ES1000** (10040611, +3 años, tope 1.000 €): la tenéis a 45,42 €, igual que la de 250 €
-   (10040613). En la tarifa de Garantía3 va de 65 a 69,90 €. La vendemos a 69,90 € hasta que la corrijáis.
-4. **Título de la G3E121000** (10052433, Combi): el título dice «Maximal 250», pero la referencia y la descripción son
-   de 1.000 €.
-5. **Para vuestra información, tramos:** en unos 400 aparatos (663 parejas aparato–garantía) el tramo asignado no cuadra
+3. **Para vuestra información, títulos de Combi:** en el bloque `garantia3` de las fichas, las cuatro Combi (250, 500,
+   1.000 y 2.000 €) llevan el mismo título, «Garantía3 COMBI - Maximal 250 …». En vuestro ERP el título está bien. No
+   nos afecta.
+4. **Para vuestra información, tramos:** en unos 400 aparatos (663 parejas aparato–garantía) el tramo asignado no cuadra
    con el PVP actual del aparato. Casi todos están en el límite: parece calculado con un precio anterior. En otras 16
    parejas el aparato supera el tramo máximo de esa garantía. Nosotros calculamos el tramo con el precio actual, así que
    no nos afecta, pero os lo comentamos. Si queréis la lista, os la pasamos.
-6. **Reacondicionados:** asignáis +2 y +3 años a 32 reacondicionados (iPhone y portátiles «REAC.»). Garantía3 tiene una
+5. **Reacondicionados:** asignáis +2 y +3 años a 32 reacondicionados (iPhone y portátiles «REAC.»). Garantía3 tiene una
    línea propia para reacondicionados. ¿Es correcto? Nosotros, de momento, no les ofrecemos garantía.
 
 Gracias.
@@ -89,7 +88,7 @@ líneas Cover, Combi y Display de la tarifa WEBSHOP. Antes de automatizar sus al
 9. **Reglamento de 2 años más.** El que tenemos es de 2022 (el de 3 años es de enero de 2026). ¿Hay una versión más
    reciente?
 10. **Tarifa.** La última que tenemos es de octubre de 2023. ¿Nos mandáis la vigente, con los tramos y los PVP
-    recomendados? Vendemos la G3PD3ES1000 (+3 años, tope 1.000 €) a 69,90 €: ¿es correcto?
+    recomendados?
 11. **Línea.** Usamos la tarifa WEBSHOP para la tienda online, también en Cover, Combi y Display. ¿Es la adecuada, o nos
     convendría la «virtual»?
 12. **Reacondicionados.** MHD asigna +2 y +3 años a algunos reacondicionados. ¿Valen para ellos o hay que usar vuestra

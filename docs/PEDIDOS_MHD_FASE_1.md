@@ -304,6 +304,10 @@ enviado».
   no hay correo de factura (no se sabe si el cliente fue avisado).
 - Varias facturas: se envían todas las nuevas en un correo; qué hacer si MHD
   manda rectificativas se verá cuando ocurra (David, 4-11-2026).
+- **Plazo real (David, 17-11-2026):** MHD emite la factura unos 5 días después del
+  «Enviado». No llegará casi nunca en la confirmación de envío: lo normal será el
+  correo de factura, así que hay que encenderlo para que el cliente la reciba. En
+  EV61690 (#62671, enviado el 17-11) aún no había factura.
 
 ### Marcar como enviado en Shopify (10-10-2026, en pruebas)
 
