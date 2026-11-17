@@ -232,8 +232,7 @@ Lo que falta para que funcione:
      dejan por si hiciera falta consultarlas.
 6. **Hecho el 2026-11-15: SKU de las 9 al código de MHD** (ver registro). Las 22 llevan ya el código de MHD, y las 9 la
    línea «Para aparatos de hasta X €» desde el 2026-11-15.
-7. **Limpieza:** borrar la definición de `custom.admite_garantia` con sus valores, en una sola operación (ver registro,
-   2026-11-17).
+7. **Limpieza: hecha el 2026-11-17** (ver registro). Solo queda que Shopify termine de borrar los valores en segundo plano.
 8. **Preguntas a terceros:** los dos correos listos para enviar están en
    [GARANTIAS_PREGUNTAS_MHD_GARANTIA3.md](GARANTIAS_PREGUNTAS_MHD_GARANTIA3.md), con lo que cambia según cada respuesta.
    Resumen:
@@ -451,6 +450,12 @@ Lo que ya se ha tocado en la tienda, por fecha. Copias y scripts en `outputs/` (
   ninguno pierde ni cambia los que ya tenía. Lista con antes y después en `outputs/garantias-tipos-relleno-2026-11-17.json`;
   comprobado después: no queda ninguno. **Puede haber más** fuera del Excel cuya ficha aún no se ha releído: solo los
   encontrará la relectura de fichas.
+- **2026-11-17: borrado `custom.admite_garantia`** (David: «Sí, bórralo»). Antes se comprobó que nada lo usa: el tema
+  publicado (descargado, 387 archivos) ya lee `custom.garantias_tipos`; ni Elvi, ni helpdesk, ni utils lo leen; ninguna
+  colección automática ni filtro lo usa. Solo lo lee el tema sin publicar «Optimizado móvil · pruebas 2026-11-13»: si se
+  publicara tal cual, no ofrecería garantías. Borrada la definición con `deleteAllAssociatedMetafields`; Shopify quita los
+  valores en segundo plano y despacio (22.568 productos lo llevaban; unos 100 por minuto). Borrarlos a la vez por la API
+  da «unexpected error», así que se deja que termine solo.
 
 ## Qué tiene que saber cada proyecto
 
