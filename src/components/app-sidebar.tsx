@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
-type Section = "warrantyContracts" | "home" | "customer" | "customers" | "prestashopOrders" | "catalog" | "priorities" | "icecat" | "supabase" | "mhdImport" | "mhdCatalog" | "prices" | "stock" | "orders" | "productImporter" | "chatbotStats" | "chatbotConversations" | "chatbotImprovements" | "chatbotSupport" | "chatbotErrors" | "chatbotSyncs" | "chatbotDiscounts" | "chatbotSettings" | "chatbotPrivacy" | "stockAlerts" | "priceAlerts" | "quotes" | "redirects" | "warranties" | "productLocks" | "familyRules" | "storeSettings" | "dailyReport";
+type Section = "warrantyContracts" | "home" | "customer" | "customers" | "prestashopOrders" | "catalog" | "priorities" | "icecat" | "supabase" | "mhdImport" | "mhdCatalog" | "prices" | "stock" | "orders" | "productImporter" | "chatbotStats" | "chatbotConversations" | "chatbotImprovements" | "chatbotSupport" | "chatbotErrors" | "chatbotSyncs" | "chatbotDiscounts" | "chatbotSettings" | "chatbotPrivacy" | "stockAlerts" | "priceAlerts" | "quotes" | "redirects" | "warranties" | "productLocks" | "familyRules" | "storeSettings" | "dailyReport" | "googleMerchant";
 type IconName = "home" | "database" | "users" | "catalog" | "price" | "stock" | "sort" | "icecat" | "orders" | "bell" | "tag" | "shield" | "quote" | "spark" | "ticket" | "chart" | "chat" | "support" | "alert" | "sync" | "settings" | "export" | "lock" | "package" | "bag";
 
 type NavEntry = { section: Section; href: string; label: string; icon: IconName };
@@ -20,6 +20,7 @@ const navigation: { label: string | null; entries: NavEntry[] }[] = [
     { section: "familyRules", href: "/reglas-por-familia", label: "Reglas por familia", icon: "sort" },
     { section: "productLocks", href: "/productos-bloqueados", label: "Productos bloqueados", icon: "lock" },
     { section: "redirects", href: "/tienda/redirecciones", label: "Redirecciones", icon: "export" },
+    { section: "googleMerchant", href: "/google-merchant", label: "Google Merchant", icon: "tag" },
     { section: "warranties", href: "/tienda/garantias", label: "Productos con garantía", icon: "shield" },
     // Los contratos se ven y se gestionan en el helpdesk (Contratos Garantía3, ficha y ticket); aquí queda lo técnico:
     // la conexión, los ajustes y la vuelta (helpdesk › docs/integracion-elvi.md § 3.8). La página sigue enseñando los contratos.
@@ -63,15 +64,26 @@ export function AppSidebar({ active, userEmail }: { active: Section; userEmail: 
   const collapsed = JSON.parse(useSyncExternalStore(subscribeCollapsed, readCollapsed, () => "[]")) as string[];
   const toggle = (label: string) => saveCollapsed(collapsed.includes(label) ? collapsed.filter((item) => item !== label) : [...collapsed, label]);
 
+  // En móvil y tableta (<1024 px) el menú es un panel que entra desde la izquierda, como en el helpdesk: se abre con ☰
+  // y se cierra al elegir un apartado, al pulsar fuera o con Escape. Mientras está abierto, la página no se desplaza.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", onKey);
+    return () => { document.body.style.overflow = overflow; document.removeEventListener("keydown", onKey); };
+  }, [open]);
+
   return <>
     <title>{pageTitle(active)}</title>
-    <header className="fixed inset-x-0 top-0 z-30 flex items-center justify-between border-b border-zinc-200 bg-white px-5 py-3 shadow-sm lg:hidden">
-      <Link href="/" className="flex items-center gap-2" aria-label="Ir al inicio"><Image src="/electronica-vicente.svg" alt="Electrónica Vicente" width={2124} height={462} priority className="h-auto w-36" /><AppLabels className="hidden sm:flex" /></Link>
-      <button type="button" onClick={() => setOpen(true)} className="grid h-10 w-10 cursor-pointer place-items-center rounded-lg border border-zinc-300 text-zinc-700 hover:bg-zinc-50" aria-label="Abrir menú"><svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg></button>
+    <header className="fixed inset-x-0 top-0 z-30 flex items-center gap-3 border-b border-zinc-200 bg-white px-4 py-3 shadow-sm lg:hidden">
+      <button type="button" onClick={() => setOpen(true)} className="grid h-10 w-10 shrink-0 cursor-pointer place-items-center rounded-lg text-zinc-700 hover:bg-zinc-100" aria-label="Abrir menú" aria-expanded={open} aria-controls="menu-lateral"><svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg></button>
+      <Link href="/" className="flex min-w-0 items-center gap-2" aria-label="Ir al inicio"><Image src="/electronica-vicente.svg" alt="Electrónica Vicente" width={2124} height={462} priority className="h-auto w-36" /><AppLabels className="hidden sm:flex" /></Link>
     </header>
     <div className="hidden lg:block" aria-hidden="true" />
-    {open && <button type="button" onClick={close} className="fixed inset-0 z-40 bg-zinc-950/30 lg:hidden" aria-label="Cerrar menú" />}
-    <aside className={`fixed inset-y-0 right-0 z-50 flex w-72 min-w-0 flex-col overflow-hidden border-l border-zinc-200 bg-white px-5 pt-5 shadow-xl transition-transform lg:right-auto lg:left-0 lg:w-[17.5rem] lg:border-b-0 lg:border-l-0 lg:border-r lg:shadow-none ${open ? "translate-x-0" : "translate-x-full lg:translate-x-0"}`}>
+    <div onClick={close} className={`fixed inset-0 z-40 bg-zinc-950/30 transition-opacity duration-200 lg:hidden ${open ? "opacity-100" : "pointer-events-none opacity-0"}`} aria-hidden="true" />
+    <aside id="menu-lateral" className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] min-w-0 flex-col overflow-hidden border-r border-zinc-200 bg-white px-5 pt-5 transition-transform duration-200 ease-out lg:w-[17.5rem] lg:max-w-none lg:shadow-none lg:transition-none ${open ? "translate-x-0 shadow-xl" : "-translate-x-full lg:translate-x-0"}`}>
       <div className="hidden min-w-0 px-3 lg:block"><Link href="/" className="block" aria-label="Ir al inicio"><Image src="/electronica-vicente.svg" alt="Electrónica Vicente" width={2124} height={462} priority className="h-auto w-full max-w-[13rem]" /><AppLabels className="mt-3 flex" /></Link></div>
       <div className="flex items-center justify-between lg:hidden"><p className="text-sm font-semibold text-zinc-900">MENÚ</p><button type="button" onClick={close} className="grid h-11 w-11 place-items-center rounded-lg text-3xl leading-none text-zinc-600 hover:bg-zinc-100" aria-label="Cerrar menú">×</button></div>
       <nav className="-mx-1 mt-5 flex min-h-0 min-w-0 flex-1 flex-col gap-1 overflow-y-auto px-1 lg:mt-6" aria-label="Módulos de la aplicación">{navigation.map((group) => {

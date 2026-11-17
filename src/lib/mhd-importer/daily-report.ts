@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { EMAIL_PREFIX, escapeHtml } from "@/lib/email";
 import { extraSections, type Cell, type Kpi, type Section, type Tone } from "./daily-report-extra";
 import type { CycleStep } from "./sync-cycle";
+import { seccionResumen as merchantSection } from "@/lib/merchant/estado";
 
 // Resumen de las sincronizaciones y el importador (David, 2026-10-26: «resumen diario a las 9:00»; 2026-10-29: cada hora
 // durante unos días, hasta que todo esté estable, y «mucho más detalle»). Cuenta lo de las últimas `hours` horas (24 en
@@ -181,6 +182,9 @@ export async function buildDailyReport(db: SupabaseClient, now = new Date(), hou
   const [processes, ...extra] = await extraSections(db, now, since, period, cycles);
   sections.unshift(processes);
   sections.push(...extra);
+  // Google Merchant (src/lib/merchant, 2026-11-17): portes en Merchant Center, cola y avisos de Google.
+  const merchant = await merchantSection(db, since).catch((caught) => ({ id: "google-merchant", title: "Google Merchant", warn: true, lines: [`No se pudo leer: ${caught instanceof Error ? caught.message : String(caught)}`] }));
+  if (merchant) sections.push(merchant as Section);
 
   const sent = alertsResult.data ?? [];
   if (sent.length) sections.push({ id: "avisos", title: "Avisos enviados", warn: true, kpis: [{ id: "avisos", label: "Avisos enviados", value: sent.length, sub: "Fallos graves y frenos al momento", tone: "warn" }], lines: sent.map((item) => {
