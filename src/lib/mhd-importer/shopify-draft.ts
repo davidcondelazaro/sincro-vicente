@@ -206,6 +206,8 @@ async function releaseProductRedirects(deps: { db: SupabaseClient; shopify: Shop
   }
   const { error } = await deps.db.from("store_redirects").update({ status: "descartada", note: `El producto vuelve a estar en la tienda (${new Date().toISOString().slice(0, 10)}): su URL ya no se redirige.`, updated_at: new Date().toISOString() }).eq("origin", path);
   if (error) throw new Error(`No se pudo actualizar la base de redirecciones: ${error.message}`);
+  // Para el resumen diario (2026-11-17): cada redirección quitada porque el producto vuelve.
+  if (own.length) await deps.db.from("mhd_sync_events").insert({ sync: "redirecciones", kind: "quitada", detail: { origen: path, motivo: "el producto vuelve a la tienda", cuantas: own.length } }).then(() => undefined, () => undefined);
   return own.length;
 }
 

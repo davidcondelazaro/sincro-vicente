@@ -124,6 +124,9 @@ export async function buildDailyReport(db: SupabaseClient, now = new Date(), hou
 
     const byStatus = report.importer.by_status; const processed = Object.values(byStatus).reduce((total, value) => total + value, 0);
     const altasQueued = (altasResult.data ?? []).length;
+    // Gasto de IA completo (mhd_ai_cost, 2026-11-17): procesados, perfiles de familia y jueces, con el total acumulado.
+    const { data: aiData } = await db.rpc("mhd_ai_cost", { p_since: since });
+    const ai = (aiData ?? { ...report.ai_cost, total: report.ai_cost.month }) as { period: number; today: number; month: number; total: number; since?: string; by_origin?: Record<string, number> };
     // El tope de vídeos de Shopify no es un fallo del producto (desde el 17-11 la tanda se pausa sola): fuera de los errores.
     const capped = report.importer.reasons.filter((item) => item.status === "error" && VIDEO_CAP.test(item.reason)).reduce((total, item) => total + item.n, 0);
     const realErrors = Math.max(0, (byStatus.error ?? 0) - capped);
@@ -132,13 +135,13 @@ export async function buildDailyReport(db: SupabaseClient, now = new Date(), hou
       kpis: [
         { id: "altas-mhd", label: "Altas nuevas de MHD", value: altasQueued, sub: `${integer.format(processed)} procesados · ${integer.format(byStatus.descartado ?? 0)} descartados`, tone: "neutral" },
         { id: "errores-importador", label: "Errores del importador", value: realErrors, sub: [realErrors ? report.importer.reasons.find((item) => item.status === "error" && !VIDEO_CAP.test(item.reason))?.reason.slice(0, 70) : "Sin errores", capped ? `${integer.format(capped)} aplazados por el tope de vídeos` : "", report.importer.open_jobs.some((job) => job.paused_reason) ? "hay tandas en pausa" : ""].filter(Boolean).join(" · "), tone: realErrors ? "warn" : "ok" },
-        { id: "gasto-ia", label: "Gasto de IA", value: Math.round(report.ai_cost.period * 100) / 100, text: dollars.format(report.ai_cost.period), sub: `${dollars.format(report.ai_cost.month)} este mes`, tone: "neutral" },
+        { id: "gasto-ia", label: "Gasto de IA", value: Math.round(ai.period * 100) / 100, text: dollars.format(ai.period), sub: `${dollars.format(ai.month)} este mes · ${dollars.format(ai.total)} en total`, tone: "neutral" },
       ],
       lines: [
         ...(() => { const altas = altasResult.data ?? []; const photos = altas.filter((row) => (row.detail as { motivo?: string }).motivo === "fotos nuevas").length; return altas.length ? [`Altas encoladas solas en ${period}: ${integer.format(altas.length)} (${integer.format(altas.length - photos)} nuevas de MHD${photos ? ` y ${integer.format(photos)} que antes no tenían fotos` : ""}).`] : [`Ninguna alta nueva de MHD en ${period}.`]; })(),
         processed ? `${integer.format(processed)} productos en ${period}: ${integer.format(byStatus.ok ?? 0)} bien, ${integer.format(byStatus.descartado ?? 0)} descartados y ${integer.format(byStatus.error ?? 0)} con error.` : `Ningún producto procesado en ${period}.`,
         ...report.importer.open_jobs.map((job) => `Trabajo abierto «${job.title}»: ${integer.format(job.done)} de ${integer.format(job.total)}${job.errors ? `, ${job.errors} errores` : ""}${job.paused_reason ? ` · PAUSADO: ${job.paused_reason}` : ""}.`),
-        `Gasto de IA: ${dollars.format(report.ai_cost.period)} en ${period}, ${dollars.format(report.ai_cost.today)} hoy y ${dollars.format(report.ai_cost.month)} este mes.`,
+        `Gasto de IA: ${dollars.format(ai.period)} en ${period}, ${dollars.format(ai.today)} hoy, ${dollars.format(ai.month)} este mes y ${dollars.format(ai.total)} en total${ai.since ? ` desde el ${new Date(ai.since).toLocaleDateString("es-ES", { timeZone: "Europe/Madrid" })}` : ""}${ai.by_origin ? ` (${Object.entries(ai.by_origin).map(([origin, usd]) => `${origin} ${dollars.format(Number(usd))}`).join(", ")})` : ""}. Solo cuenta lo que registran el importador, los perfiles de familia y los jueces; el chatbot y otros usos van aparte.`,
       ],
       table: report.importer.reasons.length ? { head: ["Resultado", "Motivo", "Productos", "Ejemplos"], rows: report.importer.reasons.map((item) => [item.status, item.reason, integer.format(item.n), item.codigos.join(", ")]) } : undefined,
       link: { text: "Ver los procesos en utils", href: `${UTILS}/importador-productos` },

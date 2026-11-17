@@ -185,6 +185,35 @@ export async function extraSections(db: SupabaseClient, now: Date, since: string
     table: tariffs.missing?.length ? { head: ["Servicio", "SKU que falta", "Productos"], rows: tariffs.missing.slice(0, 20).map((item) => [item.service, item.sku, integer.format(item.products)]) } : undefined,
   });
 
+  // Redirecciones (2026-11-17): las que crean o quitan los procesos en Shopify (colecciones vacías y productos que
+  // vuelven), las propuestas de la base sin revisar y si las colecciones siguen en simulación.
+  const [redirectEvents, collectionEvents, proposed, loaded, applyCollections] = await Promise.all([
+    db.from("mhd_sync_events").select("kind,detail").eq("sync", "redirecciones").gte("created_at", since).limit(2000),
+    db.from("mhd_sync_events").select("kind,detail").eq("sync", "colecciones").in("kind", ["despublicada", "republicada"]).gte("created_at", since).limit(2000),
+    db.from("store_redirects").select("id", { count: "exact", head: true }).eq("status", "propuesta"),
+    db.from("store_redirects").select("id", { count: "exact", head: true }).eq("status", "cargada"),
+    db.from("store_settings").select("value").eq("key", "empty_collections_apply").maybeSingle(),
+  ]);
+  type RedirectEvent = { kind: string; detail: { origen?: string; destino?: string | null; handle?: string; cuantas?: number } };
+  const fromCollections = (collectionEvents.data ?? []) as RedirectEvent[];
+  const removedProducts = ((redirectEvents.data ?? []) as RedirectEvent[]).filter((item) => item.kind === "quitada");
+  const createdRedirects = fromCollections.filter((item) => item.kind === "despublicada").length;
+  const removedRedirects = fromCollections.filter((item) => item.kind === "republicada").length + sum(removedProducts, (item) => item.detail.cuantas ?? 1);
+  const pendingReview = proposed.count ?? 0;
+  const simulating = applyCollections.data?.value !== true;
+  sections.push({
+    id: "redirecciones", title: "Redirecciones", warn: pendingReview > 0 || simulating,
+    kpis: [{ id: "redirecciones", label: "Redirecciones", value: createdRedirects + removedRedirects, sub: [`${integer.format(createdRedirects)} creadas · ${integer.format(removedRedirects)} quitadas`, pendingReview ? `${pendingReview} por revisar` : "", simulating ? "colecciones en simulación" : ""].filter(Boolean).join(" · "), tone: pendingReview || simulating ? "warn" : "neutral" }],
+    lines: [
+      `En ${period}: ${integer.format(createdRedirects)} creadas en Shopify (colecciones que se quedan sin productos) y ${integer.format(removedRedirects)} quitadas (colecciones que los recuperan y productos que vuelven).`,
+      `Base de redirecciones: ${integer.format(loaded.count ?? 0)} cargadas en Shopify${pendingReview ? `; ${integer.format(pendingReview)} propuestas sin revisar` : ""}.`,
+      ...(simulating ? ["Colecciones vacías en simulación: todavía no crean ni quitan redirecciones, solo dicen lo que harían (ajuste empty_collections_apply)."] : []),
+      "Bajas definitivas (archivar y redirigir productos): todavía no existen.",
+    ],
+    table: removedProducts.length ? { head: ["Quitada porque el producto vuelve", "Redirecciones"], rows: removedProducts.slice(0, 20).map((item) => [item.detail.origen ?? "—", integer.format(item.detail.cuantas ?? 1)]) } : undefined,
+    link: { text: "Ver las redirecciones en utils", href: `${UTILS}/tienda/redirecciones` },
+  });
+
   // Marcas, familias y subfamilias nuevas en MHD, y lo que no puede entrar en la tienda.
   const news = novelties.data as Novelties | null;
   if (news) {
