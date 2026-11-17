@@ -445,6 +445,12 @@ Lo que ya se ha tocado en la tienda, por fecha. Copias y scripts en `outputs/` (
   - Las 22 garantías, bloqueadas siempre en el importador (`locks.ts`): ni se procesan ni se suben.
   - Fuera `warranty.ts`, la pantalla «Productos con garantía» (`/tienda/garantias`) y su API.
   - Pruebas en `tests/warranty-types.test.mjs`.
+- **2026-11-17: tipos puestos en 95 productos activos** (David: «dale»). Tenían en su ficha de MHD (caché del
+  importador) garantías que la tienda no ofrecía: ninguno estaba en el Excel de MHD del 14-11 (28 subidos desde el 15-11,
+  59 entre el 12 y el 14-11 y 8 anteriores). Se cruzaron las 411 fichas con el bloque: 368 en la tienda, 95 sin tipos,
+  ninguno pierde ni cambia los que ya tenía. Lista con antes y después en `outputs/garantias-tipos-relleno-2026-11-17.json`;
+  comprobado después: no queda ninguno. **Puede haber más** fuera del Excel cuya ficha aún no se ha releído: solo los
+  encontrará la relectura de fichas.
 
 ## Qué tiene que saber cada proyecto
 
