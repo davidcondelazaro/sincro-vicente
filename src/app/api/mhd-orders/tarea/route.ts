@@ -7,7 +7,8 @@ import { buildOrdersReport } from "@/lib/mhd-order-report";
 
 // Tareas programadas de pedidos (docs/PEDIDOS_MHD_FASE_1.md › Automatización de pedidos). Las llama pg_cron sin sesión
 // pero con la cabecera `x-mhd-import-token`: ?tipo=pedidos (cada 15 min), estados (cada 30 min) y resumen (cada hora;
-// solo sale a la hora elegida en Configuración, una vez al día). `?simulacion=1` con resumen lo devuelve sin enviarlo.
+// solo sale a la hora elegida en Configuración, una vez al día). `?simulacion=1` con resumen lo devuelve sin enviarlo y
+// `?prueba=1` lo envía ya, marcado como prueba.
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,6 +27,11 @@ export async function POST(request: Request) {
       const now = new Date();
       const report = await buildOrdersReport(db, now);
       if (params.get("simulacion") === "1") return Response.json({ ok: true, dryRun: true, subject: report.subject, text: report.text });
+      // ?prueba=1: sale ya, a los mismos destinatarios, marcado como prueba (no cuenta como el del día)
+      if (params.get("prueba") === "1") {
+        const result = await sendEmail({ to: await settingRecipients(db, "pedidos_informe_emails"), subject: report.subject.replace("Utils] ", "Utils] [PRUEBA] "), html: report.html, text: report.text, idempotencyKey: `pedidos-resumen-prueba-${now.getTime()}` });
+        return Response.json({ ...result, subject: report.subject }, { status: result.ok ? 200 : 502 });
+      }
       const settings = await orderSettings(db);
       if (horaEnMadrid(now) !== settings.informeHora) return Response.json({ ok: true, skipped: `El resumen sale a las ${settings.informeHora}:00.` });
       const day = now.toLocaleString("sv-SE", { timeZone: "Europe/Madrid" }).slice(0, 10);
