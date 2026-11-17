@@ -4,6 +4,7 @@
   "functions": {
     "src/app/api/importador-productos/trabajos/trabajador/route.ts": { "memory": 3009, "maxDuration": 300 },
     "src/app/api/garantia3/tarea/route.ts": { "maxDuration": 280 },
-    "src/app/api/garantia3/route.ts": { "maxDuration": 280 }
+    "src/app/api/garantia3/route.ts": { "maxDuration": 280 },
+    "src/app/api/mhd-orders/tarea/route.ts": { "maxDuration": 280 }
   }
 }

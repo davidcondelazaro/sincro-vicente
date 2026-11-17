@@ -77,6 +77,22 @@ export default function SettingsPage() {
           <Emails label="Destinatarios del resumen" value={settings.report_emails?.value} onSave={(list) => save("report_emails", list, "destinatarios del resumen")} />
           {stamp("report_emails")}
         </Section>
+        <Section title="Pedidos MHD" text="Cada 15 minutos se traen los pedidos de Shopify (y se exportan los listos, si está encendido); cada 30 se leen los estados de MHD: facturas, cancelaciones y envíos. Lo que se enciende solo actúa a partir de ese momento.">
+          <Toggle settings={settings} name="pedidos_exportar_auto_activo" on="Exportar a MHD automáticamente" off="Exportar a MHD: solo con el botón" save={save} cutoff="pedidos_exportar_auto_desde" />
+          <NumberSetting label="Espera desde el pago antes de exportar (en ese rato es cuando más se cancela o corrige)" suffix="minutos" value={Number(settings.pedidos_exportar_margen_minutos?.value ?? 30)} step={1} onSave={(value) => save("pedidos_exportar_margen_minutos", value, "espera antes de exportar")} />
+          {stamp("pedidos_exportar_margen_minutos")}
+          <Toggle settings={settings} name="pedidos_envio_auto_activo" on="Marcar en Shopify los pedidos que MHD da por enviados (el cliente recibe el seguimiento)" off="Marcar envíos: solo con el botón" save={save} />
+          <Toggle settings={settings} name="cancelar_en_shopify_activo" on="Cancelar en Shopify lo que MHD cancela (sin reembolso, avisando al cliente)" off="Cancelaciones de MHD: no se trasladan" save={save} cutoff="cancelar_en_shopify_desde" />
+          <Toggle settings={settings} name="factura_correo_activo" on="Mandar al cliente la factura de MHD cuando llegue" off="Correo de factura apagado" save={save} cutoff="factura_correo_desde" />
+          <NumberSetting label="Avisar de pedidos pagados sin exportar después de (lunes a viernes, de 9 a 20 h)" suffix="horas" value={Number(settings.pedidos_aviso_sin_exportar_horas?.value ?? 2)} step={0.5} onSave={(value) => save("pedidos_aviso_sin_exportar_horas", value, "aviso de pedidos sin exportar")} />
+          {stamp("pedidos_aviso_sin_exportar_horas")}
+          <Emails label="Destinatarios de los avisos de pedidos (al momento)" value={settings.pedidos_avisos_emails?.value} onSave={(list) => save("pedidos_avisos_emails", list, "destinatarios de los avisos de pedidos")} />
+          {stamp("pedidos_avisos_emails")}
+          <NumberSetting label="Hora del resumen diario de pedidos (hora de Madrid)" suffix=":00 h" value={Number(settings.pedidos_informe_hora?.value ?? 9)} step={1} onSave={(value) => save("pedidos_informe_hora", value, "hora del resumen de pedidos")} />
+          {stamp("pedidos_informe_hora")}
+          <Emails label="Destinatarios del resumen diario de pedidos" value={settings.pedidos_informe_emails?.value} onSave={(list) => save("pedidos_informe_emails", list, "destinatarios del resumen de pedidos")} />
+          {stamp("pedidos_informe_emails")}
+        </Section>
         <Section title="Avisos graves" text="Al momento, como mucho uno por motivo cada hora: sin conexión con un servicio, lectura de MHD fallida, precio y stock parados o con errores, importador parado por el freno, vuelta atascada.">
           <Emails label="Destinatarios de los avisos" value={settings.alert_emails?.value} onSave={(list) => save("alert_emails", list, "destinatarios de los avisos")} />
           {stamp("alert_emails")}
@@ -106,4 +122,14 @@ function NumberSetting({ label, suffix, value, step, onSave }: { label: string; 
     <label className="flex-1 text-sm font-medium text-zinc-700">{label}<span className="mt-1 flex items-center gap-2"><input inputMode="decimal" value={text} onChange={(event) => setText(event.target.value)} step={step} className="block h-10 w-28 rounded-lg border border-zinc-300 px-3" /><span className="text-zinc-500">{suffix}</span></span></label>
     <button type="submit" disabled={!Number.isFinite(number) || number === value} className="h-10 rounded-lg bg-emerald-700 px-4 text-sm font-medium text-white disabled:opacity-40">Guardar</button>
   </form>;
+}
+
+function Toggle({ settings, name, on, off, save, cutoff }: { settings: Record<string, Setting>; name: string; on: string; off: string; save: (key: string, value: unknown, label: string) => Promise<void>; cutoff?: string }) {
+  const active = settings[name]?.value === true;
+  const since = cutoff && typeof settings[cutoff]?.value === "string" ? when(String(settings[cutoff].value)) : null;
+  return <div className="mt-4">
+    <label className="flex items-center gap-3 text-sm font-medium text-zinc-800"><input type="checkbox" className="h-5 w-5 accent-emerald-700" checked={active} onChange={(event) => void save(name, event.target.checked, event.target.checked ? on : off)} />{active ? on : off}</label>
+    {active && since && <p className="mt-1 ml-8 text-xs text-zinc-500">Desde el {since}.</p>}
+    {settings[name]?.updated_by && <p className="mt-1 ml-8 text-xs text-zinc-500">Cambiado por {settings[name].updated_by} el {when(settings[name].updated_at)}.</p>}
+  </div>;
 }

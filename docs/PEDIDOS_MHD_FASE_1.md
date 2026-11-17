@@ -433,7 +433,60 @@ Pedidos MHD. Encendido el 14-11-2026 con corte 2026-11-14T16:04:05Z.
 
 La cancelación en Shopify no se puede deshacer.
 
-### Automatización de pedidos: decisiones (31-10-2026, sin implementar)
+### Automatización de pedidos (17-11-2026, implementada)
+
+Decisiones de David del 17-11 sobre las del 31-10 (más abajo). Código en
+`src/lib/mhd-order-auto.ts` (tareas), `mhd-order-auto-rules.ts` (reglas probadas en
+`tests/mhd-order-auto.test.mjs`), `mhd-order-fulfill.ts` (envío, compartido con el botón),
+`mhd-order-events.ts` (registro) y `mhd-order-report.ts` (resumen). Ruta
+`/api/mhd-orders/tarea?tipo=…`, llamada por pg_cron con el token del importador.
+
+| Tarea (pg_cron) | Cuándo | Qué hace |
+|---|---|---|
+| `sincro-vicente-pedidos-pedidos` | cada 15 min | Trae de Shopify los pagados sin enviar; si está encendido, exporta los listos; avisa de los pagados sin exportar |
+| `sincro-vicente-pedidos-estados` | cada 30 min (:07 y :37) | Lee en MHD todos los pedidos exportados: estados, facturas (a Shopify y correo), cancelaciones; si está encendido, marca los enviados |
+| `sincro-vicente-pedidos-resumen` | cada hora | Solo sale a la hora elegida, una vez al día |
+
+La tarea diaria de Garantía3 sigue leyendo pedidos y estados a las 9:00 UTC (lo necesita).
+
+**Interruptores** (utils › Configuración › Pedidos MHD, `store_settings`):
+- `pedidos_exportar_auto_activo` (apagado) y `pedidos_exportar_auto_desde` (corte, se pone
+  al encender): solo pedidos «listos», creados después del corte, con
+  `pedidos_exportar_margen_minutos` (30) desde el pago, como mucho 10 por pasada. Usa la
+  misma exportación que el botón (relee Shopify y busca en MHD antes de enviar).
+- `pedidos_envio_auto_activo` (apagado): marca en Shopify, avisando al cliente, los que
+  MHD da por Enviado, En tránsito o Finalizado con **un** seguimiento. Sin seguimiento o
+  con dos o más no marca nada y avisa (regla provisional del 31-10). Las recogidas en
+  tienda no se tocan. Cada pedido se intenta una vez: un fallo avisa y se resuelve a mano.
+  Si ya estaba marcado en el admin de Shopify, se anota sin avisar.
+- `cancelar_en_shopify_activo` (encendido desde el 14-11) y `factura_correo_activo`
+  (apagado; corte `factura_correo_desde` = 14-11-2026 para que EV61690 la reciba).
+- `pedidos_aviso_sin_exportar_horas` (2): aviso de pagados sin exportar, listos y
+  bloqueados con su motivo, de lunes a viernes de 9 a 20 h (Madrid). Una lista igual se
+  repite como mucho una vez al día; una distinta avisa al momento.
+- `pedidos_informe_hora` (9, Madrid) y `pedidos_informe_emails`: resumen diario.
+- `pedidos_avisos_emails`: destinatarios de los avisos de pedidos.
+
+**Avisos al momento** (`sendAlert`, a `pedidos_avisos_emails`): Shopify sin responder al
+traer pedidos; exportación automática fallida (por pedido y motivo); envío sin marcar por
+falta de seguimiento o por varios; envío fallido en Shopify; errores al leer estados
+(MHD sin responder, factura o cancelación fallidas, correo de factura), en un aviso por
+lista, como mucho uno al día si se repite igual; pagados sin exportar.
+
+**Registro** (`mhd_sync_events`, sync `pedidos`): traídos, exportado, exportación fallida,
+cambio de estado, enviado, envío fallido o a revisar, factura a Shopify, correos de
+factura, cancelado en Shopify y errores. Lo apuntan las tareas y los botones.
+
+**Resumen diario de pedidos:** últimas 24 h (traídos, exportados, cambios de estado,
+enviados, facturas, cancelados, errores y avisos) y lo pendiente ahora (pagados sin
+exportar, en MHD sin enviar, enviados sin marcar en Shopify, esperando factura).
+
+**Pendiente (David, 17-11):** se sigue preguntando a MHD por **todos** los pedidos
+exportados, sin exclusiones, hasta saber si MHD parte pedidos en varios envíos y
+facturas. Propuesta para cuando se sepa: dejar de preguntar por los cancelados ya
+tratados, por los enviados con factura ya entregada y por los de más de 60 días.
+
+### Automatización de pedidos: decisiones (31-10-2026)
 
 Al salir a producción, David exporta a mano para ver la salida y los errores. Los
 procesos se preparan apagados, cada uno con su interruptor.

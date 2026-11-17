@@ -12,8 +12,9 @@ export type SendResult = { ok: true; id: string } | { ok: false; skipped?: boole
 
 export const alertRecipients = () => (process.env.ALERT_EMAILS || DEFAULT_TO).split(",").map((item) => item.trim()).filter(Boolean);
 
-// Destinatarios guardados en la configuración («alert_emails» o «report_emails»).
-export async function settingRecipients(db: { from: (table: string) => any }, key: "alert_emails" | "report_emails") { // eslint-disable-line @typescript-eslint/no-explicit-any
+// Destinatarios guardados en la configuración («alert_emails», «report_emails» y los de pedidos).
+export type RecipientsKey = "alert_emails" | "report_emails" | "pedidos_avisos_emails" | "pedidos_informe_emails";
+export async function settingRecipients(db: { from: (table: string) => any }, key: RecipientsKey) { // eslint-disable-line @typescript-eslint/no-explicit-any
   const { data } = await db.from("store_settings").select("value").eq("key", key).maybeSingle();
   const list = Array.isArray(data?.value) ? (data.value as unknown[]).map(String).map((item) => item.trim()).filter(Boolean) : [];
   return list.length ? list : alertRecipients();

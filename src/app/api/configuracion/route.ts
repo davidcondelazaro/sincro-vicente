@@ -19,7 +19,19 @@ const VALIDATE: Record<string, (value: unknown) => string | null> = {
   delivery_changes_alert: (value) => (typeof value === "boolean" ? null : "Valor no válido."),
   supplier_switch_max: (value) => (Number.isInteger(value) && Number(value) >= 1 && Number(value) <= 100000 ? null : "Pon un número entre 1 y 100.000."),
   absence_brake_pct: (value) => (typeof value === "number" && value >= 0.5 && value <= 50 ? null : "Pon un porcentaje entre 0,5 y 50."),
+  // Pedidos MHD (17-11-2026, docs/PEDIDOS_MHD_FASE_1.md › Automatización de pedidos)
+  pedidos_exportar_auto_activo: (value) => (typeof value === "boolean" ? null : "Valor no válido."),
+  pedidos_exportar_margen_minutos: (value) => (Number.isInteger(value) && Number(value) >= 0 && Number(value) <= 1440 ? null : "Pon entre 0 y 1.440 minutos."),
+  pedidos_envio_auto_activo: (value) => (typeof value === "boolean" ? null : "Valor no válido."),
+  cancelar_en_shopify_activo: (value) => (typeof value === "boolean" ? null : "Valor no válido."),
+  factura_correo_activo: (value) => (typeof value === "boolean" ? null : "Valor no válido."),
+  pedidos_aviso_sin_exportar_horas: (value) => (typeof value === "number" && value >= 0.5 && value <= 72 ? null : "Pon entre 0,5 y 72 horas."),
+  pedidos_informe_hora: (value) => (Number.isInteger(value) && Number(value) >= 0 && Number(value) <= 23 ? null : "Pon una hora entre 0 y 23."),
+  pedidos_informe_emails: (value) => (Array.isArray(value) && value.length && value.every((item) => typeof item === "string" && EMAIL.test(item)) ? null : "Pon al menos un correo válido."),
+  pedidos_avisos_emails: (value) => (Array.isArray(value) && value.length && value.every((item) => typeof item === "string" && EMAIL.test(item)) ? null : "Pon al menos un correo válido."),
 };
+// Al encender estos interruptores sin fecha de corte, el corte es ese momento: no actúan sobre lo anterior
+const CUTOFF: Record<string, string> = { pedidos_exportar_auto_activo: "pedidos_exportar_auto_desde", cancelar_en_shopify_activo: "cancelar_en_shopify_desde", factura_correo_activo: "factura_correo_desde" };
 
 async function session() {
   const db = await createClient();
@@ -45,5 +57,10 @@ export async function POST(request: Request) {
   if (problem) return Response.json({ error: problem }, { status: 400 });
   const { error } = await auth.db.from("store_settings").update({ value: body.value, updated_by: auth.email, updated_at: new Date().toISOString() }).eq("key", body.key!);
   if (error) return Response.json({ error: error.message }, { status: 500 });
+  const cutoff = CUTOFF[body.key!];
+  if (cutoff && body.value === true) {
+    const { data: current } = await auth.db.from("store_settings").select("value").eq("key", cutoff).maybeSingle();
+    if (typeof current?.value !== "string") await auth.db.from("store_settings").update({ value: new Date().toISOString(), updated_by: auth.email, updated_at: new Date().toISOString() }).eq("key", cutoff);
+  }
   return Response.json({ ok: true });
 }

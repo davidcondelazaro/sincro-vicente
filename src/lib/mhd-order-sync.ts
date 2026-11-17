@@ -4,6 +4,7 @@ import { sameInvoices, sendPendingInvoiceEmails, toShopifyInvoices, writeInvoice
 import { mhdApiUrl, mhdConfigFromEnv, mhdFetch } from "@/lib/mhd-importer/sources";
 import { invoicesFrom, trackingFrom, type MhdOrderData } from "@/lib/mhd-order-status";
 import { debeCancelarEnShopify, otrosVigentes, type MhdFoundOrder } from "@/lib/mhd-order-reconcile";
+import { logOrderEvent } from "@/lib/mhd-order-events";
 
 // Lectura de pedidos de Shopify y de estados de MHD. La usan los botones de Pedidos MHD (con la sesión) y la tarea
 // diaria de Garantía3 (docs/GARANTIA3.md), para que haya una sola forma de traerlos.
@@ -167,7 +168,7 @@ export async function syncShopifyOrders(db: SupabaseClient, ownerId: string, pro
 export async function refreshMhdStatuses(db: SupabaseClient) {
   const { data: exports, error: exportsError } = await db
     .from("mhd_order_exports")
-    .select("id,mhd_order_id,mhd_reference_web,mhd_status,mhd_status_payload,order:shopify_mhd_orders(shopify_order_id,cancelled_at)")
+    .select("id,mhd_order_id,mhd_reference_web,mhd_status,mhd_status_payload,order:shopify_mhd_orders(shopify_order_id,shopify_order_name,cancelled_at)")
     .eq("status", "exported")
     .not("mhd_order_id", "is", null);
   if (exportsError) throw new Error("No se pudieron cargar los pedidos exportados.");
@@ -190,7 +191,8 @@ export async function refreshMhdStatuses(db: SupabaseClient) {
       const previous = (item.mhd_status_payload ?? {}) as { facturas_en_shopify?: unknown; cancelacion_shopify?: unknown };
       let invoicesInShopify = previous.facturas_en_shopify ?? null;
       const shopifyInvoices = toShopifyInvoices(invoices);
-      const shopifyOrder = item.order as unknown as { shopify_order_id: string; cancelled_at: string | null } | null;
+      const shopifyOrder = item.order as unknown as { shopify_order_id: string; shopify_order_name: string; cancelled_at: string | null } | null;
+      const orderName = shopifyOrder?.shopify_order_name ?? null;
       const shopifyOrderId = shopifyOrder?.shopify_order_id;
       let cancellation = previous.cancelacion_shopify ?? null;
       const cancelledAtMhd = received.filter((entry) => /cancel/i.test(entry.status)).map((entry) => entry.occurred_at).filter(Boolean).sort().at(-1) ?? null;
@@ -198,7 +200,7 @@ export async function refreshMhdStatuses(db: SupabaseClient) {
         const others = await otherActiveInMhd(item.mhd_reference_web, item.mhd_order_id);
         if (!others.length) {
           cancellation = await cancelInShopify(shopifyOrderId, item.mhd_order_id);
-          if ((cancellation as { ok: boolean }).ok) cancelledCount += 1;
+          if ((cancellation as { ok: boolean }).ok) { cancelledCount += 1; await logOrderEvent(db, "cancelado_shopify", { pedido: orderName, mhd: item.mhd_order_id }, orderName); }
           else errors.push(`Pedido MHD #${item.mhd_order_id}: no se canceló en Shopify. ${(cancellation as { error: string }).error}`);
         }
       }
@@ -208,6 +210,7 @@ export async function refreshMhdStatuses(db: SupabaseClient) {
         try {
           await writeInvoicesToShopify(shopifyOrderId, shopifyInvoices);
           invoicesInShopify = shopifyInvoices;
+          await logOrderEvent(db, "factura_shopify", { pedido: orderName, mhd: item.mhd_order_id, facturas: shopifyInvoices.length }, orderName);
         } catch (error) {
           errors.push(`Pedido MHD #${item.mhd_order_id}: ${error instanceof Error ? error.message : "no se guardaron las facturas en Shopify."}`);
         }
@@ -224,6 +227,7 @@ export async function refreshMhdStatuses(db: SupabaseClient) {
       };
       const changed = currentStatus !== item.mhd_status || canonicalJson(item.mhd_status_payload ?? null) !== canonicalJson(statusPayload);
       if (changed) changedCount += 1;
+      if (currentStatus !== item.mhd_status) await logOrderEvent(db, "estado", { pedido: orderName, mhd: item.mhd_order_id, de: item.mhd_status, a: currentStatus }, orderName);
       await db.from("mhd_order_exports").update({ mhd_status: currentStatus, mhd_status_payload: statusPayload, mhd_status_updated_at: latest?.occurred_at ?? new Date().toISOString(), last_checked_at: new Date().toISOString() }).eq("id", item.id);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error desconocido.";
@@ -234,5 +238,6 @@ export async function refreshMhdStatuses(db: SupabaseClient) {
   // Correo de factura a quien aún no la tenga (apagado por defecto: utils › store_settings factura_correo_activo)
   const invoiceEmails = await sendPendingInvoiceEmails(db, (exports ?? []).map((item) => item.id));
   errors.push(...invoiceEmails.errors);
+  if (invoiceEmails.sent) await logOrderEvent(db, "factura_correo", { enviados: invoiceEmails.sent });
   return { checkedCount, changedCount, cancelledCount, errors, invoiceEmailsSent: invoiceEmails.sent };
 }
