@@ -223,19 +223,17 @@ Lo que falta para que funcione:
    (antes Cover, Combi y Display salían como productos normales), aplica las combinaciones (una ampliación y una
    protección; Combi sola) y las vende sueltas. Probadas las herramientas con datos reales; las pruebas con el modelo
    no se pudieron pasar porque la cuenta de OpenAI del chatbot se ha quedado sin crédito, **también en producción**.
-5. **Conector, el importador de MHD:**
-   - escribir `custom.garantias_tipos` desde la ficha, con relectura semanal;
-   - quitar las familias y las reglas por título;
-   - dejar de escribir `custom.admite_garantia`;
-   - **excluir las 22 garantías**: si las vuelve a procesar, les borra el reglamento y la descripción, y además están
-     las bajas por ausencia y los precios (les pondría el `pvp` del bloque en lugar del de la tarifa). Hoy no corren riesgo (comprobado el 2026-11-15): ninguna está en
-     `store_shopify_ids`, que solo rellena el importador al escribir. La 10040607 (Combi 500) sigue en
-     `mhd_catalog_products` como presente con stock 1, aunque no se ve desde el 2026-08-19;
-   - excluir siempre los reacondicionados al escribir los tipos, como en la carga a mano.
+5. **Conector, el importador de MHD: hecho el 2026-11-17** (ver registro). Queda:
+   - **la relectura semanal** de las fichas con garantía: sin ella, un cambio de tipos de MHD en un aparato ya subido
+     no se ve hasta que algo más haga releer su ficha (las vueltas de cada 30 minutos solo leen el listado, y el bloque
+     no viene en él). Depende de la propuesta de relectura de fichas pendiente de David;
+   - pedir a MHD el bloque en el listado o que actualice `fecha_modificacion_producto` cuando cambie (ya en el correo);
+   - quitar de la base `store_warranty_title_rules` y `store_collections.warranty_eligible`: ya no las lee nadie, se
+     dejan por si hiciera falta consultarlas.
 6. **Hecho el 2026-11-15: SKU de las 9 al código de MHD** (ver registro). Las 22 llevan ya el código de MHD, y las 9 la
    línea «Para aparatos de hasta X €» desde el 2026-11-15.
-7. **Limpieza:** borrar la definición de `custom.admite_garantia` con sus valores, en una sola operación. Antes tienen
-   que estar cambiados el chatbot y el importador.
+7. **Limpieza:** borrar la definición de `custom.admite_garantia` con sus valores, en una sola operación (ver registro,
+   2026-11-17).
 8. **Preguntas a terceros:** los dos correos listos para enviar están en
    [GARANTIAS_PREGUNTAS_MHD_GARANTIA3.md](GARANTIAS_PREGUNTAS_MHD_GARANTIA3.md), con lo que cambia según cada respuesta.
    Resumen:
@@ -433,6 +431,20 @@ Lo que ya se ha tocado en la tienda, por fecha. Copias y scripts en `outputs/` (
   cuadran y ninguna descripción lleva precios. La tarifa trae también Casa Nueva para 3 y 4 electrodomésticos
   (10040624 y 10040625): por ahora no se crean (David). La tarifa confirma la G3PD3ES1000 a 69,90 € y los títulos de
   las Combi: lo raro solo está en el bloque `garantia3` de las fichas. Se quita esa pregunta del correo a MHD.
+
+- **2026-11-17: el importador escribe los tipos** (David: «hazlo»). Visto ese día: no los escribía (0 de los 120
+  productos subidos desde el 15-11 tenían `custom.garantias_tipos`, y 28 de ellos los traían en su ficha de MHD) y seguía
+  escribiendo `custom.admite_garantia`. Cambios:
+  - `src/lib/mhd-importer/warranty-types.ts`: tipos a partir del bloque `garantia3` (por `ref_proved`; si no, por el
+    código de MHD). Toma la ficha más reciente que lo traiga: la caché del importador (`mhd_importer_source_cache`, con
+    el bloque desde el 12-11) y, si no, `mhd_catalog_product_details` (lectura del 26-10 y 29-10, todavía sin él).
+  - Subida (`shopify-draft.ts`, paso «Garantías (MHD)»): con tipos, los escribe; con el bloque vacío o reacondicionado
+    («reacondicionad» en familia o subfamilia, o «REAC.» en el título), borra el metacampo; **sin bloque, deja lo que
+    haya** (lo reenvía, porque `productSet` borra los metacampos que no se le mandan). Una garantía que no reconoce se
+    avisa en la traza y no se ofrece.
+  - Las 22 garantías, bloqueadas siempre en el importador (`locks.ts`): ni se procesan ni se suben.
+  - Fuera `warranty.ts`, la pantalla «Productos con garantía» (`/tienda/garantias`) y su API.
+  - Pruebas en `tests/warranty-types.test.mjs`.
 
 ## Qué tiene que saber cada proyecto
 

@@ -109,7 +109,7 @@ Un aviso por incidencia, con `idempotencyKey`, para no repetirlo en cada vuelta:
 
 ## Pantalla
 
-En Tienda, «Contratos Garantía3». «Productos con garantía» (`/tienda/garantias`) está en Integración MHD:
+En Tienda, «Contratos Garantía3». Qué garantías lleva cada aparato ya no se decide aquí: lo manda MHD y lo escribe el importador (`custom.garantias_tipos`, [GARANTIAS_DESDE_MHD.md](GARANTIAS_DESDE_MHD.md)); la pantalla «Productos con garantía» se quitó el 2026-11-17. La de contratos tiene:
 
 - Ajustes y prueba de conexión (`?comprobar=1` del proxy).
 - Listado filtrable por estado, con enlace al pedido.

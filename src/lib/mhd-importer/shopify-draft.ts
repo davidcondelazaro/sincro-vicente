@@ -12,8 +12,8 @@ import { SHOPIFY_CATEGORY_BY_FAMILY } from "./shopify-categories";
 import { noTrace, type Trace } from "./trace";
 import { shopifyGraphql, type ShopifyConfig } from "./store-filters";
 import { ID_PRODUCT_FIELDS, rememberShopifyIds, rememberShopifyStatus, storeProductsByEan } from "./shopify-ids";
-import { warrantyEligible } from "./warranty";
-import { keepRefurbishedInDraft } from "./refurbished";
+import { readWarrantyBlock, refurbishedTitle, warrantyTypesFromBlock } from "./warranty-types";
+import { isRefurbished, keepRefurbishedInDraft } from "./refurbished";
 import { productLock } from "./locks";
 
 // Regla de David (2026-10-26): los productos con revisión pendiente se suben igual, como borrador, y se revisan antes de
@@ -358,8 +358,16 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   const galleryFiles = [...photoFiles.slice(0, productViews < 0 ? photoFiles.length : productViews), ...videoFiles, ...photoFiles.slice(productViews < 0 ? photoFiles.length : productViews)];
 
   // 4) Producto entero de una vez: en borrador si es nuevo; si ya existía, se actualiza (las fotos se sustituyen).
-  // Marca de ampliación de garantía (warranty.ts); sin decidir, no se envía y se borra la que hubiera.
-  const warranty = await t.step("Ampliación de garantía", () => warrantyEligible(deps.db, placement.familia, shop.title), (result) => `${result.eligible === null ? "sin decidir" : result.eligible ? "sí" : "no"}: ${result.reason}`);
+  // Garantías de Garantía3 que MHD asigna al aparato (warranty-types.ts): sus tipos van a custom.garantias_tipos. Sin
+  // garantías, no se envía y se borra el que hubiera. Si la ficha no trae el bloque (fichas viejas), se deja lo que haya.
+  const warranty = await t.step("Garantías (MHD)", async () => {
+    const refurbished = isRefurbished(placement.familia, placement.familyTitle, product.family.subfamilyName, shop.title) || refurbishedTitle(shop.title);
+    const decision = warrantyTypesFromBlock(refurbished ? null : await readWarrantyBlock(deps.db, product.codigo), { refurbished });
+    // Sin bloque y ya en la tienda: se vuelve a enviar su valor actual para no perderlo al reescribir el producto.
+    const current = decision.types === null && existing ? (await shopifyGraphql<{ product: { metafield: { value: string } | null } | null }>(deps.shopify, `query($id: ID!) { product(id: $id) { metafield(namespace: "custom", key: "garantias_tipos") { value } } }`, { id: existing.id })).product?.metafield?.value ?? null : null;
+    return { ...decision, current };
+  }, (result) => `${result.reason}${result.current ? ` (se conserva ${result.current})` : ""}`);
+  if (warranty.unknown.length) t.event("aviso", "Garantías (MHD)", `Garantías de MHD que no se reconocen (no se ofrecen): ${warranty.unknown.join("; ")}.`);
   const metafields = [
     ...shop.metafields.filter((item) => item.value !== ""),
     ...(labelId ? [{ namespace: "custom", key: "etiqueta_energetica", type: "file_reference", value: labelId }] : []),
@@ -370,7 +378,8 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
     { namespace: "custom", key: "grupo", type: "single_line_text_field", value: placement.grupo },
     { namespace: "custom", key: "familia", type: "single_line_text_field", value: placement.familia },
     ...(product.family.subfamilyCode ? [{ namespace: "custom", key: "mhd_subfamilia", type: "single_line_text_field", value: product.family.subfamilyCode }] : []),
-    ...(warranty.eligible === null ? [] : [{ namespace: "custom", key: "admite_garantia", type: "boolean", value: String(warranty.eligible) }]),
+    ...(warranty.types?.length ? [{ namespace: "custom", key: "garantias_tipos", type: "list.single_line_text_field", value: JSON.stringify(warranty.types) }]
+      : warranty.current ? [{ namespace: "custom", key: "garantias_tipos", type: "list.single_line_text_field", value: warranty.current }] : []),
   ];
   const KEEP_ON_REFRESH = new Set(["custom.disponibilidad_con_stock", "custom.disponibilidad_sin_stock", "custom.prioridad"]);
   // El proveedor se conserva solo si esta vez no llega de MHD (no se borra lo que ya había).
@@ -446,7 +455,7 @@ export async function createShopifyDraft(deps: { db: SupabaseClient; shopify: Sh
   // Al actualizar, productSet no borra los metacampos que ya no van (p. ej. la etiqueta, el EPREL o la ficha de Icecat
   // de otro modelo): se borran aquí los que gestiona el importador y esta vez no llevan valor.
   if (existing) {
-    const managed = [...shop.metafields.map((item) => `${item.namespace}.${item.key}`), "custom.etiqueta_energetica", "custom.eprel", "custom.icecat", "custom.documentos", "custom.videos", "custom.admite_garantia"];
+    const managed = [...shop.metafields.map((item) => `${item.namespace}.${item.key}`), "custom.etiqueta_energetica", "custom.eprel", "custom.icecat", "custom.documentos", "custom.videos", ...(warranty.types ? ["custom.garantias_tipos"] : [])];
     const kept = new Set(finalMetafields.map((item) => `${item.namespace}.${item.key}`));
     const stale = [...new Set(managed)].filter((name) => !kept.has(name)).map((name) => { const [namespace, key] = name.split("."); return { ownerId: created.id, namespace, key }; });
     if (stale.length) {

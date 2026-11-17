@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
-type Section = "warrantyContracts" | "home" | "customer" | "customers" | "prestashopOrders" | "catalog" | "priorities" | "icecat" | "supabase" | "mhdImport" | "mhdCatalog" | "prices" | "stock" | "orders" | "productImporter" | "chatbotStats" | "chatbotConversations" | "chatbotImprovements" | "chatbotSupport" | "chatbotErrors" | "chatbotSyncs" | "chatbotDiscounts" | "chatbotSettings" | "chatbotPrivacy" | "stockAlerts" | "priceAlerts" | "quotes" | "redirects" | "warranties" | "productLocks" | "familyRules" | "storeSettings" | "dailyReport" | "googleMerchant";
+type Section = "warrantyContracts" | "home" | "customer" | "customers" | "prestashopOrders" | "catalog" | "priorities" | "icecat" | "supabase" | "mhdImport" | "mhdCatalog" | "prices" | "stock" | "orders" | "productImporter" | "chatbotStats" | "chatbotConversations" | "chatbotImprovements" | "chatbotSupport" | "chatbotErrors" | "chatbotSyncs" | "chatbotDiscounts" | "chatbotSettings" | "chatbotPrivacy" | "stockAlerts" | "priceAlerts" | "quotes" | "redirects" | "productLocks" | "familyRules" | "storeSettings" | "dailyReport" | "googleMerchant";
 type IconName = "home" | "database" | "users" | "catalog" | "price" | "stock" | "sort" | "icecat" | "orders" | "bell" | "tag" | "shield" | "quote" | "spark" | "ticket" | "chart" | "chat" | "support" | "alert" | "sync" | "settings" | "export" | "lock" | "package" | "bag";
 
 type NavEntry = { section: Section; href: string; label: string; icon: IconName };
@@ -21,7 +21,6 @@ const navigation: { label: string | null; entries: NavEntry[] }[] = [
     { section: "productLocks", href: "/productos-bloqueados", label: "Productos bloqueados", icon: "lock" },
     { section: "redirects", href: "/tienda/redirecciones", label: "Redirecciones", icon: "export" },
     { section: "googleMerchant", href: "/google-merchant", label: "Google Merchant", icon: "tag" },
-    { section: "warranties", href: "/tienda/garantias", label: "Productos con garantía", icon: "shield" },
     // Los contratos se ven y se gestionan en el helpdesk (Contratos Garantía3, ficha y ticket); aquí queda lo técnico:
     // la conexión, los ajustes y la vuelta (helpdesk › docs/integracion-elvi.md § 3.8). La página sigue enseñando los contratos.
     { section: "warrantyContracts", href: "/tienda/contratos-garantia3", label: "Garantía3: conexión y ajustes", icon: "shield" },
