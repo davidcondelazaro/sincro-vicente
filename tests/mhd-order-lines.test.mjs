@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildMhdProductLines, direccionDeExportacion, estadoDeEnvio, pedidoSinEnvio, puntoDeRecogida } from "../src/lib/mhd-order-lines.ts";
+import { buildMhdProductLines as buildExacto, direccionDeExportacion, precioNetoUnitario, estadoDeEnvio, pedidoSinEnvio, puntoDeRecogida } from "../src/lib/mhd-order-lines.ts";
 import { debeCancelarEnShopify, erroresDeMhd, otrosVigentes, reconciliar, resultadoDeEnvio } from "../src/lib/mhd-order-reconcile.ts";
 
+// Por defecto lo cobrado es lo que suman las líneas y los portes; las pruebas del total lo pasan a propósito
+const buildMhdProductLines = (input) => buildExacto({ totalCobrado: (input.lines.reduce((total, line) => total + Math.round(Number(line.unitPrice) * 100) * line.quantity, 0) + Math.round(Number(input.shippingAmount) * 100)) / 100, ...input });
 const destination = { country: "ES", province: "SA", postalCode: "37900" };
 const tarjeta = (sku, quantity = 1, unitPrice = "25.00") => ({ sku, quantity, unitPrice, payload: { requiresShipping: false, product: { metafield: null }, lineItemGroup: null } });
 const aparato = { sku: "32A4Q", quantity: 1, unitPrice: "199.00", payload: { requiresShipping: true, product: { metafield: { value: JSON.stringify({ gastos_envio_peninsula_particulares: 9.99 }) } }, lineItemGroup: null } };
@@ -171,4 +173,31 @@ test("cancelados en MHD: no se cancela en Shopify si se reexportó y hay otro vi
   const found = [{ id: 62670, id_estado_cliente: 13 }, { id: 62700, id_estado_cliente: 7 }];
   assert.deepEqual(otrosVigentes(found, 62670).map((order) => order.id), [62700]);
   assert.equal(otrosVigentes([{ id: 62670, id_estado_cliente: 13 }], 62670).length, 0);
+});
+
+test("precio neto: el cupón de pedido repartido por Shopify se descuenta del unitario (EV99344)", () => {
+  assert.deepEqual(precioNetoUnitario({ quantity: 1, originalUnitPrice: "104.00", allocations: ["5.20"] }), { precio: 98.8, redondeoCentimos: 0 });
+  assert.deepEqual(precioNetoUnitario({ quantity: 2, originalUnitPrice: "50.00", allocations: ["5.00"] }), { precio: 47.5, redondeoCentimos: 0 });
+  assert.deepEqual(precioNetoUnitario({ quantity: 1, originalUnitPrice: "25.00", allocations: [] }), { precio: 25, redondeoCentimos: 0 });
+  assert.deepEqual(precioNetoUnitario({ quantity: 3, originalUnitPrice: "10.00", allocations: ["1.00"] }), { precio: 9.67, redondeoCentimos: -1 });
+});
+
+test("total: se exporta si lo que recibe MHD suma exactamente lo cobrado en Shopify", () => {
+  const result = buildExacto({ lines: [{ ...aparato, unitPrice: 189.05 }], destination, shippingAmount: "9.99", totalCobrado: "199.04" });
+  assert.equal(result.ok, true);
+  assert.equal(result.productos[0].precio, 189.05);
+});
+
+test("total: si no cuadra con lo cobrado no se exporta y se dice por qué", () => {
+  const sinDescuento = buildExacto({ lines: [{ ...aparato, unitPrice: "199.00" }], destination, shippingAmount: "9.99", totalCobrado: "199.04" });
+  assert.equal(sinDescuento.ok, false);
+  assert.match(sinDescuento.reason, /suma 208,99 € y en Shopify se cobraron 199,04 €/);
+  const redondeo = buildExacto({ lines: [tarjeta("10153333", 3, 9.67)], destination, shippingAmount: 0, totalCobrado: "29.00" });
+  assert.equal(redondeo.ok, false);
+});
+
+test("total: los servicios y las garantías también cuentan", () => {
+  const subida = { sku: "SUBIDA-1", quantity: 1, unitPrice: "19.00", payload: { requiresShipping: false, product: { metafield: null }, lineItemGroup: { variantSku: "32A4Q" } } };
+  const conServicio = buildExacto({ lines: [aparato, subida], destination, shippingAmount: "9.99", totalCobrado: "227.99" });
+  assert.equal(conServicio.ok, true, conServicio.reason);
 });

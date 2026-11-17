@@ -14,6 +14,17 @@
 // - Portes: los del metacampo custom.opciones_entrega de cada aparato para la zona de envío, los mismos que usó
 //   el servicio de portes del checkout. La suma (porte × cantidad) debe coincidir con el envío cobrado.
 
+// Precio neto por unidad tal como lo deja Shopify: el original menos lo que cada descuento ha repartido a la línea
+// (discountAllocations), también los cupones de todo el pedido, que Shopify reparte entre productos, servicios y
+// garantías (5VICENTE en EV99344, 17-11-2026: discountedUnitPriceSet no los incluye y se mandó a MHD sin descontar).
+// MHD solo admite precio por unidad: si el total de la línea no se divide exacto, se redondea al céntimo y se devuelve
+// la diferencia para avisar.
+export function precioNetoUnitario(linea: { quantity: number; originalUnitPrice: string | number; allocations: (string | number)[] }) {
+  const totalCentimos = Math.round(Number(linea.originalUnitPrice) * 100) * linea.quantity - linea.allocations.reduce<number>((suma, importe) => suma + Math.round(Number(importe) * 100), 0);
+  const unidadCentimos = linea.quantity > 0 ? Math.round(totalCentimos / linea.quantity) : 0;
+  return { precio: unidadCentimos / 100, redondeoCentimos: totalCentimos - unidadCentimos * linea.quantity };
+}
+
 export type Zona = "peninsula" | "baleares" | "portugal_1" | "portugal_2";
 
 export const CLAVE_PORTES: Record<Zona, string> = {
@@ -141,6 +152,7 @@ export function buildMhdProductLines(input: {
   lines: OrderLineInput[];
   destination: { country?: string | null; province?: string | null; postalCode?: string | null };
   shippingAmount: string | number;
+  totalCobrado: string | number; // Lo cobrado en Shopify (currentTotalPriceSet): lo que se manda a MHD tiene que sumar exactamente eso
   recogida?: boolean; // Recogida en tienda: portes 0 en todas las líneas
 }): { ok: true; productos: MhdProductLine[]; warning: string | null } | { ok: false; reason: string } {
   // Pedidos sincronizados antes de leer servicios y portes no traen product ni lineItemGroup
@@ -219,6 +231,14 @@ export function buildMhdProductLines(input: {
   const portesCobrados = centimos(input.shippingAmount);
   if (portesCalculados !== portesCobrados) {
     return { ok: false, reason: `Los portes por producto suman ${euros(portesCalculados)} y en Shopify se cobraron ${euros(portesCobrados)}` };
+  }
+
+  // El total que recibe MHD (productos, servicios, garantías y portes) tiene que ser exactamente lo cobrado en Shopify.
+  // Si no cuadra (cupón repartido con redondeo, líneas que no van a MHD, pedido editado…) no se exporta: se revisa a mano.
+  const totalMhd = productos.reduce((total, producto) => total + producto.cantidad * (centimos(producto.precio) + centimos(producto.precio_subida ?? 0) + centimos(producto.precio_instalacion ?? 0) + centimos(producto.precio_retirada ?? 0)), 0) + portesCobrados;
+  const totalShopify = centimos(input.totalCobrado);
+  if (totalMhd !== totalShopify) {
+    return { ok: false, reason: `El pedido para MHD suma ${euros(totalMhd)} y en Shopify se cobraron ${euros(totalShopify)}: revisar antes de exportar` };
   }
 
   // MHD rechaza portes 0 con «Error en la propiedad `portes`» (pedido EV61500, 14-11-2026): se manda el mínimo, 0,01 €.

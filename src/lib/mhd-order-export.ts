@@ -18,7 +18,7 @@ type Address = {
 type Order = {
   id: string; shopify_order_id: string; shopify_order_name: string; email: string | null; order_note: string | null;
   discount_summary: string | null; shipping_country_code: string | null; source_updated_at: string;
-  shipping_province_code: string | null; eligibility_status: string; shipping_amount: string | null;
+  shipping_province_code: string | null; eligibility_status: string; shipping_amount: string | null; total_amount: string | null;
   source_payload: PedidoConEntrega & { shippingAddress?: Address | null; billingAddress?: Address | null; customAttributes?: { key: string; value: string | null }[] | null };
 };
 type Line = { sku: string | null; title: string; quantity: number; unit_price: string; line_payload: ShopifyLinePayload | null };
@@ -102,6 +102,7 @@ async function prepare(db: SupabaseClient, orderId: string) {
     lines: typedLines.map((line) => ({ sku: line.sku, quantity: line.quantity, unitPrice: line.unit_price, payload: line.line_payload })),
     destination: { country: address!.countryCodeV2, province: address!.provinceCode, postalCode: address!.zip },
     shippingAmount: typedOrder.shipping_amount ?? 0,
+    totalCobrado: typedOrder.total_amount ?? 0,
     recogida: Boolean(pickup),
   });
   if (!mhdLines.ok) return { ok: false, status: 422, error: mhdLines.reason } satisfies Refusal;
