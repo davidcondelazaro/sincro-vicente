@@ -7,7 +7,11 @@ import type { CycleStep } from "./sync-cycle";
 // - Lo que el importador deja en Shopify (activos, borradores, actualizados, textos, vídeos), portes, proveedor,
 //   relaciones, tarifas de servicios, Garantía3, y marcas, familias y subfamilias nuevas o que no pueden entrar.
 export type Cell = string | { text: string; href: string };
-export type Section = { title: string; warn?: boolean; lines: string[]; table?: { head: string[]; rows: Cell[][] }; link?: { text: string; href: string } };
+// Indicador de la rejilla de arriba (correo y página Resumen): cifra, una línea de detalle y color. `prev` es la cifra del
+// informe anterior guardado, para comparar.
+export type Tone = "ok" | "warn" | "bad" | "neutral";
+export type Kpi = { id: string; label: string; value: number; text?: string; sub?: string; tone: Tone; prev?: number | null };
+export type Section = { id?: string; title: string; warn?: boolean; lines: string[]; table?: { head: string[]; rows: Cell[][] }; link?: { text: string; href: string }; kpis?: Kpi[] };
 type Cycle = { started_at: string; steps: CycleStep[] };
 type Novelties = {
   marcas: { name: string; productos: number; en_tienda: number }[];
@@ -65,8 +69,13 @@ export async function extraSections(db: SupabaseClient, now: Date, since: string
     steps.set(item.name, entry);
   }
   const failing = [...steps.values()].filter((item) => item.error > 0).length;
+  const stepErrors = [...steps.values()].reduce((total, item) => total + item.error, 0);
   sections.push({
-    title: "Procesos", warn: silent.length > 0 || failing > 0,
+    id: "procesos", title: "Procesos", warn: silent.length > 0 || failing > 0,
+    kpis: [
+      { id: "procesos", label: "Procesos en marcha", value: processes.length - silent.length, text: `${processes.length - silent.length} de ${processes.length}`, sub: silent.length ? `Sin señales: ${silent.map((item) => item.name.split(" (")[0]).join(", ")}` : "Todos han dado señales a tiempo", tone: silent.length ? "bad" : "ok" },
+      { id: "errores-vuelta", label: "Errores en la vuelta", value: stepErrors, sub: stepErrors ? `En ${failing} ${failing === 1 ? "paso" : "pasos"}` : "Ningún paso ha fallado", tone: stepErrors ? "bad" : "ok" },
+    ],
     lines: [
       silent.length ? `Sin señales en su plazo: ${silent.map((item) => `${item.name}, ${ago(item.last, now)}${item.note ? ` (${item.note})` : ""}`).join(" · ")}.` : "Todos los procesos han dado señales en su plazo.",
       ...processes.filter((item) => !silent.includes(item)).map((item) => `${item.name}: ${ago(item.last, now)}.`),
@@ -87,7 +96,12 @@ export async function extraSections(db: SupabaseClient, now: Date, since: string
   const videos = sum([...created, ...updated], (item) => item.detail.videos) + sum(videoRuns, (item) => (item.detail.producto ?? 0) + (item.detail.marca ?? 0));
   const deferred = sum([...created, ...updated], (item) => item.detail.videosAplazados);
   sections.push({
-    title: "Lo que el importador ha dejado en la tienda", warn: drafts.length > 0 || deferred > 0,
+    id: "tienda", title: "Lo que el importador ha dejado en la tienda", warn: drafts.length > 0 || deferred > 0,
+    kpis: [
+      { id: "altas-tienda", label: "Altas en la tienda", value: created.length, sub: `${integer.format(active.length)} activas · ${integer.format(drafts.length)} en borrador`, tone: drafts.length ? "warn" : "neutral" },
+      { id: "fichas-actualizadas", label: "Fichas actualizadas", value: updated.length + texts.length, sub: `${integer.format(updated.length)} enteras · ${integer.format(texts.length)} solo textos`, tone: "neutral" },
+      { id: "videos", label: "Vídeos subidos", value: videos, sub: deferred ? `${integer.format(deferred)} aplazados por el tope de Shopify` : "Ninguno aplazado", tone: deferred ? "warn" : "neutral" },
+    ],
     lines: [
       `Altas: ${integer.format(created.length)} (${integer.format(active.length)} activas y ${integer.format(drafts.length)} en borrador, esperando revisión).`,
       `Fichas actualizadas: ${integer.format(updated.length)} enteras y ${integer.format(texts.length)} solo textos.`,
@@ -104,7 +118,8 @@ export async function extraSections(db: SupabaseClient, now: Date, since: string
   const deliveryNotable = deliveryRuns.flatMap((item) => (item.detail.notable as string[] | undefined) ?? []);
   const deliveryErrors = deliveryRuns.flatMap((item) => (item.detail.errors as string[] | undefined) ?? []);
   sections.push({
-    title: "Portes y servicios", warn: deliveryBrakes.length > 0 || deliveryErrors.length > 0,
+    id: "portes", title: "Portes y servicios", warn: deliveryBrakes.length > 0 || deliveryErrors.length > 0,
+    kpis: [{ id: "portes", label: "Portes y servicios", value: sum(deliveryRuns, (item) => item.detail.sent), sub: deliveryBrakes.length ? "Parado por el freno" : deliveryErrors.length ? `${deliveryErrors.length} errores` : `${integer.format(deliveryNotable.length)} cambios fuertes`, tone: deliveryBrakes.length || deliveryErrors.length ? "bad" : "neutral" }],
     lines: [
       `${integer.format(sum(deliveryRuns, (item) => item.detail.sent))} productos con portes o servicios actualizados en Shopify${deliveryNotable.length ? `; ${integer.format(deliveryNotable.length)} cambios fuertes (dato quitado o subida de más del 50 %)` : ""}.`,
       ...(deliveryBrakes.length ? [`Freno: ${String(deliveryBrakes.at(-1)!.detail.reason ?? "")}`] : []),
@@ -120,7 +135,8 @@ export async function extraSections(db: SupabaseClient, now: Date, since: string
   const supplierErrors = supplierRuns.flatMap((item) => (item.detail.errors as string[] | undefined) ?? []);
   const supplierPending = Number(supplierRuns.at(-1)?.detail.pending ?? 0);
   sections.push({
-    title: "Proveedor de MHD", warn: supplierBrakes.length > 0 || supplierErrors.length > 0,
+    id: "proveedor", title: "Proveedor de MHD", warn: supplierBrakes.length > 0 || supplierErrors.length > 0,
+    kpis: [{ id: "proveedor", label: "Proveedor actualizado", value: sum(supplierRuns, (item) => item.detail.sent), sub: supplierErrors.length ? `${supplierErrors.length} errores` : `${integer.format(switched.length)} cambian de proveedor${supplierBrakes.length ? " · freno" : ""}`, tone: supplierErrors.length ? "bad" : supplierBrakes.length ? "warn" : "neutral" }],
     lines: [
       `${integer.format(sum(supplierRuns, (item) => item.detail.sent))} productos con el proveedor actualizado; ${integer.format(switched.length)} cambian de proveedor (revisa si les afecta alguna regla).${supplierPending ? ` Pendientes para la próxima vuelta: ${integer.format(supplierPending)}.` : ""}`,
       ...(supplierBrakes.length ? [`Freno ${supplierBrakes.length} ${supplierBrakes.length === 1 ? "vez" : "veces"}: ${String(supplierBrakes.at(-1)!.detail.reason ?? "")} Se cambia en Configuración.`] : []),
@@ -133,6 +149,7 @@ export async function extraSections(db: SupabaseClient, now: Date, since: string
   const lastRelation = relationRuns.at(-1);
   const relationErrors = relationRuns.flatMap((item) => (item.detail.errors as string[] | undefined) ?? []);
   sections.push({
+    id: "relaciones", kpis: [{ id: "relaciones", label: "Relaciones cambiadas", value: Number(lastRelation?.detail.changes ?? 0), sub: !lastRelation ? "No se han calculado" : lastRelation.kind === "freno" ? "Parado por el freno" : lastRelation.detail.complementarios !== undefined ? `${integer.format(Number(lastRelation.detail.complementarios))} complementarios · ${integer.format(Number(lastRelation.detail.similares))} similares` : `${integer.format(Number(lastRelation.detail.sent ?? 0))} enviadas`, tone: !lastRelation || lastRelation.kind !== "vuelta" || relationErrors.length ? "bad" : "neutral" }],
     title: "Relaciones entre productos", warn: !lastRelation || lastRelation.kind !== "vuelta" || relationErrors.length > 0,
     lines: lastRelation ? [
       lastRelation.kind === "freno" ? `Freno: ${String(lastRelation.detail.reason ?? "")}` : `Calculadas para ${integer.format(Number(lastRelation.detail.calculated ?? 0))} productos; cambian ${integer.format(Number(lastRelation.detail.changes ?? 0))}${lastRelation.detail.complementarios !== undefined ? ` (${integer.format(Number(lastRelation.detail.complementarios))} en complementarios y ${integer.format(Number(lastRelation.detail.similares))} en similares)` : ""}, enviadas ${integer.format(Number(lastRelation.detail.sent ?? 0))}${Number(lastRelation.detail.manual) ? ` y ${integer.format(Number(lastRelation.detail.manual))} puestas a mano que no se tocan` : ""}.`,
@@ -146,7 +163,9 @@ export async function extraSections(db: SupabaseClient, now: Date, since: string
   const w = (key: string) => sum(warrantyRuns, (item) => item.resumen?.[key]);
   const warrantyFailures = warrantyRuns.flatMap((item) => (item.resumen?.fallos as unknown[] | undefined) ?? []).map((item) => (typeof item === "string" ? item : JSON.stringify(item)));
   const unfinished = warrantyRuns.filter((item) => !item.fin).length;
+  const warrantyIssues = w("errores") + w("dudosas") + w("bloqueadas") + warrantyFailures.length + unfinished;
   sections.push({
+    id: "garantia3", kpis: [{ id: "garantia3", label: "Contratos Garantía3", value: w("creadas"), sub: warrantyRuns.length ? `${integer.format(w("nuevas"))} vendidas · ${integer.format(warrantyIssues)} para mirar` : "Sin vueltas", tone: !warrantyRuns.length || w("errores") || warrantyFailures.length ? "bad" : warrantyIssues ? "warn" : "neutral" }],
     title: "Garantía3", warn: w("errores") > 0 || w("dudosas") > 0 || w("bloqueadas") > 0 || warrantyFailures.length > 0 || unfinished > 0,
     lines: warrantyRuns.length ? [
       `${warrantyRuns.length} ${warrantyRuns.length === 1 ? "vuelta" : "vueltas"}: ${integer.format(w("nuevas"))} garantías vendidas nuevas, ${integer.format(w("creadas"))} contratos dados de alta, ${integer.format(w("anulaciones"))} anulaciones.`,
@@ -160,6 +179,7 @@ export async function extraSections(db: SupabaseClient, now: Date, since: string
   // Tarifas de servicios: variantes de precio que faltan en Shopify (última comprobación).
   const tariffs = [...cycles].reverse().flatMap((cycle) => cycle.steps.filter((item) => item.name === "tarifas-servicios" && item.counts)).at(0)?.counts as { missing?: { service: string; sku: string; products: number }[]; products?: number } | undefined;
   if (tariffs) sections.push({
+    id: "tarifas", kpis: tariffs.missing?.length ? [{ id: "tarifas", label: "Tarifas que faltan", value: tariffs.missing.length, sub: "Servicios que no se pueden cobrar", tone: "bad" }] : [],
     title: "Tarifas de servicios", warn: Boolean(tariffs.missing?.length),
     lines: [tariffs.missing?.length ? `Faltan ${tariffs.missing.length} tarifas en Shopify: hay productos con un precio de servicio que no se puede cobrar.` : `Todas las tarifas existen (${integer.format(tariffs.products ?? 0)} productos con servicios).`],
     table: tariffs.missing?.length ? { head: ["Servicio", "SKU que falta", "Productos"], rows: tariffs.missing.slice(0, 20).map((item) => [item.service, item.sku, integer.format(item.products)]) } : undefined,
@@ -170,7 +190,9 @@ export async function extraSections(db: SupabaseClient, now: Date, since: string
   if (news) {
     const ignoredList = Array.isArray(ignored.data?.value) ? (ignored.data!.value as string[]).join(", ") : "";
     const blockedProducts = sum(news.bloqueadas, (item) => item.productos);
+    const newCount = news.marcas.length + news.familias.length + news.subfamilias.length;
     sections.push({
+      id: "marcas", kpis: [{ id: "marcas-familias", label: "Marcas y familias nuevas", value: newCount, sub: news.bloqueadas.length ? `${integer.format(blockedProducts)} productos no pueden entrar` : "Todo puede entrar en la tienda", tone: news.bloqueadas.length || news.familias.some((item) => !item.con_reglas) ? "warn" : newCount ? "warn" : "ok" }],
       title: "Marcas y familias", warn: news.marcas.length + news.familias.length + news.subfamilias.length + news.bloqueadas.length > 0,
       lines: [
         news.marcas.length ? `Marcas nuevas en MHD: ${news.marcas.map((item) => `${item.name} (${item.productos} productos, ${item.en_tienda} en la tienda)`).join(" · ")}.` : `Ninguna marca nueva en MHD en ${period}.`,

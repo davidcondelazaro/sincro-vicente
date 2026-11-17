@@ -33,6 +33,17 @@ Solo las altas y las modificaciones importantes piden la ficha de detalle (una p
     - **Resumen, colecciones y redirecciones (ojo):** colecciones de familia, selección y marca que se quedan sin productos activos (despublicadas, con redirección creada) y las que los recuperan (publicadas otra vez, con la redirección quitada), cada una con su origen y su destino, y las vacías que están en un menú. Hecho el 2026-10-31 (ver «Colecciones vacías»). Pendiente: redirecciones de productos (bajas y vueltas).
     - **Resumen, cosas raras y temas que revisar:** cola de revisión; cambios de precio de más del 30 %; cambios de marca, EAN o modelo (a revisión sin tocar); cambios de texto de MHD sin cambio de datos; opciones de entrega que desaparecen o suben mucho; avisos de ficha («Foto pequeña», «Cifras MHD frente a Icecat», «Avisar a MHD»); marcas nuevas, sin logotipo, despublicadas y que vuelven; proveedores con otra grafía de una marca existente.
     - **Enlaces** a utils para ver el detalle siempre que exista pantalla (proceso, producto, cola de revisión, redirecciones) y a la ficha del producto en Shopify.
+  - **Indicadores y procesos (David, 2026-11-17).** Arriba del correo, una rejilla de indicadores con color (verde,
+    ámbar, rojo) y la cifra del resumen anterior; cada uno enlaza a su detalle en la página **Resumen** de utils
+    (`/resumen`, con la evolución de los últimos 30 resúmenes y «Calcular ahora»). Cada resumen enviado se guarda en
+    `mhd_daily_reports`. Sección **Procesos**: vigilante de silencio (vuelta, relaciones, Garantía3, importador; si
+    uno no da señales en su plazo, en rojo) y cada paso de la vuelta con cuántas veces fue bien, se saltó o falló; los
+    pasos nuevos salen solos. Además: lo que el importador deja en la tienda (altas activas o en borrador, fichas
+    actualizadas, textos, vídeos y aplazados; lo registra `shopify-draft.ts` como eventos `importador`), portes,
+    proveedor, relaciones (complementarios y similares), Garantía3, tarifas de servicios y marcas, familias y
+    subfamilias nuevas y lo que no puede entrar por no tener reglas o sitio en el árbol (`mhd_report_novelties`; las
+    familias que se dejan fuera a propósito, en `report_ignored_families`). Código: `daily-report.ts` y
+    `daily-report-extra.ts`. Pendiente: las bajas definitivas, que aún no existen.
   - **Durante la estabilización, cada hora** (David, 2026-10-29): el resumen sale cada hora con lo de esa hora (`/api/informes/diario?horas=1`) hasta que David diga que pasamos al diario de las 9:00.
   - **Servicio: Resend**, el mismo que usa chatbot-vicente para las incidencias desde el 2026-10-11 (ver su `docs/gestion-sincro-vicente.md`). `RESEND_API_KEY` puesta por David en Vercel (Production) el 2026-10-29, la misma de chatbot-vicente. Remitente `utils@mail.electronicavicente.com` (el del equipo en el chatbot) y destinatario david@aligeria.com, los dos en el código (`EMAIL_FROM_TEAM` y `ALERT_EMAILS` los cambian sin tocarlo). David dice que los correos del chatbot han dejado de salir: revisarlo al montarlo, porque comparten servicio.
 - **Freno general** del importador (`mhd_importer_brake_check`) también para las altas: si fallan 10 de los últimos 20, se pausa.

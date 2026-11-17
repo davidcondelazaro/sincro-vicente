@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
-type Section = "warrantyContracts" | "home" | "customer" | "customers" | "prestashopOrders" | "catalog" | "priorities" | "icecat" | "supabase" | "mhdImport" | "mhdCatalog" | "prices" | "stock" | "orders" | "productImporter" | "chatbotStats" | "chatbotConversations" | "chatbotImprovements" | "chatbotSupport" | "chatbotErrors" | "chatbotSyncs" | "chatbotDiscounts" | "chatbotSettings" | "chatbotPrivacy" | "stockAlerts" | "priceAlerts" | "quotes" | "redirects" | "warranties" | "productLocks" | "familyRules" | "storeSettings";
+type Section = "warrantyContracts" | "home" | "customer" | "customers" | "prestashopOrders" | "catalog" | "priorities" | "icecat" | "supabase" | "mhdImport" | "mhdCatalog" | "prices" | "stock" | "orders" | "productImporter" | "chatbotStats" | "chatbotConversations" | "chatbotImprovements" | "chatbotSupport" | "chatbotErrors" | "chatbotSyncs" | "chatbotDiscounts" | "chatbotSettings" | "chatbotPrivacy" | "stockAlerts" | "priceAlerts" | "quotes" | "redirects" | "warranties" | "productLocks" | "familyRules" | "storeSettings" | "dailyReport";
 type IconName = "home" | "database" | "users" | "catalog" | "price" | "stock" | "sort" | "icecat" | "orders" | "bell" | "tag" | "shield" | "quote" | "spark" | "ticket" | "chart" | "chat" | "support" | "alert" | "sync" | "settings" | "export" | "lock" | "package" | "bag";
 
 type NavEntry = { section: Section; href: string; label: string; icon: IconName };
@@ -13,6 +13,7 @@ type NavEntry = { section: Section; href: string; label: string; icon: IconName 
 const navigation: { label: string | null; entries: NavEntry[] }[] = [
   { label: null, entries: [{ section: "home", href: "/", label: "Inicio", icon: "home" }] },
   { label: "Integración MHD", entries: [
+    { section: "dailyReport", href: "/resumen", label: "Resumen", icon: "chart" },
     { section: "mhdImport", href: "/importar-datos-mhd", label: "Sincronización con MHD", icon: "sync" },
     { section: "orders", href: "/pedidos-mhd", label: "Pedidos MHD", icon: "orders" },
     { section: "productImporter", href: "/importador-productos", label: "Importador de productos", icon: "bag" },

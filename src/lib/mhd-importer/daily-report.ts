@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { EMAIL_PREFIX, escapeHtml } from "@/lib/email";
-import { extraSections } from "./daily-report-extra";
+import { extraSections, type Cell, type Kpi, type Section, type Tone } from "./daily-report-extra";
 import type { CycleStep } from "./sync-cycle";
 
 // Resumen de las sincronizaciones y el importador (David, 2026-10-26: «resumen diario a las 9:00»; 2026-10-29: cada hora
@@ -10,8 +10,6 @@ import type { CycleStep } from "./sync-cycle";
 // detalle lo agrupa la base (mhd_sync_report, mhd_catalog_overview). Desde el 2026-11-17, además, los procesos con su
 // vigilante de silencio, lo que deja el importador, portes, proveedor, relaciones, Garantía3, tarifas de servicios y
 // marcas y familias nuevas (daily-report-extra.ts). Pendiente: las bajas definitivas, que aún no existen.
-type Cell = string | { text: string; href: string };
-type Section = { title: string; warn?: boolean; lines: string[]; table?: { head: string[]; rows: Cell[][] }; link?: { text: string; href: string } };
 type Product = { codigo: string; title: string | null; product_id: string | null };
 type Report = {
   prices: { total: number; up: number; down: number; big: number; top: (Product & { antes: number; ahora: number; pct: number })[]; flips: (Product & { n: number; path: string })[] };
@@ -63,7 +61,8 @@ export async function buildDailyReport(db: SupabaseClient, now = new Date(), hou
   const lastChecks = [...cycles].reverse().map((cycle) => cycle.steps.find((item) => item.name === "conexiones")).find(Boolean);
   const services = (lastChecks?.counts?.services ?? []) as { name: string; ok: boolean; ms: number; error?: string }[];
   sections.push({
-    title: "Vueltas de sincronización", warn: bad.length > 0 || cycles.length === 0,
+    id: "vueltas", title: "Vueltas de sincronización", warn: bad.length > 0 || cycles.length === 0,
+    kpis: [{ id: "vueltas", label: "Vueltas terminadas", value: finished.length, text: `${finished.length} de ${cycles.length}`, sub: `Duración media ${duration(average)}`, tone: !cycles.length || bad.length ? "bad" : "ok" }],
     lines: cycles.length ? [
       `${cycles.length} vueltas en ${period}: ${finished.length} terminadas${bad.length ? `, ${bad.length} con problemas` : ""}. Duración media: ${duration(average)}.`,
       ...(services.length ? [`Conexiones (última comprobación): ${services.map((item) => `${item.name} ${item.ok ? `${(item.ms / 1000).toLocaleString("es-ES", { maximumFractionDigits: 1 })} s` : `SIN CONEXIÓN (${item.error})`}`).join(" · ")}.`] : []),
@@ -80,19 +79,24 @@ export async function buildDailyReport(db: SupabaseClient, now = new Date(), hou
   });
 
   if (overview) sections.push({
-    title: "Catálogo: MHD frente a la tienda",
+    id: "catalogo", title: "Catálogo: MHD frente a la tienda",
+    kpis: [{ id: "tienda-activos", label: "Productos activos", value: overview.active, sub: `${integer.format(overview.draft)} borradores · ${integer.format(overview.in_listing)} en MHD`, tone: "neutral" }],
     lines: [
       `Listado de MHD${overview.read_at ? ` (leído a las ${madridTime(overview.read_at)})` : ""}: ${integer.format(overview.in_listing)} productos.`,
       `En la tienda: ${integer.format(overview.active)} activos, ${integer.format(overview.draft)} borradores y ${integer.format(overview.archived)} archivados.`,
       `En MHD y aún no en la tienda: ${integer.format(overview.not_in_store)} (incluye los que se dejaron fuera a propósito; las altas automáticas llegan en la fase 2).`,
-      `Activos en la tienda que ya no vienen en el listado de MHD: ${integer.format(overview.active_missing)} (bajas candidatas, todavía sin tratar).`,
+      `Activos en la tienda que ya no vienen en el listado de MHD: ${integer.format(overview.active_missing)} (los trata «Agotados en MHD»: stock 0 y, a los días fijados, baja).`,
     ],
   });
 
   if (report) {
     const { prices, stock } = report;
     sections.push({
-      title: "Precio y stock enviados a Shopify", warn: prices.big > 0 || prices.flips.length > 0,
+      id: "precio-stock", title: "Precio y stock enviados a Shopify", warn: prices.big > 0 || prices.flips.length > 0,
+      kpis: [
+        { id: "precios", label: "Precios cambiados", value: prices.total, sub: `${integer.format(prices.up)} suben · ${integer.format(prices.down)} bajan${prices.big ? ` · ${prices.big} más de un 30 %` : ""}`, tone: prices.big ? "warn" : "neutral" },
+        { id: "stock", label: "Stock cambiado", value: stock.total, sub: `${integer.format(stock.out)} se agotan · ${integer.format(stock.back)} vuelven`, tone: "neutral" },
+      ],
       lines: [
         `Precios: ${integer.format(prices.total)} cambios (${integer.format(prices.up)} suben y ${integer.format(prices.down)} bajan)${prices.big ? `; ${prices.big} cambian más de un 30 %` : ""}.`,
         `Stock: ${integer.format(stock.total)} cambios; ${integer.format(stock.out)} se agotan y ${integer.format(stock.back)} vuelven a tener existencias.`,
@@ -105,7 +109,8 @@ export async function buildDailyReport(db: SupabaseClient, now = new Date(), hou
     // Agotados en MHD (2026-10-29): lo que MHD deja de traer pasa a stock 0 y se repone al volver; baja solo a los N días.
     const absences = absencesResult.data as Absences | null;
     if (absences) sections.push({
-      title: "Agotados en MHD", warn: absences.due > 0,
+      id: "agotados", title: "Agotados en MHD", warn: absences.due > 0,
+      kpis: [{ id: "agotados", label: "Agotados en MHD", value: absences.open, sub: `${integer.format(absences.out)} nuevos · ${integer.format(absences.back)} vuelven${absences.due ? ` · ${absences.due} para baja` : ""}`, tone: absences.due ? "warn" : "neutral" }],
       lines: [
         `En ${period}: ${integer.format(absences.out)} se agotan (MHD deja de traerlos; stock 0${absences.out_selling ? `, ${absences.out_selling} dejan de venderse sin stock` : ""}) y ${integer.format(absences.back)} vuelven.`,
         `Siguen agotados: ${integer.format(absences.open)}. ${absences.due ? `${integer.format(absences.due)} llevan más de ${absences.days} días: pendientes de baja (archivar y redirigir).` : `Ninguno pasa de ${absences.days} días.`}${absences.near ? ` ${integer.format(absences.near)} llegan a los ${absences.days} días en menos de 5.` : ""}`,
@@ -117,8 +122,14 @@ export async function buildDailyReport(db: SupabaseClient, now = new Date(), hou
     });
 
     const byStatus = report.importer.by_status; const processed = Object.values(byStatus).reduce((total, value) => total + value, 0);
+    const altasQueued = (altasResult.data ?? []).length;
     sections.push({
-      title: "Importador de productos", warn: (byStatus.error ?? 0) > 0 || report.importer.open_jobs.some((job) => job.paused_reason),
+      id: "importador", title: "Importador de productos", warn: (byStatus.error ?? 0) > 0 || report.importer.open_jobs.some((job) => job.paused_reason),
+      kpis: [
+        { id: "altas-mhd", label: "Altas nuevas de MHD", value: altasQueued, sub: `${integer.format(processed)} procesados · ${integer.format(byStatus.descartado ?? 0)} descartados`, tone: "neutral" },
+        { id: "errores-importador", label: "Errores del importador", value: byStatus.error ?? 0, sub: report.importer.open_jobs.some((job) => job.paused_reason) ? "Hay tandas en pausa" : report.importer.reasons.find((item) => item.status === "error")?.reason.slice(0, 70) ?? "Sin errores", tone: byStatus.error ? "warn" : "ok" },
+        { id: "gasto-ia", label: "Gasto de IA", value: Math.round(report.ai_cost.period * 100) / 100, text: dollars.format(report.ai_cost.period), sub: `${dollars.format(report.ai_cost.month)} este mes`, tone: "neutral" },
+      ],
       lines: [
         ...(() => { const altas = altasResult.data ?? []; const photos = altas.filter((row) => (row.detail as { motivo?: string }).motivo === "fotos nuevas").length; return altas.length ? [`Altas encoladas solas en ${period}: ${integer.format(altas.length)} (${integer.format(altas.length - photos)} nuevas de MHD${photos ? ` y ${integer.format(photos)} que antes no tenían fotos` : ""}).`] : [`Ninguna alta nueva de MHD en ${period}.`]; })(),
         processed ? `${integer.format(processed)} productos en ${period}: ${integer.format(byStatus.ok ?? 0)} bien, ${integer.format(byStatus.descartado ?? 0)} descartados y ${integer.format(byStatus.error ?? 0)} con error.` : `Ningún producto procesado en ${period}.`,
@@ -130,7 +141,8 @@ export async function buildDailyReport(db: SupabaseClient, now = new Date(), hou
     });
 
     sections.push({
-      title: "Cola de revisión", warn: report.review.pending > 0,
+      id: "revision", title: "Cola de revisión", warn: report.review.pending > 0,
+      kpis: [{ id: "revision", label: "Esperando revisión", value: report.review.pending, sub: "Suben en borrador hasta revisarlos", tone: report.review.pending ? "warn" : "ok" }],
       lines: [`${integer.format(report.review.pending)} productos esperando revisión (suben en borrador hasta revisarlos).`],
       table: report.review.reasons.length ? { head: ["Motivo más repetido", "Productos"], rows: report.review.reasons.map((item) => [item.reason, integer.format(item.n)]) } : undefined,
       link: { text: "Revisar en utils", href: `${UTILS}/importador-productos` },
@@ -145,6 +157,7 @@ export async function buildDailyReport(db: SupabaseClient, now = new Date(), hou
   const pending = simulated ? [...(lastRun.unpublish ?? []).map((item) => ({ kind: "despublicaría", detail: item })), ...(lastRun.publish ?? []).map((item) => ({ kind: "publicaría", detail: item }))] : [];
   const collectionErrors = collectionRuns.flatMap((item) => [...((item.counts as CollectionsRun).errors ?? []), ...((item.counts as CollectionsRun).failed ? [String((item.counts as CollectionsRun).failed)] : [])]);
   if (lastRun || done.length) sections.push({
+    id: "colecciones", kpis: [{ id: "colecciones", label: "Colecciones", value: done.length, sub: `${done.filter((item) => item.kind === "despublicada").length} despublicadas · ${done.filter((item) => item.kind === "republicada").length} publicadas${simulated ? " · en simulación" : ""}`, tone: lastRun?.braked || collectionErrors.length ? "bad" : lastRun?.inMenu?.length ? "warn" : "neutral" }],
     title: "Colecciones y redirecciones", warn: done.length > 0 || Boolean(lastRun?.inMenu?.length) || Boolean(lastRun?.braked) || collectionErrors.length > 0,
     lines: [
       `En ${period}: ${done.filter((item) => item.kind === "despublicada").length} despublicadas y ${done.filter((item) => item.kind === "republicada").length} publicadas otra vez.`,
@@ -162,20 +175,31 @@ export async function buildDailyReport(db: SupabaseClient, now = new Date(), hou
   sections.push(...extra);
 
   const sent = alertsResult.data ?? [];
-  if (sent.length) sections.push({ title: "Avisos enviados", warn: true, lines: sent.map((item) => {
+  if (sent.length) sections.push({ id: "avisos", title: "Avisos enviados", warn: true, kpis: [{ id: "avisos", label: "Avisos enviados", value: sent.length, sub: "Fallos graves y frenos al momento", tone: "warn" }], lines: sent.map((item) => {
     const detail = item.detail as { subject?: string; sent?: boolean; lines?: string[] };
     return `${madridTime(item.created_at)} · ${detail.subject}${detail.lines?.length ? `: ${detail.lines.filter(Boolean).slice(1, 2).join(" ")}` : ""}${detail.sent ? "" : " (no se pudo enviar)"}`;
   }) });
 
+  // Indicadores, en el orden de las secciones, con la cifra del informe anterior guardado (mhd_daily_reports).
+  const { data: previous } = await db.from("mhd_daily_reports").select("kpis").eq("period_hours", hours).lt("period_end", new Date(now.getTime() - hours * 3_600_000 * 0.8).toISOString()).order("period_end", { ascending: false }).limit(1).maybeSingle();
+  const before = new Map(((previous?.kpis ?? []) as Kpi[]).map((item) => [item.id, item.value]));
+  const kpis = sections.flatMap((section) => (section.kpis ?? []).map((item) => ({ ...item, section: section.id, prev: before.get(item.id) ?? null })));
+
   const problems = sections.filter((section) => section.warn).length;
   const day = now.toLocaleDateString("es-ES", { timeZone: "Europe/Madrid", weekday: "long", day: "numeric", month: "long" });
   const subject = `${EMAIL_PREFIX} Resumen ${hours === 24 ? `del ${day}` : `de ${madridTime(since)} a ${madridTime(now.toISOString())}`} · ${problems ? `${problems} ${problems === 1 ? "punto que mirar" : "puntos que mirar"}` : "todo en orden"}`;
-  return { subject, text: toText(sections), html: toHtml(sections, subject), sections };
+  return { subject, text: toText(sections, kpis), html: toHtml(sections, subject, kpis), sections: sections.map((section) => ({ ...section, kpis: undefined })), kpis, since, until: now.toISOString(), hours };
 }
 
 const cellText = (cell: Cell) => (typeof cell === "string" ? cell : cell.text);
-function toText(sections: Section[]) {
-  return sections.map((section) => [
+const TONE: Record<Tone, { bar: string; text: string; mark: string }> = { ok: { bar: "#059669", text: "#065f46", mark: "" }, warn: { bar: "#d97706", text: "#92400e", mark: "⚠ " }, bad: { bar: "#dc2626", text: "#991b1b", mark: "✖ " }, neutral: { bar: "#a1a1aa", text: "#18181b", mark: "" } };
+const kpiValue = (item: Kpi) => item.text ?? integer.format(item.value);
+const kpiPrev = (item: Kpi) => (item.prev === null || item.prev === undefined || item.text?.includes(" de ") ? "" : item.prev === item.value ? "igual que el anterior" : `${item.value > item.prev ? "▲" : "▼"} ${integer.format(Math.abs(item.value - item.prev))} (antes ${integer.format(item.prev)})`);
+type ReportKpi = Kpi & { section?: string };
+
+function toText(sections: Section[], kpis: ReportKpi[]) {
+  const grid = kpis.length ? `INDICADORES\n${kpis.map((item) => `- ${TONE[item.tone].mark}${item.label}: ${kpiValue(item)}${item.sub ? ` (${item.sub})` : ""}`).join("\n")}\nMás detalle: ${UTILS}/resumen\n\n` : "";
+  return grid + sections.map((section) => [
     `${section.warn ? "⚠ " : ""}${section.title.toUpperCase()}`,
     ...section.lines.map((line) => `- ${line}`),
     ...(section.table ? ["", section.table.head.join(" | "), ...section.table.rows.map((row) => row.map(cellText).join(" | "))] : []),
@@ -183,15 +207,25 @@ function toText(sections: Section[]) {
   ].join("\n")).join("\n\n") + `\n\n${UTILS}`;
 }
 
-function toHtml(sections: Section[], subject: string) {
+function toHtml(sections: Section[], subject: string, kpis: ReportKpi[]) {
+  // Rejilla de indicadores (tablas, para que se vea bien en cualquier correo): tres por fila, cada uno enlaza a su detalle.
+  const tile = (item: ReportKpi) => `<td width="33%" style="padding:6px;vertical-align:top"><a href="${UTILS}/resumen${item.section ? `#${item.section}` : ""}" style="display:block;text-decoration:none;color:inherit;border:1px solid #e4e4e7;border-left:4px solid ${TONE[item.tone].bar};border-radius:8px;padding:10px 12px;background:#fff">
+      <div style="font-size:12px;color:#71717a">${escapeHtml(item.label)}</div>
+      <div style="font-size:24px;font-weight:600;line-height:1.3;color:${TONE[item.tone].text}">${escapeHtml(kpiValue(item))}</div>
+      ${item.sub ? `<div style="font-size:12px;color:#52525b">${escapeHtml(item.sub)}</div>` : ""}
+      ${kpiPrev(item) ? `<div style="font-size:11px;color:#a1a1aa;margin-top:2px">${escapeHtml(kpiPrev(item))}</div>` : ""}</a></td>`;
+  const rows: ReportKpi[][] = [];
+  for (let i = 0; i < kpis.length; i += 3) rows.push(kpis.slice(i, i + 3));
+  const grid = kpis.length ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;margin:8px -6px 4px">${rows.map((row) => `<tr>${row.map(tile).join("")}${"<td></td>".repeat(3 - row.length)}</tr>`).join("")}</table>
+    <p style="margin:4px 0 0"><a href="${UTILS}/resumen" style="color:#047857">Ver el resumen completo en utils →</a></p>` : "";
   const cell = (value: Cell) => (typeof value === "string" ? escapeHtml(value) : `<a href="${value.href}" style="color:#047857">${escapeHtml(value.text)}</a>`);
   const td = "padding:4px 8px;border-bottom:1px solid #e4e4e7;vertical-align:top";
   const body = sections.map((section) => `
-    <h3 style="margin:24px 0 6px;font-size:16px;color:${section.warn ? "#b45309" : "#18181b"}">${section.warn ? "⚠ " : ""}${escapeHtml(section.title)}</h3>
+    <h3${section.id ? ` id="${section.id}"` : ""} style="margin:24px 0 6px;font-size:16px;color:${section.warn ? "#b45309" : "#18181b"}">${section.warn ? "⚠ " : ""}${escapeHtml(section.title)}</h3>
     <ul style="margin:0;padding-left:18px">${section.lines.map((line) => `<li style="margin:2px 0">${escapeHtml(line)}</li>`).join("")}</ul>
     ${section.table ? `<table style="border-collapse:collapse;margin-top:8px;font-size:13px"><thead><tr>${section.table.head.map((head) => `<th style="${td};text-align:left;background:#f4f4f5">${escapeHtml(head)}</th>`).join("")}</tr></thead><tbody>${section.table.rows.map((row) => `<tr>${row.map((value) => `<td style="${td}">${cell(value)}</td>`).join("")}</tr>`).join("")}</tbody></table>` : ""}
     ${section.link ? `<p style="margin:6px 0 0"><a href="${section.link.href}" style="color:#047857">${escapeHtml(section.link.text)} →</a></p>` : ""}`).join("");
   return `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:14px;color:#27272a;max-width:900px">
-    <p style="margin:0 0 4px;font-size:12px;color:#71717a">${escapeHtml(subject)}</p>${body}
+    <p style="margin:0 0 4px;font-size:12px;color:#71717a">${escapeHtml(subject)}</p>${grid}${body}
     <p style="margin:28px 0 0;font-size:12px;color:#71717a"><a href="${UTILS}" style="color:#047857">Abrir utils</a> · Correo automático de las sincronizaciones con MHD.</p></div>`;
 }
