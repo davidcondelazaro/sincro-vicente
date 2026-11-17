@@ -46,8 +46,9 @@ export async function seccionResumen(db: SupabaseClient, since: string) {
   const avisos = ((estado.avisos?.detail as { avisos?: { codigo: string; total: number; importante: boolean }[] } | undefined)?.avisos ?? []).filter((item) => item.importante);
   const sinPorte = estado.porPais.reduce((total, item) => total + item.sinPorte, 0);
   const vencidos = estado.porPais.reduce((total, item) => total + item.regionalVencido, 0);
+  const atrasadas = (estado.avisos?.detail as { atrasadas?: { total: number; ejemplos: string[] } } | undefined)?.atrasadas;
   const conciliada = estado.conciliacion && estado.conciliacion.created_at >= since;
-  const mal = avisos.length > 0 || estado.cola.atascados > 0 || vencidos > 0 || !conciliada;
+  const mal = avisos.length > 0 || (atrasadas?.total ?? 0) > 0 || estado.cola.atascados > 0 || vencidos > 0 || !conciliada;
   return {
     id: "google-merchant", title: "Google Merchant", warn: mal || sinPorte > 0 || errores.length > 0,
     kpis: [{ id: "merchant-avisos", label: "Google Merchant: avisos de portes", value: avisos.reduce((total, item) => total + item.total, 0), sub: `${estado.cola.atascados} atascados en la cola · ${sinPorte} sin porte`, tone: mal ? "bad" : sinPorte || errores.length ? "warn" : "ok" }],
@@ -56,6 +57,7 @@ export async function seccionResumen(db: SupabaseClient, since: string) {
       `En el periodo: ${suma("enviados")} portes mandados, ${suma("regionales")} regionales, ${suma("borrados")} quitados, ${suma("reenvios")} reenviados porque Google no los reflejaba.`,
       conciliada ? `Conciliación: ${new Date(estado.conciliacion!.created_at).toLocaleTimeString("es-ES", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit" })}.` : "La conciliación de anoche no se hizo.",
       ...(estado.ajustes.soloCodigos.length ? [`En prueba: solo ${estado.ajustes.soloCodigos.length} productos.`] : []),
+      ...(atrasadas?.total ? [`Mandados hace más de una hora y aún con aviso en Google: ${atrasadas.total} (${atrasadas.ejemplos.join(", ")}).`] : []),
       ...avisos.map((item) => `Aviso de Google: ${item.codigo} en ${item.total} ofertas.`),
       ...estado.cola.listaAtascados.slice(0, 10).map((item) => `Reintentando ${item.codigo} (${item.intentos} intentos): ${item.ultimo_error ?? item.motivo}`),
       ...errores.slice(0, 5).map((item) => `Error: ${item}`),

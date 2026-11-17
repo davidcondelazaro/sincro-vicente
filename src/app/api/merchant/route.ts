@@ -7,7 +7,7 @@ import { trabajarCola } from "@/lib/merchant/trabajador";
 // Google Merchant Center (src/lib/merchant). La llama pg_cron con la clave de las sincronizaciones (`x-mhd-import-token`):
 // - `?accion=cola` (cada 10 minutos): trabaja la cola de portes, plazos, EPREL e inventario regional.
 // - `?accion=conciliar` (cada noche): foto de lo que hay en Merchant Center y todo a la cola.
-// - `?accion=avisos` (cada noche, después): cuántas ofertas tienen cada aviso de Google.
+// - `?accion=avisos` (cada hora): cuántas ofertas tienen cada aviso de Google y cuáles mandadas siguen sin aplicar.
 // `&maximo=N` limita los productos de una vuelta de la cola (pruebas).
 
 export const runtime = "nodejs";

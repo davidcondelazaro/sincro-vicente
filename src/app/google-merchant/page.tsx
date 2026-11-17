@@ -59,6 +59,12 @@ export default function GoogleMerchantPage() {
   const porcentaje = total ? Math.floor((100 * hechas) / total) : 0;
   const haceUnaHora = new Date(cargadoEn - 3_600_000).toISOString();
   const ritmo = (estado?.vueltas ?? []).filter((item) => item.kind === "vuelta" && item.created_at >= haceUnaHora).reduce((suma, item) => suma + Number((item.detail as Record<string, number>).productos ?? 0), 0);
+  // Lo que Google ya aplica: ofertas de España sin aviso de portes, regiones ni EPREL en la última lectura (cada hora).
+  const lectura = estado?.avisos?.detail as { ofertasPorPais?: Record<string, number>; conAvisoPortes?: Record<string, number>; atrasadas?: { total: number; ejemplos: string[] } } | undefined;
+  const totalGoogle = lectura?.ofertasPorPais?.ES ?? 0;
+  const bienGoogle = Math.max(0, totalGoogle - (lectura?.conAvisoPortes?.ES ?? 0));
+  const porcentajeGoogle = totalGoogle ? Math.floor((100 * bienGoogle) / totalGoogle) : 0;
+  const atrasadas = lectura?.atrasadas?.total ?? 0;
   const fin = conCola && ritmo ? new Date(cargadoEn + (estado!.cola.total / ritmo) * 3_600_000).toLocaleTimeString("es-ES", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit" }) : null;
   return <div className="min-h-screen bg-zinc-50 lg:grid lg:grid-cols-[17.5rem_minmax(0,1fr)]"><AppSidebar active="googleMerchant" userEmail={email} />
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-24 pt-28 sm:px-10 lg:mx-0 lg:py-16">
@@ -76,6 +82,11 @@ export default function GoogleMerchantPage() {
           <div className="mb-2 flex justify-between text-sm font-medium"><span>{n(hechas)} de {n(total)} productos con portes en Merchant Center</span><span>{porcentaje}%</span></div>
           <div className="h-3 overflow-hidden rounded-full bg-zinc-100"><div className="h-full bg-emerald-600 transition-all" style={{ width: `${porcentaje}%` }} /></div>
           <p className="mt-3 text-sm text-zinc-600">{conCola ? `Quedan ${n(estado.cola.total)} en la cola${ritmo ? ` · ${n(ritmo)} por hora · termina hacia las ${fin}` : " · calculando el ritmo…"}. Se actualiza solo.` : "Cola vacía: todo al día."}</p>
+          {totalGoogle > 0 && estado.avisos && <div className="mt-5 border-t border-zinc-100 pt-4">
+            <div className="mb-2 flex justify-between text-sm font-medium"><span>{n(bienGoogle)} de {n(totalGoogle)} que Google ya da por buenos (sin aviso de portes, regiones ni EPREL)</span><span>{porcentajeGoogle}%</span></div>
+            <div className="h-3 overflow-hidden rounded-full bg-zinc-100"><div className="h-full bg-sky-600 transition-all" style={{ width: `${porcentajeGoogle}%` }} /></div>
+            <p className={`mt-3 text-sm ${atrasadas ? "font-medium text-red-800" : "text-zinc-600"}`}>{atrasadas ? `${n(atrasadas)} mandados hace más de una hora siguen con aviso en Google: ${lectura?.atrasadas?.ejemplos.join(", ")}.` : "Todo lo mandado hace más de una hora está aplicado en Google."} Leído en Google el {cuando(estado.avisos.created_at)}; se lee cada hora.</p>
+          </div>}
         </section>}
         <section aria-label="Por país" className="grid gap-3 sm:grid-cols-2">
           {estado.porPais.map((item) => <div key={item.pais} className="rounded-xl border border-zinc-200 bg-white p-4">
