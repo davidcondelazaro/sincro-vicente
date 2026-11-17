@@ -212,3 +212,12 @@ test("referencia: si todo lo de MHD con esa referencia está cancelado se usa la
   assert.equal(conVigente.referencia, "EV2-2");
   assert.equal(conVigente.encontrados[0].id, 2);
 });
+
+test("cupón de pedido con portes y varios cupones en productos distintos: cuadra con lo cobrado", () => {
+  // 5 % del pedido repartido en dos aparatos + 10 € de otro cupón solo en el segundo; portes 9,99 cobrados aparte
+  const uno = { ...aparato, unitPrice: precioNetoUnitario({ quantity: 1, originalUnitPrice: "199.00", allocations: ["9.95"] }).precio };
+  const dos = { ...aparato, sku: "40B5K", unitPrice: precioNetoUnitario({ quantity: 1, originalUnitPrice: "300.00", allocations: ["15.00", "10.00"] }).precio };
+  const result = buildExacto({ lines: [uno, dos], destination, shippingAmount: "19.98", totalCobrado: "484.03" });
+  assert.equal(result.ok, true, result.reason);
+  assert.deepEqual(result.productos.map((p) => p.precio), [189.05, 275]);
+});
