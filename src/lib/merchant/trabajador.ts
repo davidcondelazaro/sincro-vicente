@@ -13,7 +13,7 @@ import { entradaProducto, esperado, huella, nombreProducto, offerId, PAISES, rea
 // 5. Si el producto ya no está activo, quita lo mandado de la complementaria.
 // Freno: con muchos errores seguidos de la API se para, suelta lo cogido y avisa.
 
-export const TRABAJADOR = { lote: 100, concurrencia: 8, presupuestoMs: 240_000, frenoErrores: 25, renovarRegionalDias: 7, margenProcesoHoras: 3 };
+export const TRABAJADOR = { lote: 100, concurrencia: 32, presupuestoMs: 240_000, frenoErrores: 25, renovarRegionalDias: 7, margenProcesoHoras: 3 };
 const PAIS_LISTA = Object.keys(PAISES) as Pais[];
 
 export type AjustesMerchant = { activo: boolean; soloCodigos: string[]; fuentes: Partial<Record<Pais, string>> };
