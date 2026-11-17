@@ -1,13 +1,15 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { EMAIL_PREFIX, escapeHtml } from "@/lib/email";
+import { extraSections } from "./daily-report-extra";
 import type { CycleStep } from "./sync-cycle";
 
 // Resumen de las sincronizaciones y el importador (David, 2026-10-26: «resumen diario a las 9:00»; 2026-10-29: cada hora
 // durante unos días, hasta que todo esté estable, y «mucho más detalle»). Cuenta lo de las últimas `hours` horas (24 en
 // el diario): vueltas con el tiempo de cada paso, catálogo frente a la tienda, precio y stock con los mayores cambios y
 // los que van y vuelven, agotados, importador con descartes por motivo, cola de revisión, gasto de IA y avisos. El
-// detalle lo agrupa la base (mhd_sync_report, mhd_catalog_overview). Lo pendiente de montar (bajas y marcas nuevas) se
-// añadirá aquí cuando exista.
+// detalle lo agrupa la base (mhd_sync_report, mhd_catalog_overview). Desde el 2026-11-17, además, los procesos con su
+// vigilante de silencio, lo que deja el importador, portes, proveedor, relaciones, Garantía3, tarifas de servicios y
+// marcas y familias nuevas (daily-report-extra.ts). Pendiente: las bajas definitivas, que aún no existen.
 type Cell = string | { text: string; href: string };
 type Section = { title: string; warn?: boolean; lines: string[]; table?: { head: string[]; rows: Cell[][] }; link?: { text: string; href: string } };
 type Product = { codigo: string; title: string | null; product_id: string | null };
@@ -153,6 +155,11 @@ export async function buildDailyReport(db: SupabaseClient, now = new Date(), hou
     ],
     table: done.length || pending.length ? { head: ["Cambio", "Colección", "Origen", "Destino"], rows: [...done, ...pending].map((item) => [item.kind, item.detail.handle, item.detail.origen, item.detail.destino ?? "—"]) } : undefined,
   });
+
+  // Procesos (vigilante de silencio) arriba del todo; el resto de lo añadido el 17-11, antes de los avisos.
+  const [processes, ...extra] = await extraSections(db, now, since, period, cycles);
+  sections.unshift(processes);
+  sections.push(...extra);
 
   const sent = alertsResult.data ?? [];
   if (sent.length) sections.push({ title: "Avisos enviados", warn: true, lines: sent.map((item) => {
