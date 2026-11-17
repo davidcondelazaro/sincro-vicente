@@ -19,7 +19,8 @@ No guarda nada que no hayamos escrito nosotros: precio y stock se comparan con l
 
 - **La subida del importador** (`rememberShopifyIds` en `src/lib/mhd-importer/shopify-ids.ts`): al crear o actualizar el producto, con lo que devuelve `productSet`.
 - **El archivado de duplicados por EAN** (`rememberShopifyStatus`).
-- **No se refresca.** La carga inicial (2026-10-29) salió del espejo: 24.472 productos (24.275 activos y 197 borradores), los mismos que cubría el espejo, sin diferencias.
+- **El refresco nocturno de estados** (2026-11-17, `src/lib/mhd-importer/store-status-sync.ts`, cron `sincro-vicente-estados-tienda` a las 3:30 UTC): lee de Shopify los borradores y los archivados y deja el resto como activos (`mhd_store_status_refresh`). Hasta entonces el estado solo cambiaba cuando escribía un proceso nuestro, y lo cambiado a mano o con scripts se quedaba viejo (el 17-11: 349 borradores en la copia y 84 en Shopify). Solo refresca el estado; los productos borrados en Shopify no se detectan.
+- **Carga inicial:** la carga inicial (2026-10-29) salió del espejo: 24.472 productos (24.275 activos y 197 borradores), los mismos que cubría el espejo, sin diferencias.
 
 ## Quién la lee
 

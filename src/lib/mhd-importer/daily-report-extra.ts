@@ -40,7 +40,7 @@ type Process = { name: string; maxHours: number; last: string | null; note?: str
 export async function extraSections(db: SupabaseClient, now: Date, since: string, period: string, cycles: Cycle[]) {
   const events = (sync: string) => db.from("mhd_sync_events").select("kind,codigo,detail,created_at").eq("sync", sync).gte("created_at", since).order("created_at").limit(5000);
   const lastEvent = (sync: string, kinds: string[]) => db.from("mhd_sync_events").select("created_at").eq("sync", sync).in("kind", kinds).order("created_at", { ascending: false }).limit(1).maybeSingle();
-  const [uploads, delivery, supplier, relations, warranties, lastCycle, lastRelations, lastWarranty, lastImporter, novelties, ignored] = await Promise.all([
+  const [uploads, delivery, supplier, relations, warranties, lastCycle, lastRelations, lastWarranty, lastImporter, novelties, ignored, lastStatuses, draftBreakdown] = await Promise.all([
     events("importador"), events("opciones-entrega"), events("proveedor"), events("relaciones"),
     db.from("garantia3_vueltas").select("inicio,fin,origen,resumen").gte("inicio", since).order("inicio"),
     db.from("mhd_sync_cycles").select("started_at").order("started_at", { ascending: false }).limit(1).maybeSingle(),
@@ -49,6 +49,8 @@ export async function extraSections(db: SupabaseClient, now: Date, since: string
     db.from("mhd_importer_job_items").select("finished_at").not("finished_at", "is", null).order("finished_at", { ascending: false }).limit(1).maybeSingle(),
     db.rpc("mhd_report_novelties", { p_since: since }),
     db.from("store_settings").select("value").eq("key", "report_ignored_families").maybeSingle(),
+    lastEvent("estados-tienda", ["vuelta"]),
+    db.rpc("mhd_draft_breakdown"),
   ]);
   const sections: Section[] = [];
 
@@ -56,6 +58,7 @@ export async function extraSections(db: SupabaseClient, now: Date, since: string
   const processes: Process[] = [
     { name: "Vuelta de sincronización (cada 30 min)", maxHours: 1.5, last: lastCycle.data?.started_at ?? null },
     { name: "Relaciones entre productos (cada noche, 4:45)", maxHours: 26, last: lastRelations.data?.created_at ?? null },
+    { name: "Estados de la tienda (cada noche, 4:30)", maxHours: 26, last: lastStatuses.data?.created_at ?? null },
     { name: "Garantía3 (cada día, 9:00)", maxHours: 26, last: lastWarranty.data?.inicio ?? null },
     { name: "Importador (último producto terminado)", maxHours: 72, last: lastImporter.data?.finished_at ?? null, note: "solo trabaja cuando hay tandas" },
   ];
@@ -108,6 +111,24 @@ export async function extraSections(db: SupabaseClient, now: Date, since: string
       `Vídeos subidos: ${integer.format(videos)}${videoRuns.length ? ` (${integer.format(videoRuns.length)} productos en tandas «solo vídeos»)` : ""}.${deferred ? ` ${integer.format(deferred)} vídeos aplazados por el tope de Shopify: los pondrá una tanda «solo vídeos».` : ""}`,
     ],
     table: drafts.length ? { head: ["En borrador", "Código"], rows: drafts.slice(0, 30).map((item) => [shopifyLink(item.detail.title, item.detail.product_id, item.codigo), item.codigo]) } : undefined,
+    link: { text: "Revisar en utils", href: `${UTILS}/importador-productos` },
+  });
+
+  // Borradores reales de la tienda con su motivo (2026-11-17). Sale de la copia de estados que se refresca cada noche con
+  // Shopify (store-status-sync.ts). Los reacondicionados y los de «Avisar a MHD» se quedan en borrador a propósito; lo
+  // que no tiene motivo conocido es lo único para mirar.
+  type Breakdown = { total: number; motivos: { motivo: string; n: number; ejemplos: { codigo: string; title: string | null; product_id: string }[] }[] };
+  const breakdown = (draftBreakdown.data ?? { total: 0, motivos: [] }) as Breakdown;
+  const unexplained = breakdown.motivos.filter((item) => item.motivo === "sin motivo conocido" || item.motivo.startsWith("ya no está"));
+  const unexplainedCount = sum(unexplained, (item) => item.n);
+  sections.push({
+    id: "borradores", title: "Borradores en la tienda", warn: unexplainedCount > 0,
+    kpis: [{ id: "borradores", label: "Productos en borrador", value: breakdown.total, sub: unexplainedCount ? `${integer.format(unexplainedCount)} sin motivo claro` : "Todos con su motivo", tone: unexplainedCount ? "warn" : "neutral" }],
+    lines: [
+      `${integer.format(breakdown.total)} productos en borrador en Shopify (estados leídos de Shopify cada noche).`,
+      ...breakdown.motivos.map((item) => `${item.motivo}: ${integer.format(item.n)}.`),
+    ],
+    table: unexplained.length ? { head: ["Sin motivo claro", "Código", "Motivo"], rows: unexplained.flatMap((group) => group.ejemplos.map((item) => [shopifyLink(item.title ?? item.codigo, item.product_id, item.codigo), item.codigo, group.motivo])) } : undefined,
     link: { text: "Revisar en utils", href: `${UTILS}/importador-productos` },
   });
 
@@ -202,12 +223,12 @@ export async function extraSections(db: SupabaseClient, now: Date, since: string
   const pendingReview = proposed.count ?? 0;
   const simulating = applyCollections.data?.value !== true;
   sections.push({
-    id: "redirecciones", title: "Redirecciones", warn: pendingReview > 0 || simulating,
-    kpis: [{ id: "redirecciones", label: "Redirecciones", value: createdRedirects + removedRedirects, sub: [`${integer.format(createdRedirects)} creadas · ${integer.format(removedRedirects)} quitadas`, pendingReview ? `${pendingReview} por revisar` : "", simulating ? "colecciones en simulación" : ""].filter(Boolean).join(" · "), tone: pendingReview || simulating ? "warn" : "neutral" }],
+    id: "redirecciones", title: "Redirecciones", warn: pendingReview > 0,
+    kpis: [{ id: "redirecciones", label: "Redirecciones", value: createdRedirects + removedRedirects, sub: [`${integer.format(createdRedirects)} creadas · ${integer.format(removedRedirects)} quitadas`, pendingReview ? `${pendingReview} por revisar` : "", simulating ? "apagar colecciones en simulación" : ""].filter(Boolean).join(" · "), tone: pendingReview ? "warn" : "neutral" }],
     lines: [
       `En ${period}: ${integer.format(createdRedirects)} creadas en Shopify (colecciones que se quedan sin productos) y ${integer.format(removedRedirects)} quitadas (colecciones que los recuperan y productos que vuelven).`,
       `Base de redirecciones: ${integer.format(loaded.count ?? 0)} cargadas en Shopify${pendingReview ? `; ${integer.format(pendingReview)} propuestas sin revisar` : ""}.`,
-      ...(simulating ? ["Colecciones vacías en simulación: todavía no crean ni quitan redirecciones, solo dicen lo que harían (ajuste empty_collections_apply)."] : []),
+      ...(simulating ? ["Apagar colecciones vacías sigue en simulación (no se crean redirecciones); las que recuperan productos sí vuelven solas y quitan su redirección."] : []),
       "Bajas definitivas (archivar y redirigir productos): todavía no existen.",
     ],
     table: removedProducts.length ? { head: ["Quitada porque el producto vuelve", "Redirecciones"], rows: removedProducts.slice(0, 20).map((item) => [item.detail.origen ?? "—", integer.format(item.detail.cuantas ?? 1)]) } : undefined,

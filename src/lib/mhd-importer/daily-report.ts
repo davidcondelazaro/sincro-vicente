@@ -160,15 +160,16 @@ export async function buildDailyReport(db: SupabaseClient, now = new Date(), hou
   const collectionRuns = cycles.flatMap((cycle) => cycle.steps.filter((item) => item.name === "colecciones-vacias" && (item.counts?.mode || item.counts?.failed)));
   const lastRun = collectionRuns.at(-1)?.counts as CollectionsRun | undefined;
   const done = (collectionsResult.data ?? []) as { kind: string; detail: { handle: string; origen: string; destino: string | null } }[];
-  const simulated = lastRun?.mode === "simulación";
-  const pending = simulated ? [...(lastRun.unpublish ?? []).map((item) => ({ kind: "despublicaría", detail: item })), ...(lastRun.publish ?? []).map((item) => ({ kind: "publicaría", detail: item }))] : [];
+  // «solo volver a publicar» (2026-11-17): las que recuperan productos vuelven de verdad; apagar sigue en simulación.
+  const simulated = Boolean(lastRun?.mode) && lastRun?.mode !== "aplicar";
+  const pending = simulated ? [...(lastRun!.unpublish ?? []).map((item) => ({ kind: "despublicaría", detail: item })), ...(lastRun!.mode === "simulación" ? (lastRun!.publish ?? []).map((item) => ({ kind: "publicaría", detail: item })) : [])] : [];
   const collectionErrors = collectionRuns.flatMap((item) => [...((item.counts as CollectionsRun).errors ?? []), ...((item.counts as CollectionsRun).failed ? [String((item.counts as CollectionsRun).failed)] : [])]);
   if (lastRun || done.length) sections.push({
     id: "colecciones", kpis: [{ id: "colecciones", label: "Colecciones", value: done.length, sub: `${done.filter((item) => item.kind === "despublicada").length} despublicadas · ${done.filter((item) => item.kind === "republicada").length} publicadas${simulated ? " · en simulación" : ""}`, tone: lastRun?.braked || collectionErrors.length ? "bad" : lastRun?.inMenu?.length ? "warn" : "neutral" }],
     title: "Colecciones y redirecciones", warn: done.length > 0 || Boolean(lastRun?.inMenu?.length) || Boolean(lastRun?.braked) || collectionErrors.length > 0,
     lines: [
       `En ${period}: ${done.filter((item) => item.kind === "despublicada").length} despublicadas y ${done.filter((item) => item.kind === "republicada").length} publicadas otra vez.`,
-      ...(simulated ? ["Están en simulación: no se ha tocado nada, abajo sale lo que haría."] : []),
+      ...(simulated ? [lastRun?.mode === "simulación" ? "Están en simulación: no se ha tocado nada, abajo sale lo que haría." : "Las que recuperan productos vuelven solas; apagar las vacías sigue en simulación: abajo sale lo que haría."] : []),
       ...(lastRun?.inMenu?.length ? [`Sin productos activos pero en un menú, no se tocan: ${lastRun.inMenu.join(", ")}.`] : []),
       ...(lastRun?.braked ? ["Freno: demasiadas colecciones vacías de golpe, no se ha despublicado ninguna."] : []),
       ...collectionErrors.map((item) => `Error: ${item}`),

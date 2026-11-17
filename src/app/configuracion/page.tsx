@@ -67,6 +67,10 @@ export default function SettingsPage() {
           <label className="flex items-center gap-3 text-sm font-medium text-zinc-800"><input type="checkbox" className="h-5 w-5 accent-emerald-700" checked={settings.delivery_changes_alert?.value !== false} onChange={(event) => void save("delivery_changes_alert", event.target.checked, event.target.checked ? "aviso de portes activo" : "aviso de portes apagado")} />{settings.delivery_changes_alert?.value !== false ? "Avisar de cambios fuertes de portes" : "Sin aviso de cambios de portes"}</label>
           {stamp("delivery_changes_alert")}
         </Section>
+        <Section title="Colecciones vacías" text="Las colecciones que se quedaron sin productos y se apagaron con una redirección vuelven solas cuando tienen otra vez productos activos: se publican y se quita la redirección. Apagar las que se vacían sigue en simulación.">
+          <label className="flex items-center gap-3 text-sm font-medium text-zinc-800"><input type="checkbox" className="h-5 w-5 accent-emerald-700" checked={settings.empty_collections_republish?.value === true} onChange={(event) => void save("empty_collections_republish", event.target.checked, event.target.checked ? "colecciones: volver a publicar activo" : "colecciones: volver a publicar apagado")} />{settings.empty_collections_republish?.value === true ? "Volver a publicar las que recuperan productos" : "No volver a publicar (solo simulación)"}</label>
+          {stamp("empty_collections_republish")}
+        </Section>
         <Section title="Proveedor de MHD" text="Cada vuelta lleva a Shopify el proveedor de cada producto (metacampos de los que cuelgan reglas). Si muchos cambian de proveedor a la vez puede ser un dato roto de MHD; si el cambio es real, sube este freno.">
           <NumberSetting label="Freno: si en una vuelta cambian de proveedor más productos que estos, no se envía nada y llega un aviso" suffix="productos" value={Number(settings.supplier_switch_max?.value ?? 300)} step={1} onSave={(value) => save("supplier_switch_max", value, "freno de proveedor")} />
           {stamp("supplier_switch_max")}

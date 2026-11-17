@@ -146,7 +146,7 @@ Regla de David (2026-10-28): una colección sin ningún producto activo no se bo
 - **Recupera activos:** solo las que tienen redirección en su dirección, que es la marca que deja este paso. Se publica, se quita la redirección y se borra `seo.hidden` si lo tiene. Lo despublicado a mano, sin redirección, queda fuera.
 - **En un menú:** no se toca; sale en el resumen.
 - **Sin tabla propia:** el estado es el de Shopify (publicada o no, y su redirección), la única fuente; `reference/arbol/colecciones-despublicadas.json` deja de usarse. Cada cambio queda en `mhd_sync_events` (`sync` = `colecciones`, `kind` = `despublicada` o `republicada`) con origen y destino.
-- **Simulación:** con `empty_collections_apply` distinto de `true` en `store_settings` no toca nada: la vuelta guarda lo que haría y el resumen lo enseña. Empieza así.
+- **Simulación:** con `empty_collections_apply` distinto de `true` en `store_settings` no toca nada: la vuelta guarda lo que haría y el resumen lo enseña. Empieza así. Desde el 2026-11-17 `empty_collections_republish` = `true` (Configuración › Colecciones vacías) aplica solo la vuelta de las que recuperan productos activos (se publican y se quita su redirección); apagar las vacías sigue en simulación.
 - **Freno:** más de `empty_collections_max` (25) despublicaciones de golpe no se aplican y llega un aviso. Las publicaciones sí siguen.
 - **Si falla:** avisa una vez por hora, no tumba la vuelta y se reintenta en la siguiente.
 

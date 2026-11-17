@@ -12,6 +12,9 @@ import { shopifyGraphql, type ShopifyConfig } from "./store-filters";
 // despublicado a mano, sin redirección, no se toca. Lo hecho queda en mhd_sync_events (sync = 'colecciones').
 // Simulación: con `empty_collections_apply` distinto de true solo dice en la vuelta y en el resumen lo que haría.
 // Freno: más de `empty_collections_max` despublicaciones de golpe no se aplican y se avisa.
+// Solo volver a publicar (David, 2026-11-17: «solo si han vuelto a tener artículos publicables»): con
+// `empty_collections_republish` = true se aplica la vuelta de las que recuperan productos activos aunque la
+// despublicación siga en simulación.
 const TYPES = new Set(["arbol-familia", "seo", "marca"]);
 const PUBLICATIONS = ["gid://shopify/Publication/316155756876", "gid://shopify/Publication/316155855180"];
 const BRANDS_PAGE = "/pages/marcas";
@@ -159,26 +162,28 @@ async function run(deps: { db: SupabaseClient; shopify: ShopifyConfig }, options
   const text = result.url ? await (await fetch(result.url, { signal: AbortSignal.timeout(60_000) })).text() : "";
   const collections = parseCollections(text);
   if (!collections.length) { await saveState(db, { checked_at: state.checked_at ?? null }); throw new Error("La consulta masiva de Shopify no trajo colecciones."); }
-  const [{ menus }, apply, max] = await Promise.all([
+  const [{ menus }, apply, max, republish] = await Promise.all([
     shopifyGraphql<{ menus: { nodes: { items: MenuItem[] }[] } }>(shopify, `{ menus(first: 50) { nodes { items { url items { url items { url } } } } } }`),
     setting(db, "empty_collections_apply", false),
     setting(db, "empty_collections_max", 25),
+    setting(db, "empty_collections_republish", false),
   ]);
   const decision = decideCollections(collections, menuHandles(menus.nodes));
   // Solo vuelven las que apagó este paso: las que tienen redirección en su dirección.
   const publish: { collection: StoreCollection; redirect: Redirect }[] = [];
   for (const collection of decision.recovered) { const redirect = await findRedirect(shopify, `/collections/${collection.handle}`); if (redirect) publish.push({ collection, redirect }); }
   const applying = apply === true;
+  const republishing = applying || republish === true;
   const braked = decision.unpublish.length > Number(max);
   const errors: string[] = [];
   if (applying) {
     if (braked) await sendAlert(db, { key: "colecciones-vacias:freno", quietMinutes: BRAKE_QUIET_MINUTES, subject: `Freno: ${decision.unpublish.length} colecciones vacías de golpe`, lines: [`Saldrían ${decision.unpublish.length} colecciones sin productos activos, más del tope (${max}).`, "No se ha despublicado ninguna: revisa si es normal o sube el tope `empty_collections_max`.", decision.unpublish.slice(0, 20).map((item) => item.collection.handle).join(", ")] });
     else for (const item of decision.unpublish) await unpublishCollection(deps, item.collection, item.target, errors);
-    for (const item of publish) await publishCollection(deps, item.collection, item.redirect, errors);
   }
+  if (republishing) for (const item of publish) await publishCollection(deps, item.collection, item.redirect, errors);
   await saveState(db, { checked_at: startedAt });
   return {
-    mode: applying ? "aplicar" : "simulación", collections: collections.length, braked, errors,
+    mode: applying ? "aplicar" : republishing ? "solo volver a publicar" : "simulación", collections: collections.length, braked, errors,
     unpublish: decision.unpublish.map((item) => ({ handle: item.collection.handle, tipo: item.collection.tipo, origen: `/collections/${item.collection.handle}`, destino: item.target })),
     publish: publish.map(({ collection, redirect }) => ({ handle: collection.handle, tipo: collection.tipo, productos: collection.active, origen: redirect.path, destino: redirect.target })),
     inMenu: decision.inMenu.map((collection) => collection.handle),
