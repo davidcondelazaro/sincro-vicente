@@ -435,8 +435,9 @@ La lógica está en `src/lib/mhd-order-fiscal.ts`, con pruebas en
   `localizedFields` llega con el permiso actual (`TAX_CREDENTIAL_ES`, título «DNI/NIF»)
   y MHD acepta `apellidos_facturacion` vacío. Guardó `nombre_facturacion` = la empresa,
   `nif_facturacion` = el NIF, `nif_envio` = " " y las observaciones tal cual.
-- Falta ver qué clave usa Portugal (se espera `TAX_CREDENTIAL_PT`; el código acepta
-  cualquier `TAX_CREDENTIAL_*`).
+- Portugal (visto el 18-11-2026 con envío a Oporto, sin terminar el pedido): sale el
+  mismo bloque con el campo «NIF/IVA». La clave no se ha visto en un pedido (se espera
+  `TAX_CREDENTIAL_PT`); el código acepta cualquier `TAX_CREDENTIAL_*`.
 - Los correos de Shopify no tienen acceso a este campo (probado en el tema, ver
   `docs/CUSTOMIZACIONES_THEME.md` › NIF en el pago).
 
@@ -531,7 +532,7 @@ automática con corte 2026-11-17T09:05:50Z.
 **Interruptores** (utils › Configuración › Pedidos MHD, `store_settings`):
 - `pedidos_exportar_auto_activo` (apagado) y `pedidos_exportar_auto_desde` (corte, se pone
   al encender): solo pedidos «listos», creados después del corte, con
-  `pedidos_exportar_margen_minutos` (30) desde el pago, como mucho 10 por pasada. Usa la
+  `pedidos_exportar_margen_minutos` (30; a 0 desde el 18-11-2026, a petición: se exporta en la misma vuelta que se trae) desde el pago, como mucho 10 por pasada. Usa la
   misma exportación que el botón (relee Shopify y busca en MHD antes de enviar).
 - `pedidos_envio_auto_activo` (apagado): marca en Shopify, avisando al cliente, los que
   MHD da por Enviado, En tránsito o Finalizado con **un** seguimiento. Sin seguimiento o
