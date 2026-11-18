@@ -23,6 +23,7 @@ import { noTrace, type Trace } from "./trace";
 import { handleOwner, storeProductsByEan } from "./shopify-ids";
 import type { ShopifyConfig } from "./store-filters";
 import { applyProfile, discardReason, sourceValues, type AppliedRules, reviewReasons } from "./rules";
+import { eprelDeLaEtiqueta } from "./eprel-qr";
 import { fetchEprelClass, fetchIcecatByModel, fetchIcecatDocument, fetchMhdMedia } from "./sources";
 
 // Decisiones de David (2026-10-23), provisionales donde se indica.
@@ -155,7 +156,11 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
   const profile = profileRow.profile; const icecat = identity.icecat;
   // Clase energética oficial (David, 2026-10-27): con EPREL manda la de EPREL. MHD da a veces la HDR de los televisores
   // («G» con SDR «E») y Icecat, la de solo lavado de las lavasecadoras o la escala antigua («A++»).
-  const eprel = icecat?.eprelId ? await t.step("Clase energética de EPREL", () => fetchEprelClass(icecat.eprelId!), (result) => (result ? `${result.energyClass} (${result.productGroup ?? "?"})` : "Sin respuesta: se usa la de MHD")) : null;
+  // Número EPREL: el de Icecat; si no lo trae, el del QR de la etiqueta de MHD con el modelo comprobado (eprel-qr.ts).
+  const delQr = !icecat?.eprelId && listing.img_ficha_eficiencia ? await t.step("EPREL del QR de la etiqueta", () => eprelDeLaEtiqueta(listing.img_ficha_eficiencia!, [listing.ref_proved, listing.titulo]).catch((error: unknown) => ({ id: null, motivo: `No se pudo leer el QR: ${error instanceof Error ? error.message : String(error)}`, clase: null })), (result) => result.motivo) : null;
+  if (delQr && !delQr.id && /otro modelo/.test(delQr.motivo)) warnings.push(delQr.motivo);
+  const eprelId = icecat?.eprelId ?? delQr?.id ?? null;
+  const eprel = icecat?.eprelId ? await t.step("Clase energética de EPREL", () => fetchEprelClass(icecat.eprelId!), (result) => (result ? `${result.energyClass} (${result.productGroup ?? "?"})` : "Sin respuesta: se usa la de MHD")) : delQr?.clase ?? null;
   if (eprel) {
     if (energyLetter(listing.letra_eficiencia) !== eprel.energyClass) warnings.push(`Clase energética: MHD dice «${listing.letra_eficiencia ?? "—"}» y EPREL «${eprel.energyClass}»: se usa la de EPREL.`);
     listing = { ...listing, letra_eficiencia: eprel.energyClass };
@@ -372,12 +377,12 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
     ...(listing.opciones_entrega ? [{ namespace: "custom", key: "opciones_entrega", type: "json", value: json(listing.opciones_entrega) }] : []),
     // Proveedor de MHD (supplier-sync.ts lo mantiene después en cada vuelta).
     ...(listing.proveedor ? [{ namespace: "custom", key: "proveedor_codigo", type: "number_integer", value: String(listing.proveedor.codigo) }, { namespace: "custom", key: "proveedor_nombre", type: "single_line_text_field", value: listing.proveedor.nombre }] : []),
-    ...(icecat?.eprelId ? [{ namespace: "custom", key: "eprel", type: "single_line_text_field", value: icecat.eprelId }] : []),
+    ...(eprelId ? [{ namespace: "custom", key: "eprel", type: "single_line_text_field", value: eprelId }] : []),
     ...(technical ? [{ namespace: "custom", key: "icecat", type: "json", value: json(technical) }] : []),
     ...(content.elvi_tip.text.trim() ? [{ namespace: "custom", key: "consejo_elvi", type: "multi_line_text_field", value: content.elvi_tip.text.trim() }] : []),
     ...Object.entries(applied.metafields).map(([key, value]) => { const [namespace, name] = key.split("."); return { namespace, key: name, type: LISTS.has(key) ? "list.single_line_text_field" : "single_line_text_field", value: Array.isArray(value) ? json(value) : value }; }),
   ];
-  if (!icecat?.eprelId && (label || listing.letra_eficiencia)) warnings.push("Sin código EPREL en Icecat.");
+  if (!eprelId && (label || listing.letra_eficiencia)) warnings.push("Sin código EPREL en Icecat ni en el QR de la etiqueta.");
   if (!label && (listing.letra_eficiencia || listing.img_ficha_eficiencia)) warnings.push("Producto con clase energética y sin etiqueta válida: se publica sin etiqueta.");
 
   // Cola de revisión (regla de David del 2026-10-24): el producto se monta igual, pero alguien tiene que mirarlo.
@@ -410,7 +415,7 @@ export async function processProduct(deps: { db: SupabaseClient; config: Sources
       },
       classification, filters: applied.metafields, origins: applied.origins, missingFilters: applied.missing,
       images, droppedImages: ordered.dropped.map((image) => ({ url: image.url, width: image.width, height: image.height, kind: image.kind, description: image.description, reason: image.reason })),
-      energyLabel: { letter: listing.letra_eficiencia?.toUpperCase() ?? null, source: label?.source ?? null, filename: labelFilename, width: label?.width ?? null, height: label?.height ?? null, eprel: icecat?.eprelId ?? null },
+      energyLabel: { letter: listing.letra_eficiencia?.toUpperCase() ?? null, source: label?.source ?? null, filename: labelFilename, width: label?.width ?? null, height: label?.height ?? null, eprel: eprelId },
       documents, videos: { youtube, mp4 },
       price: { pvp: listing.pvp, ignored: { pvpBefore: listing.pvp_antes, cost: listing.triple_neto ?? null }, vat: listing.iva, stock: listing.stock },
       sources: { mhdDetail: Boolean(gathered.detail), icecat: Boolean(icecat), icecatTitle: icecat?.title ?? null, technicalSheet: technical?._source ?? null },
