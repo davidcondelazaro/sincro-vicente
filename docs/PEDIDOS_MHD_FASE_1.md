@@ -431,9 +431,14 @@ La lógica está en `src/lib/mhd-order-fiscal.ts`, con pruebas en
 - **Empresa en la dirección de envío.** Va a observaciones. Si es la misma que la de
   facturación no se repite: Shopify copia el envío en la facturación cuando el cliente
   no pide otra dirección.
-- Pendiente de comprobar con un pedido de prueba:
-  - que `localizedFields` llega con el permiso actual y qué clave usa Portugal;
-  - que MHD acepta los apellidos vacíos.
+- Comprobado el 18-11-2026 con EV99346 (prueba, exportado como #62879 y cancelado):
+  `localizedFields` llega con el permiso actual (`TAX_CREDENTIAL_ES`, título «DNI/NIF»)
+  y MHD acepta `apellidos_facturacion` vacío. Guardó `nombre_facturacion` = la empresa,
+  `nif_facturacion` = el NIF, `nif_envio` = " " y las observaciones tal cual.
+- Falta ver qué clave usa Portugal (se espera `TAX_CREDENTIAL_PT`; el código acepta
+  cualquier `TAX_CREDENTIAL_*`).
+- Los correos de Shopify no tienen acceso a este campo (probado en el tema, ver
+  `docs/CUSTOMIZACIONES_THEME.md` › NIF en el pago).
 
 ### Cancelados en MHD (14-11-2026)
 

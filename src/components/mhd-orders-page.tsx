@@ -3,13 +3,21 @@ import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { AppSidebar } from "@/components/app-sidebar";
 import { createClient } from "@/lib/supabase/client";
+import { nifDelPedido, type CampoLocalizado } from "@/lib/mhd-order-fiscal";
 
 type Line = { id: string; sku: string | null; title: string; quantity: number; unit_price: string };
 type ExportAttempt = { created_at: string; http_status: number | null; outcome: string; error_message: string | null; response_payload: { errors?: string[] } | null };
 type MhdTracking = { carrier_name?: string | null; tracking_number?: string | null; carrier_url?: string | null };
 type MhdInvoice = { url_factura: string; nombre_factura?: string | null };
 type MhdStatusPayload = { id_estado_cliente?: number | null; estado_cliente?: string | null; arr_estados?: { estado?: string; fecha?: number | string | null }[]; seguimiento?: MhdTracking[]; facturas?: MhdInvoice[] };
-type Order = { id: string; shopify_order_id: string; shopify_order_name: string; financial_status: string; fulfillment_status: string; email: string | null; order_note: string | null; discount_summary: string | null; shipping_country_code: string | null; shipping_province_name: string | null; subtotal_amount: string | null; discount_amount: string | null; shipping_amount: string | null; total_amount: string | null; currency_code: string | null; eligibility_status: string; eligibility_reason: string | null; source_updated_at: string; source_payload: { createdAt?: string; customer?: { displayName?: string | null } | null; shippingAddress?: { name?: string | null } | null }; exports: { mhd_order_id: number | null; mhd_transaction_id: string | null; mhd_status: string | null; mhd_status_payload: MhdStatusPayload | null; status: string; attempts: ExportAttempt[] | null }[] | null; lines: Line[] | null };
+type ShopifyAddress = { name?: string | null; firstName?: string | null; lastName?: string | null; company?: string | null; address1?: string | null; address2?: string | null; city?: string | null; zip?: string | null; province?: string | null; countryCodeV2?: string | null; phone?: string | null };
+type SourcePayload = {
+  createdAt?: string; email?: string | null; customer?: { displayName?: string | null } | null;
+  shippingAddress?: ShopifyAddress | null; billingAddress?: ShopifyAddress | null;
+  localizedFields?: { nodes?: CampoLocalizado[] | null } | null; paymentGatewayNames?: string[] | null; shippingLine?: { title?: string | null } | null;
+  fulfillmentOrders?: { nodes?: { deliveryMethod?: { methodType?: string | null } | null; destination?: { location?: { name?: string | null } | null } | null }[] | null } | null;
+};
+type Order = { id: string; shopify_order_id: string; shopify_order_name: string; financial_status: string; fulfillment_status: string; email: string | null; order_note: string | null; discount_summary: string | null; shipping_country_code: string | null; shipping_province_name: string | null; subtotal_amount: string | null; discount_amount: string | null; shipping_amount: string | null; total_amount: string | null; currency_code: string | null; eligibility_status: string; eligibility_reason: string | null; source_updated_at: string; source_payload: SourcePayload; exports: { mhd_order_id: number | null; mhd_transaction_id: string | null; mhd_status: string | null; mhd_status_payload: MhdStatusPayload | null; status: string; attempts: ExportAttempt[] | null }[] | null; lines: Line[] | null };
 
 export function MhdOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]); const [email, setEmail] = useState<string | null>(null); const [loading, setLoading] = useState(true); const [syncing, setSyncing] = useState(false); const [syncingMhd, setSyncingMhd] = useState(false); const [error, setError] = useState<string | null>(null); const [trace, setTrace] = useState<string | null>(null); const [filter, setFilter] = useState("all"); const [dateFrom, setDateFrom] = useState(""); const [dateTo, setDateTo] = useState(""); const [page, setPage] = useState(1);
@@ -97,6 +105,7 @@ function OrderCard({ order, onChanged }: { order: Order; onChanged: () => Promis
       <ExportPanel order={order} onChanged={onChanged} />
       {order.fulfillment_status !== "FULFILLED" && <FulfillPanel order={order} tracking={tracking} mhdShipped={[10, 11, 12].includes(exported?.mhd_status_payload?.id_estado_cliente ?? 0)} onChanged={onChanged} />}
       {showOrderDetail && <div className="mt-3">
+        <OrderCustomer order={order} />
         <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg bg-zinc-50 p-3 text-zinc-700 min-[520px]:grid-cols-4">
           <div><dt className="text-xs text-zinc-500">Productos</dt><dd>{money(subtotal, order.currency_code)}</dd></div>
           <div><dt className="text-xs text-zinc-500">Descuentos aplicados</dt><dd>{order.discount_amount && Number(order.discount_amount) > 0 ? `−${money(order.discount_amount, order.currency_code)}` : money(order.discount_amount, order.currency_code)}</dd></div>
@@ -212,6 +221,45 @@ function FulfillPanel({ order, tracking, mhdShipped, onChanged }: { order: Order
     </div>}
   </div>;
 }
+// Cliente, direcciones, NIF, entrega y pago, tal como llegaron de Shopify (source_payload)
+function OrderCustomer({ order }: { order: Order }) {
+  const payload = order.source_payload ?? {};
+  const shipping = payload.shippingAddress ?? null;
+  const billing = payload.billingAddress ?? null;
+  const nif = nifDelPedido(payload);
+  const pickup = payload.fulfillmentOrders?.nodes?.find((item) => item.deliveryMethod?.methodType === "PICK_UP")?.destination?.location?.name ?? null;
+  const delivery = pickup ? `Recogida en ${pickup}` : payload.shippingLine?.title ?? null;
+  const payment = payload.paymentGatewayNames?.filter(Boolean).join(", ") || null;
+  const phone = shipping?.phone ?? billing?.phone ?? null;
+  return <div className="grid gap-3 rounded-lg bg-zinc-50 p-3 text-sm text-zinc-700 min-[720px]:grid-cols-3">
+    <section>
+      <h4 className="text-xs text-zinc-500">Cliente</h4>
+      <p className="font-medium">{payload.customer?.displayName ?? billing?.name ?? shipping?.name ?? "—"}</p>
+      {(order.email ?? payload.email) && <p className="break-all">{order.email ?? payload.email}</p>}
+      {phone && <p>{phone}</p>}
+      <p className="mt-2"><span className="text-xs text-zinc-500">NIF: </span>{nif ?? <span className="text-zinc-500">no lo ha puesto</span>}</p>
+      {delivery && <p><span className="text-xs text-zinc-500">Entrega: </span>{delivery}</p>}
+      {payment && <p><span className="text-xs text-zinc-500">Pago: </span>{payment}</p>}
+    </section>
+    <AddressBlock title="Dirección de envío" address={shipping} empty={pickup ? "Recogida en tienda" : "Sin dirección de envío"} />
+    <AddressBlock title="Dirección de facturación" address={billing} empty="Sin dirección de facturación" />
+  </div>;
+}
+
+function AddressBlock({ title, address, empty }: { title: string; address: ShopifyAddress | null; empty: string }) {
+  const name = address?.name ?? [address?.firstName, address?.lastName].filter(Boolean).join(" ");
+  return <section>
+    <h4 className="text-xs text-zinc-500">{title}</h4>
+    {address ? <>
+      {name && <p className="font-medium">{name}</p>}
+      {address.company && <p><span className="text-xs text-zinc-500">Empresa: </span>{address.company}</p>}
+      {[address.address1, address.address2].filter(Boolean).map((part) => <p key={part}>{part}</p>)}
+      <p>{[address.zip, address.city].filter(Boolean).join(" ")}{address.province ? ` (${address.province})` : ""}{address.countryCodeV2 && address.countryCodeV2 !== "ES" ? ` · ${address.countryCodeV2}` : ""}</p>
+      {address.phone && <p>{address.phone}</p>}
+    </> : <p className="text-zinc-500">{empty}</p>}
+  </section>;
+}
+
 function TrackingLink({ item }: { item: MhdTracking }) {
   const label = `${item.carrier_name ?? "Seguimiento"} · ${item.tracking_number}`;
   return item.carrier_url ? <a href={item.carrier_url} target="_blank" rel="noreferrer" className="font-medium text-emerald-700 underline underline-offset-2">{label}</a> : <span className="text-zinc-700">{label}</span>;
