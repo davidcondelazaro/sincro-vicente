@@ -83,7 +83,7 @@ export default function SettingsPage() {
           <Emails label="Destinatarios del resumen" value={settings.report_emails?.value} onSave={(list) => save("report_emails", list, "destinatarios del resumen")} />
           {stamp("report_emails")}
         </Section>
-        <Section title="Pedidos MHD" text="Cada 15 minutos se traen los pedidos de Shopify (y se exportan los listos, si está encendido); cada 30 se leen los estados de MHD: facturas, cancelaciones y envíos. Lo que se enciende solo actúa a partir de ese momento.">
+        <Section title="Pedidos MHD" text="Cada 5 minutos se traen los pedidos de Shopify (y se exportan los listos, si está encendido); cada 30 se leen los estados de MHD: facturas, cancelaciones y envíos. Lo que se enciende solo actúa a partir de ese momento.">
           <Toggle settings={settings} name="pedidos_exportar_auto_activo" on="Exportar a MHD automáticamente" off="Exportar a MHD: solo con el botón" save={save} cutoff="pedidos_exportar_auto_desde" />
           <NumberSetting label="Espera desde el pago antes de exportar (en ese rato es cuando más se cancela o corrige)" suffix="minutos" value={Number(settings.pedidos_exportar_margen_minutos?.value ?? 30)} step={1} onSave={(value) => save("pedidos_exportar_margen_minutos", value, "espera antes de exportar")} />
           {stamp("pedidos_exportar_margen_minutos")}

@@ -9,7 +9,7 @@ import { puntoDeRecogida, type PedidoConEntrega } from "@/lib/mhd-order-lines";
 import { refreshMhdStatuses, syncShopifyOrders } from "@/lib/mhd-order-sync";
 
 // Tareas programadas de pedidos (docs/PEDIDOS_MHD_FASE_1.md › Automatización de pedidos, 17-11-2026):
-// - tareaPedidos, cada 15 min: trae los pedidos de Shopify, exporta a MHD los listos (si está encendido) y avisa de los
+// - tareaPedidos, cada 5 min: trae los pedidos de Shopify, exporta a MHD los listos (si está encendido) y avisa de los
 //   pagados que siguen sin exportar.
 // - tareaEstados, cada 30 min: lee los estados de MHD (facturas, cancelaciones), marca en Shopify los enviados (si está
 //   encendido) y avisa de los errores.
@@ -58,7 +58,7 @@ export async function tareaPedidos(db: SupabaseClient, now = new Date()) {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await logOrderEvent(db, "error", { proceso: "traer pedidos", texto: message });
-    await orderAlert(db, { key: "pedidos:shopify", subject: "Pedidos: no se pudieron traer de Shopify", lines: ["La tarea de cada 15 minutos no ha podido leer los pedidos de Shopify:", message] });
+    await orderAlert(db, { key: "pedidos:shopify", subject: "Pedidos: no se pudieron traer de Shopify", lines: ["La tarea de cada 5 minutos no ha podido leer los pedidos de Shopify:", message] });
     throw error;
   }
   if (fetched.createdCount || fetched.updatedCount) await logOrderEvent(db, "traidos", { nuevos: fetched.createdCount, actualizados: fetched.updatedCount, total: fetched.count });

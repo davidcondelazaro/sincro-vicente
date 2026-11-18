@@ -7,7 +7,7 @@ import { logOrderEvent } from "@/lib/mhd-order-events";
 import { buildOrdersReport } from "@/lib/mhd-order-report";
 
 // Tareas programadas de pedidos (docs/PEDIDOS_MHD_FASE_1.md › Automatización de pedidos). Las llama pg_cron sin sesión
-// pero con la cabecera `x-mhd-import-token`: ?tipo=pedidos (cada 15 min), estados (cada 30 min) y resumen (cada hora;
+// pero con la cabecera `x-mhd-import-token`: ?tipo=pedidos (cada 5 min), estados (cada 30 min) y resumen (cada hora;
 // solo sale a la hora elegida en Configuración, una vez al día). `?simulacion=1` con resumen lo devuelve sin enviarlo y
 // `?prueba=1` lo envía ya, marcado como prueba. ?tipo=exportar&pedido=EV… exporta ese pedido como el botón (para
 // reexportar a mano uno que MHD canceló: la fila se deja antes en «ready» y se comprueba en MHD que no hay otro vigente).

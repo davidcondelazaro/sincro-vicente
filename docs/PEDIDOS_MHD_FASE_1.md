@@ -519,7 +519,7 @@ Decisiones de David del 17-11 sobre las del 31-10 (más abajo). Código en
 
 | Tarea (pg_cron) | Cuándo | Qué hace |
 |---|---|---|
-| `sincro-vicente-pedidos-pedidos` | cada 15 min | Trae de Shopify los pagados sin enviar; si está encendido, exporta los listos; avisa de los pagados sin exportar |
+| `sincro-vicente-pedidos-pedidos` | cada 5 min (cada 15 hasta el 18-11-2026) | Trae de Shopify los pagados sin enviar; si está encendido, exporta los listos; avisa de los pagados sin exportar |
 | `sincro-vicente-pedidos-estados` | cada 30 min (:07 y :37) | Lee en MHD todos los pedidos exportados: estados, facturas (a Shopify y correo), cancelaciones; si está encendido, marca los enviados |
 | `sincro-vicente-pedidos-resumen` | cada hora | Solo sale a la hora elegida, una vez al día |
 
@@ -573,7 +573,7 @@ procesos se preparan apagados, cada uno con su interruptor.
 
 - **Botón de exportar:** hoy no existe en la pantalla. Uno por pedido exportable, con
   confirmación que muestre artículos, unidades, precio, portes, servicios y dirección.
-- **Proceso 1, cada 15 min:** trae de Shopify los pedidos pagados y, al terminar,
+- **Proceso 1, cada 5 min:** trae de Shopify los pedidos pagados y, al terminar,
   exporta los que estén listos, con la misma lógica que el botón.
 - **Proceso 2, cada 30 min:** actualiza los estados de MHD y marca el envío y el
   seguimiento en Shopify, que avisa al cliente. La factura queda por decidir.
