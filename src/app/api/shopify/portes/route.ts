@@ -15,7 +15,18 @@ export const dynamic = "force-dynamic";
 // En los registros solo va lo necesario para calcular: nada de nombre, calle, teléfono ni empresa.
 
 type Destino = { country?: string; province?: string; postal_code?: string };
-type Linea = { sku?: string; quantity?: number; grams?: number; product_id?: number; properties?: Record<string, string> };
+type Linea = { sku?: string; quantity?: number; grams?: number; product_id?: number; requires_shipping?: boolean; properties?: Record<string, string> };
+
+// Descuento en portes por varios artículos (prueba desde el 2026-11-18): con 2 o más unidades que se envían
+// (aparatos y accesorios; garantías, servicios y tarjetas regalo no requieren envío y no cuentan) se cobra un 20 %
+// menos. El tema calcula lo mismo en los portes estimados del carrito (theme-enterprise-vicente/snippets/
+// cart-portes-estimados.liquid): si se cambia aquí, cambiarlo allí. Redondeo al céntimo, la mitad hacia arriba.
+const DESCUENTO_VARIOS = { minimoUnidades: 2, porcentaje: 20 };
+
+function portesConDescuento(centimos: number, unidades: number): number {
+  if (unidades < DESCUENTO_VARIOS.minimoUnidades) return centimos;
+  return Math.floor((centimos * (100 - DESCUENTO_VARIOS.porcentaje) + 50) / 100);
+}
 
 function firmaValida(cuerpo: string, firma: string | null): boolean | null {
   const secreto = process.env.SHOPIFY_API_SECRET;
@@ -95,7 +106,10 @@ export async function POST(request: Request) {
   }
 
   let centimos = 0;
+  let unidades = 0;
   for (const linea of lineas) {
+    if (linea.requires_shipping === false) continue; // Por si llegan garantías, servicios o tarjetas regalo
+    unidades += linea.quantity ?? 1;
     const opciones = linea.product_id ? portesPorProducto.get(linea.product_id) : null;
     if (!opciones) continue; // Sin datos de MHD: 0 €
     const valor = opciones[CLAVE_PORTES[zona]];
@@ -106,14 +120,19 @@ export async function POST(request: Request) {
     centimos += Math.round(Number(valor) * 100) * (linea.quantity ?? 1);
   }
 
-  console.log("SHOPIFY_PORTES", JSON.stringify({ ...resumen, centimos }));
+  const total = portesConDescuento(centimos, unidades);
+  const conDescuento = total < centimos;
+  console.log("SHOPIFY_PORTES", JSON.stringify({ ...resumen, unidades, centimos, total }));
   return NextResponse.json({
     rates: [
       {
-        service_name: "Envío a domicilio",
+        // El aviso va en el nombre, que el pago siempre enseña (la descripción no siempre sale)
+        service_name: conDescuento
+          ? `Envío a domicilio (${DESCUENTO_VARIOS.porcentaje} % menos por ${DESCUENTO_VARIOS.minimoUnidades} o más artículos)`
+          : "Envío a domicilio",
         service_code: "envio_domicilio",
         description: "Envío 100% asegurado",
-        total_price: String(centimos),
+        total_price: String(total),
         currency: "EUR",
       },
     ],
