@@ -11,7 +11,7 @@ import { refreshMhdStatuses, syncShopifyOrders } from "@/lib/mhd-order-sync";
 // Tareas programadas de pedidos (docs/PEDIDOS_MHD_FASE_1.md › Automatización de pedidos, 17-11-2026):
 // - tareaPedidos, cada 5 min: trae los pedidos de Shopify, exporta a MHD los listos (si está encendido) y avisa de los
 //   pagados que siguen sin exportar.
-// - tareaEstados, cada 30 min: lee los estados de MHD (facturas, cancelaciones), marca en Shopify los enviados (si está
+// - tareaEstados, cada 10 min: lee los estados de MHD (facturas, cancelaciones), marca en Shopify los enviados (si está
 //   encendido) y avisa de los errores.
 // Interruptores en utils › Configuración › Pedidos MHD (store_settings).
 
