@@ -57,7 +57,7 @@ export const ICECAT_TEMPORARY = "Icecat no está disponible temporalmente";
 // Icecat por EAN. Full Icecat solo responde a IPs autorizadas: se sale por el proxy de Pladisel (IP fija) si está configurado.
 export async function fetchIcecatByEan(config: IcecatConfig, ean: string): Promise<FetchResult<Record<string, unknown>>> {
   const query = new URLSearchParams({ UserName: config.username, Language: config.language, GTIN: ean, app_key: config.appKey });
-  const response = await fetch(`${config.proxyUrl || "https://live.icecat.biz/api"}?${query}`, { headers: config.proxyUrl ? { "X-Proxy-Token": config.proxyToken ?? "" } : undefined, signal: AbortSignal.timeout(30_000) });
+  const response = await fetch(`${config.proxyUrl || "https://live-origin.icecat.biz/api"}?${query}`, { headers: config.proxyUrl ? { "X-Proxy-Token": config.proxyToken ?? "" } : undefined, signal: AbortSignal.timeout(30_000) });
   if (response.status === 401) throw new Error("Icecat o el proxy de Pladisel rechazaron las credenciales.");
   if (response.status === 403) throw new Error("Icecat rechazó la IP de salida (producto Full Icecat con IP no autorizada).");
   // Límite de llamadas (429) y caídas (5xx) se distinguen (2026-10-27: a las 02:52 hubo 4 minutos de 502 del proxy y no
@@ -72,7 +72,7 @@ export async function fetchIcecatByEan(config: IcecatConfig, ean: string): Promi
 // Icecat por marca y modelo: para buscar el modelo bueno cuando el EAN lleva en Icecat a otro producto.
 export async function fetchIcecatByModel(config: IcecatConfig, brand: string, model: string): Promise<FetchResult<Record<string, unknown>>> {
   const query = new URLSearchParams({ UserName: config.username, Language: config.language, Brand: brand, ProductCode: model, app_key: config.appKey });
-  const response = await fetch(`${config.proxyUrl || "https://live.icecat.biz/api"}?${query}`, { headers: config.proxyUrl ? { "X-Proxy-Token": config.proxyToken ?? "" } : undefined, signal: AbortSignal.timeout(30_000) });
+  const response = await fetch(`${config.proxyUrl || "https://live-origin.icecat.biz/api"}?${query}`, { headers: config.proxyUrl ? { "X-Proxy-Token": config.proxyToken ?? "" } : undefined, signal: AbortSignal.timeout(30_000) });
   if (response.status === 401 || response.status === 403 || response.status === 429 || response.status >= 500) throw new Error(`Icecat no respondió a la búsqueda por modelo (${response.status}).`);
   const body = await response.json().catch(() => null) as Record<string, unknown> | null;
   return response.ok ? { status: response.status, payload: body } : { status: response.status, payload: null };

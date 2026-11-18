@@ -8,7 +8,7 @@
 // - ?ip=1 devuelve la IP de salida de este servidor (la que hay que autorizar en Icecat).
 // - ?doc=<url> descarga un documento de Icecat (manual, ficha UE, etiqueta...). Solo https y solo
 //   desde inishop.com u objects.icecat.biz, que también exigen IP autorizada.
-// - El resto de parámetros (UserName, app_key, GTIN, Language...) se reenvían tal cual a live.icecat.biz/api.
+// - El resto de parámetros (UserName, app_key, GTIN, Language...) se reenvían tal cual a live-origin.icecat.biz/api.
 
 const PROXY_TOKEN = ''; // Poner aquí el token real al subirlo al servidor.
 
@@ -72,7 +72,7 @@ if (isset($_GET['doc'])) {
     exit;
 }
 
-list($body, $headers) = forward('https://live.icecat.biz/api?' . http_build_query($_GET), $status);
+list($body, $headers) = forward('https://live-origin.icecat.biz/api?' . http_build_query($_GET), $status);
 http_response_code($status);
 foreach ($headers as $line) header($line);
 echo $body;

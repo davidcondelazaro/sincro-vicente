@@ -97,7 +97,7 @@ async function checkIcecat() {
     app_key: required("ICECAT_APP_KEY"),
   });
   const proxyUrl = process.env.ICECAT_PROXY_URL;
-  const response = await fetch(`${proxyUrl || "https://live.icecat.biz/api"}?${query.toString()}`, {
+  const response = await fetch(`${proxyUrl || "https://live-origin.icecat.biz/api"}?${query.toString()}`, {
     headers: proxyUrl ? { "X-Proxy-Token": required("ICECAT_PROXY_TOKEN") } : undefined,
     signal: AbortSignal.timeout(15_000),
     cache: "no-store",

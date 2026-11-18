@@ -80,7 +80,7 @@ export async function checkConnections(sources: SourcesConfig, env: Record<strin
     // Icecat como la comprobación de utils (/api/health): un producto de Full Icecat que solo contesta a la IP autorizada.
     timed("Icecat", false, async () => {
       const query = new URLSearchParams({ UserName: icecat.username, Language: icecat.language, GTIN: "3700460207656", app_key: icecat.appKey });
-      const response = await fetch(`${icecat.proxyUrl || "https://live.icecat.biz/api"}?${query}`, { headers: icecat.proxyUrl && icecat.proxyToken ? { "X-Proxy-Token": icecat.proxyToken } : undefined, signal: AbortSignal.timeout(15_000) });
+      const response = await fetch(`${icecat.proxyUrl || "https://live-origin.icecat.biz/api"}?${query}`, { headers: icecat.proxyUrl && icecat.proxyToken ? { "X-Proxy-Token": icecat.proxyToken } : undefined, signal: AbortSignal.timeout(15_000) });
       if (response.status === 403) throw new Error("IP de salida no autorizada para Full Icecat.");
       if (!response.ok) throw new Error(`Icecat respondió HTTP ${response.status}`);
     }),

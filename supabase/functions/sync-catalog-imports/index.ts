@@ -134,7 +134,7 @@ async function icecatData(ean: string) {
   const query = new URLSearchParams({ UserName: env("ICECAT_USERNAME"), Language: Deno.env.get("ICECAT_LANGUAGE") || "es", GTIN: ean, app_key: env("ICECAT_APP_KEY") });
   // Full Icecat sólo responde a IPs autorizadas: si hay proxy (servidor de Pladisel, IP fija) se sale por él.
   const proxyUrl = Deno.env.get("ICECAT_PROXY_URL");
-  const url = `${proxyUrl || "https://live.icecat.biz/api"}?${query.toString()}`;
+  const url = `${proxyUrl || "https://live-origin.icecat.biz/api"}?${query.toString()}`;
   const init = () => ({ signal: AbortSignal.timeout(20_000), headers: proxyUrl ? { "X-Proxy-Token": env("ICECAT_PROXY_TOKEN") } : undefined });
   let response = await fetch(url, init());
   if (response.status === 429) {
