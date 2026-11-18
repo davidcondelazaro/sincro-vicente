@@ -149,7 +149,7 @@ detalle de expediciones. Antes de automatizar Shopify habrá que pedir a MHD:
 Cuando el circuito de exportación y consulta de estados esté consolidado, se
 valorará trasladar este módulo a una app integrada en el administrador de
 Shopify. En ese escenario, Shopify será la fuente operativa de los datos del
-pedido: cliente, direcciones, campo Empresa/NIF, notas, descuentos, líneas,
+pedido: cliente, direcciones, NIF (campo fiscal del pago) y empresa, notas, descuentos, líneas,
 SKU, cantidades, importes, portes, pago y estado de cumplimiento se leerán del
 pedido de Shopify cuando se visualice o se vaya a exportar.
 
@@ -347,7 +347,7 @@ que sea: basta con que su SKU exista allí. La tarjeta regalo es el primer caso
   con envío. La etiqueta del admin de Shopify no se puede cambiar.
 - Si ninguna línea requiere envío, Shopify no pide dirección de envío y el pedido
   llega sin ella. Entonces `envio` lleva la dirección de facturación, con los
-  mismos requisitos que cualquier otra (NIF en Empresa, provincia con envío en
+  mismos requisitos que cualquier otra (NIF según «NIF y empresa», provincia con envío en
   MHD). Si hay algo que enviar, se usa la dirección de envío de siempre.
 - La sincronización los trae con `delivery_method:none`, porque Shopify los da
   por enviados, y `fulfillment_status:partial`.
@@ -371,7 +371,7 @@ se toca.
   `src/lib/mhd-order-lines.ts`).
 - **Envío:** de nombre, la tienda; de apellidos, el nombre y el teléfono del cliente; el
   teléfono, el de la tienda. El NIF, siempre un espacio en blanco (`NIF_VACIO`): el del
-  cliente va solo en facturación (David, 14-11-2026).
+  cliente va solo en facturación (David, 14-11-2026; ver «NIF y empresa»).
 - **Facturación:** la del cliente.
 - **Observaciones:** empiezan por «Pedido para recoger en tienda: <tienda>.».
 - **Portes:** 0,01 € en todas las líneas (ver «Portes mínimos»).
@@ -405,6 +405,35 @@ Solución (David, 14-11-2026): si el pedido no trae NIF, se manda un espacio en 
 (`NIF_VACIO`) en las dos direcciones y se avisa en pantalla. En la recogida, el NIF de
 envío es siempre el espacio, con o sin NIF del cliente. **MHD lo acepta**: EV61599
 entró como #62670 (W261114062670) con `nif_envio` y `nif_facturacion` = " ".
+
+### NIF y empresa (18-11-2026)
+
+Desde el 18-11-2026 el pago tiene un campo propio para el NIF, activado por soporte de
+Shopify en acceso anticipado. Sale en «Información adicional», es opcional y aparece
+en España y Portugal. «Empresa» vuelve a ser la empresa: antes se usaba para el DNI.
+La lógica está en `src/lib/mhd-order-fiscal.ts`, con pruebas en
+`tests/mhd-order-fiscal.test.mjs`. Decisiones de David:
+
+- **De dónde sale el NIF.** De `Order.localizedFields`, la primera clave que empiece
+  por `TAX_CREDENTIAL_` (`_ES`, `_PT`…). La lectura de pedidos lo pide en la consulta
+  y queda en `source_payload`. Si no lo hay, vale lo escrito en «Empresa» (facturación
+  y, si no, envío) cuando tiene forma de DNI, NIE, CIF o NIF portugués. Eso cubre los
+  pedidos y las direcciones guardadas de antes. Si no hay NIF, va el espacio
+  (`NIF_VACIO`) y se avisa.
+- **Dónde va el NIF.** Siempre en facturación. En envío va el espacio, también en la
+  recogida. La única excepción es cuando la facturación no se puede mandar (dirección
+  incompleta o provincia sin envío): entonces el NIF va en envío para no perderlo.
+- **Empresa en facturación con NIF.** Va de `nombre_facturacion` y los apellidos
+  quedan vacíos (`APELLIDOS_EMPRESA`; si MHD los rechaza, se pasa a un espacio). En
+  observaciones queda «Facturar a: Empresa (NIF …). Contacto: Nombre Apellidos.».
+- **Empresa en facturación sin NIF.** La factura va a nombre de la persona y la
+  empresa solo consta en observaciones.
+- **Empresa en la dirección de envío.** Va a observaciones. Si es la misma que la de
+  facturación no se repite: Shopify copia el envío en la facturación cuando el cliente
+  no pide otra dirección.
+- Pendiente de comprobar con un pedido de prueba:
+  - que `localizedFields` llega con el permiso actual y qué clave usa Portugal;
+  - que MHD acepta los apellidos vacíos.
 
 ### Cancelados en MHD (14-11-2026)
 

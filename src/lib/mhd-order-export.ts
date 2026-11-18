@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildMhdProductLines, direccionDeExportacion, NIF_VACIO, puntoDeRecogida, type MhdProductLine, type PedidoConEntrega, type ShopifyLinePayload } from "@/lib/mhd-order-lines";
 import { buildMhdOrderObservations } from "@/lib/mhd-order-notes";
+import { datosFiscalesMhd, type CampoLocalizado } from "@/lib/mhd-order-fiscal";
 import { mhdOrdersFetch } from "@/lib/mhd-order-sync";
 import { erroresDeMhd, reconciliar, referenciaParaExportar, resultadoDeEnvio, type MhdFoundOrder, type MhdPostResponse } from "@/lib/mhd-order-reconcile";
 
@@ -19,7 +20,7 @@ type Order = {
   id: string; shopify_order_id: string; shopify_order_name: string; email: string | null; order_note: string | null;
   discount_summary: string | null; shipping_country_code: string | null; source_updated_at: string;
   shipping_province_code: string | null; eligibility_status: string; shipping_amount: string | null; total_amount: string | null;
-  source_payload: PedidoConEntrega & { shippingAddress?: Address | null; billingAddress?: Address | null; customAttributes?: { key: string; value: string | null }[] | null };
+  source_payload: PedidoConEntrega & { shippingAddress?: Address | null; billingAddress?: Address | null; customAttributes?: { key: string; value: string | null }[] | null; localizedFields?: { nodes?: CampoLocalizado[] | null } | null };
 };
 type Line = { sku: string | null; title: string; quantity: number; unit_price: string; line_payload: ShopifyLinePayload | null };
 type Mapping = { mhd_province_id: number; mhd_province_name: string; active: boolean };
@@ -37,10 +38,11 @@ function splitName(address: Address) {
   const lastName = address.lastName?.trim() || fullName.slice(firstName.length).trim() || "Shopify";
   return { nombre: firstName, apellidos: lastName };
 }
-function mhdAddress(address: Address, mapping: Mapping, country: Country, fallbackNif?: string | null) {
+// El NIF lo decide datosFiscalesMhd (mhd-order-fiscal.ts), no la «Empresa» de la dirección
+function mhdAddress(address: Address, mapping: Mapping, country: Country, nif: string | null) {
   const { nombre, apellidos } = splitName(address);
   return {
-    nombre, apellidos, nif: address.company?.trim() || fallbackNif?.trim() || NIF_VACIO, telefono: address.phone?.trim() || "",
+    nombre, apellidos, nif: nif?.trim() || NIF_VACIO, telefono: address.phone?.trim() || "",
     direccion: [address.address1, address.address2].filter(Boolean).join(", "),
     cp: address.zip?.trim() || "", localidad: address.city?.trim() || "",
     id_provincia: mapping.mhd_province_id, provincia: mapping.mhd_province_name,
@@ -95,8 +97,10 @@ async function prepare(db: SupabaseClient, orderId: string) {
   if (billingMappingError || billingCountryError) return { ok: false, status: 500, error: "No se pudo preparar la dirección de facturación." } satisfies Refusal;
   const typedBillingMapping = billingMapping as Mapping | null;
   const typedBillingCountry = billingCountry as Country | null;
-  const billing = typedBillingMapping?.active && typedBillingCountry?.shipping_enabled
-    ? mhdAddress(billingAddress!, typedBillingMapping, typedBillingCountry, address!.company)
+  const billingExportable = Boolean(typedBillingMapping?.active && typedBillingCountry?.shipping_enabled);
+  const fiscal = datosFiscalesMhd(typedOrder.source_payload, { facturacionExportable: billingExportable, recogida: Boolean(pickup) });
+  const billing = billingExportable
+    ? { ...mhdAddress(billingAddress!, typedBillingMapping!, typedBillingCountry!, fiscal.nif), ...(fiscal.facturacion ?? {}) }
     : undefined;
   const mhdLines = buildMhdProductLines({
     lines: typedLines.map((line) => ({ sku: line.sku, quantity: line.quantity, unitPrice: line.unit_price, payload: line.line_payload })),
@@ -109,13 +113,13 @@ async function prepare(db: SupabaseClient, orderId: string) {
 
   const payload = {
     email: typedOrder.email.trim(), referencia_web: typedOrder.shopify_order_name,
-    observaciones: [pickup ? `Pedido para recoger en tienda: ${pickup.name}.` : null, buildMhdOrderObservations({ orderNote: typedOrder.order_note, discountSummary: typedOrder.discount_summary, customAttributes: typedOrder.source_payload.customAttributes })].filter(Boolean).join("\n"),
-    // En la recogida el envío va a la tienda: su NIF siempre es el espacio, el del cliente va solo en facturación
-    envio: { ...mhdAddress(address!, typedMapping, typedCountry), ...(pickup ? { nif: NIF_VACIO } : {}) },
+    observaciones: [pickup ? `Pedido para recoger en tienda: ${pickup.name}.` : null, fiscal.observaciones, buildMhdOrderObservations({ orderNote: typedOrder.order_note, discountSummary: typedOrder.discount_summary, customAttributes: typedOrder.source_payload.customAttributes })].filter(Boolean).join("\n"),
+    // NIF de envío: el espacio, salvo que no se pueda mandar la facturación (entonces va aquí para no perderlo)
+    envio: mhdAddress(address!, typedMapping, typedCountry, fiscal.nifEnvio),
     ...(billing ? { facturacion: billing } : {}),
     productos: mhdLines.productos,
   };
-  const warning = [pickup ? `Recogida en ${pickup.name}: se envía a la tienda, sin portes` : null, (billing ?? payload.envio).nif.trim() ? null : "Sin NIF: se envía un espacio en blanco, a ver si MHD lo acepta", mhdLines.warning].filter(Boolean).join(" · ") || null;
+  const warning = [pickup ? `Recogida en ${pickup.name}: se envía a la tienda, sin portes` : null, fiscal.nif ? null : "Sin NIF: se envía un espacio en blanco", fiscal.facturacion ? `Factura a nombre de ${fiscal.facturacion.nombre}` : null, mhdLines.warning].filter(Boolean).join(" · ") || null;
   return { ok: true as const, order: typedOrder, lines: typedLines, prior: typedPrior, payload, warning };
 }
 
