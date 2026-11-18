@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 type Destino = { country?: string; province?: string; postal_code?: string };
 type Linea = { sku?: string; quantity?: number; grams?: number; product_id?: number; requires_shipping?: boolean; properties?: Record<string, string> };
 
-// Descuento en portes por varios artículos (prueba desde el 2026-11-18): con 2 o más unidades que se envían
+// Descuento en portes por varios artículos (fijo desde el 2026-11-18): con 2 o más unidades que se envían
 // (aparatos y accesorios; garantías, servicios y tarjetas regalo no requieren envío y no cuentan) se cobra un 20 %
 // menos. El tema calcula lo mismo en los portes estimados del carrito (theme-enterprise-vicente/snippets/
 // cart-portes-estimados.liquid): si se cambia aquí, cambiarlo allí. Redondeo al céntimo, la mitad hacia arriba.
