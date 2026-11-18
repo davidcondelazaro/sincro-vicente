@@ -183,9 +183,26 @@ export async function refreshMhdStatuses(db: SupabaseClient) {
   let changedCount = 0;
   let cancelledCount = 0;
   const errors: string[] = [];
+  // MHD a veces tarda más de 20 s unos segundos seguidos: se reintenta una vez antes de dar error. Como mucho
+  // 3 reintentos por lectura, para que una caída de MHD no alargue la tarea más allá de su tiempo máximo.
+  let retriesLeft = 3;
+  const readOrder = async (mhdOrderId: number) => {
+    try {
+      return await mhdOrdersFetch(`/orders/${mhdOrderId}`, { timeoutMs: 20_000 });
+    } catch (error) {
+      if (!(error instanceof Error && error.name === "TimeoutError") || retriesLeft <= 0) throw error;
+      retriesLeft -= 1;
+      try {
+        return await mhdOrdersFetch(`/orders/${mhdOrderId}`, { timeoutMs: 20_000 });
+      } catch (retryError) {
+        if (retryError instanceof Error && retryError.name === "TimeoutError") throw new Error("MHD no respondió en 20 s (dos intentos).");
+        throw retryError;
+      }
+    }
+  };
   for (const item of exports ?? []) {
     try {
-      const response = await mhdOrdersFetch(`/orders/${item.mhd_order_id}`, { timeoutMs: 20_000 });
+      const response = await readOrder(item.mhd_order_id);
       const body = await response.json().catch(() => ({})) as MhdOrderResponse;
       if (!response.ok || !body.success || !body.data) throw new Error(`MHD respondió HTTP ${response.status}.`);
       checkedCount += 1;
