@@ -34,8 +34,22 @@ async function loadCycle(db: SupabaseClient, id: string) {
   return data as Cycle;
 }
 
+// Si la base rechaza el guardado, se reintenta: el 19-11 a las 14:33 rechazó durante ~27 s todo lo que le llegó (HTTP 555)
+// y la vuelta, ya terminada, se quedó en «procesando» hasta darse por atascada. Esperas de 1, 3, 8 y 15 s (27 s en total);
+// si aun así falla, se apunta en el registro y la vuelta sigue como antes (sin lanzar el error).
+const SAVE_RETRY_WAITS_MS = [1_000, 3_000, 8_000, 15_000];
+
 async function saveCycle(db: SupabaseClient, cycle: Cycle, patch: Record<string, unknown> = {}) {
-  await db.from("mhd_sync_cycles").update({ steps: cycle.steps, ...patch }).eq("id", cycle.id);
+  let lastError = "";
+  for (let attempt = 0; attempt <= SAVE_RETRY_WAITS_MS.length; attempt++) {
+    if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, SAVE_RETRY_WAITS_MS[attempt - 1]));
+    try {
+      const { error } = await db.from("mhd_sync_cycles").update({ steps: cycle.steps, ...patch }).eq("id", cycle.id);
+      if (!error) return;
+      lastError = error.message || String(error.code ?? "error");
+    } catch (caught) { lastError = caught instanceof Error ? caught.message : String(caught); }
+  }
+  console.error(JSON.stringify({ syncCycle: cycle.id, saveFailed: lastError, status: patch.status ?? null }));
 }
 
 // Un paso: se apunta al empezar, se cierra con su resultado y, si falla, se guarda el error y se relanza.
