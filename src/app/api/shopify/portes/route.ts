@@ -17,15 +17,25 @@ export const dynamic = "force-dynamic";
 type Destino = { country?: string; province?: string; postal_code?: string };
 type Linea = { sku?: string; quantity?: number; grams?: number; product_id?: number; requires_shipping?: boolean; properties?: Record<string, string> };
 
-// Descuento en portes por varios artículos (fijo desde el 2026-11-18): con 2 o más unidades que se envían
-// (aparatos y accesorios; garantías, servicios y tarjetas regalo no requieren envío y no cuentan) se cobra un 20 %
-// menos. El tema calcula lo mismo en los portes estimados del carrito (theme-enterprise-vicente/snippets/
-// cart-portes-estimados.liquid): si se cambia aquí, cambiarlo allí. Redondeo al céntimo, la mitad hacia arriba.
-const DESCUENTO_VARIOS = { minimoUnidades: 2, porcentaje: 20 };
+// Descuento en portes por varios artículos, en tramos para que no crezca lineal (fijo desde el 2026-11-18; tramos
+// desde el 2026-11-19). Se cuentan las unidades que se envían (aparatos y accesorios; garantías, servicios y tarjetas
+// regalo no requieren envío y no cuentan), y el porcentaje se aplica al porte total ya sumado. Vale para península,
+// Baleares y Portugal. El tema calcula lo mismo en los portes estimados del carrito (theme-enterprise-vicente/
+// snippets/cart-portes-estimados.liquid): si se cambia aquí, cambiarlo allí. Redondeo al céntimo, la mitad hacia arriba.
+const TRAMOS_DESCUENTO: { desdeUnidades: number; porcentaje: number }[] = [
+  { desdeUnidades: 6, porcentaje: 67 },
+  { desdeUnidades: 5, porcentaje: 55 },
+  { desdeUnidades: 4, porcentaje: 44 },
+  { desdeUnidades: 3, porcentaje: 34 },
+  { desdeUnidades: 2, porcentaje: 20 },
+];
 
-function portesConDescuento(centimos: number, unidades: number): number {
-  if (unidades < DESCUENTO_VARIOS.minimoUnidades) return centimos;
-  return Math.floor((centimos * (100 - DESCUENTO_VARIOS.porcentaje) + 50) / 100);
+function porcentajeDescuento(unidades: number): number {
+  return TRAMOS_DESCUENTO.find((tramo) => unidades >= tramo.desdeUnidades)?.porcentaje ?? 0;
+}
+
+function portesConDescuento(centimos: number, porcentaje: number): number {
+  return Math.floor((centimos * (100 - porcentaje) + 50) / 100);
 }
 
 function firmaValida(cuerpo: string, firma: string | null): boolean | null {
@@ -120,15 +130,16 @@ export async function POST(request: Request) {
     centimos += Math.round(Number(valor) * 100) * (linea.quantity ?? 1);
   }
 
-  const total = portesConDescuento(centimos, unidades);
+  const porcentaje = porcentajeDescuento(unidades);
+  const total = portesConDescuento(centimos, porcentaje);
   const conDescuento = total < centimos;
-  console.log("SHOPIFY_PORTES", JSON.stringify({ ...resumen, unidades, centimos, total }));
+  console.log("SHOPIFY_PORTES", JSON.stringify({ ...resumen, unidades, centimos, porcentaje, total }));
   return NextResponse.json({
     rates: [
       {
         // El aviso va en el nombre, que el pago siempre enseña (la descripción no siempre sale)
         service_name: conDescuento
-          ? `Envío a domicilio (${DESCUENTO_VARIOS.porcentaje} % menos por ${DESCUENTO_VARIOS.minimoUnidades} o más artículos)`
+          ? `Envío a domicilio (${porcentaje} % menos por llevar ${unidades} artículos)`
           : "Envío a domicilio",
         service_code: "envio_domicilio",
         description: "Envío 100% asegurado",
