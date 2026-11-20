@@ -17,7 +17,7 @@ export type Payout = {
   id: string; legacyResourceId: string; issuedAt: string; status: string; net: Money & { currencyCode: string };
   summary: Record<"adjustmentsFee" | "adjustmentsGross" | "advanceFees" | "advanceGross" | "chargesFee" | "chargesGross" | "refundsFee" | "refundsFeeGross" | "reservedFundsFee" | "reservedFundsGross" | "retriedPayoutsFee" | "retriedPayoutsGross", Money>;
 };
-export type BalanceTransaction = { type: string; transactionDate: string; amount: Money; fee: Money; net: Money; associatedOrder: { name: string } | null; associatedPayout: { id: string | null } | null };
+export type BalanceTransaction = { type: string; transactionDate: string; amount: Money; fee: Money; net: Money; associatedOrder: { id: string; name: string } | null; associatedPayout: { id: string | null } | null; sourceOrderTransactionId: string | null; card?: string };
 
 const SYNC = "pagos-shopify";
 const API = "2026-10";
@@ -44,14 +44,36 @@ export async function listPayouts(env: Env, first = 50): Promise<Payout[]> {
 export async function payoutTransactions(env: Env, payout: Payout): Promise<BalanceTransaction[]> {
   const rows: BalanceTransaction[] = []; let after: string | null = null;
   for (let page = 0; page < 20; page++) {
-    const result: Awaited<ReturnType<typeof shopify<{ shopifyPaymentsAccount: { balanceTransactions: { nodes: BalanceTransaction[]; pageInfo: { hasNextPage: boolean; endCursor: string | null } } } }>>> = await shopify(env, `query($q: String!, $after: String) { shopifyPaymentsAccount { balanceTransactions(first: 250, after: $after, query: $q) { nodes { type transactionDate amount ${MONEY} fee ${MONEY} net ${MONEY} associatedOrder { name } associatedPayout { id } } pageInfo { hasNextPage endCursor } } } }`, { q: `payout_date:${payout.issuedAt.slice(0, 10)}`, after });
+    const result: Awaited<ReturnType<typeof shopify<{ shopifyPaymentsAccount: { balanceTransactions: { nodes: BalanceTransaction[]; pageInfo: { hasNextPage: boolean; endCursor: string | null } } } }>>> = await shopify(env, `query($q: String!, $after: String) { shopifyPaymentsAccount { balanceTransactions(first: 250, after: $after, query: $q) { nodes { type transactionDate amount ${MONEY} fee ${MONEY} net ${MONEY} associatedOrder { id name } associatedPayout { id } sourceOrderTransactionId } pageInfo { hasNextPage endCursor } } } }`, { q: `payout_date:${payout.issuedAt.slice(0, 10)}`, after });
     if (result.errors?.length) throw new Error(`Shopify: ${result.errors.map((error) => error.message).join("; ")}`);
     const connection = result.data!.shopifyPaymentsAccount.balanceTransactions;
     rows.push(...connection.nodes);
     if (!connection.pageInfo.hasNextPage) break;
     after = connection.pageInfo.endCursor;
   }
-  return rows.filter((row) => row.associatedPayout?.id === payout.id && row.type !== "TRANSFER").sort((a, b) => a.transactionDate.localeCompare(b.transactionDate));
+  const mine = rows.filter((row) => row.associatedPayout?.id === payout.id && row.type !== "TRANSFER").sort((a, b) => a.transactionDate.localeCompare(b.transactionDate));
+  await addCards(env, mine);
+  return mine;
+}
+
+// Tarjeta con la que se pagó cada pedido (p. ej. «Mastercard (Apple Pay)»), como el icono del admin. Solo marca y
+// monedero; nada de números de tarjeta. Si no se puede leer, la columna queda vacía.
+const WALLETS: Record<string, string> = { APPLE_PAY: "Apple Pay", GOOGLE_PAY: "Google Pay", ANDROID_PAY: "Google Pay", SHOPIFY_PAY: "Shop Pay" };
+type OrderPayments = { id: string; transactions: { id: string; paymentDetails: { company?: string | null; wallet?: string | null } | null }[] };
+async function addCards(env: Env, rows: BalanceTransaction[]) {
+  const ids = [...new Set(rows.map((row) => row.associatedOrder?.id).filter((id): id is string => Boolean(id)))];
+  const orders = new Map<string, OrderPayments>();
+  try {
+    for (let start = 0; start < ids.length; start += 50) {
+      const result = await shopify<{ nodes: (OrderPayments | null)[] }>(env, `query($ids: [ID!]!) { nodes(ids: $ids) { ... on Order { id transactions(first: 20) { id paymentDetails { ... on CardPaymentDetails { company wallet } } } } } }`, { ids: ids.slice(start, start + 50) });
+      for (const order of result.data?.nodes ?? []) if (order?.id) orders.set(order.id, order);
+    }
+  } catch { return; }
+  for (const row of rows) {
+    const transactions = orders.get(row.associatedOrder?.id ?? "")?.transactions ?? [];
+    const details = (transactions.find((item) => row.sourceOrderTransactionId && item.id.endsWith(`/${row.sourceOrderTransactionId}`)) ?? transactions.find((item) => item.paymentDetails?.company))?.paymentDetails;
+    if (details?.company) row.card = details.wallet ? `${details.company} (${WALLETS[details.wallet] ?? details.wallet})` : details.company;
+  }
 }
 
 const num = (money: Money | undefined) => Number(money?.amount ?? 0);
@@ -86,11 +108,11 @@ export function buildPayoutEmail(payout: Payout, transactions: BalanceTransactio
     [{ bold: "Total" }, { euros: summary.gross }, { euros: summary.fee }, { euros: summary.net }],
   ];
   const detalle: Cell[][] = [
-    head(["Fecha", "Tipo", "Pedido", "Cargo", "Comisión", "Neto"]),
-    ...transactions.map((row): Cell[] => [{ date: new Date(row.transactionDate) }, typeLabel(row.type), row.associatedOrder?.name ?? "", { euros: num(row.amount) }, { euros: num(row.fee) }, { euros: num(row.net) }]),
-    [{ bold: "Total" }, "", "", { euros: transactions.reduce((sum, row) => sum + num(row.amount), 0) }, { euros: transactions.reduce((sum, row) => sum + num(row.fee), 0) }, { euros: transactions.reduce((sum, row) => sum + num(row.net), 0) }],
+    head(["Fecha", "Tipo", "Tarjeta", "Pedido", "Cargo", "Comisión", "Neto"]),
+    ...transactions.map((row): Cell[] => [{ date: new Date(row.transactionDate) }, typeLabel(row.type), row.card ?? "", row.associatedOrder?.name ?? "", { euros: num(row.amount) }, { euros: num(row.fee) }, { euros: num(row.net) }]),
+    [{ bold: "Total" }, "", "", "", { euros: transactions.reduce((sum, row) => sum + num(row.amount), 0) }, { euros: transactions.reduce((sum, row) => sum + num(row.fee), 0) }, { euros: transactions.reduce((sum, row) => sum + num(row.net), 0) }],
   ];
-  const xlsx = buildXlsx([{ name: "Resumen", rows: resumen, widths: [20, 30, 14, 14] }, { name: "Transacciones", rows: detalle, widths: [18, 22, 12, 14, 14, 14] }]);
+  const xlsx = buildXlsx([{ name: "Transacciones", rows: detalle, widths: [18, 14, 26, 12, 14, 14, 14] }, { name: "Resumen", rows: resumen, widths: [20, 16, 14, 14] }]) // el detalle primero: es lo que se ve al abrirlo;
   return { subject, text, html, xlsx, filename: `pago-shopify-${payout.issuedAt.slice(0, 10)}-${payout.legacyResourceId}.xlsx` };
 }
 
