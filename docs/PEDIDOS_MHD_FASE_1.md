@@ -384,6 +384,9 @@ se toca.
   (estado 10), no al llegar, y no sabemos si la entrega en tienda es el estado 12
   «Finalizado» ni si hay agencia con seguimiento (el almacén también está en Burgos).
   Queda preguntárselo a MHD.
+  _Actualizado el 20-11-2026: sí hay agencia con seguimiento (ON TIME en EV99345) y MHD
+  no pasa a «Finalizado» al entregar. Se automatiza leyendo la página del transportista:
+  ver «Entregas y recogidas (20-11-2026)»._
 
 ### Portes mínimos (14-11-2026)
 
@@ -565,6 +568,53 @@ exportar, en MHD sin enviar, enviados sin marcar en Shopify, esperando factura).
 exportados, sin exclusiones, hasta saber si MHD parte pedidos en varios envíos y
 facturas. Propuesta para cuando se sepa: dejar de preguntar por los cancelados ya
 tratados, por los enviados con factura ya entregada y por los de más de 60 días.
+
+### Entregas y recogidas (20-11-2026)
+
+Pedido por David el 20-11-2026. Detecta «entregado» en la página de seguimiento del
+transportista y lo marca en Shopify, con aviso al cliente. Código en
+`src/lib/mhd-order-delivery.ts` (tarea y Shopify) y `src/lib/mhd-order-tracking.ts`
+(lectura de páginas y decisiones, con pruebas en `tests/mhd-order-tracking.test.mjs`).
+
+- **Interruptor:** utils › Configuración › Pedidos MHD, «Entregas y recogidas»
+  (`pedidos_entrega_auto_activo`), **apagado** al crearlo.
+- **Cuándo se mira:** tarea `sincro-vicente-pedidos-entregas`, cada hora a los :20; el
+  código solo actúa de 8 a 21 (hora de Madrid). Solo pedidos exportados, sin cancelar,
+  que MHD da por enviados. **Nunca antes de 24 h** desde el «Enviado» de MHD (la fecha
+  de ese estado en su historial). A los **10 días** sin entregar se deja de mirar y se
+  avisa. Un pedido resuelto no se vuelve a mirar.
+- **Un único seguimiento:** con varios (posible envío en partes) o sin enlace, no se
+  hace nada y se avisa.
+- **Lectura sin IA de los conocidos:** TDN (página en ISO-8859-1, línea «Entregado -
+  037 CIUDAD - 19/11/2026 10:41») y ON TIME (Alertran: la primera visita redirige y da
+  una cookie; tras «Tracking», fecha, hora, estado y delegación). La página se lee como
+  un navegador sencillo, sin JavaScript (unos 200-350 ms).
+- **Transportista nuevo:** lo lee la IA (Haiku, esfuerzo bajo, respuesta con esquema:
+  estado, fecha, `seguro`, resumen) **solo si el texto de la página ha cambiado** desde
+  la última vez (`page_hash`). Se avisa a David para añadirle lectura fija. Si un
+  conocido deja de entenderse (página cambiada), también pasa a la IA y se avisa.
+  Solo se actúa si la IA dice entregado **y** seguro; si duda, aviso.
+- **Incidencias** (ausente, devuelto, rechazado, no entregado…): aviso, sin marcar.
+- **A domicilio:** evento «Entregado» (`fulfillmentEventCreate`, `DELIVERED`, con la
+  fecha del transportista) en el envío ya marcado; Shopify avisa al cliente. Pide el
+  permiso `write_fulfillments` (añadido por David el 20-11-2026). Si el envío aún no
+  está marcado en Shopify, se espera; si ya figura entregado, no se toca.
+- **Recogida en tienda:** el pedido de preparación sale asignado al Almacén MHD (de
+  donde sale el stock). Como hace el botón «Transferir al lugar de retiro» (David con
+  EV99344, 20-11-2026: transferencia → correo «listo para recoger» → recogido, y el stock
+  de la tienda quedó en 0), primero se **transfiere a la tienda que eligió el cliente**
+  (`fulfillmentOrderMove` a `destination.location`) y luego se marca **«Listo para
+  recoger»** (`fulfillmentOrderLineItemsPreparedForPickup`), que manda el correo al
+  cliente. **La recogida por el cliente se marca a mano** en la tienda.
+- **Registro:** estado de cada seguimiento en `mhd_order_deliveries` (estado, texto,
+  fecha, fuente lectura/IA, huella, veces mirado, llamadas a la IA, resultado). Lo hecho,
+  en `mhd_sync_events` (`entregado`, `listo_recoger`, `entrega_revisar`) y en el resumen
+  diario. Avisos a `pedidos_avisos_emails`, sin repetir.
+- **A mano:** `POST /api/mhd-orders/tarea?tipo=entregas&pedido=EV…` mira ese pedido
+  aunque el interruptor esté apagado o sea fuera de horario; con `&simulacion=1` lee y
+  dice qué haría, sin tocar Shopify ni la tabla.
+- **Prueba:** EV99345 (recogida, ON TIME), simulación del 20-11-2026: «Entregada» a las
+  12:03 → transferir a Electrónica Vicente y «Listo para recoger».
 
 ### Automatización de pedidos: decisiones (31-10-2026)
 
