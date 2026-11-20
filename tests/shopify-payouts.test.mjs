@@ -10,7 +10,7 @@ const { buildPayoutEmail, euros } = await jiti.import("../src/lib/shopify-payout
 const money = (amount) => ({ amount });
 const zero = money("0.0");
 const payout = {
-  id: "gid://shopify/ShopifyPaymentsPayout/169084322124", legacyResourceId: "169084322124", issuedAt: "2026-11-20T00:00:00Z", status: "PAID", net: { amount: "114.33", currencyCode: "EUR" },
+  id: "gid://shopify/ShopifyPaymentsPayout/169084322124", legacyResourceId: "169084322124", issuedAt: "2026-11-20T00:00:00Z", status: "PAID", externalTraceId: "REF123", net: { amount: "114.33", currencyCode: "EUR" },
   summary: { adjustmentsFee: zero, adjustmentsGross: zero, advanceFees: zero, advanceGross: zero, chargesFee: money("2.47"), chargesGross: money("116.8"), refundsFee: zero, refundsFeeGross: zero, reservedFundsFee: zero, reservedFundsGross: zero, retriedPayoutsFee: zero, retriedPayoutsGross: zero },
 };
 const tx = (date, order, amount, fee, net) => ({ type: "CHARGE", transactionDate: date, amount: money(amount), fee: money(fee), net: money(net), associatedOrder: { name: order }, associatedPayout: { id: payout.id } });
@@ -35,7 +35,7 @@ test("pagos: importes en formato español", () => {
 test("pagos: asunto y cuerpo", () => {
   const email = buildPayoutEmail(payout, transactions, { bankName: "BANCO", accountNumberLastDigits: "1234" });
   assert.equal(email.subject, "[Electrónica Vicente Utils] Nuevo pago de Shopify de 114,33 €");
-  for (const line of ["Fecha: 20/11/2026", "Estado: Pagado", "Importe neto: 114,33 €", "Cargos: 116,80 €", "Comisiones: 2,47 €", "Cuenta de destino: BANCO terminada en 1234"]) assert.ok(email.text.includes(line), line);
+  for (const line of ["Fecha: 20/11/2026", "Estado: Depositado", "Importe neto: 114,33 €", "Transacciones del: 17 nov", "Cargos: 116,80 €", "Comisiones: -2,47 €", "Cuenta de destino: BANCO (1234)", "Referencia bancaria: REF123"]) assert.ok(email.text.includes(line), line);
   assert.ok(!buildPayoutEmail(payout, transactions, null).text.includes("Cuenta de destino"));
 });
 
@@ -45,6 +45,6 @@ test("pagos: Excel con resumen y una fila por transacción", () => {
   assert.match(workbook, /name="Resumen"/); assert.match(workbook, /name="Transacciones"/);
   const detail = unzip(xlsx, "xl/worksheets/sheet2.xml");
   assert.equal((detail.match(/<row /g) ?? []).length, 4); // cabecera, dos transacciones y total
-  for (const value of ["EV99344", "EV99345", "<v>96.92</v>", "<v>0.59</v>", "<v>114.33</v>"]) assert.ok(detail.includes(value), value);
+  for (const value of ["EV99344", "EV99345", "<v>96.92</v>", "<v>-0.59</v>", "<v>114.33</v>"]) assert.ok(detail.includes(value), value);
   assert.ok(unzip(xlsx, "xl/worksheets/sheet1.xml").includes("<v>116.8</v>"));
 });
