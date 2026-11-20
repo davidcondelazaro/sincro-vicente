@@ -116,15 +116,19 @@ export type OrdenPreparacion = { id: string; status: string; deliveryMethod: { m
 export type PedidoEnShopify = { displayFulfillmentStatus: string; fulfillmentOrders: { nodes: OrdenPreparacion[] }; fulfillments: { id: string; status: string; events: { nodes: { status: string }[] } }[] };
 // En la recogida, el pedido de preparación sale asignado al Almacén MHD (de donde sale el stock); para marcarlo «Listo para
 // recoger» hay que transferirlo antes a la tienda que eligió el cliente, como el botón «Transferir al lugar de retiro»
-// (EV99344, 20-11-2026). mover: los que hay que transferir y adónde.
-export type Accion = { tipo: "listo_recoger"; ids: string[]; mover: { id: string; destino: string; tienda: string }[] } | { tipo: "entregado"; ids: string[] } | { tipo: "ya_hecho"; motivo: string } | { tipo: "esperar"; motivo: string };
+// (EV99344, 20-11-2026). mover: los que hay que transferir, de dónde y adónde. El botón mueve también las unidades
+// (en existencia) a la tienda; por API el traslado solo mueve lo comprometido y la tienda quedaba en −1 (EV99345), así que
+// mhd-order-delivery.ts mueve además las unidades.
+export type Traslado = { id: string; origen: string; destino: string; tienda: string };
+export type Accion = { tipo: "listo_recoger"; ids: string[]; mover: Traslado[] } | { tipo: "entregado"; ids: string[] } | { tipo: "ya_hecho"; motivo: string } | { tipo: "esperar"; motivo: string };
 export function accionEnShopify(pedido: PedidoEnShopify): Accion {
   const recogida = pedido.fulfillmentOrders.nodes.filter((item) => item.deliveryMethod?.methodType === "PICK_UP");
   if (recogida.length) {
     const abiertos = recogida.filter((item) => ["OPEN", "IN_PROGRESS"].includes(item.status));
     const mover = abiertos.flatMap((item) => {
       const destino = item.destination?.location;
-      return destino && item.assignedLocation?.location?.id !== destino.id ? [{ id: item.id, destino: destino.id, tienda: destino.name }] : [];
+      const origen = item.assignedLocation?.location?.id;
+      return destino && origen && origen !== destino.id ? [{ id: item.id, origen, destino: destino.id, tienda: destino.name }] : [];
     });
     return abiertos.length ? { tipo: "listo_recoger", ids: abiertos.map((item) => item.id), mover } : { tipo: "ya_hecho", motivo: `recogida ya cerrada en Shopify (${pedido.displayFulfillmentStatus})` };
   }

@@ -54,7 +54,7 @@ test("el «Enviado» sale del historial de MHD; si no está, del último cambio"
 const orden = (extra) => ({ id: "fo1", status: "OPEN", deliveryMethod: { methodType: "PICK_UP" }, assignedLocation: { location: { id: "almacen" } }, destination: { location: { id: "tienda", name: "Tienda" } }, ...extra });
 test("recogida asignada al almacén: se transfiere a la tienda elegida y se marca «Listo para recoger»", () => {
   const accion = accionEnShopify({ displayFulfillmentStatus: "UNFULFILLED", fulfillmentOrders: { nodes: [orden()] }, fulfillments: [] });
-  assert.deepEqual(accion, { tipo: "listo_recoger", ids: ["fo1"], mover: [{ id: "fo1", destino: "tienda", tienda: "Tienda" }] });
+  assert.deepEqual(accion, { tipo: "listo_recoger", ids: ["fo1"], mover: [{ id: "fo1", origen: "almacen", destino: "tienda", tienda: "Tienda" }] });
 });
 test("recogida ya en la tienda: no se transfiere", () => {
   const accion = accionEnShopify({ displayFulfillmentStatus: "UNFULFILLED", fulfillmentOrders: { nodes: [orden({ assignedLocation: { location: { id: "tienda" } } })] }, fulfillments: [] });

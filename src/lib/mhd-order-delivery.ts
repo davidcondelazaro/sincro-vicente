@@ -6,7 +6,7 @@ import { enviadoEnMhd, horaEnMadrid, type Seguimiento } from "@/lib/mhd-order-au
 import { orderAlert, orderSettings } from "@/lib/mhd-order-auto";
 import { logOrderEvent } from "@/lib/mhd-order-events";
 import { shopify } from "@/lib/mhd-order-fulfill";
-import { accionEnShopify, debeMirarEntrega, enviadoDesde, LECTORES, madridAIso, type PedidoEnShopify, leerPaginaSeguimiento, type EstadoEntrega, type LecturaEntrega } from "@/lib/mhd-order-tracking";
+import { accionEnShopify, debeMirarEntrega, enviadoDesde, LECTORES, madridAIso, type PedidoEnShopify, type Traslado, leerPaginaSeguimiento, type EstadoEntrega, type LecturaEntrega } from "@/lib/mhd-order-tracking";
 
 // Entregas y recogidas (docs/PEDIDOS_MHD_FASE_1.md › Entregas y recogidas, 20-11-2026). Cada hora de 8 a 21 (Madrid),
 // con el interruptor pedidos_entrega_auto_activo:
@@ -57,17 +57,42 @@ async function pedidoEnShopify(id: string) {
 }
 
 // Qué hacer en Shopify con un pedido entregado por el transportista. «esperar»: aún no se puede (envío sin marcar).
-async function marcarListoParaRecoger(ids: string[], mover: { id: string; destino: string; tienda: string }[]) {
+// Unidades del pedido de preparación que llevan stock (sin tarjetas regalo ni servicios)
+async function unidadesConStock(id: string) {
+  const data = await shopify<{ fulfillmentOrder: { lineItems: { nodes: { totalQuantity: number; variant: { inventoryItem: { id: string; tracked: boolean } } | null }[] } } | null }>(
+    `query Unidades($id: ID!) { fulfillmentOrder(id: $id) { lineItems(first: 50) { nodes { totalQuantity variant { inventoryItem { id tracked } } } } } }`, { id },
+  );
+  return (data.fulfillmentOrder?.lineItems.nodes ?? []).flatMap((item) => (item.variant?.inventoryItem.tracked && item.totalQuantity > 0 ? [{ inventoryItemId: item.variant.inventoryItem.id, cantidad: item.totalQuantity }] : []));
+}
+
+// Como «Transferir al lugar de retiro»: el pedido pasa a la tienda y sus unidades también (+ en la tienda, − en el
+// almacén; el almacén lo vuelve a fijar la sincronización con el stock de MHD). Clave fija: un reintento no lo duplica.
+async function trasladar(item: Traslado) {
+  const unidades = await unidadesConStock(item.id);
+  const data = await shopify<{ fulfillmentOrderMove: { movedFulfillmentOrder: { id: string } | null; userErrors: { message: string }[] } }>(
+    `mutation Mover($id: ID!, $destino: ID!) { fulfillmentOrderMove(id: $id, newLocationId: $destino) { movedFulfillmentOrder { id } userErrors { field message } } }`,
+    { id: item.id, destino: item.destino },
+  );
+  const errores = data.fulfillmentOrderMove.userErrors;
+  if (errores.length || !data.fulfillmentOrderMove.movedFulfillmentOrder) throw new Error(`No se pudo transferir a ${item.tienda}: ${errores.map((e) => e.message).join(" ") || "sin respuesta"}`);
+  if (unidades.length) await moverUnidades(item, unidades);
+  return data.fulfillmentOrderMove.movedFulfillmentOrder.id; // si se mueve todo, Shopify devuelve el mismo
+}
+export async function moverUnidades(item: Pick<Traslado, "id" | "origen" | "destino" | "tienda">, unidades: { inventoryItemId: string; cantidad: number }[]) {
+  const data = await shopify<{ inventoryAdjustQuantities: { userErrors: { message: string }[] } }>(
+    `mutation Unidades($input: InventoryAdjustQuantitiesInput!, $key: String!) { inventoryAdjustQuantities(input: $input) @idempotent(key: $key) { userErrors { field message } } }`,
+    { key: `entrega-traslado-${item.id.split("/").pop()}`, input: { name: "available", reason: "movement_received", referenceDocumentUri: `gid://sincro-vicente/Entrega/${item.id.split("/").pop()}`, changes: unidades.flatMap((unidad) => [
+      { inventoryItemId: unidad.inventoryItemId, locationId: item.destino, delta: unidad.cantidad, changeFromQuantity: null },
+      { inventoryItemId: unidad.inventoryItemId, locationId: item.origen, delta: -unidad.cantidad, changeFromQuantity: null },
+    ]) } },
+  );
+  const errores = data.inventoryAdjustQuantities.userErrors;
+  if (errores.length) throw new Error(`Pedido transferido a ${item.tienda}, pero no se pudieron mover sus unidades: ${errores.map((e) => e.message).join(" ")}`);
+}
+
+async function marcarListoParaRecoger(ids: string[], mover: Traslado[]) {
   const finales = new Map(ids.map((id) => [id, id]));
-  for (const item of mover) {
-    const data = await shopify<{ fulfillmentOrderMove: { movedFulfillmentOrder: { id: string } | null; userErrors: { message: string }[] } }>(
-      `mutation Mover($id: ID!, $destino: ID!) { fulfillmentOrderMove(id: $id, newLocationId: $destino) { movedFulfillmentOrder { id } userErrors { field message } } }`,
-      { id: item.id, destino: item.destino },
-    );
-    const errores = data.fulfillmentOrderMove.userErrors;
-    if (errores.length || !data.fulfillmentOrderMove.movedFulfillmentOrder) throw new Error(`No se pudo transferir a ${item.tienda}: ${errores.map((e) => e.message).join(" ") || "sin respuesta"}`);
-    finales.set(item.id, data.fulfillmentOrderMove.movedFulfillmentOrder.id); // si se mueve todo, Shopify devuelve el mismo
-  }
+  for (const item of mover) finales.set(item.id, await trasladar(item));
   ids = [...finales.values()];
   const data = await shopify<{ fulfillmentOrderLineItemsPreparedForPickup: { userErrors: { message: string }[] } }>(
     `mutation Listo($input: FulfillmentOrderLineItemsPreparedForPickupInput!) { fulfillmentOrderLineItemsPreparedForPickup(input: $input) { userErrors { field message } } }`,

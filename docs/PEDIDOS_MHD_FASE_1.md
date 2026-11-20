@@ -603,7 +603,9 @@ transportista y lo marca en Shopify, con aviso al cliente. Código en
   donde sale el stock). Como hace el botón «Transferir al lugar de retiro» (David con
   EV99344, 20-11-2026: transferencia → correo «listo para recoger» → recogido, y el stock
   de la tienda quedó en 0), primero se **transfiere a la tienda que eligió el cliente**
-  (`fulfillmentOrderMove` a `destination.location`) y luego se marca **«Listo para
+  (`fulfillmentOrderMove` a `destination.location`), **con sus unidades** (+ en la
+  tienda y − en el almacén, `inventoryAdjustQuantities` con clave fija por pedido de
+  preparación; sin tarjetas regalo ni servicios), y luego se marca **«Listo para
   recoger»** (`fulfillmentOrderLineItemsPreparedForPickup`), que manda el correo al
   cliente. **La recogida por el cliente se marca a mano** en la tienda.
 - **Registro:** estado de cada seguimiento en `mhd_order_deliveries` (estado, texto,
@@ -613,8 +615,12 @@ transportista y lo marca en Shopify, con aviso al cliente. Código en
 - **A mano:** `POST /api/mhd-orders/tarea?tipo=entregas&pedido=EV…` mira ese pedido
   aunque el interruptor esté apagado o sea fuera de horario; con `&simulacion=1` lee y
   dice qué haría, sin tocar Shopify ni la tabla.
-- **Prueba:** EV99345 (recogida, ON TIME), simulación del 20-11-2026: «Entregada» a las
-  12:03 → transferir a Electrónica Vicente y «Listo para recoger».
+- **Prueba:** EV99345 (recogida, ON TIME), 20-11-2026: «Entregada» a las 12:03 →
+  transferido a Electrónica Vicente y «Listo para recoger»; Shopify mandó el correo a la
+  clienta (14:45). El traslado por API solo movió lo comprometido y la tienda quedó en −1
+  disponible (0 en existencia, 1 comprometido); por eso se mueven también las unidades.
+  En EV99345 se corrigió con la misma operación: tienda 1 en existencia, 1 comprometido,
+  0 disponible; almacén 58.
 
 ### Automatización de pedidos: decisiones (31-10-2026)
 
