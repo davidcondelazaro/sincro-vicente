@@ -17,7 +17,7 @@ export type Payout = {
   id: string; legacyResourceId: string; issuedAt: string; status: string; net: Money & { currencyCode: string };
   summary: Record<"adjustmentsFee" | "adjustmentsGross" | "advanceFees" | "advanceGross" | "chargesFee" | "chargesGross" | "refundsFee" | "refundsFeeGross" | "reservedFundsFee" | "reservedFundsGross" | "retriedPayoutsFee" | "retriedPayoutsGross", Money>;
 };
-export type BalanceTransaction = { type: string; transactionDate: string; amount: Money; fee: Money; net: Money; associatedOrder: { id: string; name: string } | null; associatedPayout: { id: string | null } | null; sourceOrderTransactionId: string | null; card?: string; mhd?: string };
+export type BalanceTransaction = { type: string; transactionDate: string; amount: Money; fee: Money; net: Money; associatedOrder: { id: string; name: string } | null; associatedPayout: { id: string | null } | null; sourceOrderTransactionId: string | null; card?: string; mhd?: string; orderDate?: string };
 
 const SYNC = "pagos-shopify";
 const API = "2026-10";
@@ -56,21 +56,23 @@ export async function payoutTransactions(env: Env, payout: Payout): Promise<Bala
   return mine;
 }
 
-// Tarjeta con la que se pagó cada pedido (p. ej. «Mastercard (Apple Pay)»), como el icono del admin. Solo marca y
+// Fecha del pedido y tarjeta con la que se pagó cada pedido (p. ej. «Mastercard (Apple Pay)»), como el icono del admin. Solo marca y
 // monedero; nada de números de tarjeta. Si no se puede leer, la columna queda vacía.
 const WALLETS: Record<string, string> = { APPLE_PAY: "Apple Pay", GOOGLE_PAY: "Google Pay", ANDROID_PAY: "Google Pay", SHOPIFY_PAY: "Shop Pay" };
-type OrderPayments = { id: string; transactions: { id: string; paymentDetails: { company?: string | null; wallet?: string | null } | null }[] };
+type OrderPayments = { id: string; createdAt: string; transactions: { id: string; paymentDetails: { company?: string | null; wallet?: string | null } | null }[] };
 async function addCards(env: Env, rows: BalanceTransaction[]) {
   const ids = [...new Set(rows.map((row) => row.associatedOrder?.id).filter((id): id is string => Boolean(id)))];
   const orders = new Map<string, OrderPayments>();
   try {
     for (let start = 0; start < ids.length; start += 50) {
-      const result = await shopify<{ nodes: (OrderPayments | null)[] }>(env, `query($ids: [ID!]!) { nodes(ids: $ids) { ... on Order { id transactions(first: 20) { id paymentDetails { ... on CardPaymentDetails { company wallet } } } } } }`, { ids: ids.slice(start, start + 50) });
+      const result = await shopify<{ nodes: (OrderPayments | null)[] }>(env, `query($ids: [ID!]!) { nodes(ids: $ids) { ... on Order { id createdAt transactions(first: 20) { id paymentDetails { ... on CardPaymentDetails { company wallet } } } } } }`, { ids: ids.slice(start, start + 50) });
       for (const order of result.data?.nodes ?? []) if (order?.id) orders.set(order.id, order);
     }
   } catch { return; }
   for (const row of rows) {
-    const transactions = orders.get(row.associatedOrder?.id ?? "")?.transactions ?? [];
+    const order = orders.get(row.associatedOrder?.id ?? "");
+    row.orderDate = order?.createdAt;
+    const transactions = order?.transactions ?? [];
     const details = (transactions.find((item) => row.sourceOrderTransactionId && item.id.endsWith(`/${row.sourceOrderTransactionId}`)) ?? transactions.find((item) => item.paymentDetails?.company))?.paymentDetails;
     if (details?.company) row.card = details.wallet ? `${details.company} (${WALLETS[details.wallet] ?? details.wallet})` : details.company;
   }
@@ -109,8 +111,8 @@ export function buildPayoutEmail(payout: Payout, transactions: BalanceTransactio
     [{ bold: "Total" }, { euros: summary.gross }, { euros: -summary.fee }, { euros: summary.net }],
   ];
   const detalle: Cell[][] = [
-    head(["Fecha de liquidación", "Fecha", "Tipo", "Tarjeta", "Pedido", "Transacción", "Cargo", "Comisión", "Neto"]),
-    ...transactions.map((row): Cell[] => [{ day: payout.issuedAt.slice(0, 10) }, { date: new Date(row.transactionDate) }, typeLabel(row.type), row.card ?? "", row.associatedOrder?.name ?? "", row.mhd ?? "", { euros: num(row.amount) }, { euros: -num(row.fee) }, { euros: num(row.net) }]),
+    head(["Fecha de liquidación", "Fecha de pedido", "Tipo", "Forma de pago", "Pedido", "Transacción", "Cargo", "Comisión", "Neto"]),
+    ...transactions.map((row): Cell[] => [{ day: payout.issuedAt.slice(0, 10) }, { date: new Date(row.orderDate ?? row.transactionDate) }, typeLabel(row.type), row.card ?? "", row.associatedOrder?.name ?? "", row.mhd ?? "", { euros: num(row.amount) }, { euros: -num(row.fee) }, { euros: num(row.net) }]),
     [{ bold: "Total" }, "", "", "", "", "", { euros: transactions.reduce((sum, row) => sum + num(row.amount), 0) }, { euros: -transactions.reduce((sum, row) => sum + num(row.fee), 0) }, { euros: transactions.reduce((sum, row) => sum + num(row.net), 0) }],
   ];
   const xlsx = buildXlsx([{ name: "Transacciones", rows: detalle, widths: [20, 18, 12, 24, 12, 18, 14, 14, 14] }, { name: "Resumen", rows: resumen, widths: [20, 16, 14, 14] }]) // el detalle primero: es lo que se ve al abrirlo;
