@@ -617,6 +617,10 @@ transportista y lo marca en Shopify, con aviso al cliente. Código en
   fecha, fuente lectura/IA, huella, veces mirado, llamadas a la IA, resultado). Lo hecho,
   en `mhd_sync_events` (`entregado`, `listo_recoger`, `entrega_revisar`) y en el resumen
   diario. Avisos a `pedidos_avisos_emails`, sin repetir.
+- **En pantalla:** Pedidos MHD › «Ver historial» en cada pedido: la entrega según el
+  transportista (último estado, fecha, si se leyó con IA, veces mirado, lo hecho en
+  Shopify) y todos los apuntes del pedido en `mhd_sync_events` (desde el 17-11-2026),
+  incluidos los errores que lo nombran (20-11-2026).
 - **A mano:** `POST /api/mhd-orders/tarea?tipo=entregas&pedido=EV…` mira ese pedido
   aunque el interruptor esté apagado o sea fuera de horario; con `&simulacion=1` lee y
   dice qué haría, sin tocar Shopify ni la tabla.

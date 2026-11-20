@@ -60,6 +60,7 @@ export function MhdOrdersPage() {
 function OrderCard({ order, onChanged }: { order: Order; onChanged: () => Promise<void> }) {
   const [showOrderDetail, setShowOrderDetail] = useState(false);
   const [showMhdDetail, setShowMhdDetail] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const exported = order.exports?.[0];
   const latestAttempt = exported?.attempts?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
   const lines = order.lines ?? [];
@@ -98,6 +99,7 @@ function OrderCard({ order, onChanged }: { order: Order; onChanged: () => Promis
           {Number(order.discount_amount ?? 0) > 0 && <span className="ml-1 inline-flex align-text-bottom" title="Este pedido tiene descuentos aplicados"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="size-4"><circle cx="12" cy="12" r="8" /><path strokeLinecap="round" d="m9 15 6-6" /><circle cx="9" cy="9" r=".8" fill="currentColor" stroke="none" /><circle cx="15" cy="15" r=".8" fill="currentColor" stroke="none" /></svg><span className="sr-only">Este pedido tiene descuentos aplicados</span></span>}
         </button>
         {exported?.mhd_order_id && <button type="button" onClick={() => setShowMhdDetail((open) => !open)} className="cursor-pointer font-medium text-emerald-700">{showMhdDetail ? "▼" : "▶"} Ver estados de MHD</button>}
+        <button type="button" onClick={() => setShowHistory((open) => !open)} className="cursor-pointer font-medium text-emerald-700">{showHistory ? "▼" : "▶"} Ver historial</button>
         {tracking.map((item) => <TrackingLink key={item.tracking_number} item={item} />)}
         {invoices.map((item) => <a key={item.url_factura} href={item.url_factura} target="_blank" rel="noreferrer" className="font-medium text-emerald-700 underline underline-offset-2">Factura {item.nombre_factura ?? ""}</a>)}
         {latestAttempt && latestAttempt.outcome !== "success" && <details className="text-sm"><summary className="cursor-pointer font-medium text-red-700">Ver errores</summary><div className="mt-3 max-w-2xl rounded-lg border border-red-200 bg-red-50 p-3 text-red-950"><p className="font-medium">Último intento · {date(latestAttempt.created_at)}{latestAttempt.http_status ? ` · HTTP ${latestAttempt.http_status}` : ""}</p>{latestAttempt.error_message && <p className="mt-1">{latestAttempt.error_message}</p>}{latestAttempt.response_payload?.errors?.length ? <ul className="mt-2 list-disc space-y-1 pl-5">{latestAttempt.response_payload.errors.map((error, index) => <li key={`${error}-${index}`}>{error}</li>)}</ul> : null}</div></details>}
@@ -119,8 +121,62 @@ function OrderCard({ order, onChanged }: { order: Order; onChanged: () => Promis
         {order.order_note && <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950"><span className="font-medium">Comentario del pedido: </span>{order.order_note}</p>}
       </div>}
         {showMhdDetail && exported?.mhd_order_id && <div className="mt-3 max-w-2xl space-y-3"><p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-950"><span className="font-medium">Pedido asignado por MHD: </span>#{exported.mhd_order_id}{exported.mhd_transaction_id ? ` · Transacción ${exported.mhd_transaction_id}` : ""}{exported.mhd_status ? ` · Estado ${exported.mhd_status}` : ""}</p>{exported.mhd_status_payload?.arr_estados?.length ? <section className="rounded-lg bg-zinc-50 p-3 text-sm text-zinc-800"><h4 className="font-semibold">Estados comunicados por MHD</h4><ol className="mt-2 space-y-1">{exported.mhd_status_payload.arr_estados.map((item, index) => <li key={`${item.estado ?? "estado"}-${item.fecha ?? index}`} className={`flex flex-wrap justify-between gap-x-3 rounded-md px-2 py-1 ${index % 2 === 0 ? "bg-white" : "bg-zinc-100/70"}`}><span>{item.estado ?? "Estado sin literal"}</span><span className="text-zinc-500">{item.fecha != null ? date(mhdDate(item.fecha)) : "Fecha no disponible"}</span></li>)}</ol></section> : <p className="rounded-lg bg-zinc-50 p-3 text-zinc-600">Aún no se ha consultado el estado en MHD.</p>}</div>}
+      {showHistory && <OrderHistory name={order.shopify_order_name} />}
     </div>
   </article>;
+}
+
+// Historial del pedido en utils: lo que han hecho los procesos y los botones (mhd_sync_events, sync «pedidos», desde el
+// 17-11-2026) y el estado de la entrega según el transportista (mhd_order_deliveries). Se carga al abrirlo.
+type OrderEvent = { id: string; kind: string; detail: Record<string, unknown>; created_at: string };
+type Delivery = { carrier_name: string | null; carrier_code: string | null; tracking_number: string | null; carrier_url: string | null; estado: string | null; estado_texto: string | null; estado_fecha: string | null; fuente: string | null; checks: number; ai_calls: number; last_checked_at: string | null; resultado: string | null; resultado_at: string | null; error: string | null; enviado_at: string | null };
+function OrderHistory({ name }: { name: string }) {
+  const [events, setEvents] = useState<OrderEvent[] | null>(null); const [delivery, setDelivery] = useState<Delivery | null>(null); const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    const supabase = createClient();
+    void Promise.all([
+      supabase.from("mhd_sync_events").select("id,kind,detail,created_at").eq("sync", "pedidos").or(`codigo.eq.${name},and(kind.eq.error,detail->>texto.ilike.*${name}*)`).order("created_at", { ascending: true }).limit(200),
+      supabase.from("mhd_order_deliveries").select("*").eq("order_name", name).order("updated_at", { ascending: false }).limit(1).maybeSingle(),
+    ]).then(([eventos, entrega]) => { if (eventos.error) { setFailed(true); return; } setEvents((eventos.data ?? []) as OrderEvent[]); setDelivery((entrega.data ?? null) as Delivery | null); });
+  }, [name]);
+  if (failed) return <p className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-900">No se pudo cargar el historial.</p>;
+  if (!events) return <p className="mt-3 text-sm text-zinc-500">Cargando historial…</p>;
+  return <div className="mt-3 max-w-2xl space-y-3 text-sm">
+    {delivery && <section className="rounded-lg bg-sky-50 p-3 text-sky-950">
+      <h4 className="font-semibold">Entrega según el transportista</h4>
+      <p className="mt-1">{delivery.carrier_name ?? delivery.carrier_code ?? "Transportista"}{delivery.tracking_number ? ` · ${delivery.tracking_number}` : ""}{delivery.carrier_url && <> · <a href={delivery.carrier_url} target="_blank" rel="noreferrer" className="underline underline-offset-2">ver seguimiento</a></>}</p>
+      <p className="mt-1"><span className="font-medium">{ESTADO_ENTREGA[delivery.estado ?? ""] ?? "Sin leer todavía"}</span>{delivery.estado_texto ? ` («${delivery.estado_texto}»)` : ""}{delivery.estado_fecha ? ` · ${date(delivery.estado_fecha)}` : ""}{delivery.fuente ? ` · leído ${delivery.fuente === "ia" ? "con IA" : "sin IA"}` : ""}</p>
+      {delivery.resultado && <p className="mt-1">{RESULTADO_ENTREGA[delivery.resultado] ?? delivery.resultado}{delivery.resultado_at ? ` · ${date(delivery.resultado_at)}` : ""}</p>}
+      {delivery.error && <p className="mt-1 text-amber-800">{delivery.error}</p>}
+      <p className="mt-1 text-xs text-sky-800">Enviado por MHD {delivery.enviado_at ? date(delivery.enviado_at) : "—"} · mirado {delivery.checks} {delivery.checks === 1 ? "vez" : "veces"}{delivery.last_checked_at ? `, la última ${date(delivery.last_checked_at)}` : ""}{delivery.ai_calls ? ` · ${delivery.ai_calls} con IA` : ""}</p>
+    </section>}
+    <section className="rounded-lg bg-zinc-50 p-3 text-zinc-800">
+      <h4 className="font-semibold">Historial en utils</h4>
+      {events.length ? <ol className="mt-2 space-y-1">{events.map((item, index) => <li key={item.id} className={`grid grid-cols-[8.5rem_minmax(0,1fr)] gap-3 rounded-md px-2 py-1 ${index % 2 === 0 ? "bg-white" : "bg-zinc-100/70"}`}><span className="text-zinc-500">{date(item.created_at)}</span><span className={item.kind.includes("fallid") || item.kind === "error" || item.kind.endsWith("revisar") ? "text-amber-800" : ""}>{eventoTexto(item)}</span></li>)}</ol> : <p className="mt-1 text-zinc-600">Sin apuntes (se registran desde el 17-11-2026).</p>}
+    </section>
+  </div>;
+}
+const ESTADO_ENTREGA: Record<string, string> = { entregado: "Entregado", en_reparto: "En reparto", en_transito: "En tránsito", en_preparacion: "En preparación", incidencia: "Incidencia", desconocido: "Estado no reconocido" };
+const RESULTADO_ENTREGA: Record<string, string> = { entregado: "Marcado como entregado en Shopify", listo_recoger: "Marcado «Listo para recoger» en Shopify (aviso al cliente)", ya_hecho: "Ya estaba hecho en Shopify", revisar: "Se dejó de mirar: revisar a mano" };
+function eventoTexto({ kind, detail }: OrderEvent) {
+  const d = detail as Record<string, string | number | boolean | null | undefined>;
+  const quien = d.auto === false ? " (a mano)" : d.auto ? " (automático)" : "";
+  const seg = d.seguimiento ? `${d.transportista ? `${d.transportista} ` : ""}${d.seguimiento}` : "";
+  switch (kind) {
+    case "exportado": return `Exportado a MHD #${d.mhd ?? "—"}${quien}${d.recuperado ? " · recuperado (ya estaba en MHD)" : ""}`;
+    case "exportacion_fallida": return `No se pudo exportar${quien}: ${d.error ?? ""}`;
+    case "estado": return `MHD: ${d.de ?? "—"} → ${d.a ?? "—"}`;
+    case "enviado": return d.yaEnShopify ? "Ya estaba marcado como enviado en Shopify" : `Marcado como enviado en Shopify${quien}${seg ? ` · ${seg}` : ""}`;
+    case "envio_fallido": return `No se pudo marcar el envío en Shopify: ${d.error ?? ""}`;
+    case "envio_revisar": return `Envío sin marcar, revisar: ${d.motivo ?? ""}`;
+    case "factura_shopify": return "Factura de MHD guardada en Shopify";
+    case "cancelado_shopify": return `Cancelado en Shopify por cancelación en MHD #${d.mhd ?? "—"}`;
+    case "entregado": return `Entregado según ${d.transportista ?? "el transportista"}${d.fecha ? ` el ${date(String(d.fecha))}` : ""} · evento «Entregado» en Shopify${d.fuente === "ia" ? " (leído con IA)" : ""}`;
+    case "listo_recoger": return `Llegado a la tienda${d.fecha ? ` el ${date(String(d.fecha))}` : ""} · «Listo para recoger» en Shopify, aviso al cliente${d.fuente === "ia" ? " (leído con IA)" : ""}`;
+    case "entrega_revisar": return `Entrega a revisar: ${d.motivo ?? ""}`;
+    case "error": return `Error (${d.proceso ?? "proceso"}): ${d.texto ?? ""}`;
+    default: return kind;
+  }
 }
 type Product = { codigo: string; cantidad: number; precio: number; portes: number; subida: boolean; precio_subida: number | null; instalacion: boolean; precio_instalacion: number | null; retirada: boolean; precio_retirada: number | null };
 type MhdAddress = { nombre: string; apellidos: string; nif: string; telefono: string; direccion: string; cp: string; localidad: string; provincia: string };
