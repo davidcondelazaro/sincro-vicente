@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { EMAIL_PREFIX, escapeHtml, sendEmail } from "@/lib/email";
+import { escapeHtml, sendEmail } from "@/lib/email";
 import { buildXlsx, type Cell } from "@/lib/xlsx";
 
 // Avisos de pagos de Shopify Payments (2026-11-20, David): cada pago («payout») que Shopify ingresa en el banco de la
@@ -94,7 +94,7 @@ export function payoutSummary(payout: Payout) {
 export function buildPayoutEmail(payout: Payout, transactions: BalanceTransaction[]) {
   const summary = payoutSummary(payout);
   const status = STATUS[payout.status] ?? payout.status;
-  const subject = `${EMAIL_PREFIX} Nuevo pago de Shopify de ${euros(summary.net)}`;
+  const subject = `Nuevo pago de Shopify de ${euros(summary.net)}`; // sin el prefijo de utils (David, 2026-11-20)
   const lines: [string, string][] = [["Fecha", day(payout.issuedAt)], ["Estado", status], ["Importe neto", euros(summary.net)], ["Cargos", euros(num(payout.summary.chargesGross))], ["Comisiones", euros(-summary.fee)]];
   const orders = transactions.filter((row) => row.associatedOrder).length;
   const intro = `Shopify ha ingresado un pago en el banco de la tienda. En el Excel adjunto va el detalle (${transactions.length} ${transactions.length === 1 ? "transacción" : "transacciones"}${orders ? `, ${orders} ${orders === 1 ? "pedido" : "pedidos"}` : ""}).`;
@@ -129,7 +129,7 @@ async function recipients(db: SupabaseClient): Promise<Recipients | null> {
 async function sendPayout(env: Env, payout: Payout, to: Recipients, idempotencyKey: string, test = false) {
   const transactions = await payoutTransactions(env, payout);
   const email = buildPayoutEmail(payout, transactions);
-  const result = await sendEmail({ to: to.para, cc: to.copia.length ? to.copia : undefined, subject: test ? email.subject.replace("] ", "] [Prueba] ") : email.subject, html: email.html, text: email.text, idempotencyKey, attachments: [{ filename: email.filename, content: email.xlsx.toString("base64") }] });
+  const result = await sendEmail({ to: to.para, cc: to.copia.length ? to.copia : undefined, subject: test ? `[Prueba] ${email.subject}` : email.subject, html: email.html, text: email.text, idempotencyKey, attachments: [{ filename: email.filename, content: email.xlsx.toString("base64") }] });
   return { result, subject: email.subject, transactions: transactions.length };
 }
 

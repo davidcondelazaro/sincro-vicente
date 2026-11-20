@@ -34,7 +34,7 @@ test("pagos: importes en formato español", () => {
 
 test("pagos: asunto y cuerpo", () => {
   const email = buildPayoutEmail(payout, transactions);
-  assert.equal(email.subject, "[Electrónica Vicente Utils] Nuevo pago de Shopify de 114,33 €");
+  assert.equal(email.subject, "Nuevo pago de Shopify de 114,33 €");
   for (const line of ["Fecha: 20/11/2026", "Estado: Pagado", "Importe neto: 114,33 €", "Cargos: 116,80 €", "Comisiones: -2,47 €"]) assert.ok(email.text.includes(line), line);
 });
 
