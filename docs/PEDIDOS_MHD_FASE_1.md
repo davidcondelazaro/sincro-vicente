@@ -621,6 +621,9 @@ transportista y lo marca en Shopify, con aviso al cliente. Código en
   transportista (último estado, fecha, si se leyó con IA, veces mirado, lo hecho en
   Shopify) y todos los apuntes del pedido en `mhd_sync_events` (desde el 17-11-2026),
   incluidos los errores que lo nombran (20-11-2026).
+- **Resumen diario, «Pendiente ahora»:** las recogidas en tienda no cuentan como
+  «sin marcar en Shopify»; van en dos líneas propias: listas para recoger (tienda y
+  desde cuándo) y enviadas por MHD aún sin llegar (20-11-2026).
 - **A mano:** `POST /api/mhd-orders/tarea?tipo=entregas&pedido=EV…` mira ese pedido
   aunque el interruptor esté apagado o sea fuera de horario; con `&simulacion=1` lee y
   dice qué haría, sin tocar Shopify ni la tabla.
