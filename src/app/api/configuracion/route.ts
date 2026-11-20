@@ -25,6 +25,7 @@ const VALIDATE: Record<string, (value: unknown) => string | null> = {
   pedidos_exportar_auto_activo: (value) => (typeof value === "boolean" ? null : "Valor no válido."),
   pedidos_exportar_margen_minutos: (value) => (Number.isInteger(value) && Number(value) >= 0 && Number(value) <= 1440 ? null : "Pon entre 0 y 1.440 minutos."),
   pedidos_envio_auto_activo: (value) => (typeof value === "boolean" ? null : "Valor no válido."),
+  pedidos_entrega_auto_activo: (value) => (typeof value === "boolean" ? null : "Valor no válido."),
   cancelar_en_shopify_activo: (value) => (typeof value === "boolean" ? null : "Valor no válido."),
   factura_correo_activo: (value) => (typeof value === "boolean" ? null : "Valor no válido."),
   pedidos_aviso_sin_exportar_horas: (value) => (typeof value === "number" && value >= 0.5 && value <= 72 ? null : "Pon entre 0,5 y 72 horas."),

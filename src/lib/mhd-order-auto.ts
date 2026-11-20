@@ -28,13 +28,14 @@ export async function orderSettings(db: SupabaseClient) {
   return {
     exportar: { activo: values.get("pedidos_exportar_auto_activo") === true && Boolean(text("pedidos_exportar_auto_desde")), desde: text("pedidos_exportar_auto_desde"), margenMinutos: number("pedidos_exportar_margen_minutos", 30) },
     envio: { activo: values.get("pedidos_envio_auto_activo") === true },
+    entrega: { activo: values.get("pedidos_entrega_auto_activo") === true },
     avisoSinExportarHoras: number("pedidos_aviso_sin_exportar_horas", 2),
     informeHora: number("pedidos_informe_hora", 9),
   };
 }
 
 // Avisos de pedidos: a sus propios destinatarios (pedidos_avisos_emails)
-const orderAlert = (db: SupabaseClient, alert: { key: string; subject: string; lines: string[]; quietMinutes?: number }) =>
+export const orderAlert = (db: SupabaseClient, alert: { key: string; subject: string; lines: string[]; quietMinutes?: number }) =>
   sendAlert(db, { ...alert, href: PAGE, recipientsKey: "pedidos_avisos_emails" });
 
 async function ownerId(db: SupabaseClient) {

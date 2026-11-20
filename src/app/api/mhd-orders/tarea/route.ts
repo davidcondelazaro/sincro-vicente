@@ -1,6 +1,7 @@
 import { sendEmail, settingRecipients } from "@/lib/email";
 import { workerClient } from "@/lib/mhd-importer/jobs";
 import { orderSettings, tareaEstados, tareaPedidos } from "@/lib/mhd-order-auto";
+import { tareaEntregas } from "@/lib/mhd-order-delivery";
 import { exportMhdOrder } from "@/lib/mhd-order-export";
 import { horaEnMadrid } from "@/lib/mhd-order-auto-rules";
 import { logOrderEvent } from "@/lib/mhd-order-events";
@@ -11,6 +12,9 @@ import { buildOrdersReport } from "@/lib/mhd-order-report";
 // solo sale a la hora elegida en Configuración, una vez al día). `?simulacion=1` con resumen lo devuelve sin enviarlo y
 // `?prueba=1` lo envía ya, marcado como prueba. ?tipo=exportar&pedido=EV… exporta ese pedido como el botón (para
 // reexportar a mano uno que MHD canceló: la fila se deja antes en «ready» y se comprueba en MHD que no hay otro vigente).
+// ?tipo=entregas (cada hora; actúa de 8 a 21 con el interruptor encendido) mira las páginas de seguimiento y marca en
+// Shopify entregados y «Listo para recoger». Con &pedido=EV… solo ese, aunque esté apagado o fuera de horario; con
+// &simulacion=1 lee y dice qué haría, sin tocar Shopify ni la tabla.
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,6 +29,7 @@ export async function POST(request: Request) {
   try {
     if (tipo === "pedidos") return Response.json(await tareaPedidos(db));
     if (tipo === "estados") return Response.json(await tareaEstados(db));
+    if (tipo === "entregas") return Response.json(await tareaEntregas(db, { pedido: params.get("pedido"), simulacion: params.get("simulacion") === "1" }));
     if (tipo === "exportar") {
       const name = params.get("pedido") ?? "";
       const { data: order } = await db.from("shopify_mhd_orders").select("id,owner_id").eq("shopify_order_name", name).maybeSingle();

@@ -28,6 +28,7 @@ export async function buildOrdersReport(db: SupabaseClient, now = new Date()) {
   const of = (kind: string) => events.filter((item) => item.kind === kind);
   const exported = of("exportado"); const exportFailed = of("exportacion_fallida");
   const shipped = of("enviado").filter((item) => !item.detail.yaEnShopify); const shipFailed = of("envio_fallido"); const shipReview = of("envio_revisar");
+  const delivered = of("entregado"); const readyPickup = of("listo_recoger"); const deliveryReview = of("entrega_revisar");
   const states = of("estado"); const invoicesShopify = of("factura_shopify"); const cancelled = of("cancelado_shopify"); const errors = of("error");
   const invoiceEmails = of("factura_correo").reduce((total, item) => total + Number(item.detail.enviados ?? 0), 0);
   const fetched = of("traidos").reduce((acc, item) => ({ nuevos: acc.nuevos + Number(item.detail.nuevos ?? 0), actualizados: acc.actualizados + Number(item.detail.actualizados ?? 0) }), { nuevos: 0, actualizados: 0 });
@@ -42,6 +43,7 @@ export async function buildOrdersReport(db: SupabaseClient, now = new Date()) {
       `Exportados a MHD: ${exported.length}${exported.length ? ` (${names(exported)}; ${exported.filter((item) => item.detail.auto).length} automáticos)` : ""}.${exportFailed.length ? ` Fallidos: ${exportFailed.length} (${names(exportFailed)}).` : ""}`,
       `Cambios de estado en MHD: ${states.length}${states.length ? ` (${names(states)})` : ""}.`,
       `Marcados como enviados en Shopify: ${shipped.length}${shipped.length ? ` (${names(shipped)})` : ""}.${shipReview.length ? ` A revisar a mano: ${shipReview.length} (${names(shipReview)}).` : ""}${shipFailed.length ? ` Fallidos: ${shipFailed.length} (${names(shipFailed)}).` : ""}`,
+      `Entregas del transportista: ${delivered.length} marcados como entregados${delivered.length ? ` (${names(delivered)})` : ""} y ${readyPickup.length} «Listo para recoger»${readyPickup.length ? ` (${names(readyPickup)})` : ""}.${deliveryReview.length ? ` A revisar a mano: ${deliveryReview.length} (${names(deliveryReview)}).` : ""}`,
       `Facturas guardadas en Shopify: ${invoicesShopify.length}${invoicesShopify.length ? ` (${names(invoicesShopify)})` : ""}. Correos de factura al cliente: ${invoiceEmails}.`,
       `Cancelados en Shopify por cancelación de MHD: ${cancelled.length}${cancelled.length ? ` (${names(cancelled)})` : ""}.`,
       `Errores: ${errors.length}. Avisos enviados: ${alerts.length}.`,
@@ -64,7 +66,7 @@ export async function buildOrdersReport(db: SupabaseClient, now = new Date()) {
       `En MHD sin enviar todavía: ${open.length}${open.length ? ` (${open.map((row) => `${row.order!.shopify_order_name} ${row.mhd_status ?? ""}`.trim()).join("; ")})` : ""}.`,
       `Enviados por MHD y sin marcar en Shopify: ${shippedNotMarked.length}${shippedNotMarked.length ? ` (${shippedNotMarked.map((row) => row.order!.shopify_order_name).join(", ")})` : ""}.`,
       `Enviados esperando la factura de MHD: ${waitingInvoice.length}${waitingInvoice.length ? ` (${waitingInvoice.map((row) => row.order!.shopify_order_name).join(", ")})` : ""}.`,
-      `Automático: exportar ${settings.exportar.activo ? "ENCENDIDO" : "apagado"} · marcar envíos ${settings.envio.activo ? "ENCENDIDO" : "apagado"}.`,
+      `Automático: exportar ${settings.exportar.activo ? "ENCENDIDO" : "apagado"} · marcar envíos ${settings.envio.activo ? "ENCENDIDO" : "apagado"} · entregas y recogidas ${settings.entrega.activo ? "ENCENDIDO" : "apagado"}.`,
     ],
   });
   if (errors.length || alerts.length) sections.push({
@@ -73,7 +75,7 @@ export async function buildOrdersReport(db: SupabaseClient, now = new Date()) {
   });
 
   const day = now.toLocaleDateString("es-ES", { timeZone: "Europe/Madrid", day: "numeric", month: "long" });
-  const problems = exportFailed.length + shipFailed.length + shipReview.length + errors.length;
+  const problems = exportFailed.length + shipFailed.length + shipReview.length + deliveryReview.length + errors.length;
   const subject = `${EMAIL_PREFIX} Pedidos ${day}: ${exported.length} exportados, ${shipped.length} enviados${problems ? ` · ${problems} a revisar` : ""}`;
   const text = sections.map((section) => [`${section.warn ? "⚠ " : ""}${section.title}`, ...section.lines.map((line) => `- ${line}`)].join("\n")).join("\n\n") + `\n\n${UTILS}/pedidos-mhd`;
   const td = "padding:4px 8px;border-bottom:1px solid #e4e4e7;vertical-align:top";

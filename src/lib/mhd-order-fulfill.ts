@@ -17,7 +17,7 @@ export type FulfillResult = { ok: true; fulfillments: number } | { ok: false; st
 
 function isHttpUrl(value: string) { try { return ["http:", "https:"].includes(new URL(value).protocol); } catch { return false; } }
 function required(name: string) { const value = process.env[name]; if (!value) throw new Error(`Falta la variable ${name}.`); return value; }
-async function shopify<T>(query: string, variables: Record<string, unknown>) {
+export async function shopify<T>(query: string, variables: Record<string, unknown>) {
   const store = required("SHOPIFY_STORE_URL").replace(/^https?:\/\//, "").replace(/\/$/, "");
   const response = await fetch(`https://${store}/admin/api/2026-07/graphql.json`, { method: "POST", headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": required("SHOPIFY_ACCESS_TOKEN") }, cache: "no-store", signal: AbortSignal.timeout(20_000), body: JSON.stringify({ query, variables }) });
   const body = await response.json() as { data?: T; errors?: { message: string }[] };

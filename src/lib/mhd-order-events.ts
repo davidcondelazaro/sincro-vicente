@@ -13,6 +13,9 @@ export type OrderEventKind =
   | "factura_shopify"    // { pedido, mhd, facturas }
   | "factura_correo"     // { enviados }
   | "cancelado_shopify"  // { pedido, mhd }
+  | "entregado"          // { pedido, mhd, transportista, seguimiento, fecha, fuente }: evento «Entregado» en Shopify
+  | "listo_recoger"      // { pedido, mhd, transportista, seguimiento, fecha, fuente }: «Listo para recoger» en Shopify
+  | "entrega_revisar"    // { pedido, mhd, motivo }
   | "error";             // { proceso, texto }
 
 export async function logOrderEvent(db: SupabaseClient, kind: OrderEventKind, detail: Record<string, unknown>, pedido?: string | null) {
