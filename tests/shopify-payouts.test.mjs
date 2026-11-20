@@ -13,7 +13,7 @@ const payout = {
   id: "gid://shopify/ShopifyPaymentsPayout/169084322124", legacyResourceId: "169084322124", issuedAt: "2026-11-20T00:00:00Z", status: "PAID", net: { amount: "114.33", currencyCode: "EUR" },
   summary: { adjustmentsFee: zero, adjustmentsGross: zero, advanceFees: zero, advanceGross: zero, chargesFee: money("2.47"), chargesGross: money("116.8"), refundsFee: zero, refundsFeeGross: zero, reservedFundsFee: zero, reservedFundsGross: zero, retriedPayoutsFee: zero, retriedPayoutsGross: zero },
 };
-const tx = (date, order, amount, fee, net) => ({ type: "CHARGE", transactionDate: date, amount: money(amount), fee: money(fee), net: money(net), associatedOrder: { id: "gid://shopify/Order/1", name: order }, sourceOrderTransactionId: null, card: "Mastercard", associatedPayout: { id: payout.id } });
+const tx = (date, order, amount, fee, net) => ({ type: "CHARGE", transactionDate: date, amount: money(amount), fee: money(fee), net: money(net), associatedOrder: { id: "gid://shopify/Order/1", name: order }, sourceOrderTransactionId: null, card: "Mastercard", mhd: "W261117062863", associatedPayout: { id: payout.id } });
 const transactions = [tx("2026-11-17T14:23:30Z", "EV99344", "98.8", "1.88", "96.92"), tx("2026-11-17T17:34:42Z", "EV99345", "18.0", "0.59", "17.41")];
 
 // Lee un archivo del ZIP (el .xlsx) por su nombre.
@@ -44,6 +44,6 @@ test("pagos: Excel con resumen y una fila por transacción", () => {
   assert.match(workbook, /name="Transacciones".*name="Resumen"/); // el detalle es la primera hoja
   const detail = unzip(xlsx, "xl/worksheets/sheet1.xml");
   assert.equal((detail.match(/<row /g) ?? []).length, 4); // cabecera, dos transacciones y total
-  for (const value of ["EV99344", "EV99345", "Mastercard", "<v>96.92</v>", "<v>-0.59</v>", "<v>114.33</v>"]) assert.ok(detail.includes(value), value);
+  for (const value of ["EV99344", "EV99345", "Mastercard", "W261117062863", "Fecha de liquidación", "s=\"4\"", "<v>96.92</v>", "<v>-0.59</v>", "<v>114.33</v>"]) assert.ok(detail.includes(value), value);
   assert.ok(unzip(xlsx, "xl/worksheets/sheet2.xml").includes("<v>116.8</v>"));
 });

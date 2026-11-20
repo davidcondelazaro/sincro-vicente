@@ -3,7 +3,7 @@ import { crc32, deflateRawSync } from "node:zlib";
 // Excel (.xlsx) mínimo sin dependencias (2026-11-20, avisos de pagos de Shopify): varias hojas con textos, números,
 // importes en euros y fechas. El .xlsx es un ZIP de XML; se monta a mano con zlib de Node.
 
-export type Cell = string | number | null | { euros: number } | { date: Date } | { bold: string };
+export type Cell = string | number | null | { euros: number } | { date: Date } | { day: string } | { bold: string };
 export type Sheet = { name: string; rows: Cell[][]; widths?: number[] };
 
 const xml = (text: string) => text.replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[char]!);
@@ -17,13 +17,14 @@ function excelDate(date: Date) {
 
 const column = (index: number) => { let name = ""; for (let n = index + 1; n > 0; n = Math.floor((n - 1) / 26)) name = String.fromCharCode(65 + ((n - 1) % 26)) + name; return name; };
 
-// Estilos: 0 normal, 1 negrita, 2 euros, 3 fecha y hora.
+// Estilos: 0 normal, 1 negrita, 2 euros, 3 fecha y hora, 4 fecha.
 function cellXml(cell: Cell, ref: string) {
   if (cell === null || cell === "") return "";
   if (typeof cell === "number") return `<c r="${ref}"><v>${cell}</v></c>`;
   if (typeof cell === "string") return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xml(cell)}</t></is></c>`;
   if ("bold" in cell) return `<c r="${ref}" s="1" t="inlineStr"><is><t xml:space="preserve">${xml(cell.bold)}</t></is></c>`;
   if ("euros" in cell) return `<c r="${ref}" s="2"><v>${Math.round(cell.euros * 100) / 100}</v></c>`;
+  if ("day" in cell) { const [y, m, d] = cell.day.split("-").map(Number); return `<c r="${ref}" s="4"><v>${Date.UTC(y, m - 1, d) / 86_400_000 + 25_569}</v></c>`; } // fecha sin hora (AAAA-MM-DD)
   return `<c r="${ref}" s="3"><v>${excelDate(cell.date)}</v></c>`;
 }
 
@@ -33,7 +34,7 @@ function sheetXml(sheet: Sheet) {
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${cols}<sheetData>${rows}</sheetData></worksheet>`;
 }
 
-const STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="2"><numFmt numFmtId="164" formatCode="#,##0.00\\ &quot;€&quot;"/><numFmt numFmtId="165" formatCode="dd/mm/yyyy\\ hh:mm"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+const STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="3"><numFmt numFmtId="164" formatCode="#,##0.00\\ &quot;€&quot;"/><numFmt numFmtId="165" formatCode="dd/mm/yyyy\\ hh:mm"/><numFmt numFmtId="166" formatCode="dd/mm/yyyy"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="5"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="166" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
 
 function zip(files: { name: string; data: Buffer }[]) {
   const locals: Buffer[] = []; const centrals: Buffer[] = []; let offset = 0;

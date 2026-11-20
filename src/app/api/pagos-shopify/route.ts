@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     if (params.get("prueba") === "1") {
       const to = (params.get("para") ?? "").split(",").map((item) => item.trim()).filter(Boolean);
       if (!to.length) return Response.json({ error: "Falta ?para=correo" }, { status: 400 });
-      const result = await testPayoutNotice(process.env, to, params.get("pago") ?? undefined);
+      const result = await testPayoutNotice(db, process.env, to, params.get("pago") ?? undefined);
       return Response.json(result, { status: result.ok ? 200 : 502 });
     }
     if (params.get("programada") === "1" && madridHour() !== 10) return Response.json({ ok: true, skipped: "No son las 10 en Madrid" });

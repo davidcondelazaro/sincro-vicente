@@ -17,7 +17,7 @@ export type Payout = {
   id: string; legacyResourceId: string; issuedAt: string; status: string; net: Money & { currencyCode: string };
   summary: Record<"adjustmentsFee" | "adjustmentsGross" | "advanceFees" | "advanceGross" | "chargesFee" | "chargesGross" | "refundsFee" | "refundsFeeGross" | "reservedFundsFee" | "reservedFundsGross" | "retriedPayoutsFee" | "retriedPayoutsGross", Money>;
 };
-export type BalanceTransaction = { type: string; transactionDate: string; amount: Money; fee: Money; net: Money; associatedOrder: { id: string; name: string } | null; associatedPayout: { id: string | null } | null; sourceOrderTransactionId: string | null; card?: string };
+export type BalanceTransaction = { type: string; transactionDate: string; amount: Money; fee: Money; net: Money; associatedOrder: { id: string; name: string } | null; associatedPayout: { id: string | null } | null; sourceOrderTransactionId: string | null; card?: string; mhd?: string };
 
 const SYNC = "pagos-shopify";
 const API = "2026-10";
@@ -109,11 +109,11 @@ export function buildPayoutEmail(payout: Payout, transactions: BalanceTransactio
     [{ bold: "Total" }, { euros: summary.gross }, { euros: -summary.fee }, { euros: summary.net }],
   ];
   const detalle: Cell[][] = [
-    head(["Fecha", "Tipo", "Tarjeta", "Pedido", "Cargo", "Comisión", "Neto"]),
-    ...transactions.map((row): Cell[] => [{ date: new Date(row.transactionDate) }, typeLabel(row.type), row.card ?? "", row.associatedOrder?.name ?? "", { euros: num(row.amount) }, { euros: -num(row.fee) }, { euros: num(row.net) }]),
-    [{ bold: "Total" }, "", "", "", { euros: transactions.reduce((sum, row) => sum + num(row.amount), 0) }, { euros: -transactions.reduce((sum, row) => sum + num(row.fee), 0) }, { euros: transactions.reduce((sum, row) => sum + num(row.net), 0) }],
+    head(["Fecha de liquidación", "Fecha", "Tipo", "Tarjeta", "Pedido", "Transacción", "Cargo", "Comisión", "Neto"]),
+    ...transactions.map((row): Cell[] => [{ day: payout.issuedAt.slice(0, 10) }, { date: new Date(row.transactionDate) }, typeLabel(row.type), row.card ?? "", row.associatedOrder?.name ?? "", row.mhd ?? "", { euros: num(row.amount) }, { euros: -num(row.fee) }, { euros: num(row.net) }]),
+    [{ bold: "Total" }, "", "", "", "", "", { euros: transactions.reduce((sum, row) => sum + num(row.amount), 0) }, { euros: -transactions.reduce((sum, row) => sum + num(row.fee), 0) }, { euros: transactions.reduce((sum, row) => sum + num(row.net), 0) }],
   ];
-  const xlsx = buildXlsx([{ name: "Transacciones", rows: detalle, widths: [18, 14, 26, 12, 14, 14, 14] }, { name: "Resumen", rows: resumen, widths: [20, 16, 14, 14] }]) // el detalle primero: es lo que se ve al abrirlo;
+  const xlsx = buildXlsx([{ name: "Transacciones", rows: detalle, widths: [20, 18, 12, 24, 12, 18, 14, 14, 14] }, { name: "Resumen", rows: resumen, widths: [20, 16, 14, 14] }]) // el detalle primero: es lo que se ve al abrirlo;
   return { subject, text, html, xlsx, filename: `pago-shopify-${payout.issuedAt.slice(0, 10)}-${payout.legacyResourceId}.xlsx` };
 }
 
@@ -126,19 +126,34 @@ async function recipients(db: SupabaseClient): Promise<Recipients | null> {
   return para.length ? { para, copia: clean(value.copia) } : null;
 }
 
-async function sendPayout(env: Env, payout: Payout, to: Recipients, idempotencyKey: string, test = false) {
+// Transacción de MHD (W26…) de cada pedido: la que guardó la exportación a MHD (mhd_order_exports). Si un pedido se
+// exportó en varias partes, van todas separadas por comas.
+export async function addMhdTransactions(db: SupabaseClient, rows: BalanceTransaction[]) {
+  const names = [...new Set(rows.map((row) => row.associatedOrder?.name).filter((name): name is string => Boolean(name)))];
+  if (!names.length) return;
+  const { data } = await db.from("shopify_mhd_orders").select("shopify_order_name, mhd_order_exports(status, mhd_transaction_id, updated_at)").in("shopify_order_name", names);
+  const byName = new Map<string, string>();
+  for (const order of (data ?? []) as { shopify_order_name: string; mhd_order_exports: { status: string; mhd_transaction_id: string | null; updated_at: string }[] | null }[]) {
+    const ids = [...new Set((order.mhd_order_exports ?? []).filter((item) => item.status === "exported" && item.mhd_transaction_id).sort((a, b) => a.updated_at.localeCompare(b.updated_at)).map((item) => item.mhd_transaction_id!))];
+    if (ids.length) byName.set(order.shopify_order_name, ids.join(", "));
+  }
+  for (const row of rows) row.mhd = byName.get(row.associatedOrder?.name ?? "");
+}
+
+async function sendPayout(db: SupabaseClient, env: Env, payout: Payout, to: Recipients, idempotencyKey: string, test = false) {
   const transactions = await payoutTransactions(env, payout);
+  await addMhdTransactions(db, transactions);
   const email = buildPayoutEmail(payout, transactions);
   const result = await sendEmail({ to: to.para, cc: to.copia.length ? to.copia : undefined, subject: test ? `[Prueba] ${email.subject}` : email.subject, html: email.html, text: email.text, idempotencyKey, attachments: [{ filename: email.filename, content: email.xlsx.toString("base64") }] });
   return { result, subject: email.subject, transactions: transactions.length };
 }
 
 // Envío de prueba de un pago concreto (o el último), solo a quien se diga; no toca el estado.
-export async function testPayoutNotice(env: Env, to: string[], payoutId?: string) {
+export async function testPayoutNotice(db: SupabaseClient, env: Env, to: string[], payoutId?: string) {
   const payouts = await listPayouts(env);
   const payout = payoutId ? payouts.find((item) => item.legacyResourceId === payoutId) : payouts[0];
   if (!payout) return { ok: false, error: "No encuentro ese pago" };
-  const sent = await sendPayout(env, payout, { para: to, copia: [] }, `pago-shopify-prueba-${payout.legacyResourceId}-${Date.now()}`, true);
+  const sent = await sendPayout(db, env, payout, { para: to, copia: [] }, `pago-shopify-prueba-${payout.legacyResourceId}-${Date.now()}`, true);
   return { ok: sent.result.ok, payout: payout.legacyResourceId, ...sent };
 }
 
@@ -166,7 +181,7 @@ export async function runPayoutNotices(db: SupabaseClient, env: Env, options: { 
   if (!to) return { ok: false, inicial, error: "Faltan los destinatarios (store_settings «pagos_shopify_emails»)", pending: pending.map((payout) => payout.legacyResourceId) };
   const sent = [];
   for (const payout of pending) {
-    const outcome = await sendPayout(env, payout, to, `pago-shopify-${payout.legacyResourceId}`);
+    const outcome = await sendPayout(db, env, payout, to, `pago-shopify-${payout.legacyResourceId}`);
     await db.from("mhd_sync_events").insert({ sync: SYNC, kind: "aviso", codigo: payout.legacyResourceId, detail: { date: payout.issuedAt.slice(0, 10), net: payout.net.amount, subject: outcome.subject, to: to.para, cc: to.copia, transactions: outcome.transactions, sent: outcome.result.ok, error: outcome.result.ok ? null : outcome.result.error } });
     sent.push({ payout: payout.legacyResourceId, ok: outcome.result.ok, ...(outcome.result.ok ? {} : { error: outcome.result.error }) });
   }
