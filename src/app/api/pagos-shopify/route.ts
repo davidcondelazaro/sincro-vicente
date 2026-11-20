@@ -1,11 +1,12 @@
 import { workerClient } from "@/lib/mhd-importer/jobs";
-import { runPayoutNotices, testPayoutNotice } from "@/lib/shopify-payouts";
+import { resendPayoutNotice, runPayoutNotices, testPayoutNotice } from "@/lib/shopify-payouts";
 
 // Avisos de pagos de Shopify Payments (src/lib/shopify-payouts.ts). Lo llama pg_cron sin sesión pero con la cabecera
 // `x-mhd-import-token`, a las 8:00 y 9:00 UTC con `?programada=1`: solo actúa la llamada que cae a las 10 de Madrid
 // (en invierno la de las 9:00 UTC, en verano la de las 8:00). `?prueba=1&para=correo[&pago=id]` manda el pago indicado
 // (o el último) solo a ese correo, con «[Prueba]» en el asunto y sin tocar el estado. `?avisar=id` en la primera
-// ejecución avisa ese pago en lugar de darlo por avisado.
+// ejecución avisa ese pago en lugar de darlo por avisado. `?reenviar=id` vuelve a mandar ese pago a los destinatarios
+// definitivos.
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,6 +24,11 @@ export async function POST(request: Request) {
       const to = (params.get("para") ?? "").split(",").map((item) => item.trim()).filter(Boolean);
       if (!to.length) return Response.json({ error: "Falta ?para=correo" }, { status: 400 });
       const result = await testPayoutNotice(db, process.env, to, params.get("pago") ?? undefined);
+      return Response.json(result, { status: result.ok ? 200 : 502 });
+    }
+    const reenviar = params.get("reenviar");
+    if (reenviar) {
+      const result = await resendPayoutNotice(db, process.env, reenviar);
       return Response.json(result, { status: result.ok ? 200 : 502 });
     }
     if (params.get("programada") === "1" && madridHour() !== 10) return Response.json({ ok: true, skipped: "No son las 10 en Madrid" });

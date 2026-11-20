@@ -162,6 +162,18 @@ export async function testPayoutNotice(db: SupabaseClient, env: Env, to: string[
   return { ok: sent.result.ok, payout: payout.legacyResourceId, ...sent };
 }
 
+// Reenvío de un pago ya avisado a los destinatarios definitivos (con otra clave de envío, para que el servicio de
+// correo no lo tome por repetido). Queda registrado como un aviso más.
+export async function resendPayoutNotice(db: SupabaseClient, env: Env, payoutId: string) {
+  const payout = (await listPayouts(env)).find((item) => item.legacyResourceId === payoutId);
+  if (!payout) return { ok: false, error: "No encuentro ese pago" };
+  const to = await recipients(db);
+  if (!to) return { ok: false, error: "Faltan los destinatarios (store_settings «pagos_shopify_emails»)" };
+  const outcome = await sendPayout(db, env, payout, to, `pago-shopify-${payoutId}-reenvio-${Date.now()}`);
+  await db.from("mhd_sync_events").insert({ sync: SYNC, kind: "aviso", codigo: payoutId, detail: { date: payout.issuedAt.slice(0, 10), net: payout.net.amount, subject: outcome.subject, to: to.para, cc: to.copia, transactions: outcome.transactions, reenvio: true, sent: outcome.result.ok, error: outcome.result.ok ? null : outcome.result.error } });
+  return { ok: outcome.result.ok, payout: payoutId, ...(outcome.result.ok ? {} : { error: outcome.result.error }) };
+}
+
 // La pasada diaria. La primera vez (sin nada en mhd_sync_events) marca como avisados los pagos que ya hay, salvo los
 // de `avisarAlEmpezar`, para no mandar correos atrasados.
 export async function runPayoutNotices(db: SupabaseClient, env: Env, options: { avisarAlEmpezar?: string[] } = {}) {
