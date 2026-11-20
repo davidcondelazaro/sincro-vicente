@@ -4,9 +4,9 @@ import { updateSession } from "@/lib/supabase/proxy";
 // /api/shopify/portes: la llama Shopify en el pago (servicio de portes), sin sesión. El trabajador del importador lo
 // llaman el vigilante de pg_cron y él mismo, sin sesión (solo procesa lo que ya está en la cola). La sincronización de
 // precio y stock, la vuelta encadenada, las relaciones, los estados de la tienda y el resumen diario los llaman pg_cron y la base sin sesión, pero las rutas exigen
-// la clave de las lecturas de MHD (x-mhd-import-token), igual que las tareas de pedidos (/api/mhd-orders/tarea) y Google Merchant (/api/merchant). /api/admin/v1/* es el contrato del helpdesk: sin sesión, pero
+// la clave de las lecturas de MHD (x-mhd-import-token), igual que las tareas de pedidos (/api/mhd-orders/tarea) y Google Merchant (/api/merchant) y los avisos de pagos de Shopify (/api/pagos-shopify). /api/admin/v1/* es el contrato del helpdesk: sin sesión, pero
 // cada ruta exige su secreto (Authorization: Bearer $HELPDESK_ADMIN_SECRET, src/lib/helpdesk-admin.ts).
-const publicPaths = new Set(["/login", "/set-password", "/auth/logout", "/auth/confirm", "/api/shopify/portes", "/api/garantia3/tarea", "/api/importador-productos/trabajos/trabajador", "/api/sincronizaciones/precio-stock", "/api/sincronizaciones/vuelta", "/api/sincronizaciones/agotados", "/api/sincronizaciones/relaciones", "/api/sincronizaciones/estados-tienda", "/api/informes/diario", "/api/mhd-orders/tarea", "/api/merchant"]);
+const publicPaths = new Set(["/login", "/set-password", "/auth/logout", "/auth/confirm", "/api/shopify/portes", "/api/garantia3/tarea", "/api/importador-productos/trabajos/trabajador", "/api/sincronizaciones/precio-stock", "/api/sincronizaciones/vuelta", "/api/sincronizaciones/agotados", "/api/sincronizaciones/relaciones", "/api/sincronizaciones/estados-tienda", "/api/informes/diario", "/api/mhd-orders/tarea", "/api/merchant", "/api/pagos-shopify"]);
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
