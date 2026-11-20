@@ -580,7 +580,9 @@ transportista y lo marca en Shopify, con aviso al cliente. Código en
   (`pedidos_entrega_auto_activo`), apagado al crearlo y **encendido por David el
   20-11-2026** (~14:50). Primera vuelta: EV61690 (TDN) marcado entregado con fecha
   19-11 10:41; EV99344, ya cerrado a mano, sin tocar. En el historial de EV61690 no
-  consta correo «Entregado» al cliente: falta comprobar la notificación en Shopify.
+  consta correo «Entregado» al cliente, aunque las notificaciones «En reparto» y
+  «Entregado» de Shopify están activadas (comprobado el 20-11-2026). Causa sin aclarar
+  (quizá la fecha de ayer): mirarlo con el próximo pedido a domicilio.
 - **Cuándo se mira:** tarea `sincro-vicente-pedidos-entregas`, cada hora a los :20; el
   código solo actúa de 8 a 21 (hora de Madrid). Solo pedidos exportados, sin cancelar,
   que MHD da por enviados. **Nunca antes de 24 h** desde el «Enviado» de MHD (la fecha
