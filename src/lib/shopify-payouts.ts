@@ -133,8 +133,11 @@ export async function addMhdTransactions(db: SupabaseClient, rows: BalanceTransa
   if (!names.length) return;
   const { data } = await db.from("shopify_mhd_orders").select("shopify_order_name, mhd_order_exports(status, mhd_transaction_id, updated_at)").in("shopify_order_name", names);
   const byName = new Map<string, string>();
-  for (const order of (data ?? []) as { shopify_order_name: string; mhd_order_exports: { status: string; mhd_transaction_id: string | null; updated_at: string }[] | null }[]) {
-    const ids = [...new Set((order.mhd_order_exports ?? []).filter((item) => item.status === "exported" && item.mhd_transaction_id).sort((a, b) => a.updated_at.localeCompare(b.updated_at)).map((item) => item.mhd_transaction_id!))];
+  type Export = { status: string; mhd_transaction_id: string | null; updated_at: string };
+  for (const order of (data ?? []) as { shopify_order_name: string; mhd_order_exports: Export[] | Export | null }[]) {
+    // Una exportación por pedido (relación uno a uno) llega como objeto, no como lista.
+    const exports = Array.isArray(order.mhd_order_exports) ? order.mhd_order_exports : order.mhd_order_exports ? [order.mhd_order_exports] : [];
+    const ids = [...new Set(exports.filter((item) => item.status === "exported" && item.mhd_transaction_id).sort((a, b) => a.updated_at.localeCompare(b.updated_at)).map((item) => item.mhd_transaction_id!))];
     if (ids.length) byName.set(order.shopify_order_name, ids.join(", "));
   }
   for (const row of rows) row.mhd = byName.get(row.associatedOrder?.name ?? "");
