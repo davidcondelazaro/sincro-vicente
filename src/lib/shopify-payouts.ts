@@ -90,11 +90,12 @@ export function payoutSummary(payout: Payout) {
   return { rows, gross: rows.reduce((sum, row) => sum + row.gross, 0), fee: rows.reduce((sum, row) => sum + row.fee, 0), net: num(payout.net) };
 }
 
+// Las comisiones van en negativo, como en el admin de Shopify (David, 2026-11-20).
 export function buildPayoutEmail(payout: Payout, transactions: BalanceTransaction[]) {
   const summary = payoutSummary(payout);
   const status = STATUS[payout.status] ?? payout.status;
   const subject = `${EMAIL_PREFIX} Nuevo pago de Shopify de ${euros(summary.net)}`;
-  const lines: [string, string][] = [["Fecha", day(payout.issuedAt)], ["Estado", status], ["Importe neto", euros(summary.net)], ["Cargos", euros(num(payout.summary.chargesGross))], ["Comisiones", euros(summary.fee)]];
+  const lines: [string, string][] = [["Fecha", day(payout.issuedAt)], ["Estado", status], ["Importe neto", euros(summary.net)], ["Cargos", euros(num(payout.summary.chargesGross))], ["Comisiones", euros(-summary.fee)]];
   const orders = transactions.filter((row) => row.associatedOrder).length;
   const intro = `Shopify ha ingresado un pago en el banco de la tienda. En el Excel adjunto va el detalle (${transactions.length} ${transactions.length === 1 ? "transacción" : "transacciones"}${orders ? `, ${orders} ${orders === 1 ? "pedido" : "pedidos"}` : ""}).`;
   const text = [intro, "", ...lines.map(([label, value]) => `${label}: ${value}`)].join("\n");
@@ -104,13 +105,13 @@ export function buildPayoutEmail(payout: Payout, transactions: BalanceTransactio
   const resumen: Cell[][] = [
     [{ bold: "Pago de Shopify" }, payout.legacyResourceId], ["Fecha", day(payout.issuedAt)], ["Estado", status], ["Importe neto", { euros: summary.net }], [],
     head(["Tipo", "Bruto", "Comisión", "Neto"]),
-    ...summary.rows.map((row): Cell[] => [row.label, { euros: row.gross }, { euros: row.fee }, { euros: row.gross - row.fee }]),
-    [{ bold: "Total" }, { euros: summary.gross }, { euros: summary.fee }, { euros: summary.net }],
+    ...summary.rows.map((row): Cell[] => [row.label, { euros: row.gross }, { euros: -row.fee }, { euros: row.gross - row.fee }]),
+    [{ bold: "Total" }, { euros: summary.gross }, { euros: -summary.fee }, { euros: summary.net }],
   ];
   const detalle: Cell[][] = [
     head(["Fecha", "Tipo", "Tarjeta", "Pedido", "Cargo", "Comisión", "Neto"]),
-    ...transactions.map((row): Cell[] => [{ date: new Date(row.transactionDate) }, typeLabel(row.type), row.card ?? "", row.associatedOrder?.name ?? "", { euros: num(row.amount) }, { euros: num(row.fee) }, { euros: num(row.net) }]),
-    [{ bold: "Total" }, "", "", "", { euros: transactions.reduce((sum, row) => sum + num(row.amount), 0) }, { euros: transactions.reduce((sum, row) => sum + num(row.fee), 0) }, { euros: transactions.reduce((sum, row) => sum + num(row.net), 0) }],
+    ...transactions.map((row): Cell[] => [{ date: new Date(row.transactionDate) }, typeLabel(row.type), row.card ?? "", row.associatedOrder?.name ?? "", { euros: num(row.amount) }, { euros: -num(row.fee) }, { euros: num(row.net) }]),
+    [{ bold: "Total" }, "", "", "", { euros: transactions.reduce((sum, row) => sum + num(row.amount), 0) }, { euros: -transactions.reduce((sum, row) => sum + num(row.fee), 0) }, { euros: transactions.reduce((sum, row) => sum + num(row.net), 0) }],
   ];
   const xlsx = buildXlsx([{ name: "Transacciones", rows: detalle, widths: [18, 14, 26, 12, 14, 14, 14] }, { name: "Resumen", rows: resumen, widths: [20, 16, 14, 14] }]) // el detalle primero: es lo que se ve al abrirlo;
   return { subject, text, html, xlsx, filename: `pago-shopify-${payout.issuedAt.slice(0, 10)}-${payout.legacyResourceId}.xlsx` };
