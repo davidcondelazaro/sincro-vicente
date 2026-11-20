@@ -14,11 +14,10 @@ import { buildXlsx, type Cell } from "@/lib/xlsx";
 type Env = Record<string, string | undefined>;
 type Money = { amount: string };
 export type Payout = {
-  id: string; legacyResourceId: string; issuedAt: string; status: string; externalTraceId: string | null; net: Money & { currencyCode: string };
+  id: string; legacyResourceId: string; issuedAt: string; status: string; net: Money & { currencyCode: string };
   summary: Record<"adjustmentsFee" | "adjustmentsGross" | "advanceFees" | "advanceGross" | "chargesFee" | "chargesGross" | "refundsFee" | "refundsFeeGross" | "reservedFundsFee" | "reservedFundsGross" | "retriedPayoutsFee" | "retriedPayoutsGross", Money>;
 };
 export type BalanceTransaction = { type: string; transactionDate: string; amount: Money; fee: Money; net: Money; associatedOrder: { name: string } | null; associatedPayout: { id: string | null } | null };
-export type BankAccount = { bankName: string | null; accountNumberLastDigits: string };
 
 const SYNC = "pagos-shopify";
 const API = "2026-10";
@@ -35,7 +34,7 @@ const SUMMARY = `summary { ${["adjustmentsFee", "adjustmentsGross", "advanceFees
 
 // Los últimos pagos, del más reciente al más antiguo.
 export async function listPayouts(env: Env, first = 50): Promise<Payout[]> {
-  const result = await shopify<{ shopifyPaymentsAccount: { payouts: { nodes: Payout[] } } | null }>(env, `query($first: Int!) { shopifyPaymentsAccount { payouts(first: $first, reverse: true) { nodes { id legacyResourceId issuedAt status externalTraceId net { amount currencyCode } ${SUMMARY} } } } }`, { first });
+  const result = await shopify<{ shopifyPaymentsAccount: { payouts: { nodes: Payout[] } } | null }>(env, `query($first: Int!) { shopifyPaymentsAccount { payouts(first: $first, reverse: true) { nodes { id legacyResourceId issuedAt status net { amount currencyCode } ${SUMMARY} } } } }`, { first });
   if (result.errors?.length) throw new Error(`Shopify: ${result.errors.map((error) => error.message).join("; ")}`);
   return result.data?.shopifyPaymentsAccount?.payouts.nodes ?? [];
 }
@@ -52,26 +51,13 @@ export async function payoutTransactions(env: Env, payout: Payout): Promise<Bala
     if (!connection.pageInfo.hasNextPage) break;
     after = connection.pageInfo.endCursor;
   }
-  return rows.filter((row) => row.associatedPayout?.id === payout.id && row.type !== "TRANSFER").sort((a, b) => b.transactionDate.localeCompare(a.transactionDate)); // como el admin: la más reciente primero
-}
-
-// Cuenta de destino. Necesita el permiso read_shopify_payments_accounts; sin él (o si no se encuentra) devuelve null y
-// el correo sale sin ese dato.
-export async function payoutBankAccount(env: Env, payout: Payout): Promise<BankAccount | null> {
-  try {
-    const result = await shopify<{ shopifyPaymentsAccount: { bankAccounts: { nodes: (BankAccount & { payouts: { nodes: { id: string }[] } })[] } } | null }>(env, `{ shopifyPaymentsAccount { bankAccounts(first: 10) { nodes { bankName accountNumberLastDigits payouts(first: 50, reverse: true) { nodes { id } } } } } }`);
-    const accounts = result.data?.shopifyPaymentsAccount?.bankAccounts.nodes ?? [];
-    const account = accounts.find((item) => item.payouts.nodes.some((node) => node.id === payout.id)) ?? (accounts.length === 1 ? accounts[0] : null);
-    return account ? { bankName: account.bankName, accountNumberLastDigits: account.accountNumberLastDigits } : null;
-  } catch {
-    return null;
-  }
+  return rows.filter((row) => row.associatedPayout?.id === payout.id && row.type !== "TRANSFER").sort((a, b) => a.transactionDate.localeCompare(b.transactionDate));
 }
 
 const num = (money: Money | undefined) => Number(money?.amount ?? 0);
 export const euros = (value: number) => new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR", useGrouping: "always" }).format(value).replace(/ /g, " ");
 const day = (iso: string) => iso.slice(0, 10).split("-").reverse().join("/");
-const STATUS: Record<string, string> = { PAID: "Depositado", SCHEDULED: "Programado", FAILED: "Fallido", CANCELED: "Cancelado" };
+const STATUS: Record<string, string> = { PAID: "Pagado", SCHEDULED: "Programado", FAILED: "Fallido", CANCELED: "Cancelado" };
 const TYPES: Record<string, string> = { CHARGE: "Cargo", REFUND: "Reembolso", REFUND_FAILURE: "Reembolso fallido", ADJUSTMENT: "Ajuste", CHARGE_ADJUSTMENT: "Ajuste de cargo", REFUND_ADJUSTMENT: "Ajuste de reembolso", DISPUTE_WITHDRAWAL: "Contracargo", DISPUTE_REVERSAL: "Contracargo revertido", CHARGEBACK_FEE: "Comisión por contracargo", CHARGEBACK_FEE_REFUND: "Devolución de comisión por contracargo", RESERVED_FUNDS: "Fondos reservados", RESERVED_FUNDS_WITHDRAWAL: "Retención de fondos", RESERVED_FUNDS_REVERSAL: "Liberación de fondos", RISK_WITHDRAWAL: "Retención por riesgo", RISK_REVERSAL: "Liberación por riesgo", APPLICATION_FEE_REFUND: "Devolución de comisión", SHIPPING_LABEL: "Etiqueta de envío", ADVANCE: "Anticipo", ADVANCE_FUNDING: "Financiación de anticipo", CURRENCY_CONVERSION: "Cambio de divisa" };
 export const typeLabel = (type: string) => TYPES[type] ?? type;
 
@@ -82,26 +68,11 @@ export function payoutSummary(payout: Payout) {
   return { rows, gross: rows.reduce((sum, row) => sum + row.gross, 0), fee: rows.reduce((sum, row) => sum + row.fee, 0), net: num(payout.net) };
 }
 
-// Fechas como el admin: «17 nov» o «17-18 nov».
-const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sept", "oct", "nov", "dic"];
-const madridDay = (iso: string) => new Date(iso).toLocaleDateString("sv-SE", { timeZone: "Europe/Madrid" });
-function transactionDays(transactions: BalanceTransaction[]) {
-  if (!transactions.length) return null;
-  const days = transactions.map((row) => madridDay(row.transactionDate)).sort();
-  const [first, last] = [days[0], days[days.length - 1]].map((value) => value.split("-").map(Number));
-  const label = (d: number[]) => `${d[2]} ${MONTHS[d[1] - 1]}`;
-  if (days[0] === days[days.length - 1]) return label(first);
-  return first[1] === last[1] ? `${first[2]}-${label(last)}` : `${label(first)} - ${label(last)}`;
-}
-
-export function buildPayoutEmail(payout: Payout, transactions: BalanceTransaction[], account: BankAccount | null) {
+export function buildPayoutEmail(payout: Payout, transactions: BalanceTransaction[]) {
   const summary = payoutSummary(payout);
-  const accountText = account ? `${account.bankName ? `${account.bankName} ` : ""}(${account.accountNumberLastDigits})` : null;
   const status = STATUS[payout.status] ?? payout.status;
-  const days = transactionDays(transactions);
   const subject = `${EMAIL_PREFIX} Nuevo pago de Shopify de ${euros(summary.net)}`;
-  // Como el admin: las comisiones en negativo.
-  const lines: [string, string][] = [["Fecha", day(payout.issuedAt)], ["Estado", status], ["Importe neto", euros(summary.net)], ...(days ? [["Transacciones del", days] as [string, string]] : []), ["Cargos", euros(num(payout.summary.chargesGross))], ["Comisiones", euros(-summary.fee)], ...(accountText ? [["Cuenta de destino", accountText] as [string, string]] : []), ...(payout.externalTraceId ? [["Referencia bancaria", payout.externalTraceId] as [string, string]] : [])];
+  const lines: [string, string][] = [["Fecha", day(payout.issuedAt)], ["Estado", status], ["Importe neto", euros(summary.net)], ["Cargos", euros(num(payout.summary.chargesGross))], ["Comisiones", euros(summary.fee)]];
   const orders = transactions.filter((row) => row.associatedOrder).length;
   const intro = `Shopify ha ingresado un pago en el banco de la tienda. En el Excel adjunto va el detalle (${transactions.length} ${transactions.length === 1 ? "transacción" : "transacciones"}${orders ? `, ${orders} ${orders === 1 ? "pedido" : "pedidos"}` : ""}).`;
   const text = [intro, "", ...lines.map(([label, value]) => `${label}: ${value}`)].join("\n");
@@ -109,15 +80,15 @@ export function buildPayoutEmail(payout: Payout, transactions: BalanceTransactio
 
   const head = (labels: string[]): Cell[] => labels.map((label) => ({ bold: label }));
   const resumen: Cell[][] = [
-    [{ bold: "Pago de Shopify" }, payout.legacyResourceId], ["Fecha", day(payout.issuedAt)], ["Estado", status], ["Importe neto", { euros: summary.net }], ...(days ? [["Transacciones del", days] as Cell[]] : []), ...(accountText ? [["Cuenta de destino", accountText] as Cell[]] : []), ...(payout.externalTraceId ? [["Referencia bancaria", payout.externalTraceId] as Cell[]] : []), [],
+    [{ bold: "Pago de Shopify" }, payout.legacyResourceId], ["Fecha", day(payout.issuedAt)], ["Estado", status], ["Importe neto", { euros: summary.net }], [],
     head(["Tipo", "Bruto", "Comisión", "Neto"]),
-    ...summary.rows.map((row): Cell[] => [row.label, { euros: row.gross }, { euros: -row.fee }, { euros: row.gross - row.fee }]),
-    [{ bold: "Total" }, { euros: summary.gross }, { euros: -summary.fee }, { euros: summary.net }],
+    ...summary.rows.map((row): Cell[] => [row.label, { euros: row.gross }, { euros: row.fee }, { euros: row.gross - row.fee }]),
+    [{ bold: "Total" }, { euros: summary.gross }, { euros: summary.fee }, { euros: summary.net }],
   ];
   const detalle: Cell[][] = [
     head(["Fecha", "Tipo", "Pedido", "Cargo", "Comisión", "Neto"]),
-    ...transactions.map((row): Cell[] => [{ date: new Date(row.transactionDate) }, typeLabel(row.type), row.associatedOrder?.name ?? "", { euros: num(row.amount) }, { euros: -num(row.fee) }, { euros: num(row.net) }]),
-    [{ bold: "Total" }, "", "", { euros: transactions.reduce((sum, row) => sum + num(row.amount), 0) }, { euros: -transactions.reduce((sum, row) => sum + num(row.fee), 0) }, { euros: transactions.reduce((sum, row) => sum + num(row.net), 0) }],
+    ...transactions.map((row): Cell[] => [{ date: new Date(row.transactionDate) }, typeLabel(row.type), row.associatedOrder?.name ?? "", { euros: num(row.amount) }, { euros: num(row.fee) }, { euros: num(row.net) }]),
+    [{ bold: "Total" }, "", "", { euros: transactions.reduce((sum, row) => sum + num(row.amount), 0) }, { euros: transactions.reduce((sum, row) => sum + num(row.fee), 0) }, { euros: transactions.reduce((sum, row) => sum + num(row.net), 0) }],
   ];
   const xlsx = buildXlsx([{ name: "Resumen", rows: resumen, widths: [20, 30, 14, 14] }, { name: "Transacciones", rows: detalle, widths: [18, 22, 12, 14, 14, 14] }]);
   return { subject, text, html, xlsx, filename: `pago-shopify-${payout.issuedAt.slice(0, 10)}-${payout.legacyResourceId}.xlsx` };
@@ -133,10 +104,10 @@ async function recipients(db: SupabaseClient): Promise<Recipients | null> {
 }
 
 async function sendPayout(env: Env, payout: Payout, to: Recipients, idempotencyKey: string, test = false) {
-  const [transactions, account] = await Promise.all([payoutTransactions(env, payout), payoutBankAccount(env, payout)]);
-  const email = buildPayoutEmail(payout, transactions, account);
+  const transactions = await payoutTransactions(env, payout);
+  const email = buildPayoutEmail(payout, transactions);
   const result = await sendEmail({ to: to.para, cc: to.copia.length ? to.copia : undefined, subject: test ? email.subject.replace("] ", "] [Prueba] ") : email.subject, html: email.html, text: email.text, idempotencyKey, attachments: [{ filename: email.filename, content: email.xlsx.toString("base64") }] });
-  return { result, subject: email.subject, transactions: transactions.length, account: Boolean(account) };
+  return { result, subject: email.subject, transactions: transactions.length };
 }
 
 // Envío de prueba de un pago concreto (o el último), solo a quien se diga; no toca el estado.
@@ -173,7 +144,7 @@ export async function runPayoutNotices(db: SupabaseClient, env: Env, options: { 
   const sent = [];
   for (const payout of pending) {
     const outcome = await sendPayout(env, payout, to, `pago-shopify-${payout.legacyResourceId}`);
-    await db.from("mhd_sync_events").insert({ sync: SYNC, kind: "aviso", codigo: payout.legacyResourceId, detail: { date: payout.issuedAt.slice(0, 10), net: payout.net.amount, subject: outcome.subject, to: to.para, cc: to.copia, transactions: outcome.transactions, account: outcome.account, sent: outcome.result.ok, error: outcome.result.ok ? null : outcome.result.error } });
+    await db.from("mhd_sync_events").insert({ sync: SYNC, kind: "aviso", codigo: payout.legacyResourceId, detail: { date: payout.issuedAt.slice(0, 10), net: payout.net.amount, subject: outcome.subject, to: to.para, cc: to.copia, transactions: outcome.transactions, sent: outcome.result.ok, error: outcome.result.ok ? null : outcome.result.error } });
     sent.push({ payout: payout.legacyResourceId, ok: outcome.result.ok, ...(outcome.result.ok ? {} : { error: outcome.result.error }) });
   }
   return { ok: sent.every((item) => item.ok), inicial, sent };
