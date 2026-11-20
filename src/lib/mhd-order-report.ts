@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { EMAIL_PREFIX, escapeHtml } from "@/lib/email";
 import { orderSettings } from "@/lib/mhd-order-auto";
+import { puntoDeRecogida, type PedidoConEntrega } from "@/lib/mhd-order-lines";
 
 // Resumen diario de pedidos (David, 17-11-2026): lo que ha pasado en las últimas 24 horas (mhd_sync_events, sync
 // «pedidos», ver src/lib/mhd-order-events.ts) y lo que queda pendiente ahora mismo. Sale a la hora elegida en utils ›
@@ -8,7 +9,7 @@ import { orderSettings } from "@/lib/mhd-order-auto";
 
 type Event = { kind: string; codigo: string | null; detail: Record<string, unknown>; created_at: string };
 type Section = { title: string; warn?: boolean; lines: string[]; table?: { head: string[]; rows: string[][] } };
-type ExportRow = { mhd_order_id: number | null; mhd_status: string | null; mhd_status_payload: { facturas?: unknown[]; seguimiento?: { tracking_number?: string }[] } | null; order: { shopify_order_name: string; fulfillment_status: string | null; cancelled_at: string | null } | null };
+type ExportRow = { mhd_order_id: number | null; mhd_status: string | null; mhd_status_payload: { facturas?: unknown[]; seguimiento?: { tracking_number?: string }[] } | null; order: { shopify_order_name: string; fulfillment_status: string | null; cancelled_at: string | null; source_payload: PedidoConEntrega | null } | null };
 
 const UTILS = "https://utils.electronicavicente.com";
 const time = (iso: string) => new Date(iso).toLocaleString("es-ES", { timeZone: "Europe/Madrid", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -17,12 +18,13 @@ const names = (events: Event[]) => [...new Set(events.map((item) => item.codigo)
 
 export async function buildOrdersReport(db: SupabaseClient, now = new Date()) {
   const since = new Date(now.getTime() - 24 * 3_600_000).toISOString();
-  const [eventsResult, alertsResult, exportsResult, pendingResult, settings] = await Promise.all([
+  const [eventsResult, alertsResult, exportsResult, pendingResult, settings, deliveriesResult] = await Promise.all([
     db.from("mhd_sync_events").select("kind,codigo,detail,created_at").eq("sync", "pedidos").gte("created_at", since).order("created_at").limit(5000),
     db.from("mhd_sync_events").select("detail,created_at").eq("sync", "avisos").eq("kind", "correo").like("detail->>key", "pedidos:%").gte("created_at", since).order("created_at"),
-    db.from("mhd_order_exports").select("mhd_order_id,mhd_status,mhd_status_payload,order:shopify_mhd_orders(shopify_order_name,fulfillment_status,cancelled_at)").eq("status", "exported"),
+    db.from("mhd_order_exports").select("mhd_order_id,mhd_status,mhd_status_payload,order:shopify_mhd_orders(shopify_order_name,fulfillment_status,cancelled_at,source_payload)").eq("status", "exported"),
     db.from("shopify_mhd_orders").select("shopify_order_name,eligibility_status,eligibility_reason,synced_at,exportacion:mhd_order_exports(status)").is("cancelled_at", null).neq("fulfillment_status", "FULFILLED").gte("synced_at", new Date(now.getTime() - 3_600_000).toISOString()),
     orderSettings(db),
+    db.from("mhd_order_deliveries").select("order_name,estado,estado_fecha,resultado,resultado_at"),
   ]);
   const events = (eventsResult.data ?? []) as Event[];
   const of = (kind: string) => events.filter((item) => item.kind === kind);
@@ -55,7 +57,18 @@ export async function buildOrdersReport(db: SupabaseClient, now = new Date()) {
   type PendingRow = { shopify_order_name: string; eligibility_status: string; eligibility_reason: string | null; exportacion: { status: string } | { status: string }[] | null };
   const pending = ((pendingResult.data ?? []) as unknown as PendingRow[]).filter((row) => (Array.isArray(row.exportacion) ? row.exportacion[0]?.status : row.exportacion?.status) !== "exported");
   const rows = ((exportsResult.data ?? []) as unknown as ExportRow[]).filter((row) => row.order && !row.order.cancelled_at);
-  const shippedNotMarked = rows.filter((row) => /enviado|tr[aá]nsito|finalizado/i.test(row.mhd_status ?? "") && row.order!.fulfillment_status !== "FULFILLED");
+  // Recogidas en tienda: el envío no se marca en Shopify (se marca a mano al recogerlas), así que van aparte: las que
+  // ya están «Listo para recoger» (desde cuándo) y las que MHD ha enviado y aún no constan en la tienda
+  const recogida = (row: ExportRow) => Boolean(row.order!.source_payload && puntoDeRecogida(row.order!.source_payload));
+  const sentNotClosed = rows.filter((row) => /enviado|tr[aá]nsito|finalizado/i.test(row.mhd_status ?? "") && row.order!.fulfillment_status !== "FULFILLED");
+  const shippedNotMarked = sentNotClosed.filter((row) => !recogida(row));
+  type DeliveryRow = { order_name: string; estado: string | null; estado_fecha: string | null; resultado: string | null; resultado_at: string | null };
+  const deliveries = new Map(((deliveriesResult.data ?? []) as DeliveryRow[]).map((item) => [item.order_name, item]));
+  const pickups = sentNotClosed.filter(recogida).map((row) => ({ name: row.order!.shopify_order_name, tienda: puntoDeRecogida(row.order!.source_payload!)?.name ?? "la tienda", entrega: deliveries.get(row.order!.shopify_order_name) }))
+    .filter((item) => item.entrega?.resultado !== "ya_hecho"); // ya cerrada en Shopify, aunque la copia local no lo sepa
+  const pickupReady = pickups.filter((item) => item.entrega?.resultado === "listo_recoger");
+  const pickupOnTheWay = pickups.filter((item) => item.entrega?.resultado !== "listo_recoger");
+  const cuando = (value: string | null | undefined) => (value ? new Date(value).toLocaleString("es-ES", { timeZone: "Europe/Madrid", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }) : "—");
   const waitingInvoice = rows.filter((row) => /enviado|tr[aá]nsito|finalizado/i.test(row.mhd_status ?? "") && !(row.mhd_status_payload?.facturas ?? []).length);
   const open = rows.filter((row) => !/enviado|tr[aá]nsito|finalizado|cancelado/i.test(row.mhd_status ?? ""));
   sections.push({
@@ -65,6 +78,8 @@ export async function buildOrdersReport(db: SupabaseClient, now = new Date()) {
       `Pagados sin exportar a MHD: ${pending.length}${pending.length ? ` (${pending.map((row) => `${row.shopify_order_name}${row.eligibility_status === "eligible" ? "" : ` bloqueado: ${row.eligibility_reason ?? "sin motivo"}`}`).join("; ")})` : ""}.`,
       `En MHD sin enviar todavía: ${open.length}${open.length ? ` (${open.map((row) => `${row.order!.shopify_order_name} ${row.mhd_status ?? ""}`.trim()).join("; ")})` : ""}.`,
       `Enviados por MHD y sin marcar en Shopify: ${shippedNotMarked.length}${shippedNotMarked.length ? ` (${shippedNotMarked.map((row) => row.order!.shopify_order_name).join(", ")})` : ""}.`,
+      `Recogidas en tienda listas para recoger: ${pickupReady.length}${pickupReady.length ? ` (${pickupReady.map((item) => `${item.name} en ${item.tienda} desde el ${cuando(item.entrega?.resultado_at)}`).join("; ")})` : ""}. Se marcan como recogidas a mano en Shopify.`,
+      `Recogidas en tienda enviadas por MHD y aún sin llegar: ${pickupOnTheWay.length}${pickupOnTheWay.length ? ` (${pickupOnTheWay.map((item) => `${item.name} a ${item.tienda}${item.entrega?.resultado === "revisar" ? ", revisar a mano" : ""}`).join("; ")})` : ""}.`,
       `Enviados esperando la factura de MHD: ${waitingInvoice.length}${waitingInvoice.length ? ` (${waitingInvoice.map((row) => row.order!.shopify_order_name).join(", ")})` : ""}.`,
       `Automático: exportar ${settings.exportar.activo ? "ENCENDIDO" : "apagado"} · marcar envíos ${settings.envio.activo ? "ENCENDIDO" : "apagado"} · entregas y recogidas ${settings.entrega.activo ? "ENCENDIDO" : "apagado"}.`,
     ],
