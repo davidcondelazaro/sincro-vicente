@@ -90,15 +90,19 @@ export async function GET(request: Request) {
       let comments = db.from("conversation_ratings").select("conversation_id, trigger, reasons, comment, rated_at").eq("rating", "negativa").not("comment", "is", null).neq("comment", "");
       if (since) comments = comments.gte("shown_at", since);
       if (until) comments = comments.lt("shown_at", until);
-      const [stats, alerts, ratings, recent] = await Promise.all([
+      const [stats, alerts, ratings, recent, elviDiscount] = await Promise.all([
         db.rpc("admin_conversation_stats", { p_from: since, p_to: until }),
         db.rpc("admin_alert_stats", { p_from: since, p_to: until }),
         db.rpc("admin_rating_stats", { p_from: since, p_to: until }),
         comments.order("rated_at", { ascending: false }).limit(10),
+        // Descuento de Elvi (descuento por tramos del carrito; chatbot-vicente, docs/gestion-sincro-vicente.md).
+        db.rpc("admin_elvi_discount_stats", { p_from: since, p_to: until }),
       ]);
       const failed = stats.error ?? alerts.error ?? ratings.error ?? recent.error;
       if (failed) throw failed;
-      return json({ stats: { ...stats.data, alerts: alerts.data }, ratings: { ...ratings.data, comments: recent.data ?? [] } });
+      // Si falla (función aún no creada en esa base), las demás estadísticas salen igual, sin este bloque.
+      if (elviDiscount.error) console.error("admin_elvi_discount_stats", elviDiscount.error);
+      return json({ stats: { ...stats.data, alerts: alerts.data, elvi_discount: elviDiscount.error ? null : elviDiscount.data }, ratings: { ...ratings.data, comments: recent.data ?? [] } });
     }
 
     if (view === "support") {

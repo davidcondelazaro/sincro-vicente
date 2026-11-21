@@ -22,6 +22,15 @@ type Stats = {
   quality?: Record<string, number>;
   issue_types?: Record<string, number>;
   alerts?: { stock: AlertStats; precio: AlertStats };
+  elvi_discount?: ElviDiscount | null;
+};
+// Descuento de Elvi (descuento por tramos del carrito): función admin_elvi_discount_stats del chatbot.
+type ElviDiscount = {
+  codes: { code: string; percentage: number }[];
+  chat: { offers_answered: number; applied: number; applied_conversations: number; removed: number; auto_adjusts: number };
+  orders: { count: number; revenue: number; discounted: number; avg_ticket: number | null; avg_ticket_others: number | null; with_conversation: number; share_of_paid: number | null };
+  by_percentage: { percentage: number; count: number; revenue: number; discounted: number }[];
+  by_day: { day: string; count: number; revenue: number }[];
 };
 type AlertStats = { total: number; logged_in: number; anonymous: number; no_conversation: number; pending: number; notified: number; cancelled: number; failed: number };
 
@@ -84,6 +93,7 @@ export function ChatbotStats() {
       </section>
 
       {stats.conversion && <Conversion c={stats.conversion} conversations={t.conversations} />}
+      {(stats.elvi_discount?.codes.length ?? 0) > 0 && <ElviDiscountBlock d={stats.elvi_discount!} />}
       {(stats.coupons?.length ?? 0) > 0 && <Coupons coupons={stats.coupons!} />}
       {stats.alerts && <Alerts alerts={stats.alerts} />}
 
@@ -146,6 +156,32 @@ function Conversion({ c, conversations }: { c: NonNullable<Stats["conversion"]>;
     {(c.unpaid_chat_orders ?? 0) > 0 && <p className="-mt-3 text-sm text-amber-800">{number(c.unpaid_chat_orders ?? 0)} {c.unpaid_chat_orders === 1 ? "pedido del chat pendiente de pago: contará" : "pedidos del chat pendientes de pago: contarán"} cuando se pague.</p>}
     {c.top_sold.length > 0 && <Panel title="Productos recomendados por el chat que se vendieron"><ol className="flex flex-col gap-2 text-sm">{c.top_sold.map((product, index) => <li key={product.id} className="flex items-baseline gap-3"><span className="w-5 shrink-0 text-right tabular-nums text-zinc-400">{index + 1}</span><span className="min-w-0 flex-1 truncate text-zinc-800">{product.title ?? `Producto ${product.id}`}</span><span className="tabular-nums text-zinc-600">{number(product.units)} uds.</span></li>)}</ol></Panel>}
     <p className="-mt-3 text-xs text-zinc-500"><strong className="font-medium text-zinc-600">Asistido:</strong> el pedido se hizo con un carrito en el que se usó el chat. <strong className="font-medium text-zinc-600">Influido:</strong> el cliente, con sesión iniciada, compró en los 7 días siguientes un producto que el chat le mostró. Solo cuentan los pedidos pagados (total o parcialmente), descontando lo reembolsado. Se mide desde el 11/10/2026; los pedidos anteriores no llevan la marca. Quien usa el chat ya suele tener más intención de compra: el ticket o la conversión más altos no significan que el chat los cause.</p>
+  </>;
+}
+
+// Descuento de Elvi: pedidos pagados con uno de sus códigos (2, 3 o 4 % según el importe en lo que no es Tecnología) y
+// lo que pasa en el chat (lo propone, el cliente acepta o lo quita, y se ajusta solo si cambia el carrito).
+const pctLabel = (value: number) => `${String(Math.round(value * 1000) / 10).replace(".", ",")} %`;
+function ElviDiscountBlock({ d }: { d: ElviDiscount }) {
+  const o = d.orders;
+  return <>
+    <h2 className="mt-2 text-xl font-semibold text-zinc-900">Descuento de Elvi</h2>
+    <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <Tile label="Pedidos con el descuento" value={number(o.count)} note={`${o.share_of_paid === null ? "—" : percent(o.share_of_paid * 10000, 10000)} de los pedidos pagados · ${number(o.with_conversation)} con el chat`} />
+      <Tile label="Ingresos" value={euro(o.revenue)} note={`Descontado: ${euro(o.discounted)}`} />
+      <Tile label="Ticket medio" value={euro(o.avg_ticket)} note={`Pedidos sin el descuento: ${euro(o.avg_ticket_others)}`} />
+      <Tile label="Aplicado en el chat" value={number(d.chat.applied_conversations)} note={`conversaciones · ${number(d.chat.offers_answered)} avisos contestados · ${number(d.chat.removed)} quitados · ${number(d.chat.auto_adjusts)} ajustes solos`} />
+    </section>
+    {d.by_percentage.length > 0 && <Panel title="Por porcentaje"><div className="overflow-x-auto"><table className="w-full text-sm">
+      <thead className="text-left text-xs text-zinc-500"><tr><th className="py-1.5 pr-4 font-medium">Descuento</th><th className="py-1.5 pr-4 text-right font-medium">Pedidos</th><th className="py-1.5 pr-4 text-right font-medium">Ingresos</th><th className="py-1.5 text-right font-medium">Descontado</th></tr></thead>
+      <tbody className="divide-y divide-zinc-100">{d.by_percentage.map((row) => <tr key={row.percentage}>
+        <td className="py-2 pr-4 font-medium text-zinc-900">{pctLabel(row.percentage)}</td>
+        <td className="py-2 pr-4 text-right tabular-nums text-zinc-800">{number(row.count)}</td>
+        <td className="py-2 pr-4 text-right tabular-nums text-zinc-800">{euro(row.revenue)}</td>
+        <td className="py-2 text-right tabular-nums text-zinc-800">{euro(row.discounted)}</td>
+      </tr>)}</tbody>
+    </table></div></Panel>}
+    <p className="-mt-3 text-xs text-zinc-500">Elvi propone un {d.codes.map((c) => pctLabel(c.percentage)).join(", ").replace(/, ([^,]*)$/, " o $1")} según lo que lleve el carrito en productos que no son de Tecnología (códigos {d.codes.map((c) => c.code).join(", ")}) y solo lo pone si el cliente acepta. Cuentan los pedidos pagados y sin cancelar, descontando lo reembolsado. «Descontado» es todo el descuento del pedido (con el de Elvi no cabe otro de producto). «Avisos contestados»: el botón de Elvi avisó y el cliente respondió en el chat. Funciona desde el 21/11/2026. Quien llega a estos importes ya compra más: el ticket más alto no significa que lo cause el descuento.</p>
   </>;
 }
 
