@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 // Google Merchant (David, 2026-11-17). Estado del envío a Merchant Center por la Merchant API (src/lib/merchant): portes y
 // plazos por país, EPREL, inventario regional de las zonas sin envío, la cola con sus reintentos, la conciliación de
 // cada noche y los avisos de Google. Solo lectura: el encendido y las pruebas van en store_settings (merchant_*).
-type PorPais = { pais: string; enMerchant: number; conPortes: number; sinPorte: number; regionalVencido: number };
+type PorPais = { pais: string; enMerchant: number; conPortes: number; sinPorte: number; regionalPorQuitar: number };
 type Evento = { kind: string; created_at: string; detail: Record<string, unknown> };
 type Aviso = { codigo: string; porPais: Record<string, number>; total: number; ejemplos: string[]; importante: boolean };
 type Estado = {
@@ -95,7 +95,7 @@ export default function GoogleMerchantPage() {
               <dt className="text-zinc-600">Ofertas en Merchant Center</dt><dd className="text-right font-medium">{n(item.enMerchant)}</dd>
               <dt className="text-zinc-600">Con portes mandados</dt><dd className="text-right font-medium">{n(item.conPortes)}</dd>
               <dt className="text-zinc-600">Sin porte conocido</dt><dd className={`text-right font-medium ${item.sinPorte ? "text-amber-700" : ""}`}>{n(item.sinPorte)}</dd>
-              <dt className="text-zinc-600">Regional a punto de caducar</dt><dd className={`text-right font-medium ${item.regionalVencido ? "text-red-700" : ""}`}>{n(item.regionalVencido)}</dd>
+              <dt className="text-zinc-600">Agotado regional por quitar</dt><dd className={`text-right font-medium ${item.regionalPorQuitar ? "text-amber-700" : ""}`}>{n(item.regionalPorQuitar)}</dd>
             </dl>
           </div>)}
         </section>
@@ -121,7 +121,7 @@ export default function GoogleMerchantPage() {
           <h2 className="font-semibold text-zinc-950">Últimas vueltas</h2>
           <p className="mt-2 text-sm text-zinc-600">{estado.conciliacion ? `Última conciliación: ${cuando(estado.conciliacion.created_at)}, ${n(Number((estado.conciliacion.detail.ofertas as Record<string, number> | undefined)?.ES ?? 0))} ofertas en España y ${n(Number((estado.conciliacion.detail.ofertas as Record<string, number> | undefined)?.PT ?? 0))} en Portugal.` : "Aún no se ha hecho ninguna conciliación."}</p>
           {estado.vueltas.length > 0 && <div className="mt-3 overflow-x-auto"><table className="w-full text-left text-sm">
-            <thead className="text-zinc-500"><tr><th className="py-1 pr-4">Hora</th><th className="pr-4 text-right">Productos</th><th className="pr-4 text-right">Mandados</th><th className="pr-4 text-right">Regionales</th><th className="pr-4 text-right">Aún no están</th><th>Errores</th></tr></thead>
+            <thead className="text-zinc-500"><tr><th className="py-1 pr-4">Hora</th><th className="pr-4 text-right">Productos</th><th className="pr-4 text-right">Mandados</th><th className="pr-4 text-right">Regionales quitados</th><th className="pr-4 text-right">Aún no están</th><th>Errores</th></tr></thead>
             <tbody>{estado.vueltas.map((item) => { const d = item.detail as Record<string, number | string[]>; return <tr key={item.created_at} className="border-t border-zinc-100"><td className="py-1 pr-4">{cuando(item.created_at)}</td><td className="pr-4 text-right">{n(Number(d.productos ?? 0))}</td><td className="pr-4 text-right">{n(Number(d.enviados ?? 0))}</td><td className="pr-4 text-right">{n(Number(d.regionales ?? 0))}</td><td className="pr-4 text-right">{n(Number(d.noEstan ?? 0))}</td><td className="text-red-800">{(d.errores as string[] | undefined)?.slice(0, 2).join(" · ")}</td></tr>; })}</tbody>
           </table></div>}
         </section>

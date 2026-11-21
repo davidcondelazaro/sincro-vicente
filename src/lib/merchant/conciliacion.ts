@@ -51,7 +51,7 @@ export async function conciliar(deps: { db: SupabaseClient; merchant: MerchantCo
   } else {
     const { data: idas } = await db.from("merchant_ofertas").delete().lt("visto_at", inicio).select("offer_id,pais");
     olvidadas = idas?.length ?? 0;
-    // Si vuelven, que se manden de nuevo los portes y el regional.
+    // Si vuelven, que se manden de nuevo los portes (el regional ya no se manda: regional_at a null).
     for (const ida of idas ?? []) await db.from("merchant_enviado").update({ huella: null, regional_at: null }).eq("offer_id", ida.offer_id).eq("pais", ida.pais);
   }
   const { data: encolados } = await db.rpc("merchant_encolar_todo");
@@ -65,7 +65,8 @@ export async function conciliar(deps: { db: SupabaseClient; merchant: MerchantCo
 // regiones y EPREL son los que importan aquí.
 type Vista = { productView: { id: string; feedLabel?: string; offerId?: string; itemIssues?: { type?: { code?: string }; severity?: { aggregatedSeverity?: string } }[] } };
 export const AVISOS_IMPORTANTES = /shipping|region|certification|delivery/i;
-// Lo que Google tarda como mucho en aplicar un envío; pasado esto, si la oferta sigue con aviso de portes, algo va mal.
+// Lo que Google tarda como mucho en aplicar un envío; pasado esto, si la oferta sigue con aviso de portes, plazos,
+// disponibilidad o EPREL, algo va mal.
 export const MARGEN_GOOGLE_MINUTOS = 60;
 const ATRASADAS_AVISO = 50;
 
@@ -120,7 +121,9 @@ export async function leerAvisos(deps: { db: SupabaseClient; merchant: MerchantC
   const detalle = { ofertas, ofertasPorPais, conAvisoPortes, atrasadas: { total: totalAtrasadas, ejemplos: atrasadas }, avisos };
   await db.from("mhd_sync_events").insert({ sync: "merchant", kind: "avisos", detail: detalle });
   if (totalAtrasadas >= ATRASADAS_AVISO) {
-    await sendAlert(db, { key: "merchant:atrasadas", href: "/google-merchant", quietMinutes: 360, subject: `Google Merchant: ${totalAtrasadas} ofertas mandadas siguen con aviso de portes`, lines: [`Se mandaron hace más de ${MARGEN_GOOGLE_MINUTOS} minutos y Google aún no las da por buenas.`, `Ejemplos: ${atrasadas.join(", ")}`] });
+    // El asunto dice qué avisa Google: el 21-11 decía «portes» y eran todas de disponibilidad regional.
+    const tipos = avisos.filter((aviso) => aviso.importante).map((aviso) => `${aviso.codigo}: ${aviso.total}`);
+    await sendAlert(db, { key: "merchant:atrasadas", href: "/google-merchant", quietMinutes: 360, subject: `Google Merchant: ${totalAtrasadas} ofertas mandadas siguen con avisos de Google`, lines: [`Se mandaron hace más de ${MARGEN_GOOGLE_MINUTOS} minutos y Google aún no las da por buenas.`, `Avisos (ofertas de España y Portugal): ${tipos.join(" · ")}`, `Ejemplos: ${atrasadas.join(", ")}`] });
   }
   return detalle;
 }

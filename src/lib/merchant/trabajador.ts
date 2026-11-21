@@ -9,11 +9,13 @@ import { entradaProducto, esperado, huella, nombreProducto, offerId, PAISES, rea
 // 2. Por cada país, comprueba que la oferta ya está en Merchant Center. Si aún no está, el producto vuelve a la cola
 //    con esperas crecientes (15 min, 30 min… hasta un día): nunca se manda nada a una oferta que no existe.
 // 3. Manda a la fuente complementaria del país solo si cambia algo, o si Merchant Center no refleja lo mandado.
-// 4. Renueva el inventario regional `out_of_stock` (Canarias, Ceuta, Melilla / Azores, Madeira) cada 7 días: caduca a los 14.
+// 4. Quita el inventario regional `out_of_stock` (Canarias, Ceuta, Melilla / Azores, Madeira) que se mandaba hasta el 21-11:
+//    Google rechazaba la oferta en todo el país porque la web dice «en stock» (out_of_stock_regional_availability_mismatch).
+//    Las islas se excluyen en Google Ads por ubicación, como Baleares.
 // 5. Si el producto ya no está activo, quita lo mandado de la complementaria.
 // Freno: con muchos errores seguidos de la API se para, suelta lo cogido y avisa.
 
-export const TRABAJADOR = { lote: 100, concurrencia: 32, presupuestoMs: 240_000, frenoErrores: 25, renovarRegionalDias: 7, margenProcesoHoras: 3 };
+export const TRABAJADOR = { lote: 100, concurrencia: 32, presupuestoMs: 240_000, frenoErrores: 25, margenProcesoHoras: 3 };
 const PAIS_LISTA = Object.keys(PAISES) as Pais[];
 
 export type AjustesMerchant = { activo: boolean; soloCodigos: string[]; fuentes: Partial<Record<Pais, string>> };
@@ -154,13 +156,12 @@ export async function trabajarCola(deps: { db: SupabaseClient; shopify: ShopifyC
         } else resumen.iguales += 1;
       }
 
-      // Zonas sin envío del país: `out_of_stock` en su región, renovado antes de que caduque.
-      const regional = previo?.regional_at;
-      if (!regional || Date.now() - new Date(regional).getTime() > TRABAJADOR.renovarRegionalDias * 86_400_000) {
-        const respuesta = await merchant(deps.merchant, "POST", `inventories/v1/accounts/{cuenta}/products/${nombre}/regionalInventories:insert`, { region: PAISES[pais].region, regionalInventoryAttributes: { availability: "OUT_OF_STOCK" } });
-        if (!respuesta.ok) { fallo(`${item.codigo} ${pais} regional: ${mensaje(respuesta)}`); pendientes.set(item.codigo, mensaje(respuesta)); return; }
+      // Zonas sin envío: se quita el `out_of_stock` regional que quede (David, 2026-11-21). Un 404 es que ya no estaba.
+      if (previo?.regional_at) {
+        const respuesta = await merchant(deps.merchant, "DELETE", `inventories/v1/accounts/{cuenta}/products/${nombre}/regionalInventories/${PAISES[pais].region}`);
+        if (!respuesta.ok && respuesta.status !== 404) { fallo(`${item.codigo} ${pais} quitar regional: ${mensaje(respuesta)}`); pendientes.set(item.codigo, mensaje(respuesta)); return; }
         bien(); resumen.regionales += 1;
-        await db.from("merchant_enviado").upsert({ offer_id: oferta, pais, codigo: item.codigo, regional_at: ahora }, { onConflict: "offer_id,pais" });
+        await db.from("merchant_enviado").update({ regional_at: null }).eq("offer_id", oferta).eq("pais", pais);
       }
     });
 

@@ -4,8 +4,9 @@ import { createHash } from "node:crypto";
 // Todo puro: se prueba en tests/merchant.test.mjs.
 //
 // - Un porte por país (en España y Portugal Google no admite zonas por debajo del país): ES = península, PT = baremo 2
-//   (David, 2026-11-17). Baleares se excluye en Google Ads; Canarias, Ceuta, Melilla, Azores y Madeira van como
-//   `out_of_stock` por inventario regional.
+//   (David, 2026-11-17). Baleares, Canarias, Ceuta, Melilla, Azores y Madeira se excluyen en Google Ads por ubicación.
+//   Hasta el 21-11 las islas iban como `out_of_stock` por inventario regional, pero Google rechazaba la oferta en todo el
+//   país al ver la web «en stock»; el trabajador quita lo que quede (región en `region`).
 // - El porte es el que cobra el pago (src/app/api/shopify/portes): el del metacampo custom.opciones_entrega. Sin
 //   metacampo, el último porte conocido de MHD (decidido el 17-11); sin ninguno, no se manda nada.
 // - Plazo: preparación 0 y tránsito = los días del texto de disponibilidad, igual que el tema
